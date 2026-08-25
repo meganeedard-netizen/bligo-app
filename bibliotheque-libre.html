@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BliGO — Bibliothèque Libre</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
+      colors: {
+        ink: '#1B4B43',
+        mango: { 50:'#FFF7ED',100:'#FFEAD2',200:'#FFD4A3',300:'#FFB86B',400:'#FFA33F',500:'#FF9B2E',600:'#F07F14',700:'#C7630F',800:'#9E4E12',900:'#7C3F12' },
+        hibiscus: { 50:'#FFF0F5',100:'#FFDCE9',200:'#FFB8D3',300:'#FF8FB9',400:'#F2609A',500:'#E8437A',600:'#C92C61',700:'#A3234E',800:'#7E1C3D',900:'#5F1730' }
+      }
+    } }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .font-logo { font-family: 'Poppins', sans-serif; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+</style>
+</head>
+<body class="bg-[#FFF4E4] text-ink min-h-screen">
+
+<header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-mango-100 shadow-sm">
+  <div class="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
+    <div class="flex items-center gap-2.5">
+      <img src="img/bligo-icon.png" alt="BliGO" class="w-8 h-8 object-contain">
+      <div>
+        <p class="font-logo font-bold text-base text-ink leading-none">Bli<span class="text-mango-600">GO</span></p>
+        <p class="text-[11px] text-ink/45 leading-none mt-0.5">Médiathèque de Val-Fleuri</p>
+      </div>
+    </div>
+    <nav class="flex items-center gap-1 bg-mango-50 border border-mango-100 rounded-full p-1">
+      <a href="accueil.html" class="text-xs font-semibold px-3 py-1.5 rounded-full text-ink/50 hover:text-ink">Accueil</a>
+      <a href="catalogue.html" class="text-xs font-semibold px-3 py-1.5 rounded-full text-ink/50 hover:text-ink">Catalogue</a>
+      <a href="bibliotheque-libre.html" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-white shadow-sm text-ink whitespace-nowrap">Bibliothèque Libre</a>
+    </nav>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <a id="admin-link" href="admin.html" class="hidden text-xs font-semibold text-mango-700 hover:text-mango-800 border border-mango-200 bg-mango-50 rounded-full px-3 py-1.5 whitespace-nowrap">Back-office</a>
+      <span id="user-name" class="text-xs font-semibold text-ink/70 hidden sm:inline"></span>
+      <button onclick="logout()" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-full px-3 py-1.5 whitespace-nowrap">Déconnexion</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-5 py-8">
+
+  <p class="text-[11px] uppercase tracking-wide font-bold text-hibiscus-600 mb-1">Dons &amp; échange libre</p>
+  <h1 class="text-lg font-bold text-ink mb-1">Bibliothèque Libre</h1>
+  <p class="text-sm text-ink/50 mb-6">Livres donnés par des habitants, hors catalogue officiel — sans condition de résidence, ouverts à toutes les communes.</p>
+
+  <input id="search-input" type="text" placeholder="Rechercher un titre, un auteur…"
+    class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-hibiscus-300 mb-3">
+
+  <div id="commune-filters" class="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-1"></div>
+
+  <div id="free-book-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-2"></div>
+
+</main>
+
+<script type="module">
+  import { supabase } from './js/supabaseClient.js';
+
+  let freeBooks = [];
+  let communes = [];
+  let activeCommune = null;
+  let searchQuery = '';
+
+  function coverHtml(b) {
+    return b.cover_url
+      ? `<img src="${b.cover_url}" alt="" class="aspect-[2/3] w-full object-cover rounded-lg mb-2 bg-hibiscus-50 shadow-sm">`
+      : `<div class="aspect-[2/3] w-full rounded-lg bg-gradient-to-br from-hibiscus-500 to-mango-600 flex items-center justify-center text-white font-logo font-bold text-2xl mb-2">${b.cover_initial || b.title[0]}</div>`;
+  }
+
+  function renderCommuneFilters() {
+    const el = document.getElementById('commune-filters');
+    const chips = [{ label: 'Toutes les communes', value: null }, ...communes.map(c => ({ label: c.name, value: c.id }))];
+    el.innerHTML = chips.map(c => `
+      <button data-value="${c.value ?? ''}" class="commune-chip shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition ${
+        activeCommune === c.value ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-mango-100 hover:border-mango-300'
+      }">${c.label}</button>
+    `).join('');
+    el.querySelectorAll('.commune-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCommune = btn.dataset.value ? Number(btn.dataset.value) : null;
+        renderCommuneFilters();
+        renderFreeBooks();
+      });
+    });
+  }
+
+  function renderFreeBooks() {
+    const list = document.getElementById('free-book-list');
+    const q = searchQuery.trim().toLowerCase();
+    let visible = activeCommune ? freeBooks.filter(b => b.commune_id === activeCommune) : freeBooks;
+    if (q) {
+      visible = visible.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
+    }
+
+    if (visible.length === 0) {
+      list.innerHTML = `<p class="col-span-full text-sm text-ink/40 text-center py-10">Aucun livre disponible pour le moment.</p>`;
+      return;
+    }
+
+    list.innerHTML = visible.map(b => {
+      const commune = communes.find(c => c.id === b.commune_id);
+      const btnHtml = b.available
+        ? `<button data-book-id="${b.id}" class="borrow-btn w-full mt-2 text-[11px] font-semibold bg-ink text-white rounded-lg py-1.5 active:scale-[0.97] transition">Emprunter</button>`
+        : `<button disabled class="w-full mt-2 text-[11px] font-semibold bg-ink/5 text-ink/35 rounded-lg py-1.5">Déjà emprunté</button>`;
+      return `
+        <div class="bg-white border border-mango-100 rounded-xl p-2.5 shadow-sm flex flex-col">
+          ${coverHtml(b)}
+          <p class="text-[12px] font-bold text-ink leading-tight line-clamp-2">${b.title}</p>
+          <p class="text-[10.5px] text-ink/50 mt-0.5">${b.author}</p>
+          ${b.category ? `<span class="mt-1 inline-block w-fit text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-hibiscus-50 text-hibiscus-700">${b.category}</span>` : ''}
+          <span class="mt-1.5 inline-block w-fit text-[10px] font-bold px-2 py-0.5 rounded-full bg-mango-50 text-mango-700">Dispo à : ${commune?.name || '?'}</span>
+          ${btnHtml}
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.borrow-btn').forEach(btn => {
+      btn.addEventListener('click', () => borrowFreeBook(Number(btn.dataset.bookId), btn));
+    });
+  }
+
+  async function borrowFreeBook(bookId, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Emprunt…';
+    const { data, error } = await supabase.rpc('borrow_free_book', { p_book_id: bookId });
+    if (error || !data) {
+      alert(error?.message || 'Ce livre vient d\'être emprunté par quelqu\'un d\'autre.');
+      await loadFreeBooks();
+      return;
+    }
+    await loadFreeBooks();
+  }
+
+  async function loadFreeBooks() {
+    const { data, error } = await supabase.from('free_books').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.error(error);
+      return;
+    }
+    freeBooks = data;
+    renderFreeBooks();
+  }
+
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'index.html';
+      return;
+    }
+    const currentUser = session.user;
+
+    const { data: profile } = await supabase.from('profiles').select('full_name, role').eq('id', currentUser.id).single();
+    document.getElementById('user-name').textContent = profile?.full_name || currentUser.email;
+    if (profile?.role === 'agent') {
+      document.getElementById('admin-link').classList.remove('hidden');
+    }
+
+    const { data: communesData } = await supabase.from('communes').select('*').order('name');
+    communes = communesData || [];
+    renderCommuneFilters();
+
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderFreeBooks();
+    });
+
+    await loadFreeBooks();
+  }
+
+  window.logout = async function () {
+    await supabase.auth.signOut();
+    window.location.href = 'index.html';
+  };
+
+  init();
+</script>
+</body>
+</html>

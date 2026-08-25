@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BliGO — Accueil</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
+      colors: {
+        ink: '#1B4B43',
+        mango: { 50:'#FFF7ED',100:'#FFEAD2',200:'#FFD4A3',300:'#FFB86B',400:'#FFA33F',500:'#FF9B2E',600:'#F07F14',700:'#C7630F',800:'#9E4E12',900:'#7C3F12' },
+        hibiscus: { 50:'#FFF0F5',100:'#FFDCE9',200:'#FFB8D3',300:'#FF8FB9',400:'#F2609A',500:'#E8437A',600:'#C92C61',700:'#A3234E',800:'#7E1C3D',900:'#5F1730' }
+      }
+    } }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .font-logo { font-family: 'Poppins', sans-serif; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+</style>
+</head>
+<body class="bg-[#FFF4E4] text-ink min-h-screen">
+
+<header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-mango-100 shadow-sm">
+  <div class="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
+    <div class="flex items-center gap-2.5">
+      <img src="img/bligo-icon.png" alt="BliGO" class="w-8 h-8 object-contain">
+      <div>
+        <p class="font-logo font-bold text-base text-ink leading-none">Bli<span class="text-mango-600">GO</span></p>
+        <p class="text-[11px] text-ink/45 leading-none mt-0.5">Médiathèque de Val-Fleuri</p>
+      </div>
+    </div>
+    <nav class="flex items-center gap-1 bg-mango-50 border border-mango-100 rounded-full p-1">
+      <a href="accueil.html" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-white shadow-sm text-ink">Accueil</a>
+      <a href="catalogue.html" class="text-xs font-semibold px-3 py-1.5 rounded-full text-ink/50 hover:text-ink">Catalogue</a>
+      <a href="bibliotheque-libre.html" class="text-xs font-semibold px-3 py-1.5 rounded-full text-ink/50 hover:text-ink whitespace-nowrap">Bibliothèque Libre</a>
+    </nav>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <a id="admin-link" href="admin.html" class="hidden text-xs font-semibold text-mango-700 hover:text-mango-800 border border-mango-200 bg-mango-50 rounded-full px-3 py-1.5 whitespace-nowrap">Back-office</a>
+      <span id="user-name" class="text-xs font-semibold text-ink/70 hidden sm:inline"></span>
+      <button onclick="logout()" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-full px-3 py-1.5 whitespace-nowrap">Déconnexion</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-5 py-8">
+
+  <p class="text-[11px] uppercase tracking-wide font-bold text-hibiscus-600 mb-1">Bienvenue</p>
+  <h1 id="greeting" class="text-xl font-bold text-ink mb-6">Bonjour</h1>
+
+  <div class="rounded-2xl p-5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden mb-8">
+    <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
+    <div class="absolute -right-2 bottom-4 w-16 h-16 rounded-full bg-white/10"></div>
+    <p class="text-xs font-semibold text-white/80 relative mb-4">Votre activité à la médiathèque de Val-Fleuri</p>
+    <div class="grid grid-cols-2 gap-4 relative">
+      <div>
+        <p id="stat-active" class="text-3xl font-bold">—</p>
+        <p class="text-[11px] text-white/75 font-medium mt-0.5">réservation(s) en cours</p>
+      </div>
+      <div>
+        <p id="stat-picked-up" class="text-3xl font-bold">—</p>
+        <p class="text-[11px] text-white/75 font-medium mt-0.5">livre(s) récupéré(s)</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="featured-section" class="hidden mb-8">
+    <div class="flex items-center gap-1.5 mb-3">
+      <span class="w-6 h-6 rounded-full bg-hibiscus-50 flex items-center justify-center text-hibiscus-600 text-xs">✦</span>
+      <p class="text-sm font-bold text-ink">Coup de cœur de la médiathèque</p>
+    </div>
+    <div id="featured-card"></div>
+  </div>
+
+  <div class="flex items-center gap-1.5 mb-3">
+    <span class="w-6 h-6 rounded-full bg-mango-50 flex items-center justify-center text-mango-600 text-xs">✦</span>
+    <p class="text-sm font-bold text-ink flex-1">Nouveautés du catalogue</p>
+    <a href="catalogue.html" class="text-xs font-semibold text-hibiscus-700 hover:text-hibiscus-800">Voir tout →</a>
+  </div>
+  <div id="new-books-row" class="flex gap-3 overflow-x-auto no-scrollbar pb-2"></div>
+
+</main>
+
+<script type="module">
+  import { supabase } from './js/supabaseClient.js';
+
+  function coverHtml(b, cls) {
+    return b.cover_url
+      ? `<img src="${b.cover_url}" alt="" class="${cls} object-cover bg-mango-50 shadow-sm">`
+      : `<div class="${cls} bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shadow-sm">${b.cover_initial || b.title[0]}</div>`;
+  }
+
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'index.html';
+      return;
+    }
+    const currentUser = session.user;
+
+    const { data: profile } = await supabase.from('profiles').select('full_name, role').eq('id', currentUser.id).single();
+    const name = profile?.full_name || currentUser.email;
+    document.getElementById('user-name').textContent = name;
+    document.getElementById('greeting').textContent = 'Bonjour ' + name.split(' ')[0];
+    if (profile?.role === 'agent') {
+      document.getElementById('admin-link').classList.remove('hidden');
+    }
+
+    const { data: reservations } = await supabase
+      .from('reservations')
+      .select('status')
+      .eq('user_id', currentUser.id);
+    const active = (reservations || []).filter(r => r.status !== 'recupere').length;
+    const pickedUp = (reservations || []).filter(r => r.status === 'recupere').length;
+    document.getElementById('stat-active').textContent = active;
+    document.getElementById('stat-picked-up').textContent = pickedUp;
+
+    const { data: featured } = await supabase.from('books').select('*').eq('is_featured', true).limit(1);
+    if (featured && featured.length > 0) {
+      const b = featured[0];
+      document.getElementById('featured-section').classList.remove('hidden');
+      document.getElementById('featured-card').innerHTML = `
+        <div class="bg-white border border-mango-100 rounded-2xl p-4 shadow-sm flex gap-4">
+          ${coverHtml(b, 'w-20 aspect-[2/3] rounded-lg shrink-0')}
+          <div class="min-w-0">
+            <p class="text-base font-bold text-ink leading-snug">${b.title}</p>
+            <p class="text-sm text-ink/55 mt-0.5">${b.author}</p>
+            ${b.category ? `<span class="mt-2 inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-hibiscus-50 text-hibiscus-700">${b.category}</span>` : ''}
+            ${b.summary ? `<p class="text-xs text-ink/60 italic leading-relaxed mt-2 line-clamp-3">« ${b.summary} »</p>` : ''}
+            <p class="text-[10px] text-ink/35 mt-1.5">— Sélection de l'équipe de la médiathèque</p>
+          </div>
+        </div>`;
+    }
+
+    const { data: newBooks } = await supabase.from('books').select('*').order('created_at', { ascending: false }).limit(8);
+    document.getElementById('new-books-row').innerHTML = (newBooks || []).map(b => `
+      <div class="w-28 shrink-0">
+        ${coverHtml(b, 'w-28 aspect-[2/3] rounded-lg mb-1.5')}
+        <p class="text-[11px] font-bold text-ink leading-tight line-clamp-2">${b.title}</p>
+        <p class="text-[10px] text-ink/45 mt-0.5">${b.author}</p>
+      </div>
+    `).join('');
+  }
+
+  window.logout = async function () {
+    await supabase.auth.signOut();
+    window.location.href = 'index.html';
+  };
+
+  init();
+</script>
+</body>
+</html>
