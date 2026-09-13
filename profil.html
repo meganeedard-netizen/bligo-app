@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BliGO — Profil</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
+      colors: {
+        ink: '#1B4B43',
+        mango: { 50:'#FFF7ED',100:'#FFEAD2',200:'#FFD4A3',300:'#FFB86B',400:'#FFA33F',500:'#FF9B2E',600:'#F07F14',700:'#C7630F',800:'#9E4E12',900:'#7C3F12' },
+        hibiscus: { 50:'#FFF0F5',100:'#FFDCE9',200:'#FFB8D3',300:'#FF8FB9',400:'#F2609A',500:'#E8437A',600:'#C92C61',700:'#A3234E',800:'#7E1C3D',900:'#5F1730' }
+      }
+    } }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  html, body { overscroll-behavior-y: none; }
+  body { min-height: 100dvh !important; }
+  .font-logo { font-family: 'Poppins', sans-serif; }
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px; }
+  }
+</style>
+</head>
+<body class="bg-white text-ink min-h-screen pb-24">
+
+<header class="sticky top-0 z-30 bg-white shadow-sm">
+  <div class="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between gap-2">
+    <h1 class="text-base font-bold text-ink">Mon Profil</h1>
+    <a href="points.html" class="shrink-0 flex items-center gap-2 bg-white border border-mango-100 rounded-full pl-4 pr-1 py-1 shadow-sm">
+      <span id="points-display" class="text-sm font-bold bg-gradient-to-r from-mango-500 to-hibiscus-600 bg-clip-text text-transparent">0</span>
+      <span class="w-7 h-7 rounded-full bg-mango-50 flex items-center justify-center overflow-hidden shrink-0">
+        <img src="img/bligo-icon.png" alt="" class="w-5 h-5 object-contain">
+      </span>
+    </a>
+  </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-5 py-8 max-w-sm">
+
+  <div class="flex items-center justify-center gap-2 mb-6">
+    <button id="registration-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full"></button>
+  </div>
+
+  <div id="attach-commune-notice" class="hidden bg-white rounded-xl p-4 shadow-sm mb-6">
+    <p class="text-sm font-bold text-ink mb-1">Compte Bibliothèque Libre</p>
+    <p class="text-xs text-ink/60 leading-relaxed mb-3">Tu prends librement des livres dans la Bibliothèque Libre, sans condition de résidence et sans obligation de les rapporter. Dès que tu es installé(e) dans une commune partenaire, rattache ton compte pour accéder aussi à son Click & Collect.</p>
+    <select id="attach-commune-select" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
+      <option value="" disabled selected>Choisis ta commune</option>
+    </select>
+    <button id="attach-commune-btn" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Rattacher mon compte à cette commune</button>
+    <p id="attach-commune-message" class="text-xs text-center mt-2"></p>
+  </div>
+
+  <div class="rounded-2xl p-6 text-white shadow-xl bg-gradient-to-br from-hibiscus-700 via-hibiscus-600 to-mango-600 relative overflow-hidden mb-6">
+    <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
+    <div class="absolute -right-2 bottom-6 w-16 h-16 rounded-full bg-white/10"></div>
+    <p class="font-logo font-bold text-sm relative">Bli<span class="text-mango-300">GO</span></p>
+    <p id="card-subtitle" class="text-[11px] text-white/70 relative mb-4">Médiathèque de Val-Fleuri</p>
+
+    <p id="card-name" class="text-lg font-bold relative"></p>
+    <p id="card-number" class="text-xs text-white/70 relative mb-4"></p>
+
+    <div id="card-qr-block" class="hidden">
+      <div class="bg-white rounded-xl p-3 w-fit relative">
+        <canvas id="card-qr-canvas" width="160" height="160"></canvas>
+      </div>
+      <p class="text-[10px] text-white/60 mt-2 relative">Présente ce code à l'accueil pour récupérer tes réservations.</p>
+    </div>
+
+    <div id="card-pending-block" class="hidden bg-white/15 border border-white/25 rounded-xl px-4 py-6 relative flex flex-col items-center text-center gap-2">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-white/85"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
+      <p class="text-xs font-bold">Carte en attente d'activation</p>
+      <p class="text-[11px] text-white/75">Ton QR code apparaîtra ici une fois ton inscription validée, au moment du retrait de ta première réservation.</p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+    <p class="text-xs font-semibold text-ink/50 mb-1">Nom</p>
+    <p id="profile-name" class="text-sm font-bold text-ink mb-3">—</p>
+    <p class="text-xs font-semibold text-ink/50 mb-1">E-mail</p>
+    <p id="profile-email" class="text-sm font-bold text-ink">—</p>
+  </div>
+
+  <div class="rounded-2xl p-5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden mb-8">
+    <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
+    <p class="text-sm font-bold relative mb-1">📣 Partager BliGO à mes proches</p>
+    <p class="text-xs text-white/80 relative mb-4">Invite ta famille et tes amis à rejoindre la médiathèque.</p>
+    <button id="share-app-btn" class="relative w-full bg-white text-mango-700 rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Partager mon lien d'invitation</button>
+    <p id="share-message" class="relative text-xs text-center text-white/80 mt-2"></p>
+  </div>
+
+  <div id="agent-section" class="hidden mb-6">
+    <p class="text-sm font-bold text-ink mb-3">Espace agent</p>
+    <div class="flex flex-col gap-2">
+      <a id="admin-link" href="admin.html" class="hidden w-full text-center text-sm font-semibold text-white bg-ink hover:bg-ink/90 rounded-lg py-2.5 shadow-sm">Back-office</a>
+      <a id="superadmin-link" href="superadmin.html" class="hidden w-full text-center text-sm font-semibold text-white bg-hibiscus-600 hover:bg-hibiscus-700 rounded-lg py-2.5 shadow-sm">Espace admin</a>
+    </div>
+  </div>
+
+  <button onclick="logout()" class="w-full text-sm font-semibold text-red-600 hover:text-red-700 border border-red-100 bg-red-50 rounded-lg py-2.5">Déconnexion</button>
+
+</main>
+
+<!-- Pop-up pré-inscription -->
+<div id="pending-popup-backdrop" onclick="closePendingPopup(event)" class="hidden fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+    <button onclick="closePendingPopup()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+    <svg class="w-8 h-8 text-mango-600 mb-3" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
+    <p class="text-base font-bold text-ink mb-2">Pré-inscription en attente de validation</p>
+    <p id="pending-popup-text" class="text-sm text-ink/60 leading-relaxed">Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là. Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.</p>
+    <button onclick="closePendingPopup()" class="w-full mt-5 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">J'ai compris</button>
+  </div>
+</div>
+
+<nav class="fixed bottom-0 inset-x-0 z-30 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)]" style="transform: translateZ(0);">
+  <div class="max-w-4xl mx-auto w-full flex items-center py-2 px-5">
+  <a href="accueil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5l8-7 8 7"/><path d="M6 10.3V19a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-8.7"/></svg>
+    <span class="text-[9.5px] font-semibold whitespace-nowrap">Accueil</span>
+  </a>
+  <a href="reservations.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+    <span class="relative">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 1 1 12 0c0 3.8 1.3 5.2 1.3 5.2H4.7S6 13.3 6 9.5Z"/><path d="M10 17.7a2 2 0 0 0 4 0"/></svg>
+      <span id="nav-resa-badge" class="hidden absolute -top-1 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-mango-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">0</span>
+    </span>
+    <span class="text-[9.5px] font-semibold whitespace-nowrap">Réservation</span>
+  </a>
+  <a href="liste-envie.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
+    <span class="text-[9.5px] font-semibold whitespace-nowrap">Liste d'envie</span>
+  </a>
+  <a href="profil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-mango-700">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.6" cy="11" r="2"/><path d="M5.6 16c.4-1.7 1.7-2.6 3-2.6s2.6.9 3 2.6"/><path d="M14 9.3h5M14 12.3h5M14 15.3h3.2"/></svg>
+    <span class="text-[9.5px] font-semibold whitespace-nowrap">Profil</span>
+  </a>
+  </div>
+</nav>
+
+<script type="module">
+  import { supabase } from './js/supabaseClient.js';
+  import { updateReservationBadge } from './js/navBadge.js';
+
+
+
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'index.html';
+      return;
+    }
+    const currentUser = session.user;
+    updateReservationBadge(currentUser.id);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, role, subscriber_number, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, registration_status, account_type, commune_id, loyalty_points, communes ( name )')
+      .eq('id', currentUser.id).single();
+    if (profile?.role === 'agent' || profile?.role === 'super_admin') {
+      document.getElementById('agent-section').classList.remove('hidden');
+      document.getElementById('admin-link').classList.remove('hidden');
+    }
+    if (profile?.role === 'super_admin') {
+      document.getElementById('superadmin-link').classList.remove('hidden');
+    }
+
+    document.getElementById('points-display').textContent = `${profile?.loyalty_points ?? 0}`;
+    document.getElementById('card-name').textContent = profile?.full_name || '';
+    document.getElementById('card-number').textContent = profile?.subscriber_number ? `N° abonné ${profile.subscriber_number}` : '';
+    document.getElementById('profile-name').textContent = profile?.full_name || '—';
+    document.getElementById('profile-email').textContent = currentUser.email;
+
+    document.getElementById('share-app-btn').addEventListener('click', async () => {
+      const shareUrl = `${window.location.origin}${window.location.pathname.replace('profil.html', 'index.html')}?ref=${encodeURIComponent(profile?.subscriber_number || '')}`;
+      const shareText = 'Rejoins-moi sur BliGO, la médiathèque numérique gratuite !';
+      const msg = document.getElementById('share-message');
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'BliGO', text: shareText, url: shareUrl });
+        } catch (e) {
+          // Partage annulé par l'usager — rien à faire.
+        }
+      } else {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          msg.textContent = 'Lien copié ! Colle-le où tu veux.';
+        } catch (e) {
+          msg.textContent = shareUrl;
+        }
+      }
+    });
+
+    const isLibre = profile?.account_type === 'libre';
+    const isValidated = profile?.registration_status === 'valide';
+
+    document.getElementById('card-subtitle').textContent = isLibre
+      ? 'Bibliothèque Libre'
+      : (profile?.communes?.name ? `Médiathèque de ${profile.communes.name}` : 'Médiathèque de Val-Fleuri');
+
+    const communeName = profile?.communes?.name ? `Médiathèque de ${profile.communes.name}` : 'Médiathèque de Val-Fleuri';
+
+    const badge = document.getElementById('registration-badge');
+    if (isLibre) {
+      badge.textContent = '● Bibliothèque Libre';
+      badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-ink/5 text-ink/60';
+      badge.classList.remove('hidden');
+    } else if (isValidated) {
+      // Le compte validé se voit déjà au QR code affiché plus bas — inutile de le redire ici.
+      badge.classList.add('hidden');
+    } else {
+      badge.textContent = `● Pré-inscription · ${communeName}`;
+      badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-hibiscus-50 text-hibiscus-700 cursor-pointer';
+      badge.addEventListener('click', () => openPendingPopup());
+      badge.classList.remove('hidden');
+    }
+
+    document.getElementById('attach-commune-notice').classList.toggle('hidden', !isLibre);
+    if (isLibre) await setupAttachCommune();
+
+    if (isValidated && profile?.subscriber_number) {
+      document.getElementById('card-qr-block').classList.remove('hidden');
+      const { default: QRCode } = await import('https://esm.sh/qrcode@1');
+      const canvas = document.getElementById('card-qr-canvas');
+      await QRCode.toCanvas(canvas, profile.subscriber_number, { width: 160, margin: 1, color: { dark: '#1B4B43' } });
+    } else {
+      document.getElementById('card-pending-block').classList.remove('hidden');
+    }
+
+  }
+
+  async function setupAttachCommune() {
+    const { data: communes } = await supabase.from('communes').select('id, name').order('name');
+    const select = document.getElementById('attach-commune-select');
+    select.innerHTML = `<option value="" disabled selected>Choisis ta commune</option>` +
+      (communes || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+    document.getElementById('attach-commune-btn').addEventListener('click', async () => {
+      const message = document.getElementById('attach-commune-message');
+      const communeId = Number(select.value);
+      if (!communeId) {
+        message.textContent = 'Choisis une commune.';
+        message.className = 'text-xs text-center mt-2 text-red-600';
+        return;
+      }
+      message.textContent = 'Envoi…';
+      message.className = 'text-xs text-center mt-2 text-ink/50';
+      const { error } = await supabase.rpc('request_commune_attachment', { p_commune_id: communeId });
+      if (error) {
+        message.textContent = 'Erreur : ' + error.message;
+        message.className = 'text-xs text-center mt-2 text-red-600';
+        return;
+      }
+      message.textContent = 'Demande envoyée ! Ton compte passe en pré-inscription : présente-toi avec ta pièce d\'identité et ton justificatif de domicile lors de ton prochain passage. Si tu es mineur·e, prévois une autorisation parentale.';
+      message.className = 'text-xs text-center mt-2 text-mango-700';
+      setTimeout(() => window.location.reload(), 2500);
+    }, { once: true });
+  }
+
+  window.openPendingPopup = function () {
+    const backdrop = document.getElementById('pending-popup-backdrop');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
+  };
+
+  window.closePendingPopup = function (event) {
+    if (event && event.target.id !== 'pending-popup-backdrop') return;
+    const backdrop = document.getElementById('pending-popup-backdrop');
+    backdrop.classList.add('hidden');
+    backdrop.classList.remove('flex');
+  };
+
+  window.logout = async function () {
+    await supabase.auth.signOut();
+    window.location.href = 'index.html';
+  };
+
+  init();
+</script>
+</body>
+</html>

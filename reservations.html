@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BliGO — Réservations</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
+      colors: {
+        ink: '#1B4B43',
+        mango: { 50:'#FFF7ED',100:'#FFEAD2',200:'#FFD4A3',300:'#FFB86B',400:'#FFA33F',500:'#FF9B2E',600:'#F07F14',700:'#C7630F',800:'#9E4E12',900:'#7C3F12' },
+        hibiscus: { 50:'#FFF0F5',100:'#FFDCE9',200:'#FFB8D3',300:'#FF8FB9',400:'#F2609A',500:'#E8437A',600:'#C92C61',700:'#A3234E',800:'#7E1C3D',900:'#5F1730' }
+      }
+    } }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  html, body { overscroll-behavior-y: none; }
+  body { min-height: 100dvh !important; }
+  .font-logo { font-family: 'Poppins', sans-serif; }
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px; }
+  }
+</style>
+</head>
+<body class="bg-white text-ink min-h-screen pb-24">
+
+<header class="sticky top-0 z-30 bg-white border-b border-mango-100 shadow-sm">
+  <div class="max-w-4xl mx-auto px-5 py-3.5">
+    <h1 class="text-base font-bold text-ink text-center">Mes Réservations</h1>
+  </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-5 py-8">
+  <p id="empty-state" class="hidden text-sm text-ink/40 text-center py-16">Aucune réservation pour le moment — direction le catalogue pour réserver ton premier livre !</p>
+
+  <div id="borrowed-section" class="hidden mb-8">
+    <h2 class="text-sm font-bold text-ink mb-3">Emprunté</h2>
+    <div id="borrowed-list" class="flex flex-col gap-3"></div>
+  </div>
+
+  <div id="ready-section" class="hidden mb-8">
+    <h2 class="text-sm font-bold text-ink mb-3">Prêt à récupérer</h2>
+    <div id="ready-list" class="flex flex-col gap-3"></div>
+  </div>
+
+  <div id="preparing-section" class="hidden mb-8">
+    <h2 class="text-sm font-bold text-ink mb-3">En préparation</h2>
+    <div id="preparing-list" class="flex flex-col gap-3"></div>
+  </div>
+
+  <div id="history-section" class="hidden">
+    <h2 class="text-sm font-bold text-ink mb-3">Historique</h2>
+    <div id="history-list" class="flex flex-col gap-3"></div>
+  </div>
+</main>
+
+<nav class="fixed bottom-0 inset-x-0 z-30 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)]" style="transform: translateZ(0);">
+  <div class="max-w-4xl mx-auto w-full flex items-center py-2 px-5">
+  <a href="accueil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5l8-7 8 7"/><path d="M6 10.3V19a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-8.7"/></svg>
+    <span class="text-[9.5px] font-semibold whitespace-nowrap">Accueil</span>
+  </a>
+  <a href="reservations.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-mango-700">
+    <span class="relative">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 1 1 12 0c0 3.8 1.3 5.2 1.3 5.2H4.7S6 13.3 6 9.5Z"/><path d="M10 17.7a2 2 0 0 0 4 0"/></svg>
+      <span id="nav-resa-badge" class="hidden absolute -top-1 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-mango-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">0</span>
+    </span>
+    <span class="text-[9.5px] font-semibold whitespace-nowrap">Réservation</span>
+  </a>
+  <a href="liste-envie.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
+    <span class="text-[9.5px] font-semibold whitespace-nowrap">Liste d'envie</span>
+  </a>
+  <a href="profil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.6" cy="11" r="2"/><path d="M5.6 16c.4-1.7 1.7-2.6 3-2.6s2.6.9 3 2.6"/><path d="M14 9.3h5M14 12.3h5M14 15.3h3.2"/></svg>
+    <span class="text-[9.5px] font-semibold whitespace-nowrap">Profil</span>
+  </a>
+  </div>
+</nav>
+
+<script type="module">
+  import { supabase } from './js/supabaseClient.js';
+  import { updateReservationBadge } from './js/navBadge.js';
+
+  let currentUser = null;
+  let reservations = [];
+  let communes = [];
+  let myRatings = {};
+  let myComments = {};
+
+  const OPENING_HOURS = "Mardi-Vendredi 10h-18h · Samedi 10h-13h · Fermé dimanche et lundi";
+
+  function formatDate(iso) {
+    return new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatDateShort(iso) {
+    return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+  }
+
+  function communeNameFor(communeId) {
+    return communes.find(c => c.id === communeId)?.name || '?';
+  }
+
+  function communeHoursFor(communeId) {
+    return communes.find(c => c.id === communeId)?.opening_hours || OPENING_HOURS;
+  }
+
+  // Ne garde que les horaires d'ouverture, sans la mention des jours de fermeture.
+  function openingHoursOnly(hours) {
+    return hours.split('·').map(s => s.trim()).filter(s => !/^fermé/i.test(s)).join(' · ');
+  }
+
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'index.html';
+      return;
+    }
+    currentUser = session.user;
+    updateReservationBadge(currentUser.id);
+
+    const { data: communesData } = await supabase.from('communes').select('id, name, opening_hours');
+    communes = communesData || [];
+
+    await Promise.all([loadReservations(), loadMyRatings()]);
+    renderAll();
+
+    if (window.location.hash === '#history-section') {
+      document.getElementById('history-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  // Avis déjà donnés par l'usager sur ses livres empruntés et rendus, pour les
+  // afficher en couleur dans l'historique (comme sur Gaspiz).
+  async function loadMyRatings() {
+    const { data, error } = await supabase
+      .from('book_reviews')
+      .select('book_id, rating, comment')
+      .eq('user_id', currentUser.id);
+    if (error) { console.error(error); return; }
+    myRatings = Object.fromEntries((data || []).map(r => [r.book_id, r.rating]));
+    myComments = Object.fromEntries((data || []).map(r => [r.book_id, r.comment || '']));
+  }
+
+  async function loadReservations() {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('id, status, created_at, ready_at, return_due_at, books ( id, title, author, cover_initial, cover_url, commune_id )')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    reservations = data;
+  }
+
+  function normalize(list) {
+    return (list || []).map(r => {
+      const book = r.books;
+      return {
+        id: r.id,
+        title: book?.title || 'Livre supprimé',
+        author: book?.author || '',
+        coverInitial: book?.cover_initial || book?.title?.[0] || '?',
+        coverUrl: book?.cover_url || null,
+        communeId: book?.commune_id || null,
+        bookId: book?.id || null,
+        status: r.status,
+        createdAt: r.created_at,
+        readyAt: r.ready_at || null,
+        returnDueAt: r.return_due_at || null,
+        myRating: book?.id ? (myRatings[book.id] || null) : null,
+        myComment: book?.id ? (myComments[book.id] || '') : '',
+      };
+    });
+  }
+
+  function bookRowHtml(item, opts = {}) {
+    const light = !!opts.light;
+    const coverHtml = item.coverUrl
+      ? `<img src="${item.coverUrl}" alt="" class="w-11 aspect-[2/3] object-cover rounded-md shadow-sm shrink-0">`
+      : `<div class="w-11 aspect-[2/3] rounded-md bg-gradient-to-br ${light ? 'from-white/25 to-white/10' : 'from-mango-500 to-hibiscus-600'} flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${item.coverInitial}</div>`;
+    const metaHtml = opts.hideMeta ? '' : `<p class="text-[10.5px] ${light ? 'text-white/60' : 'text-ink/40'} mt-0.5">${item.communeId ? `Médiathèque de ${communeNameFor(item.communeId)}` : ''}</p>`;
+    return `
+      <div class="flex items-center gap-3">
+        ${coverHtml}
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold ${light ? 'text-white' : 'text-ink'}">${item.title}</p>
+          <p class="text-[11px] ${light ? 'text-white/75' : 'text-ink/50'}">${item.author}</p>
+          ${metaHtml}
+        </div>
+      </div>`;
+  }
+
+  // Un groupe = les livres d'une même médiathèque, pour afficher une
+  // languette par destination plutôt qu'une liste mélangée — utilisé pour
+  // "Prêt à récupérer" et "En préparation".
+  function groupByCommune(items) {
+    const groups = new Map();
+    for (const item of items) {
+      const key = item.communeId;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    }
+    return [...groups.values()].sort((a, b) => {
+      const aLatest = Math.max(...a.map(it => new Date(it.createdAt).getTime()));
+      const bLatest = Math.max(...b.map(it => new Date(it.createdAt).getTime()));
+      return bLatest - aLatest;
+    });
+  }
+
+  // Livres récupérés, encore dans les 3 semaines de prêt.
+  function borrowedGroupHtml(items) {
+    const communeId = items[0].communeId;
+    const nearestDue = items.reduce((min, it) => new Date(it.returnDueAt) < new Date(min) ? it.returnDueAt : min, items[0].returnDueAt);
+    const rowsHtml = items.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { light: true, hideMeta: true })}</div>`).join('');
+    return `
+      <div class="rounded-2xl p-3.5 text-white shadow-md bg-gradient-to-br from-ink to-ink/85 relative overflow-hidden">
+        <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
+        <div class="relative flex mb-2.5">
+          <span class="w-fit bg-white text-ink text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm">📅 Pense à ramener le livre le ${formatDateShort(nearestDue)}</span>
+        </div>
+        <div class="relative flex flex-col gap-2.5 divide-y divide-white/15">
+          ${rowsHtml}
+        </div>
+        <div class="relative mt-2.5 pt-2.5 border-t border-white/15">
+          <p class="text-xs font-bold">📍 Médiathèque de ${communeNameFor(communeId)}</p>
+        </div>
+      </div>`;
+  }
+
+  function readyGroupHtml(group) {
+    const communeId = group[0].communeId;
+    const earliestReady = group.reduce((min, it) => new Date(it.readyAt) < new Date(min) ? it.readyAt : min, group[0].readyAt);
+    const deadline = new Date(new Date(earliestReady).getTime() + 48 * 3600 * 1000);
+    const hoursLeft = Math.max(0, Math.round((deadline - new Date()) / 3600000));
+    const urgent = hoursLeft <= 24;
+    const hours = openingHoursOnly(communeHoursFor(communeId));
+    const rowsHtml = group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { light: true, hideMeta: true })}</div>`).join('');
+
+    if (urgent) {
+      const pillText = hoursLeft <= 0 ? '⏳ Délai dépassé — contacte la médiathèque' : `⏳ Il te reste ${hoursLeft}h avant remise en rayon`;
+      return `
+        <div class="bg-red-50 border border-red-100 rounded-xl p-3 shadow-sm">
+          <div class="flex mb-2.5">
+            <span class="w-fit bg-white text-red-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm">${pillText}</span>
+          </div>
+          <div class="flex flex-col gap-2.5 divide-y divide-red-100">
+            ${group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { hideMeta: true })}</div>`).join('')}
+          </div>
+          <div class="mt-2.5 pt-2.5 border-t border-red-100">
+            <p class="text-xs font-bold text-red-700">📍 Médiathèque de ${communeNameFor(communeId)}</p>
+            <p class="text-[10px] text-red-500/80 mt-0.5">${hours}</p>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <div class="rounded-2xl p-3.5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden">
+        <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
+        <div class="relative flex mb-2.5">
+          <span class="w-fit bg-white text-mango-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm">⏳ Il te reste ${hoursLeft}h avant remise en rayon</span>
+        </div>
+        <div class="relative flex flex-col gap-2.5 divide-y divide-white/15">
+          ${rowsHtml}
+        </div>
+        <div class="relative mt-2.5 pt-2.5 border-t border-white/15">
+          <p class="text-xs font-bold">📍 Médiathèque de ${communeNameFor(communeId)}</p>
+          <p class="text-[10px] text-white/70 mt-0.5">${hours}</p>
+        </div>
+      </div>`;
+  }
+
+  function preparingGroupHtml(group) {
+    const rowsHtml = group.map((it, i) => `
+      <div class="${i > 0 ? 'pt-2.5' : ''} flex items-center gap-2">
+        <div class="flex-1 min-w-0">${bookRowHtml(it, { hideMeta: true })}</div>
+        <button type="button" onclick="cancelPreparingReservation(${it.id})" class="shrink-0 text-[11px] font-semibold text-red-500/75 hover:text-red-600 border border-red-100 rounded-full px-2.5 py-1.5">Retirer</button>
+      </div>`).join('');
+    return `
+      <div class="bg-amber-50 border border-amber-50 shadow-md rounded-xl p-3">
+        <div class="flex mb-2.5">
+          <span class="w-fit bg-white text-amber-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm">📓 Ta commande est en cours de préparation</span>
+        </div>
+        <div class="flex flex-col gap-2.5 divide-y divide-amber-100">
+          ${rowsHtml}
+        </div>
+      </div>`;
+  }
+
+  // Ne fonctionne que tant que le statut est encore "en préparation" (imposé
+  // aussi côté base de données) — une fois la médiathèque passée à la
+  // préparation du livre, il n'est plus possible de le retirer soi-même.
+  window.cancelPreparingReservation = async function (reservationId) {
+    if (!confirm('Retirer ce livre de ta sélection ? Il ne sera plus réservé.')) return;
+    const { data, error } = await supabase.from('reservations').delete().eq('id', reservationId).select();
+    if (error) { alert('Erreur : ' + error.message); return; }
+    if (!data || !data.length) {
+      alert('Ce livre est déjà pris en charge par la médiathèque, il n\'est plus possible de le retirer.');
+    }
+    await loadReservations();
+    renderAll();
+    updateReservationBadge(currentUser.id);
+  };
+
+  function historyItemHtml(item) {
+    const isExpired = item.status === 'expiree';
+    // Ici, uniquement "Déjà lu" (blanc) ou "Expirée" (rouge) — un livre du
+    // catalogue encore dans ses 3 semaines de prêt est affiché dans sa
+    // propre section "Emprunté", pas ici.
+    const coverHtml = item.coverUrl
+      ? `<img src="${item.coverUrl}" alt="" class="w-11 aspect-[2/3] object-cover rounded-md shadow-sm shrink-0">`
+      : `<div class="w-11 aspect-[2/3] rounded-md bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${item.coverInitial}</div>`;
+
+    const ratingHtml = (item.status === 'recupere' && item.bookId)
+      ? `
+        <div class="mt-1.5">
+          <p class="text-[10px] font-semibold text-ink/40 mb-1">${item.myRating ? 'Ta note' : 'Note ce livre'}</p>
+          <div class="flex items-center gap-0.5">
+            ${Array.from({ length: 5 }, (_, i) => `
+              <button type="button" onclick="rateBookFromHistory(${item.bookId}, ${i + 1})" class="w-5 h-5" aria-label="${i + 1} étoile${i > 0 ? 's' : ''}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="${i < (item.myRating || 0) ? '#F07F14' : 'none'}" stroke="${i < (item.myRating || 0) ? '#F07F14' : '#D1D5DB'}" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6Z"/></svg>
+              </button>`).join('')}
+          </div>
+          ${item.myRating ? `
+            <div class="mt-2">
+              <textarea id="history-comment-${item.bookId}" maxlength="300" placeholder="Ton avis en quelques mots (optionnel)…" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-mango-300 resize-none" rows="2">${item.myComment || ''}</textarea>
+              <button type="button" onclick="saveHistoryComment(${item.bookId})" class="mt-1 text-[11px] font-semibold text-mango-700">Enregistrer le commentaire</button>
+              <span id="history-comment-msg-${item.bookId}" class="text-[11px] text-ink/40 ml-2"></span>
+            </div>` : ''}
+        </div>`
+      : '';
+
+    const tagHtml = isExpired
+      ? `<span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap bg-red-50 text-red-600">Expirée — remise en rayon</span>`
+      : `<span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap bg-ink/5 text-ink/45">Déjà lu</span>`;
+
+    return `
+      <div class="bg-white border border-white shadow-md rounded-xl p-3">
+        <div class="flex items-center gap-3">
+          ${coverHtml}
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-ink">${item.title}</p>
+            <p class="text-[11px] text-ink/50">${item.author}</p>
+            <p class="text-[10.5px] text-ink/40 mt-0.5">${formatDate(item.createdAt)}${item.communeId ? ` · Médiathèque de ${communeNameFor(item.communeId)}` : ''}</p>
+            ${ratingHtml}
+          </div>
+          ${tagHtml}
+        </div>
+      </div>`;
+  }
+
+  function renderReadyList(items) {
+    const section = document.getElementById('ready-section');
+    const el = document.getElementById('ready-list');
+    section.classList.toggle('hidden', !items.length);
+    el.innerHTML = items.length ? groupByCommune(items).map(readyGroupHtml).join('') : '';
+  }
+
+  function renderPreparingList(items) {
+    const section = document.getElementById('preparing-section');
+    const el = document.getElementById('preparing-list');
+    section.classList.toggle('hidden', !items.length);
+    el.innerHTML = items.length ? groupByCommune(items).map(preparingGroupHtml).join('') : '';
+  }
+
+  function renderHistoryList(items) {
+    const section = document.getElementById('history-section');
+    const el = document.getElementById('history-list');
+    section.classList.toggle('hidden', !items.length);
+    el.innerHTML = items.length ? items.map(historyItemHtml).join('') : '';
+  }
+
+  function renderBorrowedList(items) {
+    const section = document.getElementById('borrowed-section');
+    const el = document.getElementById('borrowed-list');
+    section.classList.toggle('hidden', !items.length);
+    // Regroupé par médiathèque (comme "Prêt à récupérer") pour n'afficher la
+    // localisation qu'une fois par carte plutôt que sous chaque livre.
+    el.innerHTML = items.length ? groupByCommune(items).map(borrowedGroupHtml).join('') : '';
+  }
+
+  window.rateBookFromHistory = async function (bookId, rating) {
+    if (myRatings[bookId] && myRatings[bookId] !== rating) {
+      if (!confirm('Tu as déjà noté ce livre. Tu veux vraiment changer ta note ?')) return;
+    }
+    const { error } = await supabase
+      .from('book_reviews')
+      .upsert({ book_id: bookId, user_id: currentUser.id, rating }, { onConflict: 'book_id,user_id' });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    myRatings[bookId] = rating;
+    renderAll();
+  };
+
+  window.saveHistoryComment = async function (bookId) {
+    const textarea = document.getElementById(`history-comment-${bookId}`);
+    const msg = document.getElementById(`history-comment-msg-${bookId}`);
+    const { error } = await supabase
+      .from('book_reviews')
+      .upsert({ book_id: bookId, user_id: currentUser.id, rating: myRatings[bookId], comment: textarea.value.trim() || null }, { onConflict: 'book_id,user_id' });
+    if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'text-[11px] text-red-600 ml-2'; return; }
+    myComments[bookId] = textarea.value.trim();
+    msg.textContent = 'Enregistré ✓';
+    msg.className = 'text-[11px] text-ink/40 ml-2';
+  };
+
+  function renderAll() {
+    const combined = normalize(reservations);
+    const ready = combined.filter(x => x.status === 'pret');
+    const preparing = combined.filter(x => x.status === 'preparation');
+    const isStillOnLoan = x => x.status === 'recupere' && x.returnDueAt && new Date(x.returnDueAt) > new Date();
+    const borrowed = combined.filter(isStillOnLoan);
+    const history = combined
+      .filter(x => x.status === 'expiree' || (x.status === 'recupere' && !isStillOnLoan(x)))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    document.getElementById('empty-state').classList.toggle('hidden', !!combined.length);
+    renderBorrowedList(borrowed);
+    renderReadyList(ready);
+    renderPreparingList(preparing);
+    renderHistoryList(history);
+  }
+
+  init();
+</script>
+</body>
+</html>

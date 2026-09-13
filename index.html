@@ -22,14 +22,18 @@
 <style>
   body { font-family: 'Inter', sans-serif; }
   .font-logo { font-family: 'Poppins', sans-serif; }
+  /* En dessous de 16px, Safari iOS zoome automatiquement sur un champ au clic
+     (la page semble "bouger") — on force 16px sur mobile pour l'empêcher. */
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px; }
+  }
 </style>
 </head>
-<body class="bg-[#FFF4E4] text-ink min-h-screen flex items-center justify-center px-4">
+<body class="bg-white text-ink min-h-screen flex items-center justify-center px-4">
 
   <div class="w-full max-w-sm">
     <div class="flex flex-col items-center gap-1.5 mb-8">
       <img src="img/bligo-logo.png" alt="BliGO" class="w-40 h-auto">
-      <p class="text-xs text-ink/50 font-medium">L'appli du livre gratuit</p>
     </div>
 
     <div class="bg-white border border-mango-100 rounded-2xl shadow-sm p-6">
@@ -67,6 +71,17 @@
           <label class="text-xs font-semibold text-ink/60 block mb-1">E-mail</label>
           <input required type="email" id="signup-email" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
         </div>
+        <div id="signup-commune-field">
+          <label class="text-xs font-semibold text-ink/60 block mb-1">Médiathèque</label>
+          <select required id="signup-commune" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 bg-white">
+            <option value="" disabled selected>Choisis ta médiathèque</option>
+          </select>
+          <p class="text-[11px] text-ink/45 mt-1.5 leading-relaxed">Accès au Click &amp; Collect de ta médiathèque. Un agent validera ton compte lors de ton prochain passage (pièce d'identité + justificatif de domicile). Si tu es mineur·e, prévois une autorisation parentale.</p>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-ink/60 block mb-1">Code de parrainage <span class="text-ink/35 font-normal">(facultatif)</span></label>
+          <input type="text" id="signup-referral" placeholder="N° d'abonné de la personne qui t'a parrainé" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+        </div>
         <div>
           <label class="text-xs font-semibold text-ink/60 block mb-1">Mot de passe</label>
           <div class="relative">
@@ -80,7 +95,7 @@
       <p id="auth-message" class="text-xs text-center mt-3"></p>
     </div>
 
-    <p class="text-[11px] text-ink/35 text-center mt-6">BliGO — l'appli du livre gratuit</p>
+    <p class="text-[11px] text-ink/35 text-center mt-6">BliGO — l'appli pour réserver vos livres en un clic</p>
   </div>
 
 <script type="module">
@@ -132,7 +147,13 @@
     document.getElementById('tab-signup').classList.toggle('text-ink', tab === 'signup');
     document.getElementById('auth-message').textContent = '';
   };
-  switchTab('login');
+  const refCode = new URLSearchParams(window.location.search).get('ref');
+  if (refCode) {
+    document.getElementById('signup-referral').value = refCode;
+    switchTab('signup');
+  } else {
+    switchTab('login');
+  }
 
   const messageEl = document.getElementById('auth-message');
 
@@ -157,16 +178,31 @@
     messageEl.className = 'text-xs text-center mt-3 text-ink/50';
     const full_name = document.getElementById('signup-name').value;
     const email = document.getElementById('signup-email').value;
+    const commune_id = document.getElementById('signup-commune').value;
+    const referral_code = document.getElementById('signup-referral').value.trim();
     const password = document.getElementById('signup-password').value;
-    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name } } });
+    if (!commune_id) {
+      messageEl.textContent = 'Choisis ta médiathèque.';
+      messageEl.className = 'text-xs text-center mt-3 text-red-600';
+      return;
+    }
+    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name, account_type: 'officiel', commune_id, referral_code } } });
     if (error) {
       messageEl.textContent = error.message;
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }
-    messageEl.textContent = 'Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.';
+    messageEl.textContent = 'Compte créé. Vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi. Un agent validera ton compte lors de ton prochain passage.';
     messageEl.className = 'text-xs text-center mt-3 text-mango-700';
   });
+
+  async function loadSignupCommunes() {
+    const { data } = await supabase.from('communes').select('id, name').order('name');
+    const select = document.getElementById('signup-commune');
+    select.innerHTML = `<option value="" disabled selected>Choisis ta médiathèque</option>` +
+      (data || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+  loadSignupCommunes();
 
   // Déjà connecté ? on saute directement au catalogue.
   supabase.auth.getSession().then(({ data }) => {

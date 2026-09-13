@@ -24,9 +24,12 @@
   .font-logo { font-family: 'Poppins', sans-serif; }
   .spin { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px; }
+  }
 </style>
 </head>
-<body class="bg-[#FFF4E4] text-ink min-h-screen">
+<body class="bg-white text-ink min-h-screen">
 
 <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-mango-100 shadow-sm">
   <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
@@ -38,7 +41,7 @@
       </div>
     </div>
     <div class="flex items-center gap-2 sm:gap-3">
-      <a href="catalogue.html" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-full px-3 py-1.5 whitespace-nowrap">Retour au catalogue</a>
+      <a href="accueil.html" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-full px-3 py-1.5 whitespace-nowrap">Retour à l'accueil</a>
       <button onclick="logout()" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-full px-3 py-1.5 whitespace-nowrap">Déconnexion</button>
     </div>
   </div>
@@ -49,15 +52,16 @@
   <div class="flex flex-col sm:flex-row gap-5">
 
     <nav class="sm:w-56 shrink-0 bg-[#1B4B43] text-white rounded-xl p-2.5 flex sm:flex-col gap-1.5 overflow-x-auto h-fit">
-      <button onclick="switchScreen('scan')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="scan">
+      <button onclick="switchScreen('scan')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="scan">
         Scan &amp; Catalogage
       </button>
-      <button onclick="switchScreen('reservations')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="reservations">
+      <button onclick="switchScreen('preregistrations')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="preregistrations">
+        Préinscriptions
+        <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="preregistrations-count">0</span>
+      </button>
+      <button onclick="switchScreen('reservations')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="reservations">
         Réservations
         <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="reservations-count">0</span>
-      </button>
-      <button onclick="switchScreen('visitors')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="visitors">
-        Accueil visiteurs
       </button>
     </nav>
 
@@ -66,13 +70,56 @@
       <!-- SCAN & CATALOGAGE -->
       <section id="screen-scan" class="agent-screen">
         <h2 class="text-lg font-bold text-ink mb-1">Scan &amp; Catalogage</h2>
-        <p class="text-sm text-ink/55 mb-5">Recherche un ISBN (ou un titre) via Google Books, vérifie les métadonnées puis ajoute le livre au catalogue.</p>
+        <p class="text-sm text-ink/55 mb-3">Recherche un ISBN (ou un titre) via Google Books, vérifie les métadonnées puis ajoute le livre au catalogue.</p>
+
+        <div class="flex items-center gap-1 bg-mango-50 border border-mango-100 rounded-full p-1 mb-4 w-fit">
+          <button id="mode-simple-btn" type="button" onclick="setScanBatchMode(false)" class="text-xs font-semibold px-4 py-1.5 rounded-full">Scan simple</button>
+          <button id="mode-batch-btn" type="button" onclick="setScanBatchMode(true)" class="text-xs font-semibold px-4 py-1.5 rounded-full">Scan en rafale (dons multiples)</button>
+        </div>
+
+        <div id="donor-session-bar" class="hidden mb-4 bg-hibiscus-50 border border-hibiscus-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p class="text-xs font-bold text-hibiscus-700 uppercase tracking-wide">Session de don en cours</p>
+            <p class="text-sm text-ink"><span id="donor-session-name" class="font-semibold"></span> · <span id="donor-session-count">0</span> livre(s) donné(s)</p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" onclick="toggleCamera('donor')" class="text-xs font-semibold text-hibiscus-700 border border-hibiscus-200 bg-white rounded-full px-3 py-1.5">Changer</button>
+            <button type="button" onclick="endDonorSession()" class="text-xs font-semibold text-ink/50 border border-mango-100 rounded-full px-3 py-1.5">Terminer</button>
+          </div>
+        </div>
+        <button id="donor-session-start-btn" type="button" onclick="toggleCamera('donor')" style="touch-action: manipulation;"
+          class="w-full mb-1.5 bg-gradient-to-br from-mango-600 to-hibiscus-700 text-white rounded-lg py-3 text-sm font-semibold active:scale-[0.98] transition shadow-sm">
+          Scanner la carte du donateur
+        </button>
+        <div id="donor-camera-slot" class="mb-1.5"></div>
+
+        <div class="flex items-center gap-2 mb-1.5">
+          <div class="flex-1 h-px bg-mango-100"></div>
+          <span class="text-[10px] font-semibold text-ink/35 uppercase">ou</span>
+          <div class="flex-1 h-px bg-mango-100"></div>
+        </div>
+
+        <div class="grid grid-cols-[1fr_auto] gap-2 mb-1.5">
+          <input id="donor-subscriber-input" type="text" placeholder="N° d'abonné du donateur" style="touch-action: manipulation;" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+          <button type="button" onclick="startDonorSessionFromInput()" style="touch-action: manipulation;" class="text-sm font-semibold bg-ink text-white rounded-lg px-4">Démarrer</button>
+        </div>
+
+        <p class="text-[11px] text-ink/45 mb-4">Pas de carte, pas de compte, ou pas rattaché à une commune ? Tu peux cataloguer le livre directement, sans rien renseigner ci-dessus — le don ne sera juste pas crédité en points de fidélité.</p>
 
         <div class="grid md:grid-cols-2 gap-5 mb-8">
           <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
-            <label class="text-xs font-semibold text-ink/60 block mb-1.5">ISBN scanné, ou titre / auteur</label>
-            <input id="scan-input" type="text" placeholder="Ex. 9782072700486 ou « Texaco Chamoiseau »"
-              class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-mango-300">
+            <div id="single-scan-extra">
+              <label class="text-xs font-semibold text-ink/60 block mb-1.5">ISBN scanné, ou titre / auteur</label>
+              <input id="scan-input" type="text" placeholder="Ex. 9782072700486 ou « Texaco Chamoiseau »"
+                class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-mango-300">
+            </div>
+
+            <div id="batch-genre-picker" class="hidden mb-3">
+              <label class="text-xs font-semibold text-ink/60 block mb-1.5">Genre des livres de cette étagère (avant de scanner)</label>
+              <select id="batch-genre" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-2"></select>
+              <label class="text-xs font-semibold text-ink/60 block mb-1.5">Rayon / emplacement (ex. « Rayon DAC - étagère 2 »)</label>
+              <input id="batch-shelf" type="text" placeholder="Rayon DAC - étagère 2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+            </div>
 
             <div id="book-camera-slot">
               <div id="camera-view" class="hidden mb-3">
@@ -91,73 +138,84 @@
               Scanner avec la caméra
             </button>
 
-            <input id="camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleCameraCapture(event)">
-            <button type="button" onclick="document.getElementById('camera-input').click()"
-              class="w-full text-[11px] font-semibold text-ink/45 hover:text-ink/70 py-1">
-              La caméra ne capte pas ? Prendre une photo à la place
-            </button>
+            <div id="single-scan-extra-2">
+              <input id="camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleCameraCapture(event)">
+              <button type="button" onclick="document.getElementById('camera-input').click()"
+                class="w-full text-[11px] font-semibold text-ink/45 hover:text-ink/70 py-1">
+                La caméra ne capte pas ? Prendre une photo à la place
+              </button>
+            </div>
             <p id="camera-hint" class="text-[11px] text-ink/45 text-center mb-1.5 h-4"></p>
 
-            <button id="scan-btn" onclick="searchBook()"
-              class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition mb-2">
-              Rechercher sur Google Books
-            </button>
-            <button onclick="resetScan()" class="w-full text-xs text-ink/50 font-semibold py-1.5 hover:text-ink/80">
-              Réinitialiser
-            </button>
+            <div id="single-scan-extra-3">
+              <button id="scan-btn" onclick="searchBook()"
+                class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition mb-2">
+                Rechercher sur Google Books
+              </button>
+              <button onclick="resetScan()" class="w-full text-xs text-ink/50 font-semibold py-1.5 hover:text-ink/80">
+                Réinitialiser
+              </button>
+            </div>
+
+            <div id="batch-controls" class="hidden">
+              <p class="text-xs text-ink/50 mb-2">Chaque bip confirme un livre ajouté à la liste — la caméra reste ouverte pour enchaîner. Rien n'est envoyé tant que tu n'as pas validé.</p>
+              <div class="flex gap-2">
+                <button onclick="validateBatch()" class="flex-1 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Valider (<span id="batch-count-btn">0</span> livre<span id="batch-count-plural">s</span>)</button>
+                <button onclick="clearBatchQueue()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Vider</button>
+              </div>
+            </div>
           </div>
 
           <div id="scan-result" class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm flex items-center justify-center text-center">
             <p class="text-sm text-ink/40">En attente d'une recherche…</p>
           </div>
+
+          <div id="batch-queue-panel" class="hidden bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
+            <p class="text-xs font-bold text-ink/60 uppercase tracking-wide mb-3">File d'attente (<span id="batch-queue-count">0</span>)</p>
+            <div id="batch-queue-list" class="flex flex-col gap-1.5 max-h-80 overflow-y-auto"></div>
+          </div>
         </div>
 
-        <h3 class="text-base font-bold text-ink mb-3">Catalogue (<span id="catalogue-count">0</span> livres)</h3>
+        <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<span id="to-equip-badge" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></span></h3>
         <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
-          <div class="grid grid-cols-[1.8fr_1.2fr_1.3fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[680px]">
+          <div class="hidden sm:grid grid-cols-[1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[820px]">
             <span>Titre</span><span>Auteur</span><span>Catégorie</span><span class="text-center">Statut</span><span></span>
           </div>
-          <div id="catalogue-list" class="min-w-[680px]"></div>
+          <div id="catalogue-list" class="sm:min-w-[820px]"></div>
+        </div>
+      </section>
+
+      <!-- PREINSCRIPTIONS -->
+      <section id="screen-preregistrations" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Préinscriptions</h2>
+        <p class="text-sm text-ink/55 mb-5">Valide l'inscription d'un usager après vérification d'une pièce d'identité et d'un justificatif de domicile sur place (et d'une autorisation parentale si l'usager est mineur). Sa carte et son QR code s'activent automatiquement.</p>
+
+        <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
+          <div class="hidden sm:grid grid-cols-[1.6fr_1.3fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[560px]">
+            <span>Usager</span><span>N° abonné</span><span>Pré-inscrit le</span><span></span>
+          </div>
+          <div id="preregistrations-list" class="sm:min-w-[560px]"></div>
         </div>
       </section>
 
       <!-- RESERVATIONS -->
       <section id="screen-reservations" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Réservations Click &amp; Collect</h2>
-        <p class="text-sm text-ink/55 mb-5">Fais passer une réservation à « Prêt à récupérer », puis « Récupéré » une fois remise à l'usager.</p>
+        <p class="text-sm text-ink/55 mb-4">Prépare les commandes du jour, puis fais-les passer à « Prêt » une fois en rayon. Une réservation prête non récupérée sous 48h remet le livre en circulation automatiquement.</p>
 
-        <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
-          <div class="grid grid-cols-[1.4fr_1.6fr_1fr_1.2fr] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[620px]">
-            <span>Usager</span><span>Livre réservé</span><span>Statut</span><span class="text-right">Action</span>
-          </div>
-          <div id="reservations-list" class="min-w-[620px]"></div>
+        <div class="flex items-center gap-1.5 bg-mango-50 border border-mango-100 rounded-full p-1.5 mb-5 w-fit flex-wrap">
+          <button id="resa-tab-preparation-btn" type="button" onclick="switchReservationTab('preparation')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+            À préparer (<span id="resa-count-preparation">0</span>)
+          </button>
+          <button id="resa-tab-pret-btn" type="button" onclick="switchReservationTab('pret')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+            Prêtes — en attente (<span id="resa-count-pret">0</span>)
+          </button>
+          <button id="resa-tab-expiree-btn" type="button" onclick="switchReservationTab('expiree')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full text-red-600">
+            À remettre en rayon (<span id="resa-count-expiree">0</span>)
+          </button>
         </div>
-      </section>
 
-      <!-- ACCUEIL VISITEURS -->
-      <section id="screen-visitors" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Accueil visiteurs</h2>
-        <p class="text-sm text-ink/55 mb-5">Scanne la carte de l'usager (QR) pour retrouver son identité et ses réservations à remettre.</p>
-
-        <div class="grid md:grid-cols-2 gap-5">
-          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
-            <div id="visitor-camera-slot"></div>
-
-            <button id="visitor-camera-toggle-btn" type="button" onclick="toggleCamera('card')"
-              class="w-full border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition mb-3">
-              Scanner la carte usager
-            </button>
-
-            <label class="text-xs font-semibold text-ink/60 block mb-1.5">Ou saisis son numéro d'abonné</label>
-            <input id="visitor-input" type="text" placeholder="Ex. VF-2026-57841"
-              class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300">
-            <button onclick="lookupVisitorFromInput()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold">Rechercher</button>
-          </div>
-
-          <div id="visitor-result" class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm flex items-center justify-center text-center">
-            <p class="text-sm text-ink/40">En attente d'un scan…</p>
-          </div>
-        </div>
+        <div id="reservations-list" class="flex flex-col gap-3"></div>
       </section>
 
     </div>
@@ -169,6 +227,7 @@
 
 <script type="module">
   import { supabase } from './js/supabaseClient.js';
+  import { GOOGLE_BOOKS_API_KEY } from './js/config.js';
   import { BrowserMultiFormatReader } from 'https://esm.sh/@zxing/browser@0.1.5';
   import { BarcodeFormat, DecodeHintType } from 'https://esm.sh/@zxing/library@0.21.3';
 
@@ -176,26 +235,23 @@
   let books = [];
   let reservations = [];
   let zxingReaders = {};
+  let donorSession = null; // { id, full_name, count }
 
   const CATEGORIES = [
-    'Roman', 'Thriller', 'Science-fiction', 'Littérature antillaise', 'BD', 'Mangas',
-    'Jeunesse', 'Développement personnel', 'Autobiographie', 'Santé', 'Histoire', 'Sport', 'Magazine', 'Autre',
+    'Roman', 'Thriller', 'Fantasy', 'Jeunesse', 'BD',
+    'Bien-être', 'Maison', 'Histoire', 'Culture', 'Autres',
   ];
 
   const CATEGORY_KEYWORDS = [
-    ['Littérature antillaise', ['antill', 'caribb', 'creole', 'créole', 'martinique', 'guadeloupe', 'haïti', 'haiti', 'guyane']],
-    ['Mangas', ['manga']],
-    ['BD', ['comic', 'graphic novel', 'bande dessinée']],
+    ['BD', ['manga', 'comic', 'graphic novel', 'bande dessinée']],
     ['Jeunesse', ['juvenile', 'children', 'jeunesse', 'young adult']],
     ['Thriller', ['thriller', 'suspense', 'polic', 'crime fiction', 'mystery']],
-    ['Science-fiction', ['science fiction', 'sci-fi']],
-    ['Développement personnel', ['self-help', 'self help', 'developpement personnel', 'développement personnel', 'personal growth']],
-    ['Autobiographie', ['biography', 'autobiograph', 'memoir']],
-    ['Santé', ['health', 'fitness', 'medical', 'santé', 'médecine']],
-    ['Histoire', ['history', 'histoire']],
-    ['Sport', ['sport']],
-    ['Magazine', ['magazine', 'periodical']],
-    ['Roman', ['fiction', 'novel', 'roman', 'literary']],
+    ['Fantasy', ['science fiction', 'sci-fi', 'fantasy', 'fantastique']],
+    ['Bien-être', ['self-help', 'self help', 'developpement personnel', 'développement personnel', 'personal growth', 'health', 'fitness', 'medical', 'santé', 'médecine', 'sport', 'bien-être', 'bien être', 'wellness']],
+    ['Maison', ['cooking', 'cuisine', 'garden', 'jardin', 'diy', 'bricolage', 'nature', 'home & garden', 'maison']],
+    ['Histoire', ['history', 'histoire', 'patrimoine', 'heritage']],
+    ['Culture', ['art', 'music', 'musique', 'cinema', 'cinéma', 'beaux-arts', 'culture']],
+    ['Roman', ['fiction', 'novel', 'roman', 'literary', 'poetry', 'poésie', 'classic', 'classique', 'antill', 'caribb', 'creole', 'créole', 'martinique', 'guadeloupe', 'haïti', 'haiti', 'guyane']],
   ];
 
   // Devine la catégorie à partir des libellés bruts renvoyés par Google Books /
@@ -206,7 +262,7 @@
     for (const [category, keywords] of CATEGORY_KEYWORDS) {
       if (keywords.some(k => text.includes(k))) return category;
     }
-    return 'Autre';
+    return 'Autres';
   }
 
   function categoryOptionsHtml(selected) {
@@ -224,14 +280,18 @@
     currentUser = session.user;
 
     const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', currentUser.id).single();
-    if (error || profile?.role !== 'agent') {
+    if (error || !['agent', 'super_admin'].includes(profile?.role)) {
       accessMessage.textContent = "Cette page est réservée au personnel de la médiathèque.";
       return;
     }
 
     document.getElementById('app-main').classList.remove('hidden');
+    document.getElementById('batch-genre').innerHTML =
+      `<option value="">Deviner automatiquement pour chaque livre</option>` + categoryOptionsHtml('');
     switchScreen('scan');
-    await Promise.all([loadBooks(), loadReservations()]);
+    setScanBatchMode(false);
+    switchReservationTab('preparation');
+    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations()]);
   }
 
   window.switchScreen = function (screen) {
@@ -263,6 +323,7 @@
         return;
       }
       hint.textContent = '';
+      playBeep();
       document.getElementById('scan-input').value = code;
       await searchBook();
     } catch (e) {
@@ -277,7 +338,7 @@
       nativeFormats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
       zxingFormats: [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128],
     },
-    card: {
+    donor: {
       nativeFormats: ['qr_code'],
       zxingFormats: [BarcodeFormat.QR_CODE],
     },
@@ -339,6 +400,7 @@
   // ---------- Scan caméra en direct (avec cadre orange) ----------
 
   let scanStream = null;
+  let cameraOpening = false;
   let scanTrack = null;
   let scanning = false;
   let scanTimeoutId = null;
@@ -346,6 +408,51 @@
   let torchOn = false;
   let scanStartTime = 0;
   let scanState = null; // { mode, slotId, toggleBtnId, defaultLabel, onResult }
+  let batchMode = false;
+  let lastBatchCode = null;
+  let lastBatchCodeTime = 0;
+  const BATCH_STORAGE_KEY = 'bligo_batch_queue';
+  // Restaurée dès le chargement de la page : si la connexion tombe, que la page se
+  // recharge ou que le navigateur se ferme, les livres déjà scannés ne sont jamais
+  // perdus (indispensable en médiathèque où le réseau n'est pas toujours fiable).
+  let batchQueue = loadBatchQueueFromStorage(); // [{ localId, code }]
+
+  function loadBatchQueueFromStorage() {
+    try {
+      const raw = localStorage.getItem(BATCH_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveBatchQueue() {
+    try { localStorage.setItem(BATCH_STORAGE_KEY, JSON.stringify(batchQueue)); } catch {}
+  }
+
+  // Bip sonore de confirmation à chaque scan réussi (comme une douchette de caisse).
+  // + une vibration en complément : marche indépendamment du son sur Android
+  // (utile en mode silencieux). Sur iPhone, Apple bloque le son des sites web
+  // quand l'interrupteur silencieux est activé et ne permet pas la vibration
+  // depuis un site — aucune limitation qu'on puisse contourner en JS ; le cadre
+  // orange à l'écran reste la confirmation garantie dans ce cas.
+  let audioCtx = null;
+  function playBeep() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 1200;
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    } catch {}
+    try { navigator.vibrate?.(80); } catch {}
+  }
 
   const SCAN_UI = {
     book: {
@@ -358,12 +465,12 @@
         searchBook();
       },
     },
-    card: {
-      slotId: 'visitor-camera-slot',
-      toggleBtnId: 'visitor-camera-toggle-btn',
-      defaultLabel: 'Scanner la carte usager',
-      hint: 'Vise le QR code de la carte — il se surligne en orange une fois repéré.',
-      onResult: (code) => lookupVisitor(code),
+    donor: {
+      slotId: 'donor-camera-slot',
+      toggleBtnId: 'donor-session-start-btn',
+      defaultLabel: 'Démarrer une session de don (scanner la carte du donateur)',
+      hint: 'Vise le QR code de la carte du donateur.',
+      onResult: (code) => startDonorSession(code),
     },
   };
 
@@ -372,8 +479,16 @@
       stopCamera();
       return;
     }
+    // Un double-tap (ou un clic impatient pendant l'ouverture de la caméra) pouvait
+    // démarrer deux flux caméra en parallèle — chacun scannant et ajoutant le livre
+    // séparément. Ce verrou synchrone bloque toute tentative tant que la première
+    // ouverture n'est pas terminée (succès ou échec).
+    if (cameraOpening) return;
+    cameraOpening = true;
+
     if (!navigator.mediaDevices?.getUserMedia) {
       alert("La caméra n'est pas accessible sur ce navigateur ou cette connexion (une connexion HTTPS ou « localhost » est nécessaire).");
+      cameraOpening = false;
       return;
     }
 
@@ -405,7 +520,9 @@
       await video.play();
       // Certains téléphones peuvent mettre la vidéo en pause (indicateur caméra
       // natif de l'appareil, changement d'appli, etc.) : on la relance toute seule.
-      video.addEventListener('pause', () => { if (scanning) video.play().catch(() => {}); });
+      // Assignation directe (pas addEventListener) pour ne pas empiler un nouveau
+      // gestionnaire à chaque ouverture de caméra sur ce même élément vidéo réutilisé.
+      video.onpause = () => { if (scanning) video.play().catch(() => {}); };
 
       scanTrack = scanStream.getVideoTracks()[0];
       try { await scanTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch {}
@@ -419,6 +536,8 @@
       scanLoop();
     } catch (e) {
       hint.textContent = "Impossible d'accéder à la caméra : " + e.message;
+    } finally {
+      cameraOpening = false;
     }
   };
 
@@ -454,8 +573,43 @@
       ctx.clearRect(0, 0, overlay.width, overlay.height);
 
       if (found?.text) {
-        drawHighlight(ctx, found.box, overlay.width);
         const code = found.text;
+
+        // Mode rafale : le même livre reste souvent quelques instants devant la
+        // caméra après le bip — on ignore les répétitions du même code pendant
+        // un court instant, sans ralentir la détection d'un livre différent.
+        if (batchMode && scanState.mode === 'book' && code === lastBatchCode && Date.now() - lastBatchCodeTime < 4000) {
+          scanTimeoutId = setTimeout(scanLoop, 400);
+          return;
+        }
+
+        drawHighlight(ctx, found.box, overlay.width);
+
+        // Mode rafale : on empile le code et la caméra continue de tourner —
+        // aucun appel réseau tant que l'agent n'a pas cliqué sur « Valider ».
+        if (batchMode && scanState.mode === 'book') {
+          lastBatchCode = code;
+          lastBatchCodeTime = Date.now();
+          const hint = document.getElementById('camera-hint');
+          let added = addToBatchQueue(code);
+          if (!added) {
+            // Déjà présent dans la liste (scanné plus tôt, même hors de la fenêtre
+            // des 4 secondes) : par défaut on bloque, sauf si l'agent confirme qu'il
+            // s'agit vraiment d'un deuxième exemplaire du même livre.
+            const isSecondCopy = confirm(`Ce livre (code ${code}) est déjà dans la liste.\n\nAppuie sur OK si c'est un 2ᵉ exemplaire du même livre à ajouter quand même.\nAnnuler si c'est une erreur de scan.`);
+            if (isSecondCopy) added = addToBatchQueue(code, { forceDuplicate: true });
+          }
+          if (added) {
+            playBeep();
+            hint.textContent = `✓ Livre scanné (${batchQueue.length} au total) — vise le suivant.`;
+          } else {
+            hint.textContent = `Ce livre n'a pas été ajouté en double.`;
+          }
+          scanTimeoutId = setTimeout(scanLoop, 700);
+          return;
+        }
+
+        playBeep();
         const onResult = scanState.onResult;
         scanning = false;
         // Petit temps d'affichage du cadre orange pour que l'agent voie que
@@ -507,6 +661,8 @@
     }
     scanTrack = null;
     torchOn = false;
+    lastBatchCode = null;
+    lastBatchCodeTime = 0;
 
     const view = document.getElementById('camera-view');
     const toggleBtn = scanState && document.getElementById(scanState.toggleBtnId);
@@ -518,6 +674,58 @@
     const ctx = overlay?.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
     scanState = null;
+  }
+
+  // ---------- Session de don ----------
+  // L'agent scanne d'abord la carte du donateur (s'il a un compte) pour ouvrir une
+  // session, puis catalogue les livres donnés à la suite : chacun crédite
+  // automatiquement des points de fidélité, sans ressaisie.
+
+  window.startDonorSessionFromInput = function () {
+    const code = document.getElementById('donor-subscriber-input').value.trim();
+    if (!code) return;
+    startDonorSession(code);
+    document.getElementById('donor-subscriber-input').value = '';
+  };
+
+  async function startDonorSession(code) {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, subscriber_number')
+      .eq('subscriber_number', code.trim())
+      .maybeSingle();
+    if (error || !profile) {
+      alert(`Aucun usager trouvé pour « ${code} ».`);
+      return;
+    }
+    donorSession = { id: profile.id, full_name: profile.full_name, count: 0 };
+    renderDonorSession();
+  }
+
+  window.endDonorSession = function () {
+    donorSession = null;
+    renderDonorSession();
+  };
+
+  function renderDonorSession() {
+    document.getElementById('donor-session-bar').classList.toggle('hidden', !donorSession);
+    document.getElementById('donor-session-start-btn').classList.toggle('hidden', !!donorSession);
+    if (donorSession) {
+      document.getElementById('donor-session-name').textContent = donorSession.full_name;
+      document.getElementById('donor-session-count').textContent = donorSession.count;
+    }
+  }
+
+  async function maybeRecordDonation(bookId, freeBookId) {
+    if (!donorSession) return;
+    const { error } = await supabase.rpc('record_donation', {
+      p_donor_id: donorSession.id,
+      p_book_id: bookId,
+      p_free_book_id: freeBookId,
+    });
+    if (error) { console.error(error); return; }
+    donorSession.count += 1;
+    renderDonorSession();
   }
 
   // Recadre une zone de la photo (fractions 0-1 de sa largeur/hauteur) et l'agrandit,
@@ -556,22 +764,220 @@
     return null;
   }
 
+  // ---------- Scan en rafale (référencement/don de plusieurs dizaines de livres) ----------
+  // On empile juste les codes scannés en mémoire (aucun appel réseau), et c'est
+  // seulement au clic sur « Valider » qu'on va chercher les fiches et qu'on les
+  // ajoute — pensé pour enchaîner les scans très vite sans attendre à chaque livre.
+
+  window.setScanBatchMode = function (on) {
+    batchMode = on;
+
+    document.getElementById('mode-simple-btn').classList.toggle('bg-white', !on);
+    document.getElementById('mode-simple-btn').classList.toggle('shadow-sm', !on);
+    document.getElementById('mode-simple-btn').classList.toggle('text-ink', !on);
+    document.getElementById('mode-batch-btn').classList.toggle('bg-white', on);
+    document.getElementById('mode-batch-btn').classList.toggle('shadow-sm', on);
+    document.getElementById('mode-batch-btn').classList.toggle('text-ink', on);
+
+    document.getElementById('single-scan-extra').classList.toggle('hidden', on);
+    document.getElementById('single-scan-extra-2').classList.toggle('hidden', on);
+    document.getElementById('single-scan-extra-3').classList.toggle('hidden', on);
+    document.getElementById('batch-genre-picker').classList.toggle('hidden', !on);
+    document.getElementById('batch-controls').classList.toggle('hidden', !on);
+    document.getElementById('scan-result').classList.toggle('hidden', on);
+    document.getElementById('batch-queue-panel').classList.toggle('hidden', !on);
+
+    if (!on) stopCamera();
+    else renderBatchQueue();
+  };
+
+  function addToBatchQueue(code, { forceDuplicate = false } = {}) {
+    // Un même code-barres scanné deux fois par erreur (avant ou après la fenêtre
+    // de 4 secondes) ne doit pas créer deux lignes dans la liste — sauf si l'agent
+    // confirme explicitement qu'il s'agit d'un deuxième exemplaire du même livre.
+    if (!forceDuplicate && batchQueue.some(item => item.code === code)) return false;
+    batchQueue.push({ localId: `${Date.now()}-${Math.random()}`, code });
+    saveBatchQueue();
+    renderBatchQueue();
+    return true;
+  }
+
+  function renderBatchQueue() {
+    const count = batchQueue.length;
+    document.getElementById('batch-queue-count').textContent = count;
+    document.getElementById('batch-count-btn').textContent = count;
+    document.getElementById('batch-count-plural').textContent = count > 1 ? 's' : '';
+
+    const list = document.getElementById('batch-queue-list');
+    if (!count) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-6">Aucun livre scanné pour l'instant.</p>`;
+      return;
+    }
+    list.innerHTML = batchQueue.map((item, i) => {
+      const sameCode = batchQueue.filter(x => x.code === item.code);
+      const dupTag = sameCode.length > 1 ? ` · exemplaire ${sameCode.indexOf(item) + 1}/${sameCode.length}` : '';
+      return `
+      <div class="flex items-center justify-between gap-2 bg-mango-50 rounded-lg px-3 py-1.5">
+        <span class="text-xs text-ink/70">${i + 1}. ${escapeHtml(item.code)}${dupTag}</span>
+        <button onclick="removeFromBatchQueue('${item.localId}')" class="text-[11px] text-red-500/70 hover:text-red-600 font-semibold">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  window.removeFromBatchQueue = function (localId) {
+    batchQueue = batchQueue.filter(i => i.localId !== localId);
+    saveBatchQueue();
+    renderBatchQueue();
+  };
+
+  window.clearBatchQueue = function () {
+    if (batchQueue.length && !confirm(`Vider la liste des ${batchQueue.length} livre(s) scanné(s) ?`)) return;
+    batchQueue = [];
+    saveBatchQueue();
+    renderBatchQueue();
+  };
+
+  window.validateBatch = async function () {
+    if (!batchQueue.length) return;
+    stopCamera();
+
+    // Pas la peine d'insister si le réseau est manifestement coupé (fréquent en
+    // médiathèque) : on garde la liste intacte pour réessayer plus tard, au lieu de
+    // passer de longues secondes à échouer sur chaque livre.
+    if (!navigator.onLine) {
+      alert(`Pas de connexion internet détectée. Les ${batchQueue.length} livre(s) scanné(s) restent enregistrés — réessaie « Valider » une fois reconnecté.`);
+      return;
+    }
+
+    // Choisi avant de scanner : si l'agent sait déjà que toute l'étagère est
+    // d'un même genre et/ou d'un même rayon, inutile de le ressaisir livre par livre.
+    const forcedGenre = document.getElementById('batch-genre').value || null;
+    const shelfLocation = document.getElementById('batch-shelf').value.trim() || null;
+    // Les livres qui arrivent pendant une session de don ne sont pas encore
+    // plastifiés/étiquetés : ils restent hors catalogue jusqu'à validation
+    // par un agent (voir toggleEquipped plus bas et sql/add_book_equipping.sql).
+    const fromDonation = !!donorSession;
+
+    const queue = batchQueue;
+    batchQueue = [];
+    saveBatchQueue();
+    renderBatchQueue();
+
+    const list = document.getElementById('batch-queue-list');
+    list.innerHTML = queue.map(item => `
+      <div class="flex items-center justify-between gap-2 bg-mango-50 rounded-lg px-3 py-1.5" id="batch-row-${item.localId}">
+        <span class="text-xs text-ink/70 truncate">${escapeHtml(item.code)}</span>
+        <span class="text-[11px] text-ink/40 shrink-0">En attente…</span>
+      </div>`).join('');
+
+    let ok = 0;
+    const failedCodes = [];
+    let connectionLost = false;
+
+    for (let i = 0; i < queue.length; i++) {
+      const item = queue[i];
+
+      // Le réseau peut tomber en plein milieu d'un lot de plusieurs dizaines de
+      // livres : dès que ça arrive, on arrête et on remet le reste en attente au
+      // lieu de tout perdre ou d'enchaîner des échecs interminables.
+      if (!navigator.onLine) {
+        connectionLost = true;
+        batchQueue = queue.slice(i);
+        saveBatchQueue();
+        break;
+      }
+
+      const row = document.getElementById(`batch-row-${item.localId}`);
+      const isbn = item.code.replace(/-/g, '');
+
+      let meta = await fetchFromGoogleBooks(`isbn:${isbn}`);
+      if (!meta) meta = await fetchFromOpenLibrary(isbn);
+      if (meta && !meta.cover_url) meta.cover_url = await fetchCoverFromOpenLibrary(isbn);
+
+      if (!meta) {
+        failedCodes.push(item.code);
+        if (row) row.innerHTML = `<span class="text-xs text-ink/70 truncate">${escapeHtml(item.code)}</span><span class="text-[11px] text-red-600 font-semibold shrink-0">Non trouvé</span>`;
+        continue;
+      }
+
+      meta.category = forcedGenre || guessCategory(meta.rawCategoryText, meta.title);
+      delete meta.rawCategoryText;
+
+      const payload = {
+        title: meta.title,
+        author: meta.author,
+        category: meta.category,
+        summary: meta.summary,
+        cover_url: meta.cover_url,
+        cover_initial: meta.title[0].toUpperCase(),
+        available: !fromDonation,
+        equipped: !fromDonation,
+        shelf_location: shelfLocation,
+      };
+
+      const { data: inserted, error } = await supabase.from('books').insert(payload).select().single();
+
+      if (error) {
+        failedCodes.push(item.code);
+        if (row) row.innerHTML = `<span class="text-xs text-ink/70 truncate">${escapeHtml(item.code)}</span><span class="text-[11px] text-red-600 font-semibold shrink-0">Erreur</span>`;
+        continue;
+      }
+
+      ok += 1;
+      if (row) row.innerHTML = `<span class="text-xs text-ink font-semibold truncate">${escapeHtml(meta.title)}</span><span class="text-[11px] text-mango-700 font-semibold shrink-0">✓ Ajouté</span>`;
+
+      if (donorSession) {
+        await maybeRecordDonation(inserted.id, null);
+      }
+    }
+
+    await loadBooks();
+    renderBatchQueue();
+
+    const summary = document.createElement('div');
+    summary.className = 'mt-3 pt-3 border-t border-mango-100 text-sm';
+    summary.innerHTML = `<p class="font-semibold text-ink">${ok} livre(s) ajouté(s)${failedCodes.length ? `, ${failedCodes.length} non trouvé(s)` : ''}.</p>` +
+      (failedCodes.length ? `<p class="text-xs text-ink/50 mt-1">Codes non trouvés : ${failedCodes.map(c => escapeHtml(c)).join(', ')} — à compléter via le scan simple.</p>` : '') +
+      (connectionLost ? `<p class="text-xs text-red-600 font-semibold mt-1">Connexion perdue en cours de route — ${batchQueue.length} livre(s) restant(s) remis en attente, réessaie « Valider » une fois reconnecté.</p>` : '');
+    list.appendChild(summary);
+  };
+
   // ---------- Catalogage ----------
 
-  async function fetchFromGoogleBooks(q) {
+  // Google Books renvoie parfois une erreur 503 passagère (service instable côté
+  // Google, pas un souci de notre côté) : on retente 2 fois avant d'abandonner,
+  // pour éviter de basculer en saisie manuelle pour rien.
+  async function fetchFromGoogleBooks(q, attempt = 1) {
     try {
-      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=1`);
+      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=1&key=${GOOGLE_BOOKS_API_KEY}`);
       const data = await res.json();
+
+      if (!res.ok || data.error) {
+        if (attempt < 5) {
+          await new Promise(r => setTimeout(r, Math.min(700 * attempt, 3000)));
+          return fetchFromGoogleBooks(q, attempt + 1);
+        }
+        return null;
+      }
+
       const item = data.items?.[0]?.volumeInfo;
       if (!item?.title) return null;
       return {
         title: item.title,
         author: (item.authors || ['Auteur inconnu']).join(', '),
-        rawCategoryText: (item.categories || []).join(' '),
-        summary: item.description ? item.description.slice(0, 600) : null,
+        // Les étiquettes de genre de Google sont souvent vides ou trop vagues
+        // (juste "Fiction") — le résumé, lui, contient presque toujours des
+        // mots qui trahissent le genre ("thriller", "développement personnel"…),
+        // donc on le donne aussi à deviner la catégorie.
+        rawCategoryText: [(item.categories || []).join(' '), item.description || ''].join(' '),
+        summary: item.description || null,
         cover_url: item.imageLinks?.thumbnail?.replace('http://', 'https://') || null,
       };
     } catch {
+      if (attempt < 5) {
+        await new Promise(r => setTimeout(r, Math.min(700 * attempt, 3000)));
+        return fetchFromGoogleBooks(q, attempt + 1);
+      }
       return null;
     }
   }
@@ -596,6 +1002,18 @@
     }
   }
 
+  // Vérifie si Open Library a une vraie couverture pour cet ISBN (le paramètre
+  // default=false évite qu'elle renvoie une image "sans couverture" par défaut).
+  async function fetchCoverFromOpenLibrary(isbn) {
+    const url = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`;
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      return res.ok ? url : null;
+    } catch {
+      return null;
+    }
+  }
+
   window.searchBook = async function () {
     const input = document.getElementById('scan-input');
     const resultBox = document.getElementById('scan-result');
@@ -609,6 +1027,17 @@
 
     let meta = await fetchFromGoogleBooks(isIsbn ? `isbn:${isbn}` : query);
     if (!meta && isIsbn) meta = await fetchFromOpenLibrary(isbn);
+
+    // Une source peut connaître le livre sans avoir sa couverture — on complète
+    // avec l'autre source avant d'abandonner et d'afficher juste l'initiale colorée.
+    if (meta && !meta.cover_url && isIsbn) {
+      meta.cover_url = await fetchCoverFromOpenLibrary(isbn);
+    }
+    // Dernier recours : une couverture déjà ajoutée à la main par Mégane pour ce
+    // titre/auteur (livre absent de Google Books ET Open Library).
+    if (meta && !meta.cover_url) {
+      meta.cover_url = await lookupCoverBank(meta.title, meta.author);
+    }
 
     if (!meta) {
       resultBox.innerHTML = `
@@ -634,10 +1063,10 @@
           <input id="manual-author" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Auteur">
           <label class="text-xs font-semibold text-ink/60 block mb-1">Catégorie</label>
           <select id="manual-category" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
-            ${categoryOptionsHtml('Autre')}
+            ${categoryOptionsHtml('Autres')}
           </select>
           <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé (optionnel)</label>
-          <textarea id="manual-summary" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Résumé du 4e de couverture"></textarea>
+          <textarea id="manual-summary" rows="5" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Résumé du 4e de couverture"></textarea>
           <button onclick="addManualBook()" class="w-full bg-mango-600 text-white rounded-lg py-2 text-sm font-semibold">Ajouter au catalogue</button>
         </div>`;
       return;
@@ -649,7 +1078,10 @@
     meta.category = guessCategory(meta.rawCategoryText, meta.title);
     delete meta.rawCategoryText;
     const inserted = await insertBook(meta);
-    if (inserted) renderAddedCard(inserted);
+    if (inserted) {
+      await maybeRecordDonation(inserted.id, null);
+      renderAddedCard(inserted);
+    }
   };
 
   // ---------- Photo de couverture (titre / auteur par reconnaissance de texte) ----------
@@ -712,11 +1144,21 @@
     return data.text || '';
   }
 
+  // Le moteur de reconnaissance de texte confond parfois des éléments de mise
+  // en page (bords, reflets, logos, tranche du livre) avec des caractères —
+  // on ne garde que ce qui ressemble à du texte français normal.
+  function cleanOcrText(text) {
+    return text
+      .replace(/[^\p{L}\p{N}\s.,;:!?'"«»()\-–—…]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   async function ocrLinesFromFile(file) {
     const text = await ocrRawTextFromFile(file);
     return text
       .split('\n')
-      .map(l => l.trim())
+      .map(l => cleanOcrText(l))
       .filter(l => l.length >= 3)
       .filter((l, i, arr) => arr.indexOf(l) === i)
       .slice(0, 8);
@@ -735,14 +1177,14 @@
 
     try {
       const raw = await ocrRawTextFromFile(file);
-      const summary = raw.split('\n').map(l => l.trim()).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      const summary = cleanOcrText(raw.split('\n').map(l => l.trim()).filter(Boolean).join(' '));
 
       if (!summary) {
         status.textContent = 'Aucun texte lisible sur cette photo.';
         return;
       }
 
-      document.getElementById('manual-summary').value = summary.slice(0, 600);
+      document.getElementById('manual-summary').value = summary.slice(0, 2000);
 
       const titleValue = document.getElementById('manual-title').value;
       const guessed = guessCategory(summary, titleValue);
@@ -760,16 +1202,24 @@
     const category = document.getElementById('manual-category').value;
     const summary = document.getElementById('manual-summary').value.trim() || null;
     if (!title) return;
-    const inserted = await insertBook({ title, author, category, summary });
-    if (inserted) renderAddedCard(inserted);
+    const cover_url = await lookupCoverBank(title, author);
+    const inserted = await insertBook({ title, author, category, summary, cover_url });
+    if (inserted) {
+      await maybeRecordDonation(inserted.id, null);
+      renderAddedCard(inserted);
+    }
   };
 
   async function insertBook({ title, author, category = null, summary = null, cover_url = null }) {
     const resultBox = document.getElementById('scan-result');
+    // Même logique que le scan par lot : un livre issu d'un don reste hors
+    // catalogue tant qu'il n'a pas été plastifié/étiqueté par un agent.
+    const fromDonation = !!donorSession;
     const { data, error } = await supabase.from('books').insert({
       title, author, category, summary, cover_url,
       cover_initial: title[0].toUpperCase(),
-      available: true,
+      available: !fromDonation,
+      equipped: !fromDonation,
     }).select().single();
     if (error) {
       resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`;
@@ -784,11 +1234,10 @@
     const coverHtml = book.cover_url
       ? `<img src="${book.cover_url}" alt="" class="w-14 h-20 object-cover rounded bg-mango-50 shrink-0">`
       : `<div class="w-14 h-20 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml(book.cover_initial || book.title[0])}</div>`;
-    const safeTitle = escapeHtml(book.title).replace(/'/g, "\\'");
 
     resultBox.innerHTML = `
       <div class="text-left w-full">
-        <p class="text-[11px] font-bold text-mango-700 uppercase tracking-wide mb-2">✓ Ajouté au catalogue</p>
+        <p class="text-[11px] font-bold ${book.equipped ? 'text-mango-700' : 'text-hibiscus-700'} uppercase tracking-wide mb-2">${book.equipped ? '✓ Ajouté au catalogue' : '⏳ Enregistré — à plastifier et étiqueter avant mise en ligne'}</p>
         <div class="flex gap-3">
           ${coverHtml}
           <div class="flex-1">
@@ -800,41 +1249,14 @@
           </div>
         </div>
 
-        <div class="border-t border-mango-100 mt-4 pt-4">
-          <p class="text-xs font-semibold text-ink/60 mb-2">État du livre</p>
-          <input id="condition-photo-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleConditionPhoto(event)">
-          <div id="condition-photo-preview" class="hidden mb-2"></div>
-          <button type="button" onclick="document.getElementById('condition-photo-input').click()" class="w-full text-xs font-semibold text-ink/60 border border-mango-100 rounded-lg py-2 mb-2">Prendre une photo de l'état (optionnel)</button>
-          <div class="flex gap-2">
-            <span class="flex-1 text-center text-xs font-semibold bg-mango-50 text-mango-700 rounded-lg py-2">✓ Bon état</span>
-            <button onclick="rejectBook(${book.id}, '${safeTitle}')" class="flex-1 text-xs font-semibold text-red-600 border border-red-200 rounded-lg py-2 hover:bg-red-50">Trop abîmé — retirer</button>
-          </div>
-        </div>
+        <label class="text-[11px] font-semibold text-ink/60 block mt-3 mb-1">Rayon / emplacement</label>
+        <input type="text" value="${escapeHtml(book.shelf_location || '')}" placeholder="Ex. Rayon DAC - étagère 2"
+          onchange="updateShelfLocation(${book.id}, this.value)"
+          class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-mango-300">
 
-        <button onclick="resetScan()" class="w-full mt-4 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold">Scanner un autre livre</button>
+        <button onclick="scanAnotherBook()" class="w-full mt-4 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold">Scanner un autre livre</button>
       </div>`;
   }
-
-  window.handleConditionPhoto = function (event) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    const preview = document.getElementById('condition-photo-preview');
-    preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="" class="w-full max-h-40 object-contain rounded-lg border border-mango-100">`;
-    preview.classList.remove('hidden');
-  };
-
-  window.rejectBook = async function (id, title) {
-    const resultBox = document.getElementById('scan-result');
-    const { error } = await supabase.from('books').delete().eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
-    resultBox.innerHTML = `
-      <div class="text-left w-full">
-        <p class="text-sm text-ink/50">« ${escapeHtml(title)} » retiré du catalogue (livre trop abîmé).</p>
-        <button onclick="resetScan()" class="w-full mt-3 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold">Scanner un autre livre</button>
-      </div>`;
-    await loadBooks();
-  };
 
   window.resetScan = function () {
     stopCamera();
@@ -843,37 +1265,87 @@
     document.getElementById('scan-result').innerHTML = `<p class="text-sm text-ink/40">En attente d'une recherche…</p>`;
   };
 
+  // Bouton « Scanner un autre livre » après un ajout : on relance directement la
+  // caméra au lieu de juste revenir à l'écran d'attente (qui obligeait à re-taper
+  // sur « Scanner avec la caméra » et donnait l'impression que ça restait bloqué).
+  window.scanAnotherBook = function () {
+    resetScan();
+    toggleCamera('book');
+  };
+
   async function loadBooks() {
     const { data, error } = await supabase.from('books').select('*').order('id', { ascending: false });
     if (error) { console.error(error); return; }
-    books = data;
+    // Les livres pas encore équipés remontent en premier (tri stable : l'ordre
+    // par id le plus récent est conservé au sein de chaque groupe), pour que
+    // l'agent ne les perde pas de vue au milieu du reste du catalogue.
+    books = data.slice().sort((a, b) => (a.equipped === b.equipped) ? 0 : (a.equipped ? 1 : -1));
     renderCatalogue();
   }
 
   function renderCatalogue() {
     document.getElementById('catalogue-count').textContent = books.length;
+
+    const toEquipCount = books.filter(b => !b.equipped).length;
+    const toEquipBadge = document.getElementById('to-equip-badge');
+    toEquipBadge.textContent = `${toEquipCount} à équiper`;
+    toEquipBadge.classList.toggle('hidden', toEquipCount === 0);
+
     const list = document.getElementById('catalogue-list');
-    list.innerHTML = books.map(b => `
-      <div class="grid grid-cols-[1.8fr_1.2fr_1.3fr_1fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
-        <span class="font-semibold text-ink">${escapeHtml(b.title)}</span>
-        <span class="text-ink/60">${escapeHtml(b.author)}</span>
-        <select onchange="updateBookCategory(${b.id}, this.value)" class="border border-mango-100 rounded-full pl-2 pr-5 py-1 text-[10.5px] font-semibold text-ink/70 bg-white">
+    if (!books.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucun livre pour l'instant.</p>`;
+      return;
+    }
+
+    list.innerHTML = books.map(b => {
+      const coverHtml = b.cover_url
+        ? `<img src="${b.cover_url}" alt="" class="w-8 aspect-[2/3] object-cover rounded bg-mango-50 shrink-0">`
+        : `<div class="w-8 aspect-[2/3] rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-[10px] shrink-0">${escapeHtml(b.cover_initial || b.title[0])}</div>`;
+      return `
+      <div class="grid grid-cols-1 sm:grid-cols-[1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
+        <span class="flex items-center gap-2 min-w-0">
+          ${coverHtml}
+          <span class="min-w-0">
+            <span class="font-semibold text-ink truncate block">${escapeHtml(b.title)}</span>
+            ${b.shelf_location ? `<span class="text-[10px] text-mango-700 font-semibold truncate block">📍 ${escapeHtml(b.shelf_location)}</span>` : ''}
+          </span>
+        </span>
+        <span class="text-ink/60 truncate">${escapeHtml(b.author)}</span>
+        <select onchange="updateBookCategory(${b.id}, this.value)" class="w-full sm:w-auto border border-mango-100 rounded-full pl-3 pr-6 py-1.5 text-xs font-semibold text-ink/70 bg-white">
           ${categoryOptionsHtml(b.category)}
         </select>
-        <span class="text-center">
-          <button onclick="toggleAvailability(${b.id}, ${!b.available})"
-            class="text-[10px] font-bold px-2 py-1 rounded-full ${b.available ? 'bg-mango-50 text-mango-700' : 'bg-ink/5 text-ink/40'}">
-            ${b.available ? '● Disponible' : '● Emprunté'}
-          </button>
+        <span class="sm:text-center">
+          ${!b.equipped ? `
+            <button onclick="markEquipped(${b.id})"
+              style="touch-action: manipulation;"
+              class="w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full bg-hibiscus-50 text-hibiscus-700">
+              ⏳ À équiper
+            </button>
+          ` : `
+            <button onclick="toggleAvailability(${b.id}, ${!b.available})"
+              style="touch-action: manipulation;"
+              class="w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full ${b.available ? 'bg-mango-50 text-mango-700' : 'bg-ink/5 text-ink/40'}">
+              ${b.available ? '● Disponible' : '● Emprunté'}
+            </button>
+          `}
         </span>
-        <span class="text-right">
-          <button onclick="deleteBook(${b.id}, '${escapeHtml(b.title).replace(/'/g, "\\'")}')" class="text-xs text-red-500/70 hover:text-red-600 font-semibold">Supprimer</button>
+        <span class="sm:text-right">
+          <button onclick="deleteBook(${b.id}, '${escapeJsAttr(b.title)}')"
+            style="touch-action: manipulation;"
+            class="w-full sm:w-auto text-xs text-red-500/70 hover:text-red-600 font-semibold py-2.5 sm:py-1.5 border sm:border-0 border-red-100 rounded-lg sm:rounded-none">Supprimer</button>
         </span>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   window.updateBookCategory = async function (id, category) {
     const { error } = await supabase.from('books').update({ category }).eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadBooks();
+  };
+
+  window.updateShelfLocation = async function (id, value) {
+    const { error } = await supabase.from('books').update({ shelf_location: value.trim() || null }).eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadBooks();
   };
@@ -884,19 +1356,89 @@
     await loadBooks();
   };
 
-  window.deleteBook = async function (id, title) {
-    if (!confirm(`Supprimer « ${title} » du catalogue ?`)) return;
-    const { error } = await supabase.from('books').delete().eq('id', id);
+  // Validation par l'agent : le livre vient d'être plastifié et étiqueté,
+  // il peut désormais apparaître dans le catalogue en ligne (accueil.html
+  // filtre sur equipped = true) et être emprunté.
+  window.markEquipped = async function (id) {
+    const { error } = await supabase.from('books').update({ equipped: true, available: true }).eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadBooks();
   };
 
+  window.deleteBook = async function (id, title) {
+    if (!confirm(`Es-tu sûr de vouloir supprimer le livre « ${title} » ?`)) return;
+    const { data, error } = await supabase.from('books').delete().eq('id', id).select();
+    if (error) { alert('Erreur : ' + error.message); return; }
+    if (!data || data.length === 0) {
+      alert(`« ${title} » n'a pas pu être supprimé (0 ligne affectée). Vérifie que le compte utilisé a bien le rôle agent ou super_admin.`);
+      return;
+    }
+    await loadBooks();
+  };
+
+  // ---------- Préinscriptions ----------
+
+  let preregistrations = [];
+
+  async function loadPreregistrations() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, subscriber_number, created_at, communes ( name )')
+      .eq('registration_status', 'pre_inscrit')
+      .order('created_at', { ascending: true });
+    if (error) { console.error(error); return; }
+    preregistrations = data || [];
+    renderPreregistrations();
+  }
+
+  function renderPreregistrations() {
+    document.getElementById('preregistrations-count').textContent = preregistrations.length;
+    const list = document.getElementById('preregistrations-list');
+    if (!preregistrations.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucune préinscription en attente.</p>`;
+      return;
+    }
+    list.innerHTML = preregistrations.map(p => `
+      <div class="grid grid-cols-1 sm:grid-cols-[1.6fr_1.3fr_1fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
+        <span>
+          <span class="font-semibold text-ink block">${escapeHtml(p.full_name)}</span>
+          <span class="text-[10.5px] text-mango-700 font-semibold">${escapeHtml(p.communes?.name || '')}</span>
+        </span>
+        <span class="text-ink/60 text-xs">${escapeHtml(p.subscriber_number)}</span>
+        <span class="text-ink/60 text-xs">${formatEventDateShort(p.created_at)}</span>
+        <span class="sm:text-right">
+          <button onclick="validateRegistration('${p.id}', '${escapeJsAttr(p.full_name)}')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-ink text-white rounded-full px-4 py-2.5 sm:py-1.5">Valider l'inscription</button>
+        </span>
+      </div>`).join('');
+  }
+
+  window.validateRegistration = async function (id, name) {
+    if (!confirm(`Confirmer la validation de l'inscription de ${name} ? Vérifie bien sa pièce d'identité et son justificatif de domicile (et son autorisation parentale si mineur) avant de continuer.`)) return;
+    const { error } = await supabase.rpc('validate_registration', { p_user_id: id });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadPreregistrations();
+  };
+
   // ---------- Réservations ----------
+
+  let reservationTab = 'preparation';
+
+  window.switchReservationTab = function (tab) {
+    reservationTab = tab;
+    ['preparation', 'pret', 'expiree'].forEach(t => {
+      const btn = document.getElementById(`resa-tab-${t}-btn`);
+      const active = tab === t;
+      btn.classList.toggle('bg-white', active);
+      btn.classList.toggle('shadow-sm', active);
+      if (t !== 'expiree') btn.classList.toggle('text-ink', active);
+    });
+    renderReservations();
+  };
 
   async function loadReservations() {
     const { data: resa, error } = await supabase
       .from('reservations')
-      .select('id, status, created_at, user_id, books ( title, author )')
+      .select('id, status, created_at, ready_at, reshelved, user_id, book_id, books ( title, author, shelf_location )')
       .order('created_at', { ascending: true });
     if (error) { console.error(error); return; }
 
@@ -908,135 +1450,199 @@
     }
 
     reservations = resa.map(r => ({ ...r, profile: profilesById[r.user_id] }));
+    await expireStaleReservations();
     renderReservations();
+  }
+
+  // Une réservation « prête » non récupérée sous 48h remet le livre en circulation
+  // (relance sa disponibilité, la réservation passe en « expirée »). Vérifié à
+  // chaque ouverture de cet écran — pas un vrai cron en tâche de fond, mais
+  // suffisant tant que le back-office est consulté régulièrement. reshelved=false
+  // garde le livre visible dans l'onglet « À remettre en rayon » jusqu'à ce qu'un
+  // agent confirme l'avoir physiquement fait — pas juste une alerte qui disparaît.
+  async function expireStaleReservations() {
+    const now = Date.now();
+    const stale = reservations.filter(r => r.status === 'pret' && r.ready_at && (now - new Date(r.ready_at).getTime()) > 48 * 3600 * 1000);
+    if (!stale.length) return;
+
+    for (const r of stale) {
+      await supabase.from('reservations').update({ status: 'expiree', reshelved: false }).eq('id', r.id);
+      if (r.book_id) await supabase.from('books').update({ available: true }).eq('id', r.book_id);
+      r.status = 'expiree';
+      r.reshelved = false;
+    }
   }
 
   const statusMap = {
     preparation: { label: 'En préparation', classes: 'bg-amber-50 text-amber-700' },
     pret: { label: 'Prêt à récupérer', classes: 'bg-mango-50 text-mango-700' },
     recupere: { label: 'Récupéré', classes: 'bg-ink/5 text-ink/45' },
+    expiree: { label: 'Expirée — remise en circulation', classes: 'bg-red-50 text-red-600' },
   };
 
+  function formatRemaining(readyAt) {
+    const deadline = new Date(readyAt).getTime() + 48 * 3600 * 1000;
+    const diffMs = deadline - Date.now();
+    if (diffMs <= 0) return { text: 'Délai dépassé', urgent: true };
+    const hours = Math.floor(diffMs / 3600000);
+    const mins = Math.floor((diffMs % 3600000) / 60000);
+    if (hours >= 24) {
+      return { text: `${Math.floor(hours / 24)} j ${hours % 24} h restantes`, urgent: false };
+    }
+    return { text: `${hours} h ${mins} min restantes`, urgent: hours < 6 };
+  }
+
+  // Laisse 30 minutes à l'usager après sa réservation pour finir de choisir
+  // ses livres (jusqu'à 3) et se raviser avant que la médiathèque ne
+  // commence à préparer la commande — la réservation existe déjà en base,
+  // elle est juste masquée de la file d'attente agent pendant ce délai.
+  const RESERVATION_GRACE_PERIOD_MS = 30 * 60 * 1000;
+  function isVisibleToStaff(r) {
+    if (r.status !== 'preparation') return true;
+    return (Date.now() - new Date(r.created_at).getTime()) >= RESERVATION_GRACE_PERIOD_MS;
+  }
+
   function renderReservations() {
-    const pending = reservations.filter(r => r.status !== 'recupere');
-    document.getElementById('reservations-count').textContent = pending.length;
+    const preparationCount = reservations.filter(r => r.status === 'preparation' && isVisibleToStaff(r)).length;
+    const pretCount = reservations.filter(r => r.status === 'pret').length;
+    const expireeCount = reservations.filter(r => r.status === 'expiree' && !r.reshelved).length;
+    document.getElementById('resa-count-preparation').textContent = preparationCount;
+    document.getElementById('resa-count-pret').textContent = pretCount;
+    document.getElementById('resa-count-expiree').textContent = expireeCount;
+    document.getElementById('reservations-count').textContent = preparationCount + pretCount;
 
     const list = document.getElementById('reservations-list');
-    if (reservations.length === 0) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucune réservation pour le moment.</p>`;
+
+    // Onglet à part : une checklist qui reste tant que le livre n'a pas été
+    // physiquement remis en rayon, pour ne pas le perdre de vue une fois que la
+    // réservation a disparu des « prêtes ».
+    if (reservationTab === 'expiree') {
+      const toReshelve = reservations.filter(r => r.status === 'expiree' && !r.reshelved);
+      if (!toReshelve.length) {
+        list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Rien à remettre en rayon pour l'instant.</p>`;
+        return;
+      }
+      list.innerHTML = toReshelve.map(r => `
+        <div class="bg-white border border-red-100 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.books?.title || 'Livre supprimé')}</p>
+            <p class="text-[11px] text-ink/45">${escapeHtml(r.books?.author || '')} · réservé par ${escapeHtml(r.profile?.full_name || 'usager inconnu')}</p>
+            ${r.books?.shelf_location ? `<p class="text-[11px] font-semibold text-red-700 mt-0.5">📍 ${escapeHtml(r.books.shelf_location)}</p>` : ''}
+          </div>
+          <button onclick="markReshelved(${r.id})" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-ink text-white rounded-full px-4 py-2.5 sm:py-1.5">✓ Remis en rayon</button>
+        </div>`).join('');
       return;
     }
-    list.innerHTML = reservations.map(r => {
-      const s = statusMap[r.status];
-      let actionHtml = '';
-      if (r.status === 'preparation') {
-        actionHtml = `<button onclick="setStatus(${r.id}, 'pret')" class="text-xs font-semibold bg-ink text-white rounded-full px-3 py-1.5">Marquer prêt</button>`;
-      } else if (r.status === 'pret') {
-        actionHtml = `<button onclick="setStatus(${r.id}, 'recupere')" class="text-xs font-semibold bg-mango-600 text-white rounded-full px-3 py-1.5">Marquer récupéré</button>`;
-      } else {
-        actionHtml = `<span class="text-xs text-ink/30">—</span>`;
-      }
+
+    const filtered = reservations.filter(r => r.status === reservationTab && isVisibleToStaff(r));
+
+    if (!filtered.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">${reservationTab === 'preparation' ? 'Aucune commande à préparer.' : 'Aucune réservation prête en attente.'}</p>`;
+      return;
+    }
+
+    // Regroupées par usager : on voit d'un coup d'œil qui a commandé quoi.
+    const byUser = new Map();
+    filtered.forEach(r => {
+      if (!byUser.has(r.user_id)) byUser.set(r.user_id, { profile: r.profile, items: [] });
+      byUser.get(r.user_id).items.push(r);
+    });
+
+    list.innerHTML = [...byUser.values()].map(group => {
+      const initials = (group.profile?.full_name || '?').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+
+      const itemsHtml = group.items.map(r => {
+        let actionHtml = '';
+        if (r.status === 'preparation') {
+          actionHtml = `<button onclick="setStatus(${r.id}, 'pret')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-ink text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer prêt</button>`;
+        } else if (r.status === 'pret') {
+          actionHtml = `<button onclick="setStatus(${r.id}, 'recupere')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-mango-600 text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer récupéré</button>`;
+        }
+        let countdownHtml = '';
+        if (r.status === 'pret' && r.ready_at) {
+          const rem = formatRemaining(r.ready_at);
+          countdownHtml = `<span class="text-[11px] font-semibold ${rem.urgent ? 'text-red-600' : 'text-ink/45'} whitespace-nowrap">${rem.text}</span>`;
+        }
+        return `
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-mango-50 py-3 sm:py-2 first:border-t-0 first:pt-0">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.books?.title || 'Livre supprimé')}</p>
+              <p class="text-[11px] text-ink/45">${escapeHtml(r.books?.author || '')} · ${new Date(r.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+              ${r.books?.shelf_location ? `<p class="text-[11px] font-semibold text-mango-700 mt-0.5">📍 ${escapeHtml(r.books.shelf_location)}</p>` : ''}
+            </div>
+            <div class="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+              ${countdownHtml}
+              ${actionHtml}
+            </div>
+          </div>`;
+      }).join('');
+
       return `
-        <div class="grid grid-cols-[1.4fr_1.6fr_1fr_1.2fr] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
-          <span>
-            <span class="font-semibold text-ink block">${escapeHtml(r.profile?.full_name || 'Usager inconnu')}</span>
-            <span class="text-[11px] text-ink/45">${escapeHtml(r.profile?.subscriber_number || '')}</span>
-          </span>
-          <span>
-            <span class="text-ink block">${escapeHtml(r.books?.title || 'Livre supprimé')}</span>
-            <span class="text-[11px] text-ink/45">${escapeHtml(r.books?.author || '')}</span>
-          </span>
-          <span class="text-[10px] font-bold px-2 py-1 rounded-full w-fit ${s.classes}">${s.label}</span>
-          <span class="text-right">${actionHtml}</span>
+        <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+          <div class="flex items-center gap-2.5 mb-1">
+            <span class="w-8 h-8 rounded-full bg-gradient-to-br from-hibiscus-600 to-mango-500 text-white text-xs font-bold flex items-center justify-center shrink-0">${escapeHtml(initials)}</span>
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-ink truncate">${escapeHtml(group.profile?.full_name || 'Usager inconnu')}</p>
+              <p class="text-[11px] text-ink/45">${escapeHtml(group.profile?.subscriber_number || '')} · ${group.items.length} livre${group.items.length > 1 ? 's' : ''}</p>
+            </div>
+          </div>
+          ${itemsHtml}
         </div>`;
     }).join('');
   }
 
   window.setStatus = async function (id, status) {
-    const { error } = await supabase.from('reservations').update({ status }).eq('id', id);
+    const payload = { status };
+    if (status === 'pret') payload.ready_at = new Date().toISOString();
+    const { error } = await supabase.from('reservations').update(payload).eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadReservations();
   };
 
-  // ---------- Accueil visiteurs (carte usager) ----------
-
-  window.lookupVisitorFromInput = function () {
-    const code = document.getElementById('visitor-input').value.trim();
-    if (code) lookupVisitor(code);
+  window.markReshelved = async function (id) {
+    const { error } = await supabase.from('reservations').update({ reshelved: true }).eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadReservations();
   };
 
-  async function lookupVisitor(code) {
-    const box = document.getElementById('visitor-result');
-    box.innerHTML = `<p class="text-sm text-ink/50">Recherche…</p>`;
+  // Accueil visiteurs et Agenda culturel retirés du back-office pour
+  // simplifier (à la demande de Mégane) — encore utilisée par Préinscriptions :
+  function formatEventDateShort(iso) {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return `${date} ${time}`;
+  }
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, subscriber_number')
-      .eq('subscriber_number', code.trim())
+  function normalizeKey(s) {
+    return (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  async function lookupCoverBank(title, author) {
+    const { data } = await supabase
+      .from('cover_bank')
+      .select('image_url')
+      .eq('title_key', normalizeKey(title))
+      .eq('author_key', normalizeKey(author))
       .maybeSingle();
-
-    if (error || !profile) {
-      box.innerHTML = `<p class="text-sm text-ink/50">Aucun usager trouvé pour « ${escapeHtml(code)} ».</p>`;
-      return;
-    }
-
-    const { data: resa } = await supabase
-      .from('reservations')
-      .select('id, status, created_at, books ( title, author )')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false });
-
-    renderVisitor(profile, resa || []);
+    return data?.image_url || null;
   }
-
-  function renderVisitor(profile, resa) {
-    const box = document.getElementById('visitor-result');
-    const initials = profile.full_name.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
-    const pending = resa.filter(r => r.status !== 'recupere');
-
-    const resaHtml = resa.length
-      ? resa.map(r => {
-          const s = statusMap[r.status];
-          let actionHtml = '<span class="text-[10px] text-ink/30">—</span>';
-          if (r.status === 'preparation') {
-            actionHtml = `<button onclick="setVisitorStatus(${r.id}, 'pret', '${escapeHtml(profile.subscriber_number)}')" class="text-[10px] font-semibold bg-ink text-white rounded-full px-2 py-1">Marquer prêt</button>`;
-          } else if (r.status === 'pret') {
-            actionHtml = `<button onclick="setVisitorStatus(${r.id}, 'recupere', '${escapeHtml(profile.subscriber_number)}')" class="text-[10px] font-semibold bg-mango-600 text-white rounded-full px-2 py-1">Marquer récupéré</button>`;
-          }
-          return `
-            <div class="flex items-center justify-between gap-2 border-t border-mango-50 py-2 first:border-t-0 first:pt-0">
-              <div class="min-w-0">
-                <p class="text-xs font-semibold text-ink truncate">${escapeHtml(r.books?.title || 'Livre supprimé')}</p>
-                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full ${s.classes}">${s.label}</span>
-              </div>
-              ${actionHtml}
-            </div>`;
-        }).join('')
-      : `<p class="text-xs text-ink/40 text-center py-4">Aucune réservation.</p>`;
-
-    box.innerHTML = `
-      <div class="text-left w-full">
-        <div class="flex items-center gap-3 mb-4">
-          <span class="w-11 h-11 rounded-full bg-gradient-to-br from-hibiscus-600 to-mango-500 text-white text-sm font-bold flex items-center justify-center shrink-0">${escapeHtml(initials)}</span>
-          <div>
-            <p class="text-sm font-bold text-ink">${escapeHtml(profile.full_name)}</p>
-            <p class="text-[11px] text-ink/45">${escapeHtml(profile.subscriber_number)}</p>
-          </div>
-        </div>
-        <p class="text-xs font-semibold text-ink/60 mb-1">${pending.length ? pending.length + ' réservation(s) à remettre' : 'Réservations'}</p>
-        ${resaHtml}
-      </div>`;
-  }
-
-  window.setVisitorStatus = async function (id, status, code) {
-    const { error } = await supabase.from('reservations').update({ status }).eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
-    await loadReservations();
-    lookupVisitor(code);
-  };
 
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // Pour un texte inséré comme argument entre apostrophes dans un onclick="..." :
+  // escapeHtml() seul ne suffit pas, il transforme ' en &#39; qui redevient une
+  // vraie apostrophe une fois l'attribut HTML décodé par le navigateur — et casse
+  // alors la chaîne JS en plein milieu (ex. titres avec une apostrophe : « Tu
+  // n'aurais pas dû venir », « Tu m'avais promis »). On échappe ici pour le JS
+  // d'abord (\ puis '), puis pour le HTML de l'attribut, sans reéchapper l'apostrophe.
+  function escapeJsAttr(str) {
+    return String(str ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   }
 
   window.logout = async function () {

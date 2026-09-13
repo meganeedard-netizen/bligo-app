@@ -70,5 +70,5 @@ insert into public.free_books (commune_id, title, author, cover_initial, categor
   ((select id from public.communes where name = 'Val-Fleuri'), 'Le Petit Prince', 'Antoine de Saint-Exupéry', 'P', 'Jeunesse', 'Un classique intemporel offert par un habitant, à emprunter librement.', true),
   ((select id from public.communes where name = 'Val-Fleuri'), 'Vingt mille lieues sous les mers', 'Jules Verne', 'V', 'Roman', 'Un exemplaire donné par un habitant de Val-Fleuri, disponible en échange libre.', true),
   ((select id from public.communes where name = 'Le Moule'), 'Notre-Dame de Paris', 'Victor Hugo', 'N', 'Roman', 'Don d''un habitant du Moule, à récupérer sur place.', true),
-  ((select id from public.communes where name = 'Le Moule'), 'Contes et légendes de Guadeloupe', 'Collectif', 'C', 'Littérature antillaise', 'Recueil offert à la Bibliothèque Libre du Moule.', false),
+  ((select id from public.communes where name = 'Le Moule'), 'Contes et légendes de Guadeloupe', 'Collectif', 'C', 'Roman', 'Recueil offert à la Bibliothèque Libre du Moule.', false),
   ((select id from public.communes where name = 'Sainte-Anne'), 'Le Comte de Monte-Cristo', 'Alexandre Dumas', 'C', 'Roman', 'Un classique donné par un habitant de Sainte-Anne.', true);

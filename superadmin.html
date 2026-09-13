@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BliGO — Espace admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
+      colors: {
+        ink: '#1B4B43',
+        mango: { 50:'#FFF7ED',100:'#FFEAD2',200:'#FFD4A3',300:'#FFB86B',400:'#FFA33F',500:'#FF9B2E',600:'#F07F14',700:'#C7630F',800:'#9E4E12',900:'#7C3F12' },
+        hibiscus: { 50:'#FFF0F5',100:'#FFDCE9',200:'#FFB8D3',300:'#FF8FB9',400:'#F2609A',500:'#E8437A',600:'#C92C61',700:'#A3234E',800:'#7E1C3D',900:'#5F1730' }
+      }
+    } }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .font-logo { font-family: 'Poppins', sans-serif; }
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px; }
+  }
+</style>
+</head>
+<body class="bg-white text-ink min-h-screen">
+
+<header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-mango-100 shadow-sm">
+  <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
+    <div class="flex items-center gap-2.5">
+      <img src="img/bligo-icon.png" alt="BliGO" class="w-8 h-8 object-contain">
+      <div>
+        <p class="font-logo font-bold text-base text-ink leading-none">Bli<span class="text-mango-600">GO</span> <span class="text-ink/40 font-sans font-medium text-sm">· Espace admin</span></p>
+        <p class="text-[11px] text-ink/45 leading-none mt-0.5">Toutes communes</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <a href="admin.html" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-full px-3 py-1.5 whitespace-nowrap">Back-office agent</a>
+      <a href="accueil.html" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-full px-3 py-1.5 whitespace-nowrap">Retour à l'accueil</a>
+      <button onclick="logout()" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-full px-3 py-1.5 whitespace-nowrap">Déconnexion</button>
+    </div>
+  </div>
+</header>
+
+<main id="app-main" class="max-w-6xl mx-auto px-5 py-8 hidden">
+
+  <div class="flex flex-col sm:flex-row gap-5">
+
+    <nav class="sm:w-56 shrink-0 bg-[#1B4B43] text-white rounded-xl p-2.5 flex sm:flex-col gap-1.5 overflow-x-auto h-fit">
+      <button onclick="switchScreen('communes')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="communes">
+        Communes
+      </button>
+      <button onclick="switchScreen('users')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="users">
+        Usagers
+        <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="unconfirmed-count">0</span>
+      </button>
+      <button onclick="switchScreen('covers')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="covers">
+        Couvertures manquantes
+        <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="missing-covers-count">0</span>
+      </button>
+    </nav>
+
+    <div class="flex-1 min-w-0">
+
+      <!-- COMMUNES -->
+      <section id="screen-communes" class="agent-screen">
+        <h2 class="text-lg font-bold text-ink mb-1">Communes</h2>
+        <p class="text-sm text-ink/55 mb-5">Ajoute une médiathèque pour l'ouvrir aux inscriptions.</p>
+
+        <div class="grid md:grid-cols-2 gap-5 mb-8">
+          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
+            <input type="hidden" id="commune-id">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Nom</label>
+            <input id="commune-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ex. Le Moule">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Fuseau horaire</label>
+            <input id="commune-timezone" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="America/Guadeloupe" value="America/Guadeloupe">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Horaires d'ouverture</label>
+            <textarea id="commune-opening-hours" rows="2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Mardi-Vendredi 10h-18h · Samedi 10h-13h"></textarea>
+            <div class="flex gap-2">
+              <button onclick="saveCommune()" class="flex-1 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+              <button onclick="resetCommuneForm()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Annuler</button>
+            </div>
+          </div>
+
+          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
+            <div class="grid grid-cols-[1.4fr_1.4fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[420px]">
+              <span>Commune</span><span>Horaires</span><span></span>
+            </div>
+            <div id="communes-list" class="min-w-[420px]"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- USAGERS -->
+      <section id="screen-users" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Usagers</h2>
+        <p class="text-sm text-ink/55 mb-5">Confirme la commune des nouveaux inscrits, consulte le profil d'un usager.</p>
+
+        <h3 class="text-base font-bold text-ink mb-3">Sans confirmation de commune (<span id="unconfirmed-inline-count">0</span>)</h3>
+        <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto mb-8">
+          <div class="grid grid-cols-[1.4fr_1fr_1.2fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[600px]">
+            <span>Usager</span><span>N° abonné</span><span>Commune</span><span></span>
+          </div>
+          <div id="unconfirmed-list" class="min-w-[600px]"></div>
+        </div>
+
+        <h3 class="text-base font-bold text-ink mb-3">Par commune</h3>
+        <div id="users-by-commune" class="flex flex-col gap-5"></div>
+      </section>
+
+      <!-- COUVERTURES MANQUANTES -->
+      <section id="screen-covers" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Couvertures manquantes</h2>
+        <p class="text-sm text-ink/55 mb-5">Livres catalogués sans couverture trouvée sur Google Books ni Open Library. Ajoute une image : elle sera réutilisée automatiquement pour tout futur livre au même titre.</p>
+
+        <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
+          <div class="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[720px]">
+            <span>Titre</span><span>Auteur</span><span>Catégorie</span><span>Origine</span><span></span>
+          </div>
+          <div id="missing-covers-list" class="min-w-[720px]"></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- Fiche usager -->
+<div id="user-modal-backdrop" onclick="closeUserModal(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto relative">
+    <button onclick="closeUserModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold z-10">✕</button>
+    <div id="user-modal-content" class="p-6"></div>
+  </div>
+</div>
+
+<p id="access-message" class="text-sm text-center text-ink/50 mt-16"></p>
+
+<script type="module">
+  import { supabase } from './js/supabaseClient.js';
+
+  let currentUser = null;
+  let communes = [];
+  let unconfirmedUsers = [];
+  let confirmedUsers = [];
+  let missingCovers = [];
+
+  const accessMessage = document.getElementById('access-message');
+
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'index.html';
+      return;
+    }
+    currentUser = session.user;
+
+    const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', currentUser.id).single();
+    if (error || profile?.role !== 'super_admin') {
+      accessMessage.textContent = "Cette page est réservée à l'administratrice de BliGO.";
+      return;
+    }
+
+    document.getElementById('app-main').classList.remove('hidden');
+    switchScreen('communes');
+    await loadCommunes();
+    await loadUsers();
+    await loadMissingCovers();
+  }
+
+  window.switchScreen = function (screen) {
+    document.querySelectorAll('.agent-screen').forEach(el => el.classList.add('hidden'));
+    document.getElementById('screen-' + screen).classList.remove('hidden');
+    document.querySelectorAll('.agent-nav-btn').forEach(btn => {
+      btn.classList.toggle('bg-white/10', btn.dataset.screen === screen);
+    });
+  };
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // Pour un texte inséré comme argument entre apostrophes dans un onclick="..." :
+  // escapeHtml() seul ne suffit pas, il transforme ' en &#39; qui redevient une
+  // vraie apostrophe une fois l'attribut HTML décodé par le navigateur — et casse
+  // alors la chaîne JS en plein milieu. On échappe ici pour le JS d'abord (\ puis
+  // '), puis pour le HTML de l'attribut, sans reéchapper l'apostrophe.
+  function escapeJsAttr(str) {
+    return String(str ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function normalizeKey(s) {
+    return (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  // ---------- Communes ----------
+
+  async function loadCommunes() {
+    const { data, error } = await supabase.from('communes').select('*').order('name');
+    if (error) { console.error(error); return; }
+    communes = data || [];
+    renderCommunes();
+  }
+
+  function renderCommunes() {
+    const list = document.getElementById('communes-list');
+    if (!communes.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucune commune.</p>`;
+      return;
+    }
+    list.innerHTML = communes.map(c => `
+      <div class="grid grid-cols-[1.4fr_1.4fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+        <span class="font-semibold text-ink">${escapeHtml(c.name)}</span>
+        <span class="text-ink/55 text-xs">${escapeHtml(c.opening_hours || '')}</span>
+        <span class="text-right flex gap-2 justify-end whitespace-nowrap">
+          <button onclick="editCommune(${c.id})" class="text-xs text-mango-700 hover:text-mango-800 font-semibold">Modifier</button>
+          <button onclick="deleteCommune(${c.id}, '${escapeJsAttr(c.name)}')" class="text-xs text-red-500/70 hover:text-red-600 font-semibold">Supprimer</button>
+        </span>
+      </div>`).join('');
+  }
+
+  window.editCommune = function (id) {
+    const c = communes.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('commune-id').value = c.id;
+    document.getElementById('commune-name').value = c.name;
+    document.getElementById('commune-timezone').value = c.timezone || 'America/Guadeloupe';
+    document.getElementById('commune-opening-hours').value = c.opening_hours || '';
+  };
+
+  window.resetCommuneForm = function () {
+    document.getElementById('commune-id').value = '';
+    document.getElementById('commune-name').value = '';
+    document.getElementById('commune-timezone').value = 'America/Guadeloupe';
+    document.getElementById('commune-opening-hours').value = '';
+  };
+
+  window.saveCommune = async function () {
+    const id = document.getElementById('commune-id').value;
+    const name = document.getElementById('commune-name').value.trim();
+    const timezone = document.getElementById('commune-timezone').value.trim() || 'America/Guadeloupe';
+    const opening_hours = document.getElementById('commune-opening-hours').value.trim();
+    if (!name) { alert('Le nom est obligatoire.'); return; }
+    const payload = { name, timezone, opening_hours };
+
+    const { error } = id
+      ? await supabase.from('communes').update(payload).eq('id', id)
+      : await supabase.from('communes').insert(payload);
+
+    if (error) { alert('Erreur : ' + error.message); return; }
+    resetCommuneForm();
+    await loadCommunes();
+  };
+
+  window.deleteCommune = async function (id, name) {
+    if (!confirm(`Supprimer la commune « ${name} » ?`)) return;
+    const { error } = await supabase.from('communes').delete().eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadCommunes();
+  };
+
+  // ---------- Usagers ----------
+
+  async function loadUsers() {
+    const [{ data: unconfirmed, error: e1 }, { data: confirmed, error: e2 }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, subscriber_number, commune_id, created_at').eq('commune_confirmed', false).order('created_at', { ascending: true }),
+      supabase.from('profiles').select('id, full_name, subscriber_number, commune_id, loyalty_points').eq('commune_confirmed', true).order('full_name'),
+    ]);
+    if (e1) console.error(e1);
+    if (e2) console.error(e2);
+    unconfirmedUsers = unconfirmed || [];
+    confirmedUsers = confirmed || [];
+    renderUnconfirmed();
+    renderUsersByCommune();
+  }
+
+  function communeSelectHtml(selectedId) {
+    return `<option value="" disabled ${!selectedId ? 'selected' : ''}>Choisir…</option>` +
+      communes.map(c => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+  }
+
+  function renderUnconfirmed() {
+    document.getElementById('unconfirmed-count').textContent = unconfirmedUsers.length;
+    document.getElementById('unconfirmed-inline-count').textContent = unconfirmedUsers.length;
+    const list = document.getElementById('unconfirmed-list');
+    if (!unconfirmedUsers.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucun inscrit en attente de confirmation.</p>`;
+      return;
+    }
+    list.innerHTML = unconfirmedUsers.map(u => `
+      <div class="grid grid-cols-[1.4fr_1fr_1.2fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+        <button onclick="openUserDetail('${u.id}')" class="text-left font-semibold text-ink hover:underline">${escapeHtml(u.full_name)}</button>
+        <span class="text-ink/55 text-xs">${escapeHtml(u.subscriber_number)}</span>
+        <select id="unconfirmed-commune-${u.id}" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
+          ${communeSelectHtml(u.commune_id)}
+        </select>
+        <span class="text-right">
+          <button onclick="confirmUserCommune('${u.id}')" class="text-xs font-semibold bg-ink text-white rounded-full px-3 py-1.5">Confirmer</button>
+        </span>
+      </div>`).join('');
+  }
+
+  window.confirmUserCommune = async function (userId) {
+    const select = document.getElementById('unconfirmed-commune-' + userId);
+    const commune_id = Number(select.value) || null;
+    if (!commune_id) { alert('Choisis une commune.'); return; }
+    const { error } = await supabase.from('profiles').update({ commune_id, commune_confirmed: true }).eq('id', userId);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadUsers();
+  };
+
+  function renderUsersByCommune() {
+    const container = document.getElementById('users-by-commune');
+    if (!communes.length) {
+      container.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Ajoute d'abord une commune.</p>`;
+      return;
+    }
+    container.innerHTML = communes.map(c => {
+      const members = confirmedUsers.filter(u => u.commune_id === c.id);
+      return `
+        <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-2.5 bg-mango-50">
+            <p class="text-sm font-bold text-ink">${escapeHtml(c.name)}</p>
+            <span class="text-[11px] font-semibold text-ink/50">${members.length} usager(s)</span>
+          </div>
+          ${members.length ? members.map(u => `
+            <button onclick="openUserDetail('${u.id}')" class="w-full text-left flex items-center justify-between gap-2 px-4 py-2.5 border-t border-mango-50 hover:bg-mango-50/50 text-sm">
+              <span>
+                <span class="font-semibold text-ink block">${escapeHtml(u.full_name)}</span>
+                <span class="text-[11px] text-ink/45">${escapeHtml(u.subscriber_number)}</span>
+              </span>
+              <span class="text-xs font-semibold text-mango-700">${u.loyalty_points} pts</span>
+            </button>`).join('') : `<p class="text-xs text-ink/40 text-center py-4">Aucun usager confirmé.</p>`}
+        </div>`;
+    }).join('');
+  }
+
+  // ---------- Fiche usager ----------
+
+  const statusMap = {
+    preparation: { label: 'En préparation', classes: 'bg-amber-50 text-amber-700' },
+    pret: { label: 'Prêt à récupérer', classes: 'bg-mango-50 text-mango-700' },
+    recupere: { label: 'Récupéré', classes: 'bg-ink/5 text-ink/45' },
+    expiree: { label: 'Expirée', classes: 'bg-red-50 text-red-600' },
+  };
+
+  window.openUserDetail = async function (userId) {
+    const box = document.getElementById('user-modal-content');
+    box.innerHTML = `<p class="text-sm text-ink/50">Chargement…</p>`;
+    document.getElementById('user-modal-backdrop').classList.remove('hidden');
+    document.getElementById('user-modal-backdrop').classList.add('flex');
+
+    const [{ data: profile }, { data: resa }, { data: borrowed }, { data: donations }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, subscriber_number, loyalty_points, commune_id, commune_confirmed, created_at').eq('id', userId).single(),
+      supabase.from('reservations').select('id, status, created_at, books ( title, author )').eq('user_id', userId).order('created_at', { ascending: false }),
+      supabase.from('free_books').select('id, title, author, created_at').eq('borrowed_by', userId).order('created_at', { ascending: false }),
+      supabase.from('donations').select('id, title, author, points_awarded, created_at').eq('donor_id', userId).order('created_at', { ascending: false }),
+    ]);
+
+    renderUserDetail(profile, resa || [], borrowed || [], donations || []);
+  };
+
+  function renderUserDetail(profile, resa, borrowed, donations) {
+    const box = document.getElementById('user-modal-content');
+    if (!profile) { box.innerHTML = `<p class="text-sm text-ink/50">Usager introuvable.</p>`; return; }
+
+    const commune = communes.find(c => c.id === profile.commune_id);
+    const totalDonationPoints = donations.reduce((s, d) => s + d.points_awarded, 0);
+
+    box.innerHTML = `
+      <div class="mb-5">
+        <p class="text-base font-bold text-ink">${escapeHtml(profile.full_name)}</p>
+        <p class="text-xs text-ink/45">${escapeHtml(profile.subscriber_number)}</p>
+        <div class="flex flex-wrap gap-1.5 mt-2">
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-mango-50 text-mango-700">${profile.loyalty_points} points de fidélité</span>
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${profile.commune_confirmed ? 'bg-mango-50 text-mango-700' : 'bg-hibiscus-50 text-hibiscus-700'}">
+            ${commune ? escapeHtml(commune.name) : 'Sans commune'} ${profile.commune_confirmed ? '· confirmée' : '· non confirmée'}
+          </span>
+        </div>
+      </div>
+
+      <div class="mb-5">
+        <p class="text-xs font-bold text-ink/60 uppercase tracking-wide mb-2">Réservations (${resa.length})</p>
+        ${resa.length ? resa.map(r => `
+          <div class="flex items-center justify-between gap-2 border-t border-mango-50 py-2 first:border-t-0 first:pt-0 text-sm">
+            <span class="min-w-0 truncate">${escapeHtml(r.books?.title || 'Livre supprimé')}</span>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${statusMap[r.status]?.classes || ''}">${statusMap[r.status]?.label || r.status}</span>
+          </div>`).join('') : `<p class="text-xs text-ink/40">Aucune.</p>`}
+      </div>
+
+      <div class="mb-5">
+        <p class="text-xs font-bold text-ink/60 uppercase tracking-wide mb-2">Bibliothèque Libre empruntée (${borrowed.length})</p>
+        ${borrowed.length ? borrowed.map(b => `
+          <div class="border-t border-mango-50 py-2 first:border-t-0 first:pt-0 text-sm">${escapeHtml(b.title)} — ${escapeHtml(b.author)}</div>`).join('') : `<p class="text-xs text-ink/40">Aucun.</p>`}
+      </div>
+
+      <div>
+        <p class="text-xs font-bold text-ink/60 uppercase tracking-wide mb-2">Dons effectués (${donations.length} · ${totalDonationPoints} pts)</p>
+        ${donations.length ? donations.map(d => `
+          <div class="flex items-center justify-between gap-2 border-t border-mango-50 py-2 first:border-t-0 first:pt-0 text-sm">
+            <span class="min-w-0 truncate">${escapeHtml(d.title)} — ${escapeHtml(d.author)}</span>
+            <span class="text-xs font-semibold text-mango-700 shrink-0">+${d.points_awarded} pts</span>
+          </div>`).join('') : `<p class="text-xs text-ink/40">Aucun.</p>`}
+      </div>
+    `;
+  }
+
+  window.closeUserModal = function (event) {
+    if (event && event.target.id !== 'user-modal-backdrop') return;
+    document.getElementById('user-modal-backdrop').classList.add('hidden');
+    document.getElementById('user-modal-backdrop').classList.remove('flex');
+  };
+
+  // ---------- Couvertures manquantes ----------
+
+  async function loadMissingCovers() {
+    const [{ data: mb, error: e1 }, { data: mf, error: e2 }] = await Promise.all([
+      supabase.from('books').select('id, title, author, category, created_at').is('cover_url', null).order('created_at', { ascending: false }),
+      supabase.from('free_books').select('id, title, author, category, created_at').is('cover_url', null).order('created_at', { ascending: false }),
+    ]);
+    if (e1) console.error(e1);
+    if (e2) console.error(e2);
+    missingCovers = [
+      ...(mb || []).map(b => ({ ...b, source: 'books' })),
+      ...(mf || []).map(b => ({ ...b, source: 'free_books' })),
+    ];
+    document.getElementById('missing-covers-count').textContent = missingCovers.length;
+    renderMissingCovers();
+  }
+
+  function renderMissingCovers() {
+    const list = document.getElementById('missing-covers-list');
+    if (!missingCovers.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucune couverture manquante.</p>`;
+      return;
+    }
+    list.innerHTML = missingCovers.map((item, i) => `
+      <div class="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+        <span class="font-semibold text-ink">${escapeHtml(item.title)}</span>
+        <span class="text-ink/60">${escapeHtml(item.author)}</span>
+        <span class="text-ink/50 text-xs">${escapeHtml(item.category || '—')}</span>
+        <span class="text-ink/40 text-xs">${item.source === 'books' ? 'Catalogue' : 'Bib. Libre'}</span>
+        <span class="text-right">
+          <input type="file" accept="image/*" id="cover-file-${i}" class="hidden" onchange="uploadCoverForItem(${i})">
+          <button onclick="document.getElementById('cover-file-${i}').click()" class="text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1.5">Téléverser</button>
+        </span>
+      </div>`).join('');
+  }
+
+  window.uploadCoverForItem = async function (index) {
+    const item = missingCovers[index];
+    const input = document.getElementById('cover-file-' + index);
+    const file = input.files?.[0];
+    input.value = '';
+    if (!item || !file) return;
+
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const slug = normalizeKey(item.title).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'couverture';
+    const path = `covers/${slug}-${Date.now()}.${ext}`;
+
+    const { error: upErr } = await supabase.storage.from('book-covers').upload(path, file);
+    if (upErr) { alert('Erreur upload : ' + upErr.message); return; }
+    const { data: pub } = supabase.storage.from('book-covers').getPublicUrl(path);
+    const image_url = pub.publicUrl;
+
+    const title_key = normalizeKey(item.title);
+    const author_key = normalizeKey(item.author);
+    await supabase.from('cover_bank').upsert({ title_key, author_key, image_url }, { onConflict: 'title_key,author_key' });
+
+    await supabase.from(item.source).update({ cover_url: image_url }).eq('id', item.id);
+    // Comble aussi les autres exemplaires du même titre/auteur encore sans couverture.
+    await supabase.from('books').update({ cover_url: image_url }).is('cover_url', null).ilike('title', item.title).ilike('author', item.author);
+    await supabase.from('free_books').update({ cover_url: image_url }).is('cover_url', null).ilike('title', item.title).ilike('author', item.author);
+
+    await loadMissingCovers();
+  };
+
+  window.logout = async function () {
+    await supabase.auth.signOut();
+    window.location.href = 'index.html';
+  };
+
+  init();
+</script>
+</body>
+</html>

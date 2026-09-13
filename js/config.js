@@ -4,3 +4,7 @@
 // laisser dans ce fichier côté navigateur.
 export const SUPABASE_URL = 'https://knlymrujmiapzieavzoe.supabase.co';
 export const SUPABASE_ANON_KEY = 'sb_publishable_pH1jBfM5KjsteDvDg_46Ww_mBTsDSdb';
+
+// Clé Google Books — restreinte à l'API Books uniquement dans Google Cloud Console,
+// donc sans risque à laisser ici (même logique que la clé Supabase ci-dessus).
+export const GOOGLE_BOOKS_API_KEY = 'AIzaSyApeF5lSerjf2qQYd25x0WAnNYm1_u50Vg';
