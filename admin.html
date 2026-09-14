@@ -75,6 +75,9 @@
       <button onclick="switchScreen('stats')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="stats">
         Tendances
       </button>
+      <button onclick="switchScreen('jeunesse')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="jeunesse">
+        Top Jeunesse
+      </button>
       <button onclick="switchScreen('top20')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="top20">
         Sélection BliGO
       </button>
@@ -356,6 +359,13 @@
         </div>
       </section>
 
+      <!-- TOP JEUNESSE -->
+      <section id="screen-jeunesse" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Top Jeunesse</h2>
+        <p class="text-sm text-ink/55 mb-4">Une sélection jeunesse de référence, un repère d'achat pour ce rayon.</p>
+        <div id="jeunesse-readonly-list" class="flex flex-col gap-2"></div>
+      </section>
+
       <!-- SELECTION DU MOIS -->
       <section id="screen-top20" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Sélection BliGO</h2>
@@ -479,7 +489,7 @@
     switchReservationTab('preparation');
     document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
     await loadCommunesForAgenda();
-    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadEvents()]);
+    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents()]);
   }
 
   window.switchScreen = function (screen) {
@@ -2281,6 +2291,38 @@
   }
 
   // ---------- Sélection BliGO (lecture seule, saisie côté espace admin BliGO) ----------
+
+  window.loadJeunesseReadonly = async function () {
+    const { data, error } = await supabase
+      .from('top_jeunesse_books')
+      .select('rank, title, author, age_range, genre, cover_url')
+      .order('rank');
+    if (error) { console.error(error); return; }
+    renderJeunesseReadonly(data || []);
+  };
+
+  function renderJeunesseReadonly(rows) {
+    const list = document.getElementById('jeunesse-readonly-list');
+    if (!rows.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Le Top Jeunesse n'a pas encore été saisi.</p>`;
+      return;
+    }
+    list.innerHTML = rows.map(r => `
+      <div class="flex items-center gap-3 bg-white border border-mango-100 rounded-xl px-4 py-2.5">
+        <span class="text-mango-600 font-bold text-sm w-6 shrink-0">${r.rank}</span>
+        ${r.cover_url
+          ? `<img src="${escapeHtml(r.cover_url)}" alt="" class="w-8 h-11 object-cover rounded shrink-0 bg-mango-50">`
+          : `<span class="w-8 h-11 rounded bg-mango-50 shrink-0"></span>`}
+        <span class="min-w-0 flex-1">
+          <span class="block font-semibold text-ink truncate">${escapeHtml(r.title)}</span>
+          <span class="block text-ink/50 text-xs truncate">${escapeHtml(r.author)}</span>
+        </span>
+        <span class="text-right shrink-0">
+          ${r.age_range ? `<span class="block text-[10.5px] font-semibold text-hibiscus-700">${escapeHtml(r.age_range)}</span>` : ''}
+          ${r.genre ? `<span class="block text-[10.5px] text-ink/40">${escapeHtml(r.genre)}</span>` : ''}
+        </span>
+      </div>`).join('');
+  }
 
   window.loadTop20Readonly = async function () {
     const now = new Date();
