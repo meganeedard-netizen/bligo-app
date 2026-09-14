@@ -363,7 +363,7 @@
         ? `<img id="cover-${b.id}" src="${b.cover_url}" alt="" class="aspect-[2/3] w-full object-cover rounded-lg bg-mango-50 shadow-sm">`
         : `<div id="cover-${b.id}" class="aspect-[2/3] w-full rounded-lg bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-2xl">${b.cover_initial || b.title[0]}</div>`;
       return `
-        <div data-book-id="${b.id}" class="book-card relative bg-white rounded-xl p-2.5 shadow-sm flex flex-col cursor-pointer hover:shadow-md transition">
+        <div data-book-id="${b.id}" class="book-card relative bg-white rounded-xl p-2.5 shadow-sm flex flex-col min-w-0 cursor-pointer hover:shadow-md transition">
           <div class="mb-2">
             ${cov}
           </div>
