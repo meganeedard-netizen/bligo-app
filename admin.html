@@ -55,6 +55,12 @@
       <button onclick="switchScreen('scan')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="scan">
         Scan &amp; Catalogage
       </button>
+      <button onclick="switchScreen('loans')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="loans">
+        Emprunt / Retour
+      </button>
+      <button onclick="switchScreen('shelving')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="shelving">
+        Rangement
+      </button>
       <button onclick="switchScreen('preregistrations')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="preregistrations">
         Préinscriptions
         <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="preregistrations-count">0</span>
@@ -192,6 +198,45 @@
           </div>
           <div id="catalogue-list" class="sm:min-w-[820px]"></div>
         </div>
+      </section>
+
+      <!-- EMPRUNT / RETOUR -->
+      <section id="screen-loans" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Emprunt / Retour</h2>
+        <p class="text-sm text-ink/55 mb-4">Scanne le code-barres du livre (douchette filaire, Bluetooth, ou caméra) pour l'emprunter ou enregistrer son retour.</p>
+
+        <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
+          <div id="loan-camera-slot" class="mb-2"></div>
+          <div class="flex gap-2">
+            <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Scanne ou tape le code-barres du livre"
+              onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupLoanBarcode();}"
+              style="font-size: 16px;"
+              class="flex-1 min-w-0 border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
+            <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan')" style="touch-action: manipulation;" class="shrink-0 bg-mango-50 border border-mango-200 text-mango-700 rounded-lg px-4 text-xl">📷</button>
+          </div>
+          <button onclick="lookupLoanBarcode()" style="touch-action: manipulation;" class="w-full mt-3 bg-ink text-white rounded-lg py-3 text-sm font-semibold active:scale-[0.98] transition">Valider</button>
+        </div>
+
+        <div id="loan-result" class="mt-5 max-w-xl"></div>
+      </section>
+
+      <!-- RANGEMENT -->
+      <section id="screen-shelving" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Rangement en rayon</h2>
+        <p class="text-sm text-ink/55 mb-4">Scanne un livre rendu pour savoir où le ranger.</p>
+
+        <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
+          <div id="shelving-camera-slot" class="mb-2"></div>
+          <div class="flex gap-2">
+            <input id="shelving-barcode-input" type="text" autocomplete="off" placeholder="Scanne ou tape le code-barres"
+              onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupShelvingBarcode();}"
+              style="font-size: 16px;"
+              class="flex-1 min-w-0 border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
+            <button type="button" id="shelving-camera-btn" onclick="toggleCamera('shelving')" style="touch-action: manipulation;" class="shrink-0 bg-mango-50 border border-mango-200 text-mango-700 rounded-lg px-4 text-xl">📷</button>
+          </div>
+        </div>
+
+        <div id="shelving-result" class="mt-5 max-w-xl"></div>
       </section>
 
       <!-- PREINSCRIPTIONS -->
@@ -436,6 +481,10 @@
     document.querySelectorAll('.agent-nav-btn').forEach(btn => {
       btn.classList.toggle('bg-white/10', btn.dataset.screen === screen);
     });
+    // Prêt à scanner dès l'arrivée sur l'écran, sans avoir à cliquer dans le
+    // champ (utile avec une douchette qui tape dès qu'on la déclenche).
+    if (screen === 'loans') document.getElementById('loan-barcode-input')?.focus();
+    if (screen === 'shelving') document.getElementById('shelving-barcode-input')?.focus();
   };
 
   // ---------- Scan photo (ISBN / EAN) ----------
@@ -466,11 +515,14 @@
     }
   };
 
-  // Trois profils de lecture : les codes-barres ISBN (EAN/UPC) pour le
-  // catalogage, les QR codes pour les cartes usager à l'accueil, et un profil
-  // volontairement large pour les codes-barres internes de médiathèque
-  // (« copyBarcode »), chaque commune a le sien, souvent en Code 128 ou
-  // Code 39 (parfois Codabar sur d'anciens systèmes), jamais un ISBN.
+  // Codes-barres internes de médiathèque : profil volontairement large,
+  // chaque commune a le sien, souvent en Code 128 ou Code 39 (parfois
+  // Codabar sur d'anciens systèmes), jamais un ISBN. Partagé par tous les
+  // écrans qui scannent un exemplaire (catalogage, emprunt/retour, rangement).
+  const LIBRARY_BARCODE_NATIVE_FORMATS = ['code_128', 'code_39', 'codabar', 'ean_13', 'ean_8', 'upc_a', 'upc_e'];
+  const LIBRARY_BARCODE_ZXING_FORMATS = [BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.CODABAR, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E];
+  const LIBRARY_BARCODE_PROFILE = { nativeFormats: LIBRARY_BARCODE_NATIVE_FORMATS, zxingFormats: LIBRARY_BARCODE_ZXING_FORMATS };
+
   const SCAN_PROFILES = {
     book: {
       nativeFormats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
@@ -480,10 +532,9 @@
       nativeFormats: ['qr_code'],
       zxingFormats: [BarcodeFormat.QR_CODE],
     },
-    copyBarcode: {
-      nativeFormats: ['code_128', 'code_39', 'codabar', 'ean_13', 'ean_8', 'upc_a', 'upc_e'],
-      zxingFormats: [BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.CODABAR, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E],
-    },
+    copyBarcode: LIBRARY_BARCODE_PROFILE,
+    loan: LIBRARY_BARCODE_PROFILE,
+    shelving: LIBRARY_BARCODE_PROFILE,
   };
 
   function zxingHints(mode) {
@@ -623,6 +674,26 @@
         const input = document.getElementById('copy-barcode-input');
         if (input) input.value = code;
         if (currentAddedBookId) updateCopyBarcode(currentAddedBookId, code);
+      },
+    },
+    loan: {
+      slotId: 'loan-camera-slot',
+      toggleBtnId: 'loan-camera-btn',
+      defaultLabel: '📷',
+      hint: 'Vise le code-barres du livre.',
+      onResult: (code) => {
+        document.getElementById('loan-barcode-input').value = code;
+        lookupLoanBarcode();
+      },
+    },
+    shelving: {
+      slotId: 'shelving-camera-slot',
+      toggleBtnId: 'shelving-camera-btn',
+      defaultLabel: '📷',
+      hint: 'Vise le code-barres du livre.',
+      onResult: (code) => {
+        document.getElementById('shelving-barcode-input').value = code;
+        lookupShelvingBarcode();
       },
     },
   };
@@ -1425,6 +1496,139 @@
     if (!value) return;
     const { error } = await supabase.from('book_copies').update({ barcode: value }).eq('book_id', bookId);
     if (error) { alert('Erreur : ' + error.message); return; }
+  };
+
+  // ---------- Emprunt / Retour ----------
+
+  function formatDateShortAdmin(iso) {
+    return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  const COPY_STATUS_BADGE = {
+    available: { label: '● Disponible', classes: 'bg-mango-50 text-mango-700' },
+    reserved: { label: '● Mis de côté', classes: 'bg-amber-50 text-amber-700' },
+    borrowed: { label: '● Emprunté', classes: 'bg-hibiscus-50 text-hibiscus-700' },
+    in_transit: { label: '● En transit', classes: 'bg-ink/10 text-ink/60' },
+    processing: { label: "● En cours d'équipement", classes: 'bg-ink/10 text-ink/60' },
+    lost: { label: '● Perdu', classes: 'bg-red-50 text-red-600' },
+    withdrawn: { label: '● Retiré du fonds', classes: 'bg-ink/10 text-ink/60' },
+  };
+
+  window.lookupLoanBarcode = async function () {
+    const input = document.getElementById('loan-barcode-input');
+    const barcode = input.value.trim();
+    const resultBox = document.getElementById('loan-result');
+    if (!barcode) return;
+    resultBox.innerHTML = `<p class="text-sm text-ink/50">Recherche…</p>`;
+
+    const { data, error } = await supabase.rpc('scan_lookup', { p_barcode: barcode });
+    if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    renderLoanResult(barcode, data);
+  };
+
+  function renderLoanResult(barcode, info) {
+    const resultBox = document.getElementById('loan-result');
+    if (!info?.found) {
+      resultBox.innerHTML = `
+        <div class="bg-red-50 border border-red-100 rounded-xl p-4">
+          <p class="text-sm font-bold text-red-700">Code-barres inconnu</p>
+          <p class="text-xs text-red-600/80 mt-1">« ${escapeHtml(barcode)} » ne correspond à aucun exemplaire enregistré.</p>
+        </div>`;
+      return;
+    }
+
+    const coverHtml = info.cover_url
+      ? `<img src="${escapeHtml(info.cover_url)}" alt="" class="w-14 h-20 object-cover rounded shrink-0 bg-mango-50">`
+      : `<div class="w-14 h-20 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml((info.title || '?')[0])}</div>`;
+
+    const badge = COPY_STATUS_BADGE[info.status];
+    const badgeHtml = badge ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${badge.classes}">${badge.label}</span>` : '';
+
+    let actionHtml = '';
+    if (info.status === 'borrowed') {
+      actionHtml = `
+        <p class="text-xs text-ink/55 mt-3">Emprunté par <span class="font-semibold text-ink">${escapeHtml(info.borrower_name || '')}</span>${info.due_at ? ` · à rendre avant le ${formatDateShortAdmin(info.due_at)}` : ''}</p>
+        <button onclick="doLoanReturn('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="w-full mt-3 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer le retour</button>`;
+    } else if (info.status === 'available' || info.status === 'reserved') {
+      actionHtml = `
+        <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Numéro d'abonné de l'usager</label>
+        <input id="loan-subscriber-input" type="text" style="font-size: 16px;" placeholder="Numéro d'abonné" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+        <button onclick="doLoanCheckout('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="w-full mt-2 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer l'emprunt</button>`;
+    } else {
+      actionHtml = `<p class="text-xs text-ink/45 mt-3">Aucune action possible pour ce statut depuis cet écran.</p>`;
+    }
+
+    resultBox.innerHTML = `
+      <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+        <div class="flex gap-3">
+          ${coverHtml}
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-ink">${escapeHtml(info.title || '')}</p>
+            <p class="text-xs text-ink/55">${escapeHtml(info.author || '')}</p>
+            <div class="mt-1.5">${badgeHtml}</div>
+            ${info.is_away_from_home ? `<p class="text-[10.5px] text-hibiscus-700 font-semibold mt-1">Appartient à ${escapeHtml(info.owner_commune || '')}</p>` : ''}
+          </div>
+        </div>
+        ${actionHtml}
+      </div>`;
+  }
+
+  window.doLoanCheckout = async function (barcode) {
+    const subInput = document.getElementById('loan-subscriber-input');
+    const subscriber = subInput?.value.trim();
+    if (!subscriber) { alert("Indique le numéro d'abonné de l'usager."); return; }
+
+    const { data, error } = await supabase.rpc('scan_checkout', { p_barcode: barcode, p_subscriber_number: subscriber });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    if (!data.ok) { alert(data.message); return; }
+
+    playBeep();
+    document.getElementById('loan-result').innerHTML = `<div class="bg-mango-50 border border-mango-100 rounded-xl p-4"><p class="text-sm font-bold text-mango-700">✓ ${escapeHtml(data.message)}</p></div>`;
+    const input = document.getElementById('loan-barcode-input');
+    input.value = '';
+    input.focus();
+  };
+
+  window.doLoanReturn = async function (barcode) {
+    const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    if (!data.ok) { alert(data.message); return; }
+
+    playBeep();
+    document.getElementById('loan-result').innerHTML = `
+      <div class="bg-mango-50 border border-mango-100 rounded-xl p-4">
+        <p class="text-sm font-bold text-mango-700">✓ ${escapeHtml(data.message)}</p>
+        ${data.shelf_location ? `<p class="text-xs text-ink/60 mt-1">À ranger en ${escapeHtml(data.shelf_location)}.</p>` : ''}
+      </div>`;
+    const input = document.getElementById('loan-barcode-input');
+    input.value = '';
+    input.focus();
+  };
+
+  // ---------- Rangement ----------
+
+  window.lookupShelvingBarcode = async function () {
+    const input = document.getElementById('shelving-barcode-input');
+    const barcode = input.value.trim();
+    const resultBox = document.getElementById('shelving-result');
+    if (!barcode) return;
+    resultBox.innerHTML = `<p class="text-sm text-ink/50">Recherche…</p>`;
+
+    const { data, error } = await supabase.rpc('scan_shelving', { p_barcode: barcode });
+    if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+
+    if (!data.ok) {
+      resultBox.innerHTML = `<div class="bg-red-50 border border-red-100 rounded-xl p-4"><p class="text-sm font-bold text-red-700">${escapeHtml(data.message)}</p></div>`;
+    } else {
+      playBeep();
+      resultBox.innerHTML = `
+        <div class="bg-mango-50 border border-mango-100 rounded-xl p-4">
+          ${data.title ? `<p class="text-sm font-bold text-ink">${escapeHtml(data.title)}</p><p class="text-xs text-ink/55 mb-2">${escapeHtml(data.author || '')}</p>` : ''}
+          <p class="text-base font-bold text-mango-700">${escapeHtml(data.message)}</p>
+        </div>`;
+    }
+    input.value = '';
+    input.focus();
   };
 
   async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null }) {
