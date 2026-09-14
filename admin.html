@@ -76,7 +76,7 @@
         Tendances
       </button>
       <button onclick="switchScreen('top20')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="top20">
-        Sélection du mois
+        Sélection BliGO
       </button>
     </nav>
 
@@ -287,15 +287,32 @@
             <div class="grid grid-cols-2 gap-2 mb-2">
               <div>
                 <label class="text-xs font-semibold text-ink/60 block mb-1">Date et heure</label>
-                <input type="datetime-local" id="event-date" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+                <input type="datetime-local" id="event-date" step="900" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
               </div>
               <div>
-                <label class="text-xs font-semibold text-ink/60 block mb-1">Médiathèque</label>
-                <select id="event-commune" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm"></select>
+                <label class="text-xs font-semibold text-ink/60 block mb-1">Durée</label>
+                <select id="event-duration" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">1 h</option>
+                  <option value="90" selected>1 h 30</option>
+                  <option value="120">2 h</option>
+                  <option value="150">2 h 30</option>
+                  <option value="180">3 h</option>
+                  <option value="240">4 h</option>
+                </select>
               </div>
             </div>
-            <label class="text-xs font-semibold text-ink/60 block mb-1">Lieu (optionnel)</label>
-            <input id="event-location" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ex. Salle Jeunesse">
+            <div class="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label class="text-xs font-semibold text-ink/60 block mb-1">Médiathèque</label>
+                <select id="event-commune" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white"></select>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-ink/60 block mb-1">Lieu (optionnel)</label>
+                <input id="event-location" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm" placeholder="Ex. Salle Jeunesse">
+              </div>
+            </div>
             <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre de places</label>
             <div class="flex items-center gap-2 mb-3">
               <input type="number" min="1" id="event-max-seats" class="flex-1 border border-mango-100 rounded-lg px-3 py-2 text-sm" placeholder="Ex. 20">
@@ -350,7 +367,7 @@
 
       <!-- SELECTION DU MOIS -->
       <section id="screen-top20" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Sélection du mois</h2>
+        <h2 class="text-lg font-bold text-ink mb-1">Sélection BliGO</h2>
         <p class="text-sm text-ink/55 mb-4">Les 20 livres les plus vendus en librairie ce mois-ci, choisis par l'administratrice BliGO. Un repère pour les achats, pas un livre du catalogue.</p>
         <div id="top20-readonly-list" class="flex flex-col gap-2"></div>
       </section>
@@ -2150,6 +2167,7 @@
     document.getElementById('event-title').value = e.title;
     document.getElementById('event-description').value = e.description || '';
     document.getElementById('event-date').value = toDatetimeLocalValue(e.event_date);
+    document.getElementById('event-duration').value = e.duration_minutes || 90;
     document.getElementById('event-commune').value = e.commune_id || '';
     document.getElementById('event-location').value = e.location || '';
     document.getElementById('event-unlimited').checked = e.max_seats == null;
@@ -2162,6 +2180,7 @@
     document.getElementById('event-title').value = '';
     document.getElementById('event-description').value = '';
     document.getElementById('event-date').value = '';
+    document.getElementById('event-duration').value = '90';
     if (myCommuneId) document.getElementById('event-commune').value = myCommuneId;
     document.getElementById('event-location').value = '';
     document.getElementById('event-unlimited').checked = false;
@@ -2174,6 +2193,7 @@
     const title = document.getElementById('event-title').value.trim();
     const description = document.getElementById('event-description').value.trim();
     const dateValue = document.getElementById('event-date').value;
+    const duration_minutes = Number(document.getElementById('event-duration').value) || 90;
     const commune_id = Number(document.getElementById('event-commune').value) || null;
     const location = document.getElementById('event-location').value.trim();
     const unlimited = document.getElementById('event-unlimited').checked;
@@ -2195,6 +2215,7 @@
       title,
       description: description || null,
       event_date: new Date(dateValue).toISOString(),
+      duration_minutes,
       commune_id,
       location: location || null,
       max_seats,
@@ -2286,7 +2307,7 @@
       </div>`).join('');
   }
 
-  // ---------- Sélection du mois (lecture seule, saisie côté espace admin BliGO) ----------
+  // ---------- Sélection BliGO (lecture seule, saisie côté espace admin BliGO) ----------
 
   window.loadTop20Readonly = async function () {
     const now = new Date();
