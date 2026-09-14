@@ -58,9 +58,6 @@
       <button onclick="switchScreen('loans')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="loans">
         Emprunt / Retour
       </button>
-      <button onclick="switchScreen('shelving')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="shelving">
-        Rangement
-      </button>
       <button onclick="switchScreen('preregistrations')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="preregistrations">
         Préinscriptions
         <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="preregistrations-count">0</span>
@@ -218,25 +215,6 @@
         </div>
 
         <div id="loan-result" class="mt-5 max-w-xl"></div>
-      </section>
-
-      <!-- RANGEMENT -->
-      <section id="screen-shelving" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Rangement en rayon</h2>
-        <p class="text-sm text-ink/55 mb-4">Scanne un livre rendu pour savoir où le ranger.</p>
-
-        <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
-          <div id="shelving-camera-slot" class="mb-2"></div>
-          <div class="flex gap-2">
-            <input id="shelving-barcode-input" type="text" autocomplete="off" placeholder="Scanne ou tape le code-barres"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupShelvingBarcode();}"
-              style="font-size: 16px;"
-              class="flex-1 min-w-0 border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
-            <button type="button" id="shelving-camera-btn" onclick="toggleCamera('shelving')" style="touch-action: manipulation;" class="shrink-0 bg-mango-50 border border-mango-200 text-mango-700 rounded-lg px-4 text-xl">📷</button>
-          </div>
-        </div>
-
-        <div id="shelving-result" class="mt-5 max-w-xl"></div>
       </section>
 
       <!-- PREINSCRIPTIONS -->
@@ -501,7 +479,6 @@
     // Prêt à scanner dès l'arrivée sur l'écran, sans avoir à cliquer dans le
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
     if (screen === 'loans') document.getElementById('loan-barcode-input')?.focus();
-    if (screen === 'shelving') document.getElementById('shelving-barcode-input')?.focus();
   };
 
   // ---------- Scan photo (ISBN / EAN) ----------
@@ -551,7 +528,6 @@
     },
     copyBarcode: LIBRARY_BARCODE_PROFILE,
     loan: LIBRARY_BARCODE_PROFILE,
-    shelving: LIBRARY_BARCODE_PROFILE,
   };
 
   function zxingHints(mode) {
@@ -701,16 +677,6 @@
       onResult: (code) => {
         document.getElementById('loan-barcode-input').value = code;
         lookupLoanBarcode();
-      },
-    },
-    shelving: {
-      slotId: 'shelving-camera-slot',
-      toggleBtnId: 'shelving-camera-btn',
-      defaultLabel: '📷',
-      hint: 'Vise le code-barres du livre.',
-      onResult: (code) => {
-        document.getElementById('shelving-barcode-input').value = code;
-        lookupShelvingBarcode();
       },
     },
   };
@@ -1618,32 +1584,6 @@
         ${data.shelf_location ? `<p class="text-xs text-ink/60 mt-1">À ranger en ${escapeHtml(data.shelf_location)}.</p>` : ''}
       </div>`;
     const input = document.getElementById('loan-barcode-input');
-    input.value = '';
-    input.focus();
-  };
-
-  // ---------- Rangement ----------
-
-  window.lookupShelvingBarcode = async function () {
-    const input = document.getElementById('shelving-barcode-input');
-    const barcode = input.value.trim();
-    const resultBox = document.getElementById('shelving-result');
-    if (!barcode) return;
-    resultBox.innerHTML = `<p class="text-sm text-ink/50">Recherche…</p>`;
-
-    const { data, error } = await supabase.rpc('scan_shelving', { p_barcode: barcode });
-    if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
-
-    if (!data.ok) {
-      resultBox.innerHTML = `<div class="bg-red-50 border border-red-100 rounded-xl p-4"><p class="text-sm font-bold text-red-700">${escapeHtml(data.message)}</p></div>`;
-    } else {
-      playBeep();
-      resultBox.innerHTML = `
-        <div class="bg-mango-50 border border-mango-100 rounded-xl p-4">
-          ${data.title ? `<p class="text-sm font-bold text-ink">${escapeHtml(data.title)}</p><p class="text-xs text-ink/55 mb-2">${escapeHtml(data.author || '')}</p>` : ''}
-          <p class="text-base font-bold text-mango-700">${escapeHtml(data.message)}</p>
-        </div>`;
-    }
     input.value = '';
     input.focus();
   };
