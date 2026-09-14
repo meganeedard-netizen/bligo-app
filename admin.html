@@ -328,6 +328,7 @@
   let reservations = [];
   let zxingReaders = {};
   let donorSession = null; // { id, full_name, count }
+  let currentAddedBookId = null;
   let statsScope = 'commune';
   let myCommuneId = null;
   let eventCommunes = [];
@@ -465,8 +466,11 @@
     }
   };
 
-  // Deux profils de lecture : les codes-barres de livres (EAN/UPC) pour le
-  // catalogage, et les QR codes pour les cartes usager à l'accueil.
+  // Trois profils de lecture : les codes-barres ISBN (EAN/UPC) pour le
+  // catalogage, les QR codes pour les cartes usager à l'accueil, et un profil
+  // volontairement large pour les codes-barres internes de médiathèque
+  // (« copyBarcode »), chaque commune a le sien, souvent en Code 128 ou
+  // Code 39 (parfois Codabar sur d'anciens systèmes), jamais un ISBN.
   const SCAN_PROFILES = {
     book: {
       nativeFormats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
@@ -475,6 +479,10 @@
     donor: {
       nativeFormats: ['qr_code'],
       zxingFormats: [BarcodeFormat.QR_CODE],
+    },
+    copyBarcode: {
+      nativeFormats: ['code_128', 'code_39', 'codabar', 'ean_13', 'ean_8', 'upc_a', 'upc_e'],
+      zxingFormats: [BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.CODABAR, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E],
     },
   };
 
@@ -605,6 +613,17 @@
       defaultLabel: 'Démarrer une session de don (scanner la carte du donateur)',
       hint: 'Vise le QR code de la carte du donateur.',
       onResult: (code) => startDonorSession(code),
+    },
+    copyBarcode: {
+      slotId: 'copy-barcode-camera-slot',
+      toggleBtnId: 'copy-barcode-camera-btn',
+      defaultLabel: 'Scanner',
+      hint: 'Vise le code-barres de la médiathèque (celui collé sur le livre, pas l\'ISBN).',
+      onResult: (code) => {
+        const input = document.getElementById('copy-barcode-input');
+        if (input) input.value = code;
+        if (currentAddedBookId) updateCopyBarcode(currentAddedBookId, code);
+      },
     },
   };
 
@@ -1066,6 +1085,11 @@
       ok += 1;
       if (row) row.innerHTML = `<span class="text-xs text-ink font-semibold truncate">${escapeHtml(meta.title)}</span><span class="text-[11px] text-mango-700 font-semibold shrink-0">✓ Ajouté</span>`;
 
+      // Code-barres provisoire pour chaque exemplaire du lot, l'agent les
+      // remplace un par un par les vrais codes plus tard (liste du catalogue),
+      // inutile de ralentir le scan en rafale pour les saisir un par un ici.
+      await createCopyForBook(inserted, payload.shelf_location, fromDonation);
+
       if (donorSession) {
         await maybeRecordDonation(inserted.id, null);
       }
@@ -1372,14 +1396,46 @@
     }
   };
 
+  // Crée l'exemplaire physique correspondant au livre qui vient d'être
+  // catalogué. Code-barres provisoire (BLIGO-xxxxxx, unique puisque basé sur
+  // l'id du livre) tant que l'agent n'a rien saisi : jamais un format imposé
+  // par BliGO pour une vraie médiathèque, chaque commune garde le sien —
+  // l'agent le remplace par le vrai code dès qu'il le connaît (voir
+  // updateCopyBarcode). status 'processing' pour un don tant qu'il n'est pas
+  // équipé (plastifié/étiqueté), 'available' sinon.
+  async function createCopyForBook(book, cote, fromDonation) {
+    const communeId = myCommuneId || eventCommunes[0]?.id || null;
+    if (!communeId) return null;
+    const barcode = `BLIGO-${String(book.id).padStart(6, '0')}`;
+    const { data, error } = await supabase.from('book_copies').insert({
+      book_id: book.id,
+      barcode,
+      owner_commune_id: communeId,
+      current_commune_id: communeId,
+      shelf_location: cote,
+      status: fromDonation ? 'processing' : 'available',
+      source: fromDonation ? 'donation' : 'purchase',
+    }).select().single();
+    if (error) { console.error('Erreur création exemplaire :', error); return null; }
+    return data;
+  }
+
+  window.updateCopyBarcode = async function (bookId, barcode) {
+    const value = barcode.trim();
+    if (!value) return;
+    const { error } = await supabase.from('book_copies').update({ barcode: value }).eq('book_id', bookId);
+    if (error) { alert('Erreur : ' + error.message); return; }
+  };
+
   async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null }) {
     const resultBox = document.getElementById('scan-result');
     // Même logique que le scan par lot : un livre issu d'un don reste hors
     // catalogue tant qu'il n'a pas été plastifié/étiqueté par un agent.
     const fromDonation = !!donorSession;
+    const cote = suggestCote(category, author, dewey);
     const { data, error } = await supabase.from('books').insert({
       title, author, category, summary, cover_url, isbn,
-      shelf_location: suggestCote(category, author, dewey),
+      shelf_location: cote,
       cover_initial: title[0].toUpperCase(),
       available: !fromDonation,
       equipped: !fromDonation,
@@ -1388,12 +1444,15 @@
       resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`;
       return null;
     }
+    const copy = await createCopyForBook(data, cote, fromDonation);
+    data.copy_barcode = copy?.barcode || null;
     await loadBooks();
     return data;
   }
 
   function renderAddedCard(book) {
     const resultBox = document.getElementById('scan-result');
+    currentAddedBookId = book.id;
     const coverHtml = book.cover_url
       ? `<img src="${book.cover_url}" alt="" class="w-14 h-20 object-cover rounded bg-mango-50 shrink-0">`
       : `<div class="w-14 h-20 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml(book.cover_initial || book.title[0])}</div>`;
@@ -1416,6 +1475,16 @@
         <input type="text" value="${escapeHtml(book.shelf_location || '')}" placeholder="Ex. R MUS ou 641.5 DUP"
           onchange="updateShelfLocation(${book.id}, this.value)"
           class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-mango-300">
+
+        <label class="text-[11px] font-semibold text-ink/60 block mt-3 mb-1">Code-barres de la médiathèque</label>
+        <div id="copy-barcode-camera-slot" class="mb-1.5"></div>
+        <div class="flex gap-1.5">
+          <input type="text" id="copy-barcode-input" value="${escapeHtml(book.copy_barcode || '')}" placeholder="Scanne (douchette ou caméra) ou tape le code"
+            onchange="updateCopyBarcode(${book.id}, this.value)"
+            class="flex-1 min-w-0 border border-mango-100 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-mango-300">
+          <button type="button" id="copy-barcode-camera-btn" onclick="toggleCamera('copyBarcode')" style="touch-action: manipulation;" class="shrink-0 text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg px-3">📷</button>
+        </div>
+        <p class="text-[10.5px] text-ink/40 mt-1">Pas encore de code (livre pas encore étiqueté) ? Laisse le code provisoire, à remplacer plus tard.</p>
 
         <button onclick="scanAnotherBook()" class="w-full mt-4 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold">Scanner un autre livre</button>
       </div>`;
@@ -1525,6 +1594,9 @@
   window.markEquipped = async function (id) {
     const { error } = await supabase.from('books').update({ equipped: true, available: true }).eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
+    // L'exemplaire correspondant passe aussi de 'processing' à 'available' :
+    // c'est ce statut que lisent les fonctions de scan (emprunt/retour/rayon).
+    await supabase.from('book_copies').update({ status: 'available' }).eq('book_id', id);
     await loadBooks();
   };
 
