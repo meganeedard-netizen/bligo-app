@@ -63,6 +63,9 @@
         Réservations
         <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="reservations-count">0</span>
       </button>
+      <button onclick="switchScreen('agenda')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="agenda">
+        Agenda culturel
+      </button>
       <button onclick="switchScreen('stats')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="stats">
         Tendances
       </button>
@@ -224,6 +227,45 @@
         <div id="reservations-list" class="flex flex-col gap-3"></div>
       </section>
 
+      <!-- AGENDA CULTUREL -->
+      <section id="screen-agenda" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Agenda culturel</h2>
+        <p class="text-sm text-ink/55 mb-5">Ajoute un événement pour qu'il apparaisse dans l'agenda de l'appli usagers.</p>
+
+        <div class="grid md:grid-cols-2 gap-5">
+          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm h-fit">
+            <input type="hidden" id="event-id">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Titre</label>
+            <input id="event-title" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ex. Heure du conte">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Description</label>
+            <textarea id="event-description" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Quelques lignes pour donner envie de venir"></textarea>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label class="text-xs font-semibold text-ink/60 block mb-1">Date et heure</label>
+                <input type="datetime-local" id="event-date" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-ink/60 block mb-1">Médiathèque</label>
+                <select id="event-commune" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm"></select>
+              </div>
+            </div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Lieu (optionnel)</label>
+            <input id="event-location" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Ex. Salle Jeunesse">
+            <div class="flex gap-2">
+              <button onclick="saveEvent()" class="flex-1 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+              <button onclick="resetEventForm()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Annuler</button>
+            </div>
+          </div>
+
+          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
+            <div class="grid grid-cols-[1.6fr_1.2fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[560px]">
+              <span>Événement</span><span>Date</span><span>Inscrits</span><span></span>
+            </div>
+            <div id="events-list" class="min-w-[560px]"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- TENDANCES -->
       <section id="screen-stats" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Tendances d'emprunt</h2>
@@ -279,6 +321,9 @@
   let zxingReaders = {};
   let donorSession = null; // { id, full_name, count }
   let statsScope = 'commune';
+  let myCommuneId = null;
+  let eventCommunes = [];
+  let events = [];
 
   const CATEGORIES = [
     'Roman', 'Thriller', 'Fantasy', 'Jeunesse', 'BD',
@@ -322,11 +367,12 @@
     }
     currentUser = session.user;
 
-    const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', currentUser.id).single();
+    const { data: profile, error } = await supabase.from('profiles').select('role, commune_id').eq('id', currentUser.id).single();
     if (error || !['agent', 'super_admin'].includes(profile?.role)) {
       accessMessage.textContent = "Cette page est réservée au personnel de la médiathèque.";
       return;
     }
+    myCommuneId = profile.commune_id || null;
 
     document.getElementById('app-main').classList.remove('hidden');
     document.getElementById('batch-genre').innerHTML =
@@ -335,7 +381,8 @@
     setScanBatchMode(false);
     switchReservationTab('preparation');
     document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
-    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations(), loadStats(), loadTop20Readonly()]);
+    await loadCommunesForAgenda();
+    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadEvents()]);
   }
 
   window.switchScreen = function (screen) {
@@ -1688,6 +1735,113 @@
       .replace(/'/g, "\\'")
       .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   }
+
+  // ---------- Agenda culturel ----------
+
+  async function loadCommunesForAgenda() {
+    const { data, error } = await supabase.from('communes').select('id, name').order('name');
+    if (error) { console.error(error); return; }
+    eventCommunes = data || [];
+    document.getElementById('event-commune').innerHTML = eventCommunes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    if (myCommuneId) document.getElementById('event-commune').value = myCommuneId;
+  }
+
+  async function loadEvents() {
+    const { data: eventsData, error } = await supabase
+      .from('events')
+      .select('*, communes ( name )')
+      .order('event_date', { ascending: true });
+    if (error) { console.error(error); return; }
+
+    const { data: rsvpsData } = await supabase.from('event_rsvps').select('event_id');
+    const rsvpCounts = {};
+    (rsvpsData || []).forEach(r => { rsvpCounts[r.event_id] = (rsvpCounts[r.event_id] || 0) + 1; });
+
+    events = (eventsData || []).map(e => ({ ...e, rsvpCount: rsvpCounts[e.id] || 0 }));
+    renderEventsList();
+  }
+
+  function renderEventsList() {
+    const list = document.getElementById('events-list');
+    if (!events.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucun événement pour l'instant.</p>`;
+      return;
+    }
+    list.innerHTML = events.map(e => `
+      <div class="grid grid-cols-[1.6fr_1.2fr_1fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+        <span class="min-w-0">
+          <span class="font-semibold text-ink block truncate">${escapeHtml(e.title)}</span>
+          <span class="text-ink/45 text-[11px] block truncate">${escapeHtml(e.communes?.name || '')}${e.location ? ' · ' + escapeHtml(e.location) : ''}</span>
+        </span>
+        <span class="text-ink/60 text-xs">${formatEventDateShort(e.event_date)}</span>
+        <span class="text-ink/50 text-xs">${e.rsvpCount} inscrit${e.rsvpCount > 1 ? 's' : ''}</span>
+        <span class="text-right flex gap-2 justify-end whitespace-nowrap">
+          <button onclick="editEvent(${e.id})" class="text-xs text-mango-700 hover:text-mango-800 font-semibold">Modifier</button>
+          <button onclick="deleteEvent(${e.id}, '${escapeJsAttr(e.title)}')" class="text-xs text-red-500/70 hover:text-red-600 font-semibold">Supprimer</button>
+        </span>
+      </div>`).join('');
+  }
+
+  function toDatetimeLocalValue(iso) {
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  window.editEvent = function (id) {
+    const e = events.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('event-id').value = e.id;
+    document.getElementById('event-title').value = e.title;
+    document.getElementById('event-description').value = e.description || '';
+    document.getElementById('event-date').value = toDatetimeLocalValue(e.event_date);
+    document.getElementById('event-commune').value = e.commune_id || '';
+    document.getElementById('event-location').value = e.location || '';
+  };
+
+  window.resetEventForm = function () {
+    document.getElementById('event-id').value = '';
+    document.getElementById('event-title').value = '';
+    document.getElementById('event-description').value = '';
+    document.getElementById('event-date').value = '';
+    if (myCommuneId) document.getElementById('event-commune').value = myCommuneId;
+    document.getElementById('event-location').value = '';
+  };
+
+  window.saveEvent = async function () {
+    const id = document.getElementById('event-id').value;
+    const title = document.getElementById('event-title').value.trim();
+    const description = document.getElementById('event-description').value.trim();
+    const dateValue = document.getElementById('event-date').value;
+    const commune_id = Number(document.getElementById('event-commune').value) || null;
+    const location = document.getElementById('event-location').value.trim();
+
+    if (!title) { alert('Le titre est obligatoire.'); return; }
+    if (!dateValue) { alert('La date est obligatoire.'); return; }
+
+    const payload = {
+      title,
+      description: description || null,
+      event_date: new Date(dateValue).toISOString(),
+      commune_id,
+      location: location || null,
+    };
+
+    const { error } = id
+      ? await supabase.from('events').update(payload).eq('id', id)
+      : await supabase.from('events').insert(payload);
+
+    if (error) { alert('Erreur : ' + error.message); return; }
+    resetEventForm();
+    await loadEvents();
+  };
+
+  window.deleteEvent = async function (id, title) {
+    if (!confirm(`Supprimer l'événement « ${title} » ?`)) return;
+    const { error } = await supabase.from('events').delete().eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadEvents();
+  };
 
   // ---------- Tendances ----------
 
