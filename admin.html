@@ -365,6 +365,41 @@
     return CATEGORIES.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`).join('');
   }
 
+  // ---------- Cotation automatique ----------
+  // Barème simplifié pour proposer une cote de départ, comme sur une vraie
+  // étiquette de médiathèque : lettres pour la fiction et le format (roman,
+  // thriller, SF, BD, jeunesse), indice Dewey pour les documentaires (le vrai
+  // indice si Open Library le connaît, sinon une plage par défaut à vérifier
+  // par l'agent), toujours suivi des 3 premières lettres du nom de l'auteur.
+  const COTE_LETTER_PREFIX = {
+    'Roman': 'R', 'Thriller': 'T', 'Fantasy': 'SF', 'BD': 'BD', 'Jeunesse': 'J',
+  };
+  // Plages Dewey par défaut, faute de mieux quand Open Library ne connaît pas
+  // l'indice réel du livre : 150 Psychologie/développement personnel, 640
+  // Économie domestique (cuisine, bricolage, jardin), 900 Histoire, 700 Arts
+  // et loisirs. Volontairement approximatif, l'agent garde la main dessus.
+  const COTE_DEWEY_DEFAULT = {
+    'Bien-être': '150', 'Maison': '640', 'Histoire': '900', 'Culture': '700',
+  };
+
+  // Le dernier mot du nom du premier auteur listé est pris comme nom de
+  // famille — imparfait pour certains noms composés ou une fiche au format
+  // "Nom, Prénom", mais couvre l'immense majorité des fiches Google Books /
+  // Open Library (généralement "Prénom Nom").
+  function authorCotePrefix(author) {
+    const first = (author || '').split(',')[0].trim();
+    const words = first.split(/\s+/).filter(Boolean);
+    return (words[words.length - 1] || '').replace(/[^\p{L}]/gu, '').slice(0, 3).toUpperCase();
+  }
+
+  function suggestCote(category, author, dewey) {
+    const suffix = authorCotePrefix(author);
+    const letters = COTE_LETTER_PREFIX[category];
+    if (letters) return suffix ? `${letters} ${suffix}` : letters;
+    const numeric = dewey || COTE_DEWEY_DEFAULT[category] || 'DOC';
+    return suffix ? `${numeric} ${suffix}` : numeric;
+  }
+
   const accessMessage = document.getElementById('access-message');
 
   async function init() {
@@ -1001,6 +1036,9 @@
 
       meta.category = forcedGenre || guessCategory(meta.rawCategoryText, meta.title);
       delete meta.rawCategoryText;
+      if (!meta.dewey && !COTE_LETTER_PREFIX[meta.category]) {
+        meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
+      }
 
       const payload = {
         title: meta.title,
@@ -1011,7 +1049,10 @@
         cover_initial: meta.title[0].toUpperCase(),
         available: !fromDonation,
         equipped: !fromDonation,
-        shelf_location: shelfLocation,
+        isbn,
+        // Le rayon forcé pour toute l'étagère prime sur la cote proposée
+        // automatiquement, si l'agent en a saisi un pour ce lot.
+        shelf_location: shelfLocation || suggestCote(meta.category, meta.author, meta.dewey),
       };
 
       const { data: inserted, error } = await supabase.from('books').insert(payload).select().single();
@@ -1095,7 +1136,23 @@
         rawCategoryText: (item.subjects || []).map(s => s.name).join(' '),
         summary: null,
         cover_url: item.cover?.medium || item.cover?.large || null,
+        dewey: item.classifications?.dewey_decimal_class?.[0] || null,
       };
+    } catch {
+      return null;
+    }
+  }
+
+  // Google Books ne renvoie jamais d'indice Dewey, seule Open Library l'a,
+  // et seulement pour une partie de ses fiches. Appelé uniquement pour les
+  // documentaires (la fiction n'en a pas besoin, voir suggestCote), même si
+  // Google Books a déjà répondu pour le titre/auteur/couverture.
+  async function fetchDeweyFromOpenLibrary(isbn) {
+    try {
+      const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+      const data = await res.json();
+      const item = data[`ISBN:${isbn}`];
+      return item?.classifications?.dewey_decimal_class?.[0] || null;
     } catch {
       return null;
     }
@@ -1176,6 +1233,12 @@
     // (et corriger la catégorie si besoin).
     meta.category = guessCategory(meta.rawCategoryText, meta.title);
     delete meta.rawCategoryText;
+    // L'indice Dewey ne sert qu'aux documentaires (voir COTE_LETTER_PREFIX),
+    // inutile de le chercher pour un roman ou une BD.
+    if (isIsbn && !meta.dewey && !COTE_LETTER_PREFIX[meta.category]) {
+      meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
+    }
+    meta.isbn = isIsbn ? isbn : null;
     const inserted = await insertBook(meta);
     if (inserted) {
       await maybeRecordDonation(inserted.id, null);
@@ -1309,13 +1372,14 @@
     }
   };
 
-  async function insertBook({ title, author, category = null, summary = null, cover_url = null }) {
+  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null }) {
     const resultBox = document.getElementById('scan-result');
     // Même logique que le scan par lot : un livre issu d'un don reste hors
     // catalogue tant qu'il n'a pas été plastifié/étiqueté par un agent.
     const fromDonation = !!donorSession;
     const { data, error } = await supabase.from('books').insert({
-      title, author, category, summary, cover_url,
+      title, author, category, summary, cover_url, isbn,
+      shelf_location: suggestCote(category, author, dewey),
       cover_initial: title[0].toUpperCase(),
       available: !fromDonation,
       equipped: !fromDonation,
@@ -1348,8 +1412,8 @@
           </div>
         </div>
 
-        <label class="text-[11px] font-semibold text-ink/60 block mt-3 mb-1">Rayon / emplacement</label>
-        <input type="text" value="${escapeHtml(book.shelf_location || '')}" placeholder="Ex. Rayon DAC - étagère 2"
+        <label class="text-[11px] font-semibold text-ink/60 block mt-3 mb-1">Cote (proposée automatiquement, modifiable)</label>
+        <input type="text" value="${escapeHtml(book.shelf_location || '')}" placeholder="Ex. R MUS ou 641.5 DUP"
           onchange="updateShelfLocation(${book.id}, this.value)"
           class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-mango-300">
 
