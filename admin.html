@@ -392,6 +392,14 @@
 
 </main>
 
+<!-- Fiche livre complète -->
+<div id="book-modal-backdrop" onclick="closeBookModal(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto relative">
+    <button onclick="closeBookModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold z-10">✕</button>
+    <div id="book-modal-content" class="p-6"></div>
+  </div>
+</div>
+
 <p id="access-message" class="text-sm text-center text-ink/50 mt-16"></p>
 
 <script type="module">
@@ -1164,6 +1172,10 @@
         available: !fromDonation,
         equipped: !fromDonation,
         isbn,
+        publisher: meta.publisher || null,
+        published_date: meta.published_date || null,
+        page_count: meta.page_count || null,
+        language: meta.language || null,
         // Le rayon forcé pour toute l'étagère prime sur la cote proposée
         // automatiquement, si l'agent en a saisi un pour ce lot.
         shelf_location: shelfLocation || suggestCote(meta.category, meta.author, meta.dewey),
@@ -1232,6 +1244,10 @@
         rawCategoryText: [(item.categories || []).join(' '), item.description || ''].join(' '),
         summary: item.description || null,
         cover_url: item.imageLinks?.thumbnail?.replace('http://', 'https://') || null,
+        publisher: item.publisher || null,
+        published_date: item.publishedDate || null,
+        page_count: item.pageCount || null,
+        language: item.language || null,
       };
     } catch {
       if (attempt < 5) {
@@ -1257,6 +1273,10 @@
         summary: null,
         cover_url: item.cover?.medium || item.cover?.large || null,
         dewey: item.classifications?.dewey_decimal_class?.[0] || null,
+        publisher: item.publishers?.[0]?.name || null,
+        published_date: item.publish_date || null,
+        page_count: item.number_of_pages || null,
+        language: null,
       };
     } catch {
       return null;
@@ -1630,7 +1650,7 @@
     input.focus();
   };
 
-  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null }) {
+  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null }) {
     const resultBox = document.getElementById('scan-result');
     // Même logique que le scan par lot : un livre issu d'un don reste hors
     // catalogue tant qu'il n'a pas été plastifié/étiqueté par un agent.
@@ -1638,6 +1658,7 @@
     const cote = suggestCote(category, author, dewey);
     const { data, error } = await supabase.from('books').insert({
       title, author, category, summary, cover_url, isbn,
+      publisher, published_date, page_count, language,
       shelf_location: cote,
       cover_initial: title[0].toUpperCase(),
       available: !fromDonation,
@@ -1766,7 +1787,7 @@
         <span class="flex items-center gap-2 min-w-0">
           ${coverHtml}
           <span class="min-w-0">
-            <span class="font-semibold text-ink truncate block">${escapeHtml(b.title)}</span>
+            <button onclick="openBookDetail(${b.id})" class="font-semibold text-ink truncate block text-left hover:underline">${escapeHtml(b.title)}</button>
             ${b.shelf_location ? `<span class="text-[10px] text-mango-700 font-semibold truncate block">📍 ${escapeHtml(b.shelf_location)}</span>` : ''}
             ${b.copy_barcode ? `<span class="text-[10px] text-ink/40 truncate block">${escapeHtml(b.copy_barcode)}</span>` : ''}
             ${b.on_site_only ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">📍 Sur place uniquement</span>` : ''}
@@ -1844,6 +1865,90 @@
       alert(`« ${title} » n'a pas pu être supprimé (0 ligne affectée). Vérifie que le compte utilisé a bien le rôle agent ou super_admin.`);
       return;
     }
+    await loadBooks();
+  };
+
+  // ---------- Fiche livre complète ----------
+
+  function bookFieldRow(label, id, value, opts = {}) {
+    if (opts.textarea) {
+      return `<label class="text-xs font-semibold text-ink/60 block mb-1">${label}</label>
+        <textarea id="${id}" rows="3" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-3">${escapeHtml(value || '')}</textarea>`;
+    }
+    if (opts.select) {
+      return `<label class="text-xs font-semibold text-ink/60 block mb-1">${label}</label>
+        <select id="${id}" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-3 bg-white">
+          <option value="" ${!value ? 'selected' : ''}>Non précisé</option>
+          ${opts.select.map(o => `<option value="${o}" ${value === o ? 'selected' : ''}>${o}</option>`).join('')}
+        </select>`;
+    }
+    return `<label class="text-xs font-semibold text-ink/60 block mb-1">${label}</label>
+      <input id="${id}" type="${opts.type || 'text'}" value="${escapeHtml(value ?? '')}" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-3">`;
+  }
+
+  window.openBookDetail = function (id) {
+    const b = books.find(x => x.id === id);
+    if (!b) return;
+
+    const coverHtml = b.cover_url
+      ? `<img src="${escapeHtml(b.cover_url)}" alt="" class="w-16 h-24 object-cover rounded bg-mango-50 shrink-0">`
+      : `<div class="w-16 h-24 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml(b.cover_initial || b.title[0])}</div>`;
+
+    document.getElementById('book-modal-content').innerHTML = `
+      <div class="flex gap-3 mb-4">
+        ${coverHtml}
+        <div class="flex-1 min-w-0">
+          <p class="text-base font-bold text-ink leading-snug">${escapeHtml(b.title)}</p>
+          <p class="text-sm text-ink/55">${escapeHtml(b.author)}</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-x-3">
+        ${bookFieldRow('ISBN', 'bd-isbn', b.isbn)}
+        ${bookFieldRow('Éditeur', 'bd-publisher', b.publisher)}
+        ${bookFieldRow('Date de publication', 'bd-published-date', b.published_date)}
+        ${bookFieldRow('Nombre de pages', 'bd-page-count', b.page_count, { type: 'number' })}
+        ${bookFieldRow('Langue d\'origine', 'bd-language', b.language)}
+        ${bookFieldRow('Format', 'bd-format', b.format)}
+        ${bookFieldRow('Dépôt légal', 'bd-legal-deposit', b.legal_deposit)}
+        ${bookFieldRow('Traducteur', 'bd-translator', b.translator)}
+        ${bookFieldRow('Illustrateur (nom et date)', 'bd-illustrator', b.illustrator)}
+        ${bookFieldRow('Imprimeur', 'bd-printer', b.printer)}
+      </div>
+      ${bookFieldRow('Couverture', 'bd-cover-color', b.cover_color, { select: ['Couleur', 'Noir et blanc'] })}
+      ${bookFieldRow('Résumé', 'bd-summary', b.summary, { textarea: true })}
+
+      <button onclick="saveBookDetail(${b.id})" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+    `;
+    document.getElementById('book-modal-backdrop').classList.remove('hidden');
+    document.getElementById('book-modal-backdrop').classList.add('flex');
+  };
+
+  window.closeBookModal = function (event) {
+    if (event && event.target.id !== 'book-modal-backdrop') return;
+    document.getElementById('book-modal-backdrop').classList.add('hidden');
+    document.getElementById('book-modal-backdrop').classList.remove('flex');
+  };
+
+  window.saveBookDetail = async function (id) {
+    const val = fieldId => document.getElementById(fieldId).value.trim() || null;
+    const payload = {
+      isbn: val('bd-isbn'),
+      publisher: val('bd-publisher'),
+      published_date: val('bd-published-date'),
+      page_count: document.getElementById('bd-page-count').value.trim() ? Number(document.getElementById('bd-page-count').value) : null,
+      language: val('bd-language'),
+      format: val('bd-format'),
+      legal_deposit: val('bd-legal-deposit'),
+      translator: val('bd-translator'),
+      illustrator: val('bd-illustrator'),
+      printer: val('bd-printer'),
+      cover_color: val('bd-cover-color'),
+      summary: val('bd-summary'),
+    };
+    const { error } = await supabase.from('books').update(payload).eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    closeBookModal();
     await loadBooks();
   };
 
