@@ -66,6 +66,9 @@
       <button onclick="switchScreen('scan')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="scan">
         Scan nouveaux livres
       </button>
+      <button onclick="switchScreen('catalogue')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="catalogue">
+        Catalogue
+      </button>
       <button onclick="switchScreen('agenda')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="agenda">
         Agenda culturel
       </button>
@@ -187,6 +190,12 @@
             <div id="batch-queue-list" class="flex flex-col gap-1.5 max-h-80 overflow-y-auto"></div>
           </div>
         </div>
+      </section>
+
+      <!-- CATALOGUE -->
+      <section id="screen-catalogue" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Catalogue</h2>
+        <p class="text-sm text-ink/55 mb-3">Tous les livres du fonds : recherche, change une catégorie, marque un don équipé, ou supprime une fiche.</p>
 
         <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<span id="to-equip-badge" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></span></h3>
         <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
