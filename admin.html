@@ -1164,6 +1164,14 @@
       if (!meta.format) {
         meta.format = await fetchFormatFromOpenLibrary(isbn);
       }
+      const bnf = await fetchFromBnF(isbn);
+      if (bnf) {
+        meta.legal_deposit = bnf.legal_deposit;
+        meta.printer = bnf.printer;
+        if (!meta.publisher) meta.publisher = bnf.publisher;
+        if (!meta.page_count) meta.page_count = bnf.page_count;
+        if (!meta.language) meta.language = bnf.language;
+      }
 
       const payload = {
         title: meta.title,
@@ -1180,6 +1188,8 @@
         page_count: meta.page_count || null,
         language: meta.language || null,
         format: meta.format || null,
+        legal_deposit: meta.legal_deposit || null,
+        printer: meta.printer || null,
         // Le rayon forcé pour toute l'étagère prime sur la cote proposée
         // automatiquement, si l'agent en a saisi un pour ce lot.
         shelf_location: shelfLocation || suggestCote(meta.category, meta.author, meta.dewey),
@@ -1331,6 +1341,62 @@
     }
   }
 
+  // Troisième source, uniquement pour ce que Google Books et Open Library ne
+  // donnent jamais : dépôt légal et imprimeur (le métier même de la BnF).
+  // API SRU publique, sans clé, données UNIMARC prévues pour être réutilisées
+  // par d'autres bibliothèques. Sert aussi de filet pour éditeur/pages/langue
+  // si les deux premières sources n'avaient rien trouvé.
+  async function fetchFromBnF(isbn) {
+    try {
+      const url = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=${encodeURIComponent(`bib.isbn all "${isbn}"`)}&recordSchema=unimarcxchange&maximumRecords=1`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const text = await res.text();
+      const doc = new DOMParser().parseFromString(text, 'application/xml');
+      if (doc.querySelector('parsererror')) return null;
+
+      const fields = doc.getElementsByTagNameNS('*', 'datafield');
+      const getField = (tag) => Array.from(fields).find(f => f.getAttribute('tag') === tag);
+      const getSub = (field, code) => {
+        if (!field) return null;
+        const subs = field.getElementsByTagNameNS('*', 'subfield');
+        const sub = Array.from(subs).find(s => s.getAttribute('code') === code);
+        return sub?.textContent?.trim() || null;
+      };
+
+      // Tag 020 : numéro de dépôt légal (pays + numéro). Tag 210 $d : la
+      // mention telle qu'imprimée sur le livre (ex. "DL 2017").
+      const f020 = getField('020');
+      const f210 = getField('210');
+      const f215 = getField('215');
+      const f101 = getField('101');
+
+      const depositCountry = getSub(f020, 'a');
+      const depositNumber = getSub(f020, 'b');
+      const depositMention = getSub(f210, 'd');
+      const legal_deposit = [depositMention, depositCountry && depositNumber ? `${depositCountry} ${depositNumber}` : null]
+        .filter(Boolean).join(' · ') || null;
+
+      const printer = getSub(f210, 'g');
+      const publisher = getSub(f210, 'c');
+      const pagesRaw = getSub(f215, 'a'); // ex. "1 volume 566 p"
+      const pagesMatch = pagesRaw?.match(/(\d+)\s*p/);
+      const language = getSub(f101, 'a');
+
+      if (!legal_deposit && !printer && !publisher && !pagesMatch && !language) return null;
+
+      return {
+        legal_deposit,
+        printer,
+        publisher,
+        page_count: pagesMatch ? Number(pagesMatch[1]) : null,
+        language,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   // Vérifie si Open Library a une vraie couverture pour cet ISBN (le paramètre
   // default=false évite qu'elle renvoie une image "sans couverture" par défaut).
   async function fetchCoverFromOpenLibrary(isbn) {
@@ -1372,6 +1438,18 @@
     // fiches. Une info en plus quand elle est là, tant pis sinon.
     if (meta && !meta.format && isIsbn) {
       meta.format = await fetchFormatFromOpenLibrary(isbn);
+    }
+    // Dépôt légal et imprimeur : aucune des deux sources ci-dessus ne les a,
+    // c'est le métier de la BnF.
+    if (meta && isIsbn) {
+      const bnf = await fetchFromBnF(isbn);
+      if (bnf) {
+        meta.legal_deposit = bnf.legal_deposit;
+        meta.printer = bnf.printer;
+        if (!meta.publisher) meta.publisher = bnf.publisher;
+        if (!meta.page_count) meta.page_count = bnf.page_count;
+        if (!meta.language) meta.language = bnf.language;
+      }
     }
 
     if (!meta) {
@@ -1689,7 +1767,7 @@
     input.focus();
   };
 
-  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null }) {
+  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null }) {
     const resultBox = document.getElementById('scan-result');
     // Même logique que le scan par lot : un livre issu d'un don reste hors
     // catalogue tant qu'il n'a pas été plastifié/étiqueté par un agent.
@@ -1697,7 +1775,7 @@
     const cote = suggestCote(category, author, dewey);
     const { data, error } = await supabase.from('books').insert({
       title, author, category, summary, cover_url, isbn,
-      publisher, published_date, page_count, language, format,
+      publisher, published_date, page_count, language, format, legal_deposit, printer,
       shelf_location: cote,
       cover_initial: title[0].toUpperCase(),
       available: !fromDonation,
