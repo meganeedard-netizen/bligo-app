@@ -174,12 +174,13 @@
   let searchQuery = '';
 
   const CATEGORIES = [
-    'Roman', 'Thriller', 'Fantasy', 'Jeunesse', 'BD',
+    'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Jeunesse', 'BD',
     'Bien-être', 'Maison', 'Histoire', 'Culture', 'Autres'
   ];
 
   const CATEGORY_ICONS = {
     'Tous': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+    'Fonds local': '<img src="img/categories/local.png?v=3" alt="" class="w-full h-full object-contain">',
     'Roman': '<img src="img/categories/roman.png?v=3" alt="" class="w-full h-full object-contain">',
     'Thriller': '<img src="img/categories/thriller.png?v=3" alt="" class="w-full h-full object-contain">',
     'Fantasy': '<img src="img/categories/science-fiction.png?v=3" alt="" class="w-full h-full object-contain">',
@@ -347,7 +348,9 @@
     list.innerHTML = filtered.map(b => {
       const inWishlist = wishlist.includes(b.id);
       let btnHtml;
-      if (isLibreAccount) {
+      if (b.on_site_only) {
+        btnHtml = `<span class="block w-full mt-2 text-center text-[11px] font-semibold bg-ink/5 text-ink/50 rounded-lg py-1.5">📍 Consultation sur place</span>`;
+      } else if (isLibreAccount) {
         btnHtml = `<a href="profil.html" class="block w-full mt-2 text-center text-[10.5px] font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-1.5">Rattache-toi à une commune</a>`;
       } else if (!b.available) {
         btnHtml = `<button data-book-id="${b.id}" class="alert-btn w-full mt-2 text-[11px] font-semibold rounded-lg py-1.5 ${inWishlist ? 'bg-mango-50 text-mango-700 border border-mango-200' : 'bg-ink text-white'}">${inWishlist ? '🔔 Alerte activée' : '🔔 Recevoir une alerte'}</button>`;
@@ -429,7 +432,9 @@
     const inWishlist = wishlist.includes(b.id);
 
     let btnHtml = '';
-    if (isLibreAccount) {
+    if (b.on_site_only) {
+      btnHtml = `<p class="w-full mt-4 text-center text-sm font-semibold bg-ink/5 text-ink/50 rounded-lg py-2.5">📍 Consultation sur place uniquement</p>`;
+    } else if (isLibreAccount) {
       btnHtml = `<a href="profil.html" class="block w-full mt-4 text-center text-sm font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-2.5">Réservé aux usagers d'une commune — rattache ton compte</a>`;
     } else if (!b.available) {
       btnHtml = `<button id="modal-alert-btn" class="w-full mt-4 text-sm font-semibold rounded-lg py-2.5 ${inWishlist ? 'bg-mango-50 text-mango-700 border border-mango-200' : 'bg-ink text-white'}">${inWishlist ? '🔔 Alerte activée' : '🔔 Recevoir une alerte'}</button>`;

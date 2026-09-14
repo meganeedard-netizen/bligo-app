@@ -136,7 +136,11 @@
               <label class="text-xs font-semibold text-ink/60 block mb-1.5">Genre des livres de cette étagère (avant de scanner)</label>
               <select id="batch-genre" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-2"></select>
               <label class="text-xs font-semibold text-ink/60 block mb-1.5">Rayon / emplacement (ex. « Rayon DAC - étagère 2 »)</label>
-              <input id="batch-shelf" type="text" placeholder="Rayon DAC - étagère 2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+              <input id="batch-shelf" type="text" placeholder="Rayon DAC - étagère 2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 mb-2">
+              <label class="flex items-center gap-2 text-xs font-semibold text-ink/60">
+                <input type="checkbox" id="batch-onsite-only">
+                Tout ce lot est en consultation sur place uniquement
+              </label>
             </div>
 
             <div id="book-camera-slot">
@@ -276,6 +280,16 @@
             <input type="hidden" id="event-id">
             <label class="text-xs font-semibold text-ink/60 block mb-1">Titre</label>
             <input id="event-title" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ex. Heure du conte">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Type</label>
+            <select id="event-type" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
+              <option value="">Non précisé</option>
+              <option value="Club de lecture">Club de lecture</option>
+              <option value="Heure du conte">Heure du conte</option>
+              <option value="Atelier">Atelier</option>
+              <option value="Exposition">Exposition</option>
+              <option value="Débat">Débat</option>
+              <option value="Autre">Autre</option>
+            </select>
             <label class="text-xs font-semibold text-ink/60 block mb-1">Description</label>
             <textarea id="event-description" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Quelques lignes pour donner envie de venir"></textarea>
             <div class="grid grid-cols-2 gap-2 mb-2">
@@ -398,7 +412,7 @@
   let events = [];
 
   const CATEGORIES = [
-    'Roman', 'Thriller', 'Fantasy', 'Jeunesse', 'BD',
+    'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Jeunesse', 'BD',
     'Bien-être', 'Maison', 'Histoire', 'Culture', 'Autres',
   ];
 
@@ -407,11 +421,14 @@
     ['Jeunesse', ['juvenile', 'children', 'jeunesse', 'young adult']],
     ['Thriller', ['thriller', 'suspense', 'polic', 'crime fiction', 'mystery']],
     ['Fantasy', ['science fiction', 'sci-fi', 'fantasy', 'fantastique']],
+    // Auteurs et documents antillais/caribéens : vérifié avant "Roman" pour
+    // qu'un roman antillais parte bien en Fonds local, pas en Roman générique.
+    ['Fonds local', ['antill', 'caribb', 'creole', 'créole', 'martinique', 'guadeloupe', 'haïti', 'haiti', 'guyane']],
     ['Bien-être', ['self-help', 'self help', 'developpement personnel', 'développement personnel', 'personal growth', 'health', 'fitness', 'medical', 'santé', 'médecine', 'sport', 'bien-être', 'bien être', 'wellness']],
     ['Maison', ['cooking', 'cuisine', 'garden', 'jardin', 'diy', 'bricolage', 'nature', 'home & garden', 'maison']],
     ['Histoire', ['history', 'histoire', 'patrimoine', 'heritage']],
     ['Culture', ['art', 'music', 'musique', 'cinema', 'cinéma', 'beaux-arts', 'culture']],
-    ['Roman', ['fiction', 'novel', 'roman', 'literary', 'poetry', 'poésie', 'classic', 'classique', 'antill', 'caribb', 'creole', 'créole', 'martinique', 'guadeloupe', 'haïti', 'haiti', 'guyane']],
+    ['Roman', ['fiction', 'novel', 'roman', 'literary', 'poetry', 'poésie', 'classic', 'classique']],
   ];
 
   // Devine la catégorie à partir des libellés bruts renvoyés par Google Books /
@@ -436,7 +453,7 @@
   // indice si Open Library le connaît, sinon une plage par défaut à vérifier
   // par l'agent), toujours suivi des 3 premières lettres du nom de l'auteur.
   const COTE_LETTER_PREFIX = {
-    'Roman': 'R', 'Thriller': 'T', 'Fantasy': 'SF', 'BD': 'BD', 'Jeunesse': 'J',
+    'Fonds local': 'FL', 'Roman': 'R', 'Thriller': 'T', 'Fantasy': 'SF', 'BD': 'BD', 'Jeunesse': 'J',
   };
   // Plages Dewey par défaut, faute de mieux quand Open Library ne connaît pas
   // l'indice réel du livre : 150 Psychologie/développement personnel, 640
@@ -1083,6 +1100,7 @@
     // d'un même genre et/ou d'un même rayon, inutile de le ressaisir livre par livre.
     const forcedGenre = document.getElementById('batch-genre').value || null;
     const shelfLocation = document.getElementById('batch-shelf').value.trim() || null;
+    const onSiteOnly = document.getElementById('batch-onsite-only').checked;
     // Les livres qui arrivent pendant une session de don ne sont pas encore
     // plastifiés/étiquetés : ils restent hors catalogue jusqu'à validation
     // par un agent (voir toggleEquipped plus bas et sql/add_book_equipping.sql).
@@ -1149,6 +1167,7 @@
         // Le rayon forcé pour toute l'étagère prime sur la cote proposée
         // automatiquement, si l'agent en a saisi un pour ce lot.
         shelf_location: shelfLocation || suggestCote(meta.category, meta.author, meta.dewey),
+        on_site_only: onSiteOnly,
       };
 
       const { data: inserted, error } = await supabase.from('books').insert(payload).select().single();
@@ -1623,6 +1642,7 @@
       cover_initial: title[0].toUpperCase(),
       available: !fromDonation,
       equipped: !fromDonation,
+      on_site_only: false,
     }).select().single();
     if (error) {
       resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`;
@@ -1669,6 +1689,11 @@
           <button type="button" id="copy-barcode-camera-btn" onclick="toggleCamera('copyBarcode')" style="touch-action: manipulation;" class="shrink-0 text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg px-3">📷</button>
         </div>
         <p class="text-[10.5px] text-ink/40 mt-1">Pas encore de code (livre pas encore étiqueté) ? Laisse le code provisoire, à remplacer plus tard.</p>
+
+        <label class="flex items-center gap-2 mt-3 text-xs font-semibold text-ink/70">
+          <input type="checkbox" onchange="updateOnSiteOnly(${book.id}, this.checked)" ${book.on_site_only ? 'checked' : ''}>
+          Consultation sur place uniquement (non empruntable)
+        </label>
 
         <button onclick="scanAnotherBook()" class="w-full mt-4 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold">Scanner un autre livre</button>
       </div>`;
@@ -1744,6 +1769,7 @@
             <span class="font-semibold text-ink truncate block">${escapeHtml(b.title)}</span>
             ${b.shelf_location ? `<span class="text-[10px] text-mango-700 font-semibold truncate block">📍 ${escapeHtml(b.shelf_location)}</span>` : ''}
             ${b.copy_barcode ? `<span class="text-[10px] text-ink/40 truncate block">${escapeHtml(b.copy_barcode)}</span>` : ''}
+            ${b.on_site_only ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">📍 Sur place uniquement</span>` : ''}
           </span>
         </span>
         <span class="text-ink/60 truncate">${escapeHtml(b.author)}</span>
@@ -1782,6 +1808,12 @@
 
   window.updateShelfLocation = async function (id, value) {
     const { error } = await supabase.from('books').update({ shelf_location: value.trim() || null }).eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadBooks();
+  };
+
+  window.updateOnSiteOnly = async function (id, checked) {
+    const { error } = await supabase.from('books').update({ on_site_only: checked }).eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadBooks();
   };
@@ -2118,7 +2150,7 @@
     list.innerHTML = events.map(e => `
       <div class="grid grid-cols-[1.6fr_1.2fr_1fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
         <span class="min-w-0">
-          <span class="font-semibold text-ink block truncate">${escapeHtml(e.title)}</span>
+          <span class="font-semibold text-ink block truncate">${escapeHtml(e.title)}${e.event_type ? ` <span class="font-normal text-mango-700">· ${escapeHtml(e.event_type)}</span>` : ''}</span>
           <span class="text-ink/45 text-[11px] block truncate">${escapeHtml(e.communes?.name || '')}${e.location ? ' · ' + escapeHtml(e.location) : ''}</span>
         </span>
         <span class="text-ink/60 text-xs">${formatEventDateShort(e.event_date)}</span>
@@ -2148,6 +2180,7 @@
     if (!e) return;
     document.getElementById('event-id').value = e.id;
     document.getElementById('event-title').value = e.title;
+    document.getElementById('event-type').value = e.event_type || '';
     document.getElementById('event-description').value = e.description || '';
     document.getElementById('event-date').value = toDatetimeLocalValue(e.event_date);
     document.getElementById('event-duration').value = e.duration_minutes || 90;
@@ -2161,6 +2194,7 @@
   window.resetEventForm = function () {
     document.getElementById('event-id').value = '';
     document.getElementById('event-title').value = '';
+    document.getElementById('event-type').value = '';
     document.getElementById('event-description').value = '';
     document.getElementById('event-date').value = '';
     document.getElementById('event-duration').value = '90';
@@ -2174,6 +2208,7 @@
   window.saveEvent = async function () {
     const id = document.getElementById('event-id').value;
     const title = document.getElementById('event-title').value.trim();
+    const event_type = document.getElementById('event-type').value || null;
     const description = document.getElementById('event-description').value.trim();
     const dateValue = document.getElementById('event-date').value;
     const duration_minutes = Number(document.getElementById('event-duration').value) || 90;
@@ -2196,6 +2231,7 @@
 
     const payload = {
       title,
+      event_type,
       description: description || null,
       event_date: new Date(dateValue).toISOString(),
       duration_minutes,
