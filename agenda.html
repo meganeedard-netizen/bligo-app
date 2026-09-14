@@ -132,6 +132,8 @@
     list.innerHTML = events.map(e => {
       const attending = myRsvps.has(e.id);
       const count = rsvpCounts[e.id] || 0;
+      const full = e.max_seats != null && count >= e.max_seats && !attending;
+      const seatsLabel = e.max_seats != null ? `${count} / ${e.max_seats} place${e.max_seats > 1 ? 's' : ''}` : `${count} inscrit${count > 1 ? 's' : ''}`;
       return `
         <div class="bg-white border border-white shadow-md rounded-2xl p-4 flex gap-4">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white shrink-0">
@@ -143,17 +145,17 @@
             <p class="text-[11px] text-ink/45 mt-0.5">${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
             ${e.description ? `<p class="text-xs text-ink/60 leading-relaxed mt-2">${e.description}</p>` : ''}
             <div class="flex items-center gap-2 mt-3 flex-wrap">
-              <button data-event-id="${e.id}" class="rsvp-btn text-xs font-semibold rounded-lg px-3 py-1.5 ${attending ? 'bg-mango-50 text-mango-700 border border-mango-200' : 'bg-ink text-white'}">
-                ${attending ? 'Tu participes ✓' : 'Je participe'}
+              <button data-event-id="${e.id}" ${full ? 'disabled' : ''} class="rsvp-btn text-xs font-semibold rounded-lg px-3 py-1.5 ${attending ? 'bg-mango-50 text-mango-700 border border-mango-200' : full ? 'bg-ink/10 text-ink/35' : 'bg-ink text-white'}">
+                ${attending ? 'Tu participes ✓' : full ? 'Complet' : 'Je participe'}
               </button>
               ${attending ? `<button data-event-id="${e.id}" class="ics-btn text-xs font-semibold rounded-lg px-3 py-1.5 border border-hibiscus-200 text-hibiscus-700 bg-white">＋ Ajouter à mon calendrier</button>` : ''}
-              <span class="text-[10.5px] text-ink/40">${count} inscrit${count > 1 ? 's' : ''}</span>
+              <span class="text-[10.5px] text-ink/40">${seatsLabel}</span>
             </div>
           </div>
         </div>`;
     }).join('');
 
-    list.querySelectorAll('.rsvp-btn').forEach(btn => {
+    list.querySelectorAll('.rsvp-btn:not(:disabled)').forEach(btn => {
       btn.addEventListener('click', () => toggleRsvp(Number(btn.dataset.eventId)));
     });
     list.querySelectorAll('.ics-btn').forEach(btn => {
@@ -205,7 +207,10 @@
     if (myRsvps.has(eventId)) {
       await supabase.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', currentUser.id);
     } else {
-      await supabase.from('event_rsvps').insert({ event_id: eventId, user_id: currentUser.id });
+      // La jauge est aussi vérifiée côté base (trigger), au cas où deux usagers
+      // se disputeraient la dernière place en même temps.
+      const { error } = await supabase.from('event_rsvps').insert({ event_id: eventId, user_id: currentUser.id });
+      if (error) alert(error.message);
     }
     await loadEvents();
   }

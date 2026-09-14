@@ -250,7 +250,15 @@
               </div>
             </div>
             <label class="text-xs font-semibold text-ink/60 block mb-1">Lieu (optionnel)</label>
-            <input id="event-location" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Ex. Salle Jeunesse">
+            <input id="event-location" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ex. Salle Jeunesse">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre de places</label>
+            <div class="flex items-center gap-2 mb-3">
+              <input type="number" min="1" id="event-max-seats" class="flex-1 border border-mango-100 rounded-lg px-3 py-2 text-sm" placeholder="Ex. 20">
+              <label class="flex items-center gap-1.5 text-xs font-semibold text-ink/60 whitespace-nowrap">
+                <input type="checkbox" id="event-unlimited" onchange="toggleEventUnlimited()">
+                Illimité
+              </label>
+            </div>
             <div class="flex gap-2">
               <button onclick="saveEvent()" class="flex-1 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
               <button onclick="resetEventForm()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Annuler</button>
@@ -1774,7 +1782,7 @@
           <span class="text-ink/45 text-[11px] block truncate">${escapeHtml(e.communes?.name || '')}${e.location ? ' · ' + escapeHtml(e.location) : ''}</span>
         </span>
         <span class="text-ink/60 text-xs">${formatEventDateShort(e.event_date)}</span>
-        <span class="text-ink/50 text-xs">${e.rsvpCount} inscrit${e.rsvpCount > 1 ? 's' : ''}</span>
+        <span class="text-ink/50 text-xs">${e.rsvpCount}${e.max_seats != null ? ' / ' + e.max_seats : ''} inscrit${e.rsvpCount > 1 ? 's' : ''}</span>
         <span class="text-right flex gap-2 justify-end whitespace-nowrap">
           <button onclick="editEvent(${e.id})" class="text-xs text-mango-700 hover:text-mango-800 font-semibold">Modifier</button>
           <button onclick="deleteEvent(${e.id}, '${escapeJsAttr(e.title)}')" class="text-xs text-red-500/70 hover:text-red-600 font-semibold">Supprimer</button>
@@ -1788,6 +1796,13 @@
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
+  window.toggleEventUnlimited = function () {
+    const unlimited = document.getElementById('event-unlimited').checked;
+    const input = document.getElementById('event-max-seats');
+    input.disabled = unlimited;
+    if (unlimited) input.value = '';
+  };
+
   window.editEvent = function (id) {
     const e = events.find(x => x.id === id);
     if (!e) return;
@@ -1797,6 +1812,9 @@
     document.getElementById('event-date').value = toDatetimeLocalValue(e.event_date);
     document.getElementById('event-commune').value = e.commune_id || '';
     document.getElementById('event-location').value = e.location || '';
+    document.getElementById('event-unlimited').checked = e.max_seats == null;
+    document.getElementById('event-max-seats').disabled = e.max_seats == null;
+    document.getElementById('event-max-seats').value = e.max_seats == null ? '' : e.max_seats;
   };
 
   window.resetEventForm = function () {
@@ -1806,6 +1824,9 @@
     document.getElementById('event-date').value = '';
     if (myCommuneId) document.getElementById('event-commune').value = myCommuneId;
     document.getElementById('event-location').value = '';
+    document.getElementById('event-unlimited').checked = false;
+    document.getElementById('event-max-seats').disabled = false;
+    document.getElementById('event-max-seats').value = '';
   };
 
   window.saveEvent = async function () {
@@ -1815,9 +1836,20 @@
     const dateValue = document.getElementById('event-date').value;
     const commune_id = Number(document.getElementById('event-commune').value) || null;
     const location = document.getElementById('event-location').value.trim();
+    const unlimited = document.getElementById('event-unlimited').checked;
+    const maxSeatsRaw = document.getElementById('event-max-seats').value.trim();
 
     if (!title) { alert('Le titre est obligatoire.'); return; }
     if (!dateValue) { alert('La date est obligatoire.'); return; }
+
+    let max_seats = null;
+    if (!unlimited) {
+      max_seats = parseInt(maxSeatsRaw, 10);
+      if (!maxSeatsRaw || !Number.isInteger(max_seats) || max_seats < 1) {
+        alert('Indique un nombre de places (entier positif), ou coche « Illimité ».');
+        return;
+      }
+    }
 
     const payload = {
       title,
@@ -1825,6 +1857,7 @@
       event_date: new Date(dateValue).toISOString(),
       commune_id,
       location: location || null,
+      max_seats,
     };
 
     const { error } = id
