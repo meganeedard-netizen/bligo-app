@@ -197,6 +197,10 @@
         <h2 class="text-lg font-bold text-ink mb-1">Catalogue</h2>
         <p class="text-sm text-ink/55 mb-3">Tous les livres du fonds : recherche, change une catégorie, marque un don équipé, ou supprime une fiche.</p>
 
+        <input id="catalogue-search" type="text" oninput="renderCatalogue()" placeholder="Chercher par titre, auteur, ISBN ou code-barres de la médiathèque"
+          style="font-size: 16px;"
+          class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm mb-4 outline-none focus:ring-2 focus:ring-mango-300">
+
         <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<span id="to-equip-badge" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></span></h3>
         <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
           <div class="hidden sm:grid grid-cols-[1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[820px]">
@@ -1678,15 +1682,34 @@
   async function loadBooks() {
     const { data, error } = await supabase.from('books').select('*').order('id', { ascending: false });
     if (error) { console.error(error); return; }
+
+    // Code-barres de l'exemplaire, pour la recherche du catalogue (un seul
+    // exemplaire par livre dans ce flux, voir createCopyForBook).
+    const bookIds = data.map(b => b.id);
+    let barcodeByBook = {};
+    if (bookIds.length) {
+      const { data: copies } = await supabase.from('book_copies').select('book_id, barcode').in('book_id', bookIds);
+      (copies || []).forEach(c => { barcodeByBook[c.book_id] = c.barcode; });
+    }
+
     // Les livres pas encore équipés remontent en premier (tri stable : l'ordre
     // par id le plus récent est conservé au sein de chaque groupe), pour que
     // l'agent ne les perde pas de vue au milieu du reste du catalogue.
-    books = data.slice().sort((a, b) => (a.equipped === b.equipped) ? 0 : (a.equipped ? 1 : -1));
+    books = data
+      .map(b => ({ ...b, copy_barcode: barcodeByBook[b.id] || null }))
+      .sort((a, b) => (a.equipped === b.equipped) ? 0 : (a.equipped ? 1 : -1));
     renderCatalogue();
   }
 
   function renderCatalogue() {
-    document.getElementById('catalogue-count').textContent = books.length;
+    // Recherche par titre, auteur, ISBN ou code-barres de la médiathèque —
+    // toujours sur l'ensemble du catalogue, pas seulement la page affichée.
+    const query = normalizeKey(document.getElementById('catalogue-search')?.value || '');
+    const filtered = query
+      ? books.filter(b => normalizeKey([b.title, b.author, b.isbn, b.copy_barcode].filter(Boolean).join(' ')).includes(query))
+      : books;
+
+    document.getElementById('catalogue-count').textContent = filtered.length;
 
     const toEquipCount = books.filter(b => !b.equipped).length;
     const toEquipBadge = document.getElementById('to-equip-badge');
@@ -1694,12 +1717,12 @@
     toEquipBadge.classList.toggle('hidden', toEquipCount === 0);
 
     const list = document.getElementById('catalogue-list');
-    if (!books.length) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucun livre pour l'instant.</p>`;
+    if (!filtered.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">${query ? 'Aucun résultat pour cette recherche.' : "Aucun livre pour l'instant."}</p>`;
       return;
     }
 
-    list.innerHTML = books.map(b => {
+    list.innerHTML = filtered.map(b => {
       const coverHtml = b.cover_url
         ? `<img src="${b.cover_url}" alt="" class="w-8 aspect-[2/3] object-cover rounded bg-mango-50 shrink-0">`
         : `<div class="w-8 aspect-[2/3] rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-[10px] shrink-0">${escapeHtml(b.cover_initial || b.title[0])}</div>`;
@@ -1710,6 +1733,7 @@
           <span class="min-w-0">
             <span class="font-semibold text-ink truncate block">${escapeHtml(b.title)}</span>
             ${b.shelf_location ? `<span class="text-[10px] text-mango-700 font-semibold truncate block">📍 ${escapeHtml(b.shelf_location)}</span>` : ''}
+            ${b.copy_barcode ? `<span class="text-[10px] text-ink/40 truncate block">${escapeHtml(b.copy_barcode)}</span>` : ''}
           </span>
         </span>
         <span class="text-ink/60 truncate">${escapeHtml(b.author)}</span>
