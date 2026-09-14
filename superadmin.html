@@ -62,6 +62,9 @@
         Couvertures manquantes
         <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="missing-covers-count">0</span>
       </button>
+      <button onclick="switchScreen('top20')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="top20">
+        Sélection du mois
+      </button>
     </nav>
 
     <div class="flex-1 min-w-0">
@@ -125,6 +128,26 @@
         </div>
       </section>
 
+      <!-- SELECTION DU MOIS -->
+      <section id="screen-top20" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Sélection du mois</h2>
+        <p class="text-sm text-ink/55 mb-4">Saisis les 20 livres les plus vendus en librairie ce mois-ci, d'après un vrai classement (Livres Hebdo, Edistat...). Visible par les agents comme repère pour leurs achats, pas dans l'appli usagers.</p>
+
+        <div class="flex items-center gap-3 mb-4">
+          <label class="text-xs font-semibold text-ink/60" for="top20-month">Mois</label>
+          <input type="month" id="top20-month" onchange="loadTop20Admin()" class="border border-mango-100 rounded-lg px-3 py-1.5 text-sm">
+        </div>
+
+        <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto mb-4">
+          <div class="grid grid-cols-[auto_auto_1.4fr_1.2fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[760px]">
+            <span>#</span><span></span><span>Titre</span><span>Auteur</span><span>ISBN</span><span></span>
+          </div>
+          <div id="top20-rows" class="min-w-[760px]"></div>
+        </div>
+
+        <button onclick="saveTop20Admin()" class="bg-ink text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer la sélection</button>
+      </section>
+
     </div>
   </div>
 
@@ -142,12 +165,14 @@
 
 <script type="module">
   import { supabase } from './js/supabaseClient.js';
+  import { GOOGLE_BOOKS_API_KEY } from './js/config.js';
 
   let currentUser = null;
   let communes = [];
   let unconfirmedUsers = [];
   let confirmedUsers = [];
   let missingCovers = [];
+  let top20Covers = {}; // rang -> cover_url en cours d'édition
 
   const accessMessage = document.getElementById('access-message');
 
@@ -167,9 +192,12 @@
 
     document.getElementById('app-main').classList.remove('hidden');
     switchScreen('communes');
+    buildTop20Rows();
+    document.getElementById('top20-month').value = defaultMonthValue();
     await loadCommunes();
     await loadUsers();
     await loadMissingCovers();
+    await loadTop20Admin();
   }
 
   window.switchScreen = function (screen) {
@@ -480,6 +508,122 @@
     await supabase.from('free_books').update({ cover_url: image_url }).is('cover_url', null).ilike('title', item.title).ilike('author', item.author);
 
     await loadMissingCovers();
+  };
+
+  // ---------- Sélection du mois ----------
+
+  function defaultMonthValue() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function buildTop20Rows() {
+    const container = document.getElementById('top20-rows');
+    let html = '';
+    for (let rank = 1; rank <= 20; rank++) {
+      html += `
+        <div class="grid grid-cols-[auto_auto_1.4fr_1.2fr_1fr_auto] gap-2 items-center px-4 py-2 border-t border-mango-50 first:border-t-0 text-sm">
+          <span class="text-mango-600 font-bold text-xs">${rank}</span>
+          <span id="top20-cover-${rank}" class="w-7 h-10 rounded bg-mango-50 shrink-0 bg-cover bg-center"></span>
+          <input id="top20-title-${rank}" placeholder="Titre" class="border border-mango-100 rounded-lg px-2 py-1.5 text-sm min-w-0">
+          <input id="top20-author-${rank}" placeholder="Auteur" class="border border-mango-100 rounded-lg px-2 py-1.5 text-sm min-w-0">
+          <input id="top20-isbn-${rank}" placeholder="ISBN (optionnel)" class="border border-mango-100 rounded-lg px-2 py-1.5 text-xs min-w-0">
+          <button type="button" onclick="fetchTop20Cover(${rank})" class="text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-2.5 py-1.5 whitespace-nowrap">Couverture</button>
+        </div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  window.loadTop20Admin = async function () {
+    const monthValue = document.getElementById('top20-month').value || defaultMonthValue();
+    const monthStart = `${monthValue}-01`;
+
+    top20Covers = {};
+    for (let rank = 1; rank <= 20; rank++) {
+      document.getElementById(`top20-title-${rank}`).value = '';
+      document.getElementById(`top20-author-${rank}`).value = '';
+      document.getElementById(`top20-isbn-${rank}`).value = '';
+      document.getElementById(`top20-cover-${rank}`).style.backgroundImage = '';
+    }
+
+    const { data, error } = await supabase.from('monthly_top_books').select('*').eq('month', monthStart).order('rank');
+    if (error) { console.error(error); return; }
+
+    (data || []).forEach(row => {
+      document.getElementById(`top20-title-${row.rank}`).value = row.title;
+      document.getElementById(`top20-author-${row.rank}`).value = row.author;
+      document.getElementById(`top20-isbn-${row.rank}`).value = row.isbn || '';
+      top20Covers[row.rank] = row.cover_url || null;
+      if (row.cover_url) document.getElementById(`top20-cover-${row.rank}`).style.backgroundImage = `url(${row.cover_url})`;
+    });
+  };
+
+  // Recherche minimale de couverture sur Google Books (par ISBN si connu, sinon
+  // titre + auteur), même logique que admin.html, gardée volontairement légère
+  // ici puisque seule la couverture nous intéresse pour cet écran.
+  async function fetchTop20BookMeta(query, attempt = 1) {
+    try {
+      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1&key=${GOOGLE_BOOKS_API_KEY}`);
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        if (attempt < 3) { await new Promise(r => setTimeout(r, 600 * attempt)); return fetchTop20BookMeta(query, attempt + 1); }
+        return null;
+      }
+      const item = data.items?.[0]?.volumeInfo;
+      if (!item?.title) return null;
+      return {
+        title: item.title,
+        author: (item.authors || []).join(', '),
+        cover_url: item.imageLinks?.thumbnail?.replace('http://', 'https://') || null,
+      };
+    } catch {
+      if (attempt < 3) { await new Promise(r => setTimeout(r, 600 * attempt)); return fetchTop20BookMeta(query, attempt + 1); }
+      return null;
+    }
+  }
+
+  window.fetchTop20Cover = async function (rank) {
+    const isbn = document.getElementById(`top20-isbn-${rank}`).value.trim();
+    const title = document.getElementById(`top20-title-${rank}`).value.trim();
+    const author = document.getElementById(`top20-author-${rank}`).value.trim();
+    if (!isbn && !title) { alert('Renseigne au moins un titre ou un ISBN avant de chercher la couverture.'); return; }
+
+    const meta = await fetchTop20BookMeta(isbn ? `isbn:${isbn}` : `${title} ${author}`.trim());
+    if (!meta) { alert('Aucune couverture trouvée pour cette recherche.'); return; }
+
+    if (!title) document.getElementById(`top20-title-${rank}`).value = meta.title;
+    if (!author && meta.author) document.getElementById(`top20-author-${rank}`).value = meta.author;
+
+    top20Covers[rank] = meta.cover_url;
+    document.getElementById(`top20-cover-${rank}`).style.backgroundImage = meta.cover_url ? `url(${meta.cover_url})` : '';
+  };
+
+  window.saveTop20Admin = async function () {
+    const monthValue = document.getElementById('top20-month').value || defaultMonthValue();
+    const monthStart = `${monthValue}-01`;
+
+    const upserts = [];
+    const emptyRanks = [];
+    for (let rank = 1; rank <= 20; rank++) {
+      const title = document.getElementById(`top20-title-${rank}`).value.trim();
+      const author = document.getElementById(`top20-author-${rank}`).value.trim();
+      const isbn = document.getElementById(`top20-isbn-${rank}`).value.trim();
+      if (!title) { emptyRanks.push(rank); continue; }
+      if (!author) { alert(`Le rang ${rank} a un titre mais pas d'auteur, complète-le avant d'enregistrer.`); return; }
+      upserts.push({ month: monthStart, rank, title, author, isbn: isbn || null, cover_url: top20Covers[rank] || null });
+    }
+
+    if (upserts.length) {
+      const { error } = await supabase.from('monthly_top_books').upsert(upserts, { onConflict: 'month,rank' });
+      if (error) { alert('Erreur : ' + error.message); return; }
+    }
+    if (emptyRanks.length) {
+      const { error } = await supabase.from('monthly_top_books').delete().eq('month', monthStart).in('rank', emptyRanks);
+      if (error) console.error(error);
+    }
+
+    alert('Sélection du mois enregistrée.');
+    await loadTop20Admin();
   };
 
   window.logout = async function () {

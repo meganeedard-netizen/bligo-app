@@ -63,6 +63,12 @@
         Réservations
         <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="reservations-count">0</span>
       </button>
+      <button onclick="switchScreen('stats')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="stats">
+        Tendances
+      </button>
+      <button onclick="switchScreen('top20')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="top20">
+        Sélection du mois
+      </button>
     </nav>
 
     <div class="flex-1 min-w-0">
@@ -218,6 +224,42 @@
         <div id="reservations-list" class="flex flex-col gap-3"></div>
       </section>
 
+      <!-- TENDANCES -->
+      <section id="screen-stats" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Tendances d'emprunt</h2>
+        <p class="text-sm text-ink/55 mb-4">Les livres et les auteurs les plus empruntés, pour t'aider à choisir quoi racheter.</p>
+
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+          <div class="flex items-center gap-1 bg-mango-50 border border-mango-100 rounded-full p-1 w-fit">
+            <button id="stats-scope-commune-btn" type="button" onclick="setStatsScope('commune')" style="touch-action: manipulation;" class="text-xs font-semibold px-4 py-1.5 rounded-full">Ma médiathèque</button>
+            <button id="stats-scope-community-btn" type="button" onclick="setStatsScope('community')" style="touch-action: manipulation;" class="text-xs font-semibold px-4 py-1.5 rounded-full">Tout le réseau</button>
+          </div>
+          <select id="stats-period" onchange="loadStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white">
+            <option value="month">Ce mois-ci</option>
+            <option value="year">Cette année</option>
+            <option value="all" selected>Depuis toujours</option>
+          </select>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-5">
+          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden h-fit">
+            <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">Livres les plus empruntés</div>
+            <div id="stats-books-list"></div>
+          </div>
+          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden h-fit">
+            <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">Auteurs les plus empruntés</div>
+            <div id="stats-authors-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SELECTION DU MOIS -->
+      <section id="screen-top20" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Sélection du mois</h2>
+        <p class="text-sm text-ink/55 mb-4">Les 20 livres les plus vendus en librairie ce mois-ci, choisis par l'administratrice BliGO. Un repère pour les achats, pas un livre du catalogue.</p>
+        <div id="top20-readonly-list" class="flex flex-col gap-2"></div>
+      </section>
+
     </div>
   </div>
 
@@ -236,6 +278,7 @@
   let reservations = [];
   let zxingReaders = {};
   let donorSession = null; // { id, full_name, count }
+  let statsScope = 'commune';
 
   const CATEGORIES = [
     'Roman', 'Thriller', 'Fantasy', 'Jeunesse', 'BD',
@@ -291,7 +334,8 @@
     switchScreen('scan');
     setScanBatchMode(false);
     switchReservationTab('preparation');
-    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations()]);
+    document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
+    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations(), loadStats(), loadTop20Readonly()]);
   }
 
   window.switchScreen = function (screen) {
@@ -1643,6 +1687,109 @@
       .replace(/\\/g, '\\\\')
       .replace(/'/g, "\\'")
       .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  // ---------- Tendances ----------
+
+  window.setStatsScope = function (scope) {
+    statsScope = scope;
+    document.getElementById('stats-scope-commune-btn').classList.toggle('bg-white', scope === 'commune');
+    document.getElementById('stats-scope-commune-btn').classList.toggle('shadow-sm', scope === 'commune');
+    document.getElementById('stats-scope-commune-btn').classList.toggle('text-ink', scope === 'commune');
+    document.getElementById('stats-scope-community-btn').classList.toggle('bg-white', scope === 'community');
+    document.getElementById('stats-scope-community-btn').classList.toggle('shadow-sm', scope === 'community');
+    document.getElementById('stats-scope-community-btn').classList.toggle('text-ink', scope === 'community');
+    loadStats();
+  };
+
+  function statsSinceDate() {
+    const period = document.getElementById('stats-period')?.value || 'all';
+    const now = new Date();
+    if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    if (period === 'year') return new Date(now.getFullYear(), 0, 1).toISOString();
+    return null;
+  }
+
+  window.loadStats = async function () {
+    const p_since = statsSinceDate();
+    const [{ data: topBooks, error: e1 }, { data: topAuthors, error: e2 }] = await Promise.all([
+      supabase.rpc('stats_top_books', { p_scope: statsScope, p_since, p_limit: 20 }),
+      supabase.rpc('stats_top_authors', { p_scope: statsScope, p_since, p_limit: 20 }),
+    ]);
+    if (e1) console.error(e1);
+    if (e2) console.error(e2);
+    renderStatsBooks(topBooks || []);
+    renderStatsAuthors(topAuthors || []);
+  };
+
+  function renderStatsBooks(rows) {
+    const list = document.getElementById('stats-books-list');
+    if (!rows.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8 px-4">Pas encore d'emprunt enregistré sur cette période.</p>`;
+      return;
+    }
+    list.innerHTML = rows.map((r, i) => `
+      <div class="flex items-center gap-3 px-4 py-2.5 border-t border-mango-50 first:border-t-0 text-sm">
+        <span class="text-ink/30 font-bold text-xs w-5 shrink-0">${i + 1}</span>
+        ${r.cover_url
+          ? `<img src="${escapeHtml(r.cover_url)}" alt="" class="w-8 h-11 object-cover rounded shrink-0 bg-mango-50">`
+          : `<span class="w-8 h-11 rounded bg-mango-50 shrink-0"></span>`}
+        <span class="min-w-0 flex-1">
+          <span class="block font-semibold text-ink truncate">${escapeHtml(r.title)}</span>
+          <span class="block text-ink/50 text-xs truncate">${escapeHtml(r.author)}</span>
+        </span>
+        <span class="text-xs font-bold text-mango-700 shrink-0">${r.loan_count} ${r.loan_count > 1 ? 'prêts' : 'prêt'}</span>
+      </div>`).join('');
+  }
+
+  function renderStatsAuthors(rows) {
+    const list = document.getElementById('stats-authors-list');
+    if (!rows.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8 px-4">Pas encore d'emprunt enregistré sur cette période.</p>`;
+      return;
+    }
+    list.innerHTML = rows.map((r, i) => `
+      <div class="flex items-center gap-3 px-4 py-2.5 border-t border-mango-50 first:border-t-0 text-sm">
+        <span class="text-ink/30 font-bold text-xs w-5 shrink-0">${i + 1}</span>
+        <span class="min-w-0 flex-1">
+          <span class="block font-semibold text-ink truncate">${escapeHtml(r.author)}</span>
+          <span class="block text-ink/50 text-xs">${r.distinct_titles} titre${r.distinct_titles > 1 ? 's' : ''} au catalogue</span>
+        </span>
+        <span class="text-xs font-bold text-mango-700 shrink-0">${r.loan_count} ${r.loan_count > 1 ? 'prêts' : 'prêt'}</span>
+      </div>`).join('');
+  }
+
+  // ---------- Sélection du mois (lecture seule, saisie côté espace admin BliGO) ----------
+
+  window.loadTop20Readonly = async function () {
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const { data, error } = await supabase
+      .from('monthly_top_books')
+      .select('rank, title, author, cover_url')
+      .eq('month', monthStart)
+      .order('rank');
+    if (error) { console.error(error); return; }
+    renderTop20Readonly(data || []);
+  };
+
+  function renderTop20Readonly(rows) {
+    const list = document.getElementById('top20-readonly-list');
+    if (!rows.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">La sélection de ce mois n'a pas encore été saisie.</p>`;
+      return;
+    }
+    list.innerHTML = rows.map(r => `
+      <div class="flex items-center gap-3 bg-white border border-mango-100 rounded-xl px-4 py-2.5">
+        <span class="text-mango-600 font-bold text-sm w-6 shrink-0">${r.rank}</span>
+        ${r.cover_url
+          ? `<img src="${escapeHtml(r.cover_url)}" alt="" class="w-8 h-11 object-cover rounded shrink-0 bg-mango-50">`
+          : `<span class="w-8 h-11 rounded bg-mango-50 shrink-0"></span>`}
+        <span class="min-w-0">
+          <span class="block font-semibold text-ink truncate">${escapeHtml(r.title)}</span>
+          <span class="block text-ink/50 text-xs truncate">${escapeHtml(r.author)}</span>
+        </span>
+      </div>`).join('');
   }
 
   window.logout = async function () {
