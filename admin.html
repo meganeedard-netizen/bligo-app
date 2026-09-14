@@ -1161,6 +1161,9 @@
       if (!meta.dewey && !COTE_LETTER_PREFIX[meta.category]) {
         meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
       }
+      if (!meta.format) {
+        meta.format = await fetchFormatFromOpenLibrary(isbn);
+      }
 
       const payload = {
         title: meta.title,
@@ -1176,6 +1179,7 @@
         published_date: meta.published_date || null,
         page_count: meta.page_count || null,
         language: meta.language || null,
+        format: meta.format || null,
         // Le rayon forcé pour toute l'étagère prime sur la cote proposée
         // automatiquement, si l'agent en a saisi un pour ce lot.
         shelf_location: shelfLocation || suggestCote(meta.category, meta.author, meta.dewey),
@@ -1298,6 +1302,35 @@
     }
   }
 
+  // Traduit les libellés anglais d'Open Library vers ce qu'un agent français
+  // attend de voir. Toute valeur non reconnue reste vide plutôt qu'affichée
+  // telle quelle en anglais.
+  const PHYSICAL_FORMAT_FR = {
+    'paperback': 'Broché',
+    'mass market paperback': 'Poche',
+    'trade paperback': 'Broché',
+    'hardcover': 'Relié',
+    'hardback': 'Relié',
+    'library binding': 'Relié',
+    'board book': 'Cartonné',
+    'spiral-bound': 'Reliure spirale',
+  };
+
+  // Le format physique (poche, broché, relié…) n'existe que sur l'endpoint
+  // "fiche complète" d'Open Library (/isbn/…), pas sur jscmd=data utilisé
+  // ailleurs pour l'indice Dewey — d'où cet appel séparé.
+  async function fetchFormatFromOpenLibrary(isbn) {
+    try {
+      const res = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const raw = (data.physical_format || '').toLowerCase().trim();
+      return PHYSICAL_FORMAT_FR[raw] || null;
+    } catch {
+      return null;
+    }
+  }
+
   // Vérifie si Open Library a une vraie couverture pour cet ISBN (le paramètre
   // default=false évite qu'elle renvoie une image "sans couverture" par défaut).
   async function fetchCoverFromOpenLibrary(isbn) {
@@ -1333,6 +1366,12 @@
     // titre/auteur (livre absent de Google Books ET Open Library).
     if (meta && !meta.cover_url) {
       meta.cover_url = await lookupCoverBank(meta.title, meta.author);
+    }
+    // Le format physique (poche, broché, relié…) n'existe que sur Open
+    // Library, jamais sur Google Books — et seulement pour une partie des
+    // fiches. Une info en plus quand elle est là, tant pis sinon.
+    if (meta && !meta.format && isIsbn) {
+      meta.format = await fetchFormatFromOpenLibrary(isbn);
     }
 
     if (!meta) {
@@ -1650,7 +1689,7 @@
     input.focus();
   };
 
-  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null }) {
+  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null }) {
     const resultBox = document.getElementById('scan-result');
     // Même logique que le scan par lot : un livre issu d'un don reste hors
     // catalogue tant qu'il n'a pas été plastifié/étiqueté par un agent.
@@ -1658,7 +1697,7 @@
     const cote = suggestCote(category, author, dewey);
     const { data, error } = await supabase.from('books').insert({
       title, author, category, summary, cover_url, isbn,
-      publisher, published_date, page_count, language,
+      publisher, published_date, page_count, language, format,
       shelf_location: cote,
       cover_initial: title[0].toUpperCase(),
       available: !fromDonation,
