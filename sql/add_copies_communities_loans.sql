@@ -145,6 +145,10 @@ create policy "Les agents gèrent les exemplaires"
 -- avec un code-barres provisoire reconnaissable (BLIGO-000123). Les agents remplaceront
 -- ces codes provisoires par les vrais au fur et à mesure qu'ils rééquiperont les livres.
 
+-- Certaines bases n'ont pas encore reçu sql/add_shelf_location.sql : on s'assure
+-- que la colonne existe avant de la lire ci-dessous.
+alter table public.books add column if not exists shelf_location text;
+
 insert into public.book_copies (book_id, barcode, owner_commune_id, current_commune_id, shelf_location, status)
 select
   b.id,
