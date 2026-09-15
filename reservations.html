@@ -40,6 +40,11 @@
 <main class="max-w-4xl mx-auto px-5 py-8">
   <p id="empty-state" class="hidden text-sm text-ink/40 text-center py-16">Aucune réservation pour le moment — direction le catalogue pour réserver ton premier livre !</p>
 
+  <div id="overdue-section" class="hidden mb-8">
+    <h2 class="text-sm font-bold text-red-600 mb-3">En retard</h2>
+    <div id="overdue-list" class="flex flex-col gap-3"></div>
+  </div>
+
   <div id="borrowed-section" class="hidden mb-8">
     <h2 class="text-sm font-bold text-ink mb-3">Emprunté</h2>
     <div id="borrowed-list" class="flex flex-col gap-3"></div>
@@ -95,6 +100,7 @@
 
   let currentUser = null;
   let reservations = [];
+  let loans = [];
   let communes = [];
   let myRatings = {};
   let myComments = {};
@@ -134,7 +140,7 @@
     const { data: communesData } = await supabase.from('communes').select('id, name, opening_hours');
     communes = communesData || [];
 
-    await Promise.all([loadReservations(), loadMyRatings()]);
+    await Promise.all([loadReservations(), loadLoans(), loadMyRatings()]);
     renderAll();
 
     if (window.location.hash === '#history-section') {
@@ -164,6 +170,21 @@
     reservations = data;
   }
 
+  // Emprunts pris directement au comptoir, sans réservation Click & Collect
+  // préalable (scan de la carte usager par l'agent) — reservation_id null
+  // filtre les emprunts déjà couverts par loadReservations() ci-dessus, pour
+  // ne pas les afficher en double.
+  async function loadLoans() {
+    const { data, error } = await supabase
+      .from('loans')
+      .select('id, borrowed_at, due_at, returned_at, borrowed_at_commune_id, book_copies ( books ( id, title, author, cover_initial, cover_url ) )')
+      .eq('user_id', currentUser.id)
+      .is('reservation_id', null)
+      .order('borrowed_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    loans = data;
+  }
+
   function normalize(list) {
     return (list || []).map(r => {
       const book = r.books;
@@ -179,6 +200,31 @@
         createdAt: r.created_at,
         readyAt: r.ready_at || null,
         returnDueAt: r.return_due_at || null,
+        myRating: book?.id ? (myRatings[book.id] || null) : null,
+        myComment: book?.id ? (myComments[book.id] || '') : '',
+      };
+    });
+  }
+
+  // Même forme que normalize(), pour les emprunts comptoir sans réservation.
+  // statut "loan_returned" (propre à cette page) plutôt que réutiliser
+  // "expiree" — ce statut sert déjà pour une réservation non récupérée à
+  // temps, pas pour un livre normalement rendu après lecture.
+  function normalizeLoans(list) {
+    return (list || []).map(l => {
+      const book = l.book_copies?.books;
+      return {
+        id: `loan-${l.id}`,
+        title: book?.title || 'Livre supprimé',
+        author: book?.author || '',
+        coverInitial: book?.cover_initial || book?.title?.[0] || '?',
+        coverUrl: book?.cover_url || null,
+        communeId: l.borrowed_at_commune_id || null,
+        bookId: book?.id || null,
+        status: l.returned_at ? 'loan_returned' : 'recupere',
+        createdAt: l.borrowed_at,
+        readyAt: null,
+        returnDueAt: l.due_at || null,
         myRating: book?.id ? (myRatings[book.id] || null) : null,
         myComment: book?.id ? (myComments[book.id] || '') : '',
       };
@@ -235,6 +281,26 @@
         </div>
         <div class="relative mt-2.5 pt-2.5 border-t border-white/15">
           <p class="text-xs font-bold">📍 Médiathèque de ${communeNameFor(communeId)}</p>
+        </div>
+      </div>`;
+  }
+
+  // Livres récupérés, dont la date de retour est dépassée.
+  function overdueGroupHtml(items) {
+    const communeId = items[0].communeId;
+    const oldestDue = items.reduce((min, it) => new Date(it.returnDueAt) < new Date(min) ? it.returnDueAt : min, items[0].returnDueAt);
+    const daysLate = Math.max(1, Math.ceil((new Date() - new Date(oldestDue)) / 86400000));
+    const rowsHtml = items.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { hideMeta: true })}</div>`).join('');
+    return `
+      <div class="bg-red-50 border border-red-100 rounded-xl p-3.5 shadow-sm">
+        <div class="flex mb-2.5">
+          <span class="w-fit bg-red-600 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm">⚠️ En retard depuis ${daysLate} jour${daysLate > 1 ? 's' : ''} — à rapporter dès que possible</span>
+        </div>
+        <div class="flex flex-col gap-2.5 divide-y divide-red-100">
+          ${rowsHtml}
+        </div>
+        <div class="mt-2.5 pt-2.5 border-t border-red-100">
+          <p class="text-xs font-bold text-red-700">📍 Médiathèque de ${communeNameFor(communeId)}</p>
         </div>
       </div>`;
   }
@@ -390,6 +456,13 @@
     el.innerHTML = items.length ? groupByCommune(items).map(borrowedGroupHtml).join('') : '';
   }
 
+  function renderOverdueList(items) {
+    const section = document.getElementById('overdue-section');
+    const el = document.getElementById('overdue-list');
+    section.classList.toggle('hidden', !items.length);
+    el.innerHTML = items.length ? groupByCommune(items).map(overdueGroupHtml).join('') : '';
+  }
+
   window.rateBookFromHistory = async function (bookId, rating) {
     if (myRatings[bookId] && myRatings[bookId] !== rating) {
       if (!confirm('Tu as déjà noté ce livre. Tu veux vraiment changer ta note ?')) return;
@@ -415,16 +488,19 @@
   };
 
   function renderAll() {
-    const combined = normalize(reservations);
+    const combined = [...normalize(reservations), ...normalizeLoans(loans)];
     const ready = combined.filter(x => x.status === 'pret');
     const preparing = combined.filter(x => x.status === 'preparation');
+    const isOverdue = x => x.status === 'recupere' && x.returnDueAt && new Date(x.returnDueAt) <= new Date();
     const isStillOnLoan = x => x.status === 'recupere' && x.returnDueAt && new Date(x.returnDueAt) > new Date();
+    const overdue = combined.filter(isOverdue);
     const borrowed = combined.filter(isStillOnLoan);
     const history = combined
-      .filter(x => x.status === 'expiree' || (x.status === 'recupere' && !isStillOnLoan(x)))
+      .filter(x => x.status === 'expiree' || x.status === 'loan_returned' || (x.status === 'recupere' && !isStillOnLoan(x) && !isOverdue(x)))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     document.getElementById('empty-state').classList.toggle('hidden', !!combined.length);
+    renderOverdueList(overdue);
     renderBorrowedList(borrowed);
     renderReadyList(ready);
     renderPreparingList(preparing);
