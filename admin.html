@@ -220,21 +220,47 @@
       <!-- EMPRUNT / RETOUR -->
       <section id="screen-loans" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Emprunt / Retour</h2>
-        <p class="text-sm text-ink/55 mb-4">Scanne le code-barres du livre (douchette filaire, Bluetooth, ou caméra) pour l'emprunter ou enregistrer son retour.</p>
 
-        <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
-          <div id="loan-camera-slot" class="mb-2"></div>
-          <div class="flex gap-2">
-            <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Scanne ou tape le code-barres du livre"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupLoanBarcode();}"
-              style="font-size: 16px;"
-              class="flex-1 min-w-0 border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
-            <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan')" style="touch-action: manipulation;" class="shrink-0 bg-mango-50 border border-mango-200 text-mango-700 rounded-lg px-4 text-xl">📷</button>
-          </div>
-          <button onclick="lookupLoanBarcode()" style="touch-action: manipulation;" class="w-full mt-3 bg-ink text-white rounded-lg py-3 text-sm font-semibold active:scale-[0.98] transition">Valider</button>
+        <div class="flex items-center gap-1.5 bg-mango-50 border border-mango-100 rounded-full p-1.5 mb-5 w-fit flex-wrap">
+          <button id="loan-tab-scan-btn" type="button" onclick="switchLoanTab('scan')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Scanner</button>
+          <button id="loan-tab-active-btn" type="button" onclick="switchLoanTab('active')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Emprunts en cours (<span id="loan-active-count">0</span>)</button>
+          <button id="loan-tab-fiche-btn" type="button" onclick="switchLoanTab('fiche')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Fiche usager</button>
         </div>
 
-        <div id="loan-result" class="mt-5 max-w-xl"></div>
+        <div id="loan-panel-scan">
+          <p class="text-sm text-ink/55 mb-4">Scanne le code-barres du livre (douchette filaire, Bluetooth, ou caméra) pour l'emprunter ou enregistrer son retour.</p>
+
+          <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
+            <div id="loan-camera-slot" class="mb-2"></div>
+            <div class="flex gap-2">
+              <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Scanne ou tape le code-barres du livre"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupLoanBarcode();}"
+                style="font-size: 16px;"
+                class="flex-1 min-w-0 border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
+              <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan')" style="touch-action: manipulation;" class="shrink-0 bg-mango-50 border border-mango-200 text-mango-700 rounded-lg px-4 text-xl">📷</button>
+            </div>
+            <button onclick="lookupLoanBarcode()" style="touch-action: manipulation;" class="w-full mt-3 bg-ink text-white rounded-lg py-3 text-sm font-semibold active:scale-[0.98] transition">Valider</button>
+          </div>
+
+          <div id="loan-result" class="mt-5 max-w-xl"></div>
+        </div>
+
+        <div id="loan-panel-active" class="hidden">
+          <p class="text-sm text-ink/55 mb-4">Tous les livres actuellement empruntés dans ta médiathèque, triés par date de retour — les plus urgents en premier.</p>
+          <div id="active-loans-list" class="flex flex-col gap-2.5 max-w-2xl"></div>
+        </div>
+
+        <div id="loan-panel-fiche" class="hidden">
+          <p class="text-sm text-ink/55 mb-4">Recherche un usager par nom ou numéro d'abonné pour voir tout son suivi : emprunts en cours, retards, historique.</p>
+          <div class="flex gap-2 max-w-xl mb-5">
+            <input id="fiche-search-input" type="text" autocomplete="off" placeholder="Nom ou numéro d'abonné"
+              onkeydown="if(event.key==='Enter'){event.preventDefault(); searchUserFiche();}"
+              style="font-size: 16px;"
+              class="flex-1 min-w-0 border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
+            <button onclick="searchUserFiche()" style="touch-action: manipulation;" class="shrink-0 bg-ink text-white rounded-lg px-5 text-sm font-semibold active:scale-[0.98] transition">Chercher</button>
+          </div>
+          <div id="fiche-result" class="max-w-2xl"></div>
+        </div>
       </section>
 
       <!-- PREINSCRIPTIONS -->
@@ -526,7 +552,7 @@
     });
     // Prêt à scanner dès l'arrivée sur l'écran, sans avoir à cliquer dans le
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
-    if (screen === 'loans') document.getElementById('loan-barcode-input')?.focus();
+    if (screen === 'loans') { switchLoanTab('scan'); document.getElementById('loan-barcode-input')?.focus(); }
   };
 
   // ---------- Scan photo (ISBN / EAN) ----------
@@ -1806,6 +1832,206 @@
     input.value = '';
     input.focus();
   };
+
+  // ---------- Emprunts en cours + Fiche usager ----------
+
+  let activeLoans = [];
+  let loanTab = 'scan';
+
+  window.switchLoanTab = function (tab) {
+    loanTab = tab;
+    ['scan', 'active', 'fiche'].forEach(t => {
+      document.getElementById(`loan-panel-${t}`).classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById(`loan-tab-${t}-btn`);
+      const active = tab === t;
+      btn.classList.toggle('bg-white', active);
+      btn.classList.toggle('shadow-sm', active);
+      btn.classList.toggle('text-ink', active);
+    });
+    if (tab === 'active') loadActiveLoans();
+    if (tab === 'scan') document.getElementById('loan-barcode-input')?.focus();
+  };
+
+  // Tous les emprunts en cours de la médiathèque de l'agent connecté (pas les
+  // autres communes de la communauté), qu'ils viennent d'une réservation
+  // Click & Collect ou d'un prêt comptoir direct — la table loans couvre les
+  // deux cas depuis add_scan_operations.sql.
+  async function loadActiveLoans() {
+    const list = document.getElementById('active-loans-list');
+    list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Chargement…</p>`;
+
+    let query = supabase
+      .from('loans')
+      .select('id, due_at, borrowed_at, user_id, book_copies ( barcode, books ( title, author, cover_url, cover_initial ) )')
+      .is('returned_at', null)
+      .order('due_at', { ascending: true });
+    if (myCommuneId) query = query.eq('borrowed_at_commune_id', myCommuneId);
+
+    const { data, error } = await query;
+    if (error) { list.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+
+    const userIds = [...new Set((data || []).map(l => l.user_id))];
+    let profilesById = {};
+    if (userIds.length) {
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, subscriber_number').in('id', userIds);
+      profilesById = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    }
+
+    activeLoans = (data || []).map(l => ({ ...l, profile: profilesById[l.user_id] }));
+    document.getElementById('loan-active-count').textContent = activeLoans.length;
+    renderActiveLoans();
+  }
+
+  function renderActiveLoans() {
+    const list = document.getElementById('active-loans-list');
+    if (!activeLoans.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Aucun emprunt en cours.</p>`;
+      return;
+    }
+    list.innerHTML = activeLoans.map(loanRowHtml).join('');
+  }
+
+  function loanRowHtml(loan) {
+    const book = loan.book_copies?.books;
+    const barcode = loan.book_copies?.barcode;
+    const isLate = new Date(loan.due_at) <= new Date();
+    const daysLate = isLate ? Math.max(1, Math.ceil((new Date() - new Date(loan.due_at)) / 86400000)) : 0;
+    const dueLabel = isLate
+      ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">En retard ${daysLate} j</span>`
+      : `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-mango-50 text-mango-700">À rendre le ${formatDateShortAdmin(loan.due_at)}</span>`;
+    const coverHtml = book?.cover_url
+      ? `<img src="${escapeHtml(book.cover_url)}" alt="" class="w-10 h-14 object-cover rounded shrink-0 bg-mango-50">`
+      : `<div class="w-10 h-14 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${escapeHtml((book?.title || '?')[0])}</div>`;
+    return `
+      <div class="bg-white border ${isLate ? 'border-red-100' : 'border-mango-100'} rounded-xl p-3.5 shadow-sm flex items-center gap-3">
+        ${coverHtml}
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold text-ink truncate">${escapeHtml(book?.title || 'Livre supprimé')}</p>
+          <p class="text-xs text-ink/55 truncate">${escapeHtml(loan.profile?.full_name || '?')} · ${escapeHtml(loan.profile?.subscriber_number || '?')}</p>
+          <div class="mt-1">${dueLabel}</div>
+        </div>
+        ${barcode ? `<button onclick="quickReturnFromList('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="shrink-0 text-[12px] font-semibold text-ink border border-mango-100 rounded-full px-3 py-1.5 hover:bg-mango-50">Marquer rendu</button>` : ''}
+      </div>`;
+  }
+
+  window.quickReturnFromList = async function (barcode) {
+    const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    if (!data.ok) { alert(data.message); return; }
+    playBeep();
+    await loadActiveLoans();
+  };
+
+  window.searchUserFiche = async function () {
+    const term = document.getElementById('fiche-search-input').value.trim();
+    const resultBox = document.getElementById('fiche-result');
+    if (!term) return;
+    resultBox.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Recherche…</p>`;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, subscriber_number, account_type')
+      .or(`subscriber_number.ilike.%${term}%,full_name.ilike.%${term}%`)
+      .limit(10);
+    if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+
+    if (!data.length) {
+      resultBox.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Aucun usager ne correspond à « ${escapeHtml(term)} ».</p>`;
+      return;
+    }
+    if (data.length === 1) { loadFicheFor(data[0]); return; }
+
+    resultBox.innerHTML = `
+      <div class="bg-white border border-mango-100 rounded-xl shadow-sm divide-y divide-mango-50">
+        ${data.map(p => `
+          <button type="button" onclick='loadFicheFor(${JSON.stringify(p)})' style="touch-action: manipulation;" class="w-full text-left px-4 py-3 hover:bg-mango-50 flex items-center justify-between">
+            <span class="text-sm font-semibold text-ink">${escapeHtml(p.full_name)}</span>
+            <span class="text-xs text-ink/45">${escapeHtml(p.subscriber_number)}</span>
+          </button>`).join('')}
+      </div>`;
+  };
+
+  window.loadFicheFor = async function (profile) {
+    const resultBox = document.getElementById('fiche-result');
+    resultBox.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Chargement…</p>`;
+
+    const [{ data: loans, error: loansError }, { data: resa, error: resaError }] = await Promise.all([
+      supabase
+        .from('loans')
+        .select('id, due_at, borrowed_at, returned_at, book_copies ( books ( title, author ) )')
+        .eq('user_id', profile.id)
+        .order('borrowed_at', { ascending: false }),
+      supabase
+        .from('reservations')
+        .select('id, status, created_at, return_due_at, books ( title, author )')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false }),
+    ]);
+    if (loansError || resaError) {
+      resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml((loansError || resaError).message)}</p>`;
+      return;
+    }
+    renderFiche(profile, loans || [], resa || []);
+  };
+
+  function renderFiche(profile, loans, resa) {
+    const resultBox = document.getElementById('fiche-result');
+    const now = new Date();
+
+    // Unifie prêts comptoir et réservations en une seule chronologie, avec un
+    // statut simple à 3 valeurs pour l'affichage (pas les statuts bruts des
+    // deux tables, différents l'un de l'autre).
+    const items = [
+      ...loans.map(l => ({
+        title: l.book_copies?.books?.title || 'Livre supprimé',
+        author: l.book_copies?.books?.author || '',
+        date: l.borrowed_at,
+        state: l.returned_at ? 'rendu' : (new Date(l.due_at) <= now ? 'retard' : 'en_cours'),
+        dueAt: l.due_at,
+      })),
+      ...resa.filter(r => r.status !== 'preparation').map(r => ({
+        title: r.books?.title || 'Livre supprimé',
+        author: r.books?.author || '',
+        date: r.created_at,
+        state: r.status === 'recupere'
+          ? (r.return_due_at && new Date(r.return_due_at) <= now ? 'retard' : 'en_cours')
+          : (r.status === 'expiree' ? 'rendu' : 'en_attente'),
+        dueAt: r.return_due_at,
+      })),
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const stateBadge = {
+      retard: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">En retard</span>',
+      en_cours: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-mango-50 text-mango-700">En cours</span>',
+      en_attente: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Réservation en attente</span>',
+      rendu: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-ink/5 text-ink/45">Rendu</span>',
+    };
+
+    const rowsHtml = items.length
+      ? items.map(it => `
+        <div class="px-4 py-2.5 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-ink truncate">${escapeHtml(it.title)}</p>
+            <p class="text-[11px] text-ink/45">${escapeHtml(it.author)} · ${formatDateShortAdmin(it.date)}</p>
+          </div>
+          ${stateBadge[it.state] || ''}
+        </div>`).join('')
+      : `<p class="text-sm text-ink/40 text-center py-8">Aucun emprunt ni réservation pour cet usager.</p>`;
+
+    resultBox.innerHTML = `
+      <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
+        <div class="px-4 py-3.5 bg-mango-50 border-b border-mango-100 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-bold text-ink">${escapeHtml(profile.full_name)}</p>
+            <p class="text-xs text-ink/55">${escapeHtml(profile.subscriber_number)} · ${profile.account_type === 'officiel' ? 'Compte officiel' : 'Compte flash'}</p>
+          </div>
+          <button type="button" onclick="document.getElementById('fiche-search-input').value=''; document.getElementById('fiche-result').innerHTML='';" style="touch-action: manipulation;" class="text-[12px] font-semibold text-ink/50 hover:text-ink">Nouvelle recherche</button>
+        </div>
+        <div class="divide-y divide-mango-50">
+          ${rowsHtml}
+        </div>
+      </div>`;
+  }
 
   async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null }) {
     const resultBox = document.getElementById('scan-result');
