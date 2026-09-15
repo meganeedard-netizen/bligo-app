@@ -1,4 +1,4 @@
-Au-- BliGO — Dépôt légal/imprimeur, recherche BnF par titre+auteur (14/09/2026)
+-- BliGO — Dépôt légal/imprimeur, recherche BnF par titre+auteur (14/09/2026)
 -- La recherche par ISBN exact ne trouvait que 6/37 livres (éditions différentes
 -- de celles cataloguées par la BnF). La recherche par titre+auteur en trouve
 -- 20 de plus, comme pour Google Books/Open Library.
