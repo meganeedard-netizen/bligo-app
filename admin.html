@@ -1149,6 +1149,17 @@
       let meta = await fetchFromGoogleBooks(`isbn:${isbn}`);
       if (!meta) meta = await fetchFromOpenLibrary(isbn);
       if (meta && !meta.cover_url) meta.cover_url = await fetchCoverFromOpenLibrary(isbn);
+      // Même filet que le scan simple : Open Library comble les trous
+      // d'éditeur/date/pages/langue que Google Books laisse souvent.
+      if (meta && (!meta.publisher || !meta.published_date || !meta.page_count || !meta.language)) {
+        const ol = await fetchFromOpenLibrary(isbn);
+        if (ol) {
+          if (!meta.publisher) meta.publisher = ol.publisher;
+          if (!meta.published_date) meta.published_date = ol.published_date;
+          if (!meta.page_count) meta.page_count = ol.page_count;
+          if (!meta.language) meta.language = ol.language;
+        }
+      }
 
       if (!meta) {
         failedCodes.push(item.code);
@@ -1441,6 +1452,21 @@
     // avec l'autre source avant d'abandonner et d'afficher juste l'initiale colorée.
     if (meta && !meta.cover_url && isIsbn) {
       meta.cover_url = await fetchCoverFromOpenLibrary(isbn);
+    }
+    // Même chose pour éditeur/date/pages/langue : Google Books peut connaître
+    // le livre sans avoir tous ces champs (fréquent pour l'éditeur) — on
+    // comble ce qui manque avec Open Library plutôt que de laisser des trous
+    // qu'une deuxième source aurait pu combler. Un bibliothécaire qui scanne
+    // un vrai code-barres doit repartir avec la fiche la plus complète
+    // possible, pas juste ce que la première source avait.
+    if (meta && isIsbn && (!meta.publisher || !meta.published_date || !meta.page_count || !meta.language)) {
+      const ol = await fetchFromOpenLibrary(isbn);
+      if (ol) {
+        if (!meta.publisher) meta.publisher = ol.publisher;
+        if (!meta.published_date) meta.published_date = ol.published_date;
+        if (!meta.page_count) meta.page_count = ol.page_count;
+        if (!meta.language) meta.language = ol.language;
+      }
     }
     // Dernier recours : une couverture déjà ajoutée à la main par Mégane pour ce
     // titre/auteur (livre absent de Google Books ET Open Library).
