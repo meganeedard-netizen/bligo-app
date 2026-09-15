@@ -1164,7 +1164,7 @@
       if (!meta.format) {
         meta.format = await fetchFormatFromOpenLibrary(isbn);
       }
-      const bnf = await fetchFromBnF(isbn);
+      const bnf = await fetchFromBnF(isbn, meta.title, meta.author);
       if (bnf) {
         meta.legal_deposit = bnf.legal_deposit;
         meta.printer = bnf.printer;
@@ -1346,9 +1346,14 @@
   // API SRU publique, sans clé, données UNIMARC prévues pour être réutilisées
   // par d'autres bibliothèques. Sert aussi de filet pour éditeur/pages/langue
   // si les deux premières sources n'avaient rien trouvé.
-  async function fetchFromBnF(isbn) {
+  //
+  // La recherche par ISBN exact ne trouve un résultat que si la BnF a
+  // cataloguée cette édition précise (elle en a souvent une autre — poche,
+  // grand format…). Testé le 14/09/2026 sur le vrai catalogue : 6/37 par
+  // ISBN, 26/37 en ajoutant titre+auteur en repli — largement plus fiable.
+  async function bnfSruQuery(query) {
     try {
-      const url = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=${encodeURIComponent(`bib.isbn all "${isbn}"`)}&recordSchema=unimarcxchange&maximumRecords=1`;
+      const url = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=${encodeURIComponent(query)}&recordSchema=unimarcxchange&maximumRecords=1`;
       const res = await fetch(url);
       if (!res.ok) return null;
       const text = await res.text();
@@ -1397,6 +1402,17 @@
     }
   }
 
+  async function fetchFromBnF(isbn, title, author) {
+    if (isbn) {
+      const byIsbn = await bnfSruQuery(`bib.isbn all "${isbn}"`);
+      if (byIsbn) return byIsbn;
+    }
+    if (title && author) {
+      return await bnfSruQuery(`bib.title all "${title}" and bib.author all "${author}"`);
+    }
+    return null;
+  }
+
   // Vérifie si Open Library a une vraie couverture pour cet ISBN (le paramètre
   // default=false évite qu'elle renvoie une image "sans couverture" par défaut).
   async function fetchCoverFromOpenLibrary(isbn) {
@@ -1441,8 +1457,8 @@
     }
     // Dépôt légal et imprimeur : aucune des deux sources ci-dessus ne les a,
     // c'est le métier de la BnF.
-    if (meta && isIsbn) {
-      const bnf = await fetchFromBnF(isbn);
+    if (meta) {
+      const bnf = await fetchFromBnF(isIsbn ? isbn : null, meta.title, meta.author);
       if (bnf) {
         meta.legal_deposit = bnf.legal_deposit;
         meta.printer = bnf.printer;
