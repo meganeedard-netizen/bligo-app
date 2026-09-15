@@ -1369,18 +1369,16 @@
         return sub?.textContent?.trim() || null;
       };
 
-      // Tag 020 : numéro de dépôt légal (pays + numéro). Tag 210 $d : la
-      // mention telle qu'imprimée sur le livre (ex. "DL 2017").
-      const f020 = getField('020');
+      // Tag 210 $d : la mention de dépôt légal telle qu'imprimée sur le
+      // livre (ex. "DL 2017"), uniquement l'année, jamais le mois.
       const f210 = getField('210');
       const f215 = getField('215');
       const f101 = getField('101');
 
-      const depositCountry = getSub(f020, 'a');
-      const depositNumber = getSub(f020, 'b');
-      const depositMention = getSub(f210, 'd');
-      const legal_deposit = [depositMention, depositCountry && depositNumber ? `${depositCountry} ${depositNumber}` : null]
-        .filter(Boolean).join(' · ') || null;
+      // Uniquement l'année (ex. "DL 2017") : le numéro de référence interne
+      // de la BnF (tag 020, ex. "FR 09619805") n'est pas une date, on ne le
+      // garde plus depuis le 15/09/2026 pour ne pas prêter à confusion.
+      const legal_deposit = getSub(f210, 'd') || null;
 
       const printer = getSub(f210, 'g');
       const publisher = getSub(f210, 'c');
