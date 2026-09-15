@@ -2566,13 +2566,17 @@
 
   // ---------- Sélection BliGO (lecture seule, saisie côté espace admin BliGO) ----------
 
+  let jeunesseRows = [];
+  let top20Rows = [];
+
   window.loadJeunesseReadonly = async function () {
     const { data, error } = await supabase
       .from('top_jeunesse_books')
-      .select('rank, title, author, age_range, genre, cover_url')
+      .select('*')
       .order('rank');
     if (error) { console.error(error); return; }
-    renderJeunesseReadonly(data || []);
+    jeunesseRows = data || [];
+    renderJeunesseReadonly(jeunesseRows);
   };
 
   function renderJeunesseReadonly(rows) {
@@ -2588,7 +2592,7 @@
           ? `<img src="${escapeHtml(r.cover_url)}" alt="" class="w-8 h-11 object-cover rounded shrink-0 bg-mango-50">`
           : `<span class="w-8 h-11 rounded bg-mango-50 shrink-0"></span>`}
         <span class="min-w-0 flex-1">
-          <span class="block font-semibold text-ink truncate">${escapeHtml(r.title)}</span>
+          <button onclick="openCuratedDetail('jeunesse', ${r.id})" class="block font-semibold text-ink truncate text-left hover:underline">${escapeHtml(r.title)}</button>
           <span class="block text-ink/50 text-xs truncate">${escapeHtml(r.author)}</span>
         </span>
         <span class="text-right shrink-0">
@@ -2603,11 +2607,12 @@
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
     const { data, error } = await supabase
       .from('monthly_top_books')
-      .select('rank, title, author, cover_url')
+      .select('*')
       .eq('month', monthStart)
       .order('rank');
     if (error) { console.error(error); return; }
-    renderTop20Readonly(data || []);
+    top20Rows = data || [];
+    renderTop20Readonly(top20Rows);
   };
 
   function renderTop20Readonly(rows) {
@@ -2623,11 +2628,52 @@
           ? `<img src="${escapeHtml(r.cover_url)}" alt="" class="w-8 h-11 object-cover rounded shrink-0 bg-mango-50">`
           : `<span class="w-8 h-11 rounded bg-mango-50 shrink-0"></span>`}
         <span class="min-w-0">
-          <span class="block font-semibold text-ink truncate">${escapeHtml(r.title)}</span>
+          <button onclick="openCuratedDetail('top20', ${r.id})" class="block font-semibold text-ink truncate text-left hover:underline">${escapeHtml(r.title)}</button>
           <span class="block text-ink/50 text-xs truncate">${escapeHtml(r.author)}</span>
         </span>
       </div>`).join('');
   }
+
+  // Fiche complète en lecture seule, pour Top Jeunesse et Sélection BliGO —
+  // réutilise la même fenêtre modale que la fiche du Catalogue, juste sans
+  // les champs modifiables (ces deux listes se gèrent depuis l'espace admin).
+  window.openCuratedDetail = function (source, id) {
+    const rows = source === 'jeunesse' ? jeunesseRows : top20Rows;
+    const b = rows.find(x => x.id === id);
+    if (!b) return;
+
+    const coverHtml = b.cover_url
+      ? `<img src="${escapeHtml(b.cover_url)}" alt="" class="w-16 h-24 object-cover rounded bg-mango-50 shrink-0">`
+      : `<div class="w-16 h-24 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml(b.title[0])}</div>`;
+
+    const infoRow = (label, value) => value ? `
+      <div class="mb-2">
+        <span class="text-[11px] font-semibold text-ink/50 block">${label}</span>
+        <span class="text-sm text-ink">${escapeHtml(String(value))}</span>
+      </div>` : '';
+
+    document.getElementById('book-modal-content').innerHTML = `
+      <div class="flex gap-3 mb-4">
+        ${coverHtml}
+        <div class="flex-1 min-w-0">
+          <p class="text-base font-bold text-ink leading-snug">${escapeHtml(b.title)}</p>
+          <p class="text-sm text-ink/55">${escapeHtml(b.author)}</p>
+          ${b.age_range || b.genre ? `<p class="text-[11px] text-hibiscus-700 font-semibold mt-1">${escapeHtml([b.age_range, b.genre].filter(Boolean).join(' · '))}</p>` : ''}
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-x-3">
+        ${infoRow('ISBN', b.isbn)}
+        ${infoRow('Éditeur', b.publisher)}
+        ${infoRow('Date de publication', b.published_date)}
+        ${infoRow('Nombre de pages', b.page_count)}
+        ${infoRow('Langue d\'origine', b.language)}
+        ${infoRow('Format', b.format)}
+      </div>
+      ${b.summary ? `<p class="text-sm text-ink/70 leading-relaxed mt-2">${escapeHtml(b.summary)}</p>` : `<p class="text-sm text-ink/40 italic mt-2">Résumé non disponible pour ce titre.</p>`}
+    `;
+    document.getElementById('book-modal-backdrop').classList.remove('hidden');
+    document.getElementById('book-modal-backdrop').classList.add('flex');
+  };
 
   window.logout = async function () {
     await supabase.auth.signOut();
