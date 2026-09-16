@@ -339,24 +339,34 @@
             </select>
             <label class="text-xs font-semibold text-ink/60 block mb-1">Description</label>
             <textarea id="event-description" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Quelques lignes pour donner envie de venir"></textarea>
-            <div class="grid grid-cols-2 gap-2 mb-2">
-              <div>
-                <label class="text-xs font-semibold text-ink/60 block mb-1">Date et heure</label>
-                <input type="datetime-local" id="event-date" step="900" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
-              </div>
-              <div>
-                <label class="text-xs font-semibold text-ink/60 block mb-1">Durée</label>
-                <select id="event-duration" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">
-                  <option value="30">30 min</option>
-                  <option value="45">45 min</option>
-                  <option value="60">1 h</option>
-                  <option value="90" selected>1 h 30</option>
-                  <option value="120">2 h</option>
-                  <option value="150">2 h 30</option>
-                  <option value="180">3 h</option>
-                  <option value="240">4 h</option>
-                </select>
-              </div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Date et heure</label>
+            <div class="grid grid-cols-[1.3fr_0.85fr_0.85fr] gap-2 mb-2">
+              <input type="date" id="event-date" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+              <select id="event-hour" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white"></select>
+              <select id="event-minute" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">
+                <option value="0">h 00</option>
+                <option value="15">h 15</option>
+                <option value="30">h 30</option>
+                <option value="45">h 45</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="text-xs font-semibold text-ink/60 block mb-1">Durée</label>
+              <select id="event-duration" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 h</option>
+                <option value="90" selected>1 h 30</option>
+                <option value="120">2 h</option>
+                <option value="150">2 h 30</option>
+                <option value="180">3 h</option>
+                <option value="210">3 h 30</option>
+                <option value="240">4 h</option>
+                <option value="270">4 h 30</option>
+                <option value="300">5 h</option>
+                <option value="330">5 h 30</option>
+                <option value="360">6 h</option>
+              </select>
             </div>
             <div class="grid grid-cols-2 gap-2 mb-2">
               <div>
@@ -2962,6 +2972,7 @@
   // ---------- Agenda culturel ----------
 
   async function loadCommunesForAgenda() {
+    populateEventHourSelect();
     const { data, error } = await supabase.from('communes').select('id, name').order('name');
     if (error) { console.error(error); return; }
     eventCommunes = data || [];
@@ -2999,16 +3010,31 @@
         <span class="text-ink/60 text-xs">${formatEventDateShort(e.event_date)}</span>
         <span class="text-ink/50 text-xs">${e.rsvpCount}${e.max_seats != null ? ' / ' + e.max_seats : ''} inscrit${e.rsvpCount > 1 ? 's' : ''}</span>
         <span class="text-right flex gap-2 justify-end whitespace-nowrap">
+          <button onclick="duplicateEvent(${e.id})" class="text-xs text-ink/50 hover:text-ink font-semibold">Dupliquer</button>
           <button onclick="editEvent(${e.id})" class="text-xs text-mango-700 hover:text-mango-800 font-semibold">Modifier</button>
           <button onclick="deleteEvent(${e.id}, '${escapeJsAttr(e.title)}')" class="text-xs text-red-500/70 hover:text-red-600 font-semibold">Supprimer</button>
         </span>
       </div>`).join('');
   }
 
-  function toDatetimeLocalValue(iso) {
+  function populateEventHourSelect() {
+    const select = document.getElementById('event-hour');
+    if (select.options.length) return;
+    select.innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${String(h).padStart(2, '0')} h</option>`).join('');
+  }
+
+  // Arrondit une minute quelconque (ex. un événement créé avant cette contrainte)
+  // au quart d'heure le plus proche, pour rester cohérent avec le sélecteur.
+  function roundToQuarterHour(minutes) {
+    return [0, 15, 30, 45].reduce((closest, q) => Math.abs(q - minutes) < Math.abs(closest - minutes) ? q : closest, 0);
+  }
+
+  function setEventDateFields(iso) {
     const d = new Date(iso);
     const pad = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    document.getElementById('event-date').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    document.getElementById('event-hour').value = String(d.getHours());
+    document.getElementById('event-minute').value = String(roundToQuarterHour(d.getMinutes()));
   }
 
   window.toggleEventUnlimited = function () {
@@ -3025,7 +3051,7 @@
     document.getElementById('event-title').value = e.title;
     document.getElementById('event-type').value = e.event_type || '';
     document.getElementById('event-description').value = e.description || '';
-    document.getElementById('event-date').value = toDatetimeLocalValue(e.event_date);
+    setEventDateFields(e.event_date);
     document.getElementById('event-duration').value = e.duration_minutes || 90;
     document.getElementById('event-commune').value = e.commune_id || '';
     document.getElementById('event-location').value = e.location || '';
@@ -3034,12 +3060,34 @@
     document.getElementById('event-max-seats').value = e.max_seats == null ? '' : e.max_seats;
   };
 
+  // Reprend tout le contenu d'un événement passé (titre, type, description,
+  // durée, lieu, places) sans son id ni sa date : évite de tout retaper pour
+  // reprogrammer un événement récurrent (heure du conte mensuelle, etc.).
+  window.duplicateEvent = function (id) {
+    const e = events.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('event-id').value = '';
+    document.getElementById('event-title').value = e.title;
+    document.getElementById('event-type').value = e.event_type || '';
+    document.getElementById('event-description').value = e.description || '';
+    document.getElementById('event-date').value = '';
+    document.getElementById('event-duration').value = e.duration_minutes || 90;
+    document.getElementById('event-commune').value = e.commune_id || '';
+    document.getElementById('event-location').value = e.location || '';
+    document.getElementById('event-unlimited').checked = e.max_seats == null;
+    document.getElementById('event-max-seats').disabled = e.max_seats == null;
+    document.getElementById('event-max-seats').value = e.max_seats == null ? '' : e.max_seats;
+    document.getElementById('event-title').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   window.resetEventForm = function () {
     document.getElementById('event-id').value = '';
     document.getElementById('event-title').value = '';
     document.getElementById('event-type').value = '';
     document.getElementById('event-description').value = '';
     document.getElementById('event-date').value = '';
+    document.getElementById('event-hour').value = '10';
+    document.getElementById('event-minute').value = '0';
     document.getElementById('event-duration').value = '90';
     if (myCommuneId) document.getElementById('event-commune').value = myCommuneId;
     document.getElementById('event-location').value = '';
@@ -3054,6 +3102,8 @@
     const event_type = document.getElementById('event-type').value || null;
     const description = document.getElementById('event-description').value.trim();
     const dateValue = document.getElementById('event-date').value;
+    const hourValue = document.getElementById('event-hour').value;
+    const minuteValue = document.getElementById('event-minute').value;
     const duration_minutes = Number(document.getElementById('event-duration').value) || 90;
     const commune_id = Number(document.getElementById('event-commune').value) || null;
     const location = document.getElementById('event-location').value.trim();
@@ -3072,11 +3122,14 @@
       }
     }
 
+    const eventDate = new Date(dateValue + 'T00:00:00');
+    eventDate.setHours(Number(hourValue), Number(minuteValue), 0, 0);
+
     const payload = {
       title,
       event_type,
       description: description || null,
-      event_date: new Date(dateValue).toISOString(),
+      event_date: eventDate.toISOString(),
       duration_minutes,
       commune_id,
       location: location || null,
