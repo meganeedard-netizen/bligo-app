@@ -508,6 +508,14 @@
   </div>
 </div>
 
+<!-- Zoom couverture (réservations) -->
+<div id="cover-zoom-backdrop" onclick="closeCoverZoom(event)" class="hidden fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm items-center justify-center p-4">
+  <div class="relative max-w-xs w-full">
+    <button onclick="closeCoverZoom()" class="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+    <img id="cover-zoom-img" src="" alt="" class="w-full rounded-xl shadow-2xl">
+  </div>
+</div>
+
 <p id="access-message" class="text-sm text-center text-ink/50 mt-16"></p>
 
 <script type="module">
@@ -2762,7 +2770,7 @@
   async function loadReservations() {
     const { data: resa, error } = await supabase
       .from('reservations')
-      .select('id, status, created_at, ready_at, reshelved, user_id, book_id, books ( title, author, shelf_location )')
+      .select('id, status, created_at, ready_at, reshelved, user_id, book_id, books ( title, author, shelf_location, isbn, cover_url, cover_initial, book_copies ( barcode ) )')
       .order('created_at', { ascending: true });
     if (error) { console.error(error); return; }
 
@@ -2872,7 +2880,7 @@
       byUser.get(r.user_id).items.push(r);
     });
 
-    list.innerHTML = [...byUser.values()].map(group => {
+    list.innerHTML = [...byUser.values()].map((group, idx) => {
       const initials = (group.profile?.full_name || '?').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 
       const itemsHtml = group.items.map(r => {
@@ -2887,12 +2895,33 @@
           const rem = formatRemaining(r.ready_at);
           countdownHtml = `<span class="text-[11px] font-semibold ${rem.urgent ? 'text-red-600' : 'text-ink/45'} whitespace-nowrap">${rem.text}</span>`;
         }
+        const coverHtml = r.books?.cover_url
+          ? `<img src="${escapeHtml(r.books.cover_url)}" alt="" onclick="zoomCover('${escapeJsAttr(r.books.cover_url)}')" class="w-10 h-14 object-cover rounded shrink-0 bg-mango-50 cursor-pointer hover:opacity-80">`
+          : `<div class="w-10 h-14 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${escapeHtml((r.books?.cover_initial || r.books?.title?.[0] || '?'))}</div>`;
+
+        // Cote/code-barres réels pas encore en place partout : un exemple visible
+        // (plutôt qu'un champ vide) montre où cette info apparaîtra une fois les
+        // vraies étiquettes posées, sans faire croire que c'est une vraie donnée.
+        const shelfHtml = r.books?.shelf_location
+          ? `<span class="text-mango-700 font-semibold">📍 ${escapeHtml(r.books.shelf_location)}</span>`
+          : `<span class="text-ink/35 italic">📍 Ex. R AGA (rayon à définir)</span>`;
+        const barcode = r.books?.book_copies?.[0]?.barcode;
+        const codeHtml = barcode
+          ? `<span class="text-ink/45">Code ${escapeHtml(barcode)}</span>`
+          : `<span class="text-ink/35 italic">Ex. code BLIGO-000123</span>`;
+        const isbnHtml = r.books?.isbn
+          ? `<span class="text-ink/45">ISBN ${escapeHtml(r.books.isbn)}</span>`
+          : '';
+
         return `
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-mango-50 py-3 sm:py-2 first:border-t-0 first:pt-0">
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.books?.title || 'Livre supprimé')}</p>
-              <p class="text-[11px] text-ink/45">${escapeHtml(r.books?.author || '')} · ${new Date(r.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
-              ${r.books?.shelf_location ? `<p class="text-[11px] font-semibold text-mango-700 mt-0.5">📍 ${escapeHtml(r.books.shelf_location)}</p>` : ''}
+            <div class="flex gap-2.5 min-w-0">
+              ${coverHtml}
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.books?.title || 'Livre supprimé')}</p>
+                <p class="text-[11px] text-ink/45">${escapeHtml(r.books?.author || '')} · ${new Date(r.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                <p class="text-[11px] mt-0.5 flex flex-wrap gap-x-2">${shelfHtml}${codeHtml}${isbnHtml}</p>
+              </div>
             </div>
             <div class="flex items-center justify-between sm:justify-end gap-2 shrink-0">
               ${countdownHtml}
@@ -2902,7 +2931,7 @@
       }).join('');
 
       return `
-        <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+        <div class="${idx % 2 === 1 ? 'bg-mango-50/40' : 'bg-white'} border border-mango-100 rounded-xl p-4 shadow-sm">
           <div class="flex items-center gap-2.5 mb-1">
             <span class="w-8 h-8 rounded-full bg-gradient-to-br from-hibiscus-600 to-mango-500 text-white text-xs font-bold flex items-center justify-center shrink-0">${escapeHtml(initials)}</span>
             <div class="min-w-0">
@@ -2914,6 +2943,18 @@
         </div>`;
     }).join('');
   }
+
+  window.zoomCover = function (url) {
+    document.getElementById('cover-zoom-img').src = url;
+    document.getElementById('cover-zoom-backdrop').classList.remove('hidden');
+    document.getElementById('cover-zoom-backdrop').classList.add('flex');
+  };
+
+  window.closeCoverZoom = function (event) {
+    if (event && event.target.id !== 'cover-zoom-backdrop') return;
+    document.getElementById('cover-zoom-backdrop').classList.add('hidden');
+    document.getElementById('cover-zoom-backdrop').classList.remove('flex');
+  };
 
   window.setStatus = async function (id, status) {
     const payload = { status };
