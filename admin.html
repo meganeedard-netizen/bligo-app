@@ -207,7 +207,9 @@
 
         <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<span id="to-equip-badge" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></span>
           <button onclick="checkAndFixCotes()" class="ml-3 align-middle text-[11px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1">Vérifier les cotes</button>
+          <button id="duplicates-toggle-btn" onclick="toggleDuplicatesFilter()" class="ml-2 align-middle text-[11px] font-semibold text-hibiscus-700 border border-hibiscus-200 bg-hibiscus-50 rounded-full px-3 py-1">Doublons potentiels</button>
         </h3>
+        <p id="duplicates-banner" class="hidden text-xs text-hibiscus-700 font-semibold mb-2"></p>
 
         <div id="bulk-edit-bar" class="hidden bg-ink text-white rounded-xl p-3 mb-3 flex flex-wrap items-center gap-2 text-sm">
           <span class="font-semibold"><span id="bulk-edit-count">0</span> livre(s) sélectionné(s)</span>
@@ -2636,13 +2638,54 @@
     await loadTeamAndTariffs();
   };
 
+  let duplicatesFilterActive = false;
+
+  // Même titre + même auteur, à l'orthographe/espaces près : c'est ce qui
+  // arrive quand un livre est rescanné au lieu d'ajouter un exemplaire à la
+  // fiche existante (voir le cas Michel Bussi du 16/09/2026).
+  function bookDuplicateKey(b) {
+    return normalizeKey(b.title) + '|' + normalizeKey(b.author);
+  }
+
+  function findDuplicateGroups() {
+    const byKey = new Map();
+    books.forEach(b => {
+      const key = bookDuplicateKey(b);
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(b);
+    });
+    return [...byKey.values()].filter(group => group.length > 1);
+  }
+
+  window.toggleDuplicatesFilter = function () {
+    duplicatesFilterActive = !duplicatesFilterActive;
+    document.getElementById('duplicates-toggle-btn').classList.toggle('bg-hibiscus-600', duplicatesFilterActive);
+    document.getElementById('duplicates-toggle-btn').classList.toggle('text-white', duplicatesFilterActive);
+    renderCatalogue();
+  };
+
   window.renderCatalogue = function renderCatalogue() {
     // Recherche par titre, auteur, ISBN ou code-barres de la médiathèque —
     // toujours sur l'ensemble du catalogue, pas seulement la page affichée.
     const query = normalizeKey(document.getElementById('catalogue-search')?.value || '');
-    const filtered = query
+    let filtered = query
       ? books.filter(b => bookSearchText(b).includes(query))
       : books;
+
+    const duplicateGroups = findDuplicateGroups();
+    const banner = document.getElementById('duplicates-banner');
+    if (duplicatesFilterActive) {
+      const duplicateIds = new Set(duplicateGroups.flat().map(b => b.id));
+      filtered = filtered.filter(b => duplicateIds.has(b.id));
+      // Regroupées côte à côte (par titre+auteur) pour comparer d'un coup d'œil.
+      filtered = [...filtered].sort((a, b) => bookDuplicateKey(a).localeCompare(bookDuplicateKey(b)));
+      banner.textContent = duplicateGroups.length
+        ? `${duplicateGroups.length} groupe(s) de doublons potentiels — même titre et même auteur sur plusieurs fiches.`
+        : `Aucun doublon potentiel détecté dans le catalogue.`;
+      banner.classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
+    }
 
     document.getElementById('catalogue-count').textContent = filtered.length;
 
@@ -2653,16 +2696,24 @@
 
     const list = document.getElementById('catalogue-list');
     if (!filtered.length) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">${query ? 'Aucun résultat pour cette recherche.' : "Aucun livre pour l'instant."}</p>`;
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">${duplicatesFilterActive ? 'Aucun doublon potentiel.' : query ? 'Aucun résultat pour cette recherche.' : "Aucun livre pour l'instant."}</p>`;
       return;
     }
 
+    let lastGroupKey = null;
+    let groupShade = false;
     list.innerHTML = filtered.map(b => {
+      let rowShadeClass = '';
+      if (duplicatesFilterActive) {
+        const key = bookDuplicateKey(b);
+        if (key !== lastGroupKey) { groupShade = !groupShade; lastGroupKey = key; }
+        rowShadeClass = groupShade ? 'bg-hibiscus-50/50' : 'bg-white';
+      }
       const coverHtml = b.cover_url
         ? `<img src="${b.cover_url}" alt="" class="w-8 aspect-[2/3] object-cover rounded bg-mango-50 shrink-0">`
         : `<div class="w-8 aspect-[2/3] rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-[10px] shrink-0">${escapeHtml(b.cover_initial || b.title[0])}</div>`;
       return `
-      <div class="grid grid-cols-1 sm:grid-cols-[auto_1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-1 sm:grid-cols-[auto_1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm ${rowShadeClass}">
         <span><input type="checkbox" onchange="toggleSelectBook(${b.id}, this.checked)" ${selectedBookIds.has(b.id) ? 'checked' : ''}></span>
         <span class="flex items-center gap-2 min-w-0">
           ${coverHtml}
