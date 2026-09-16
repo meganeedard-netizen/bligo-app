@@ -209,11 +209,21 @@
           class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm mb-4 outline-none focus:ring-2 focus:ring-mango-300">
 
         <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<span id="to-equip-badge" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></span></h3>
+
+        <div id="bulk-edit-bar" class="hidden bg-ink text-white rounded-xl p-3 mb-3 flex flex-wrap items-center gap-2 text-sm">
+          <span class="font-semibold"><span id="bulk-edit-count">0</span> livre(s) sélectionné(s)</span>
+          <input id="bulk-loan-duration" type="number" min="1" placeholder="Délai de prêt (jours)" class="border border-white/30 bg-white/10 placeholder-white/50 rounded-lg px-2 py-1.5 text-sm w-44">
+          <button onclick="applyBulkLoanDuration()" class="text-xs font-semibold bg-white text-ink rounded-lg px-3 py-1.5">Appliquer le délai</button>
+          <button onclick="applyBulkNewRelease(true)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Marquer « Nouveauté »</button>
+          <button onclick="applyBulkNewRelease(false)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Retirer « Nouveauté »</button>
+          <button onclick="clearBulkSelection()" class="text-xs text-white/60 hover:text-white ml-auto">Annuler la sélection</button>
+        </div>
+
         <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
-          <div class="hidden sm:grid grid-cols-[1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[820px]">
-            <span>Titre</span><span>Auteur</span><span>Catégorie</span><span class="text-center">Statut</span><span></span>
+          <div class="hidden sm:grid grid-cols-[auto_1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[860px]">
+            <span><input type="checkbox" onchange="toggleSelectAllBooks(this.checked)"></span><span>Titre</span><span>Auteur</span><span>Catégorie</span><span class="text-center">Statut</span><span></span>
           </div>
-          <div id="catalogue-list" class="sm:min-w-[820px]"></div>
+          <div id="catalogue-list" class="sm:min-w-[860px]"></div>
         </div>
       </section>
 
@@ -1776,7 +1786,12 @@
     if (info.status === 'borrowed') {
       actionHtml = `
         <p class="text-xs text-ink/55 mt-3">Emprunté par <span class="font-semibold text-ink">${escapeHtml(info.borrower_name || '')}</span>${info.due_at ? ` · à rendre avant le ${formatDateShortAdmin(info.due_at)}` : ''}</p>
-        <button onclick="doLoanReturn('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="w-full mt-3 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer le retour</button>`;
+        <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">État du livre au retour</label>
+        <select id="return-condition-input" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
+          <option value="bon" selected>Bon état</option>
+          <option value="mauvais">Mauvais état</option>
+        </select>
+        <button onclick="doLoanReturn('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="w-full mt-1 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer le retour</button>`;
     } else if (info.status === 'available' || info.status === 'reserved') {
       actionHtml = `
         <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Numéro d'abonné de l'usager</label>
@@ -1818,7 +1833,10 @@
   };
 
   window.doLoanReturn = async function (barcode) {
-    const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode });
+    const conditionInput = document.getElementById('return-condition-input');
+    const condition = conditionInput ? conditionInput.value : null;
+
+    const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode, p_condition: condition });
     if (error) { alert('Erreur : ' + error.message); return; }
     if (!data.ok) { alert(data.message); return; }
 
@@ -1827,6 +1845,7 @@
       <div class="bg-mango-50 border border-mango-100 rounded-xl p-4">
         <p class="text-sm font-bold text-mango-700">✓ ${escapeHtml(data.message)}</p>
         ${data.shelf_location ? `<p class="text-xs text-ink/60 mt-1">À ranger en ${escapeHtml(data.shelf_location)}.</p>` : ''}
+        ${data.user_flagged ? `<p class="text-xs text-red-600 font-semibold mt-1">Usager passé « fiché » suite à ce retour.</p>` : ''}
       </div>`;
     const input = document.getElementById('loan-barcode-input');
     input.value = '';
@@ -1930,7 +1949,7 @@
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, subscriber_number, account_type')
+      .select('id, full_name, subscriber_number, account_type, commune_id, flagged, flagged_reason')
       .or(`subscriber_number.ilike.%${term}%,full_name.ilike.%${term}%`)
       .limit(10);
     if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
@@ -1971,12 +1990,45 @@
       resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml((loansError || resaError).message)}</p>`;
       return;
     }
-    renderFiche(profile, loans || [], resa || []);
+
+    let communeSettings = { late_fee_per_day_cents: 100, late_fee_grace_days: 7 };
+    if (profile.commune_id) {
+      const { data: commune } = await supabase.from('communes')
+        .select('late_fee_per_day_cents, late_fee_grace_days')
+        .eq('id', profile.commune_id).single();
+      if (commune) communeSettings = commune;
+    }
+
+    renderFiche(profile, loans || [], resa || [], communeSettings);
   };
 
-  function renderFiche(profile, loans, resa) {
+  function computeLateFeeCentsClient(dueAt, settings) {
+    if (!dueAt) return 0;
+    const daysLate = Math.floor((Date.now() - new Date(dueAt).getTime()) / 86400000);
+    const billable = Math.max(0, daysLate - (settings.late_fee_grace_days ?? 7));
+    return billable * (settings.late_fee_per_day_cents ?? 100);
+  }
+
+  window.toggleUserFlag = async function (userId, flag) {
+    let reason = null;
+    if (flag) {
+      reason = prompt('Raison du fichage (facultatif) :') || null;
+    } else if (!confirm('Retirer le fichage de cet usager ?')) {
+      return;
+    }
+    const { error } = await supabase.rpc('set_user_flagged', { p_user_id: userId, p_flagged: flag, p_reason: reason });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    const { data: freshProfile } = await supabase
+      .from('profiles')
+      .select('id, full_name, subscriber_number, account_type, commune_id, flagged, flagged_reason')
+      .eq('id', userId).single();
+    if (freshProfile) await loadFicheFor(freshProfile);
+  };
+
+  function renderFiche(profile, loans, resa, communeSettings) {
     const resultBox = document.getElementById('fiche-result');
     const now = new Date();
+    communeSettings = communeSettings || { late_fee_per_day_cents: 100, late_fee_grace_days: 7 };
 
     // Unifie prêts comptoir et réservations en une seule chronologie, avec un
     // statut simple à 3 valeurs pour l'affichage (pas les statuts bruts des
@@ -2008,15 +2060,28 @@
     };
 
     const rowsHtml = items.length
-      ? items.map(it => `
+      ? items.map(it => {
+          const feeCents = it.state === 'retard' ? computeLateFeeCentsClient(it.dueAt, communeSettings) : 0;
+          return `
         <div class="px-4 py-2.5 flex items-center justify-between gap-3">
           <div class="min-w-0">
             <p class="text-sm font-semibold text-ink truncate">${escapeHtml(it.title)}</p>
             <p class="text-[11px] text-ink/45">${escapeHtml(it.author)} · ${formatDateShortAdmin(it.date)}</p>
           </div>
-          ${stateBadge[it.state] || ''}
-        </div>`).join('')
+          <div class="text-right shrink-0">
+            ${stateBadge[it.state] || ''}
+            ${feeCents > 0 ? `<p class="text-[10.5px] text-red-600 font-semibold mt-0.5">${(feeCents / 100).toFixed(2)} € de pénalité</p>` : ''}
+          </div>
+        </div>`;
+        }).join('')
       : `<p class="text-sm text-ink/40 text-center py-8">Aucun emprunt ni réservation pour cet usager.</p>`;
+
+    const flaggedBannerHtml = profile.flagged
+      ? `<div class="px-4 py-2.5 bg-red-50 border-b border-red-100 flex items-center justify-between gap-3">
+          <p class="text-xs text-red-700"><span class="font-bold">Usager fiché</span>${profile.flagged_reason ? ' · ' + escapeHtml(profile.flagged_reason) : ''}</p>
+          <button type="button" onclick="toggleUserFlag('${profile.id}', false)" style="touch-action: manipulation;" class="text-[11px] font-semibold text-red-700 underline shrink-0">Retirer</button>
+        </div>`
+      : '';
 
     resultBox.innerHTML = `
       <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
@@ -2025,8 +2090,12 @@
             <p class="text-sm font-bold text-ink">${escapeHtml(profile.full_name)}</p>
             <p class="text-xs text-ink/55">${escapeHtml(profile.subscriber_number)} · ${profile.account_type === 'officiel' ? 'Compte officiel' : 'Compte flash'}</p>
           </div>
-          <button type="button" onclick="document.getElementById('fiche-search-input').value=''; document.getElementById('fiche-result').innerHTML='';" style="touch-action: manipulation;" class="text-[12px] font-semibold text-ink/50 hover:text-ink">Nouvelle recherche</button>
+          <div class="flex items-center gap-3">
+            ${!profile.flagged ? `<button type="button" onclick="toggleUserFlag('${profile.id}', true)" style="touch-action: manipulation;" class="text-[11px] font-semibold text-red-600/70 hover:text-red-700">Ficher</button>` : ''}
+            <button type="button" onclick="document.getElementById('fiche-search-input').value=''; document.getElementById('fiche-result').innerHTML='';" style="touch-action: manipulation;" class="text-[12px] font-semibold text-ink/50 hover:text-ink">Nouvelle recherche</button>
+          </div>
         </div>
+        ${flaggedBannerHtml}
         <div class="divide-y divide-mango-50">
           ${rowsHtml}
         </div>
@@ -2140,6 +2209,49 @@
     renderCatalogue();
   }
 
+  let selectedBookIds = new Set();
+
+  window.toggleSelectBook = function (id, checked) {
+    if (checked) selectedBookIds.add(id); else selectedBookIds.delete(id);
+    updateBulkEditBar();
+  };
+
+  window.toggleSelectAllBooks = function (checked) {
+    const query = normalizeKey(document.getElementById('catalogue-search')?.value || '');
+    const filtered = query
+      ? books.filter(b => normalizeKey([b.title, b.author, b.isbn, b.copy_barcode].filter(Boolean).join(' ')).includes(query))
+      : books;
+    selectedBookIds = checked ? new Set(filtered.map(b => b.id)) : new Set();
+    renderCatalogue();
+  };
+
+  window.clearBulkSelection = function () {
+    selectedBookIds = new Set();
+    renderCatalogue();
+  };
+
+  function updateBulkEditBar() {
+    const bar = document.getElementById('bulk-edit-bar');
+    bar.classList.toggle('hidden', selectedBookIds.size === 0);
+    document.getElementById('bulk-edit-count').textContent = selectedBookIds.size;
+  }
+
+  window.applyBulkLoanDuration = async function () {
+    const raw = document.getElementById('bulk-loan-duration').value.trim();
+    const days = raw ? Number(raw) : null;
+    if (!selectedBookIds.size) return;
+    const { error } = await supabase.from('books').update({ loan_duration_days_override: days }).in('id', [...selectedBookIds]);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadBooks();
+  };
+
+  window.applyBulkNewRelease = async function (value) {
+    if (!selectedBookIds.size) return;
+    const { error } = await supabase.from('books').update({ is_new_release: value }).in('id', [...selectedBookIds]);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadBooks();
+  };
+
   function renderCatalogue() {
     // Recherche par titre, auteur, ISBN ou code-barres de la médiathèque —
     // toujours sur l'ensemble du catalogue, pas seulement la page affichée.
@@ -2166,7 +2278,8 @@
         ? `<img src="${b.cover_url}" alt="" class="w-8 aspect-[2/3] object-cover rounded bg-mango-50 shrink-0">`
         : `<div class="w-8 aspect-[2/3] rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-[10px] shrink-0">${escapeHtml(b.cover_initial || b.title[0])}</div>`;
       return `
-      <div class="grid grid-cols-1 sm:grid-cols-[1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-1 sm:grid-cols-[auto_1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
+        <span><input type="checkbox" onchange="toggleSelectBook(${b.id}, this.checked)" ${selectedBookIds.has(b.id) ? 'checked' : ''}></span>
         <span class="flex items-center gap-2 min-w-0">
           ${coverHtml}
           <span class="min-w-0">
@@ -2174,6 +2287,7 @@
             ${b.shelf_location ? `<span class="text-[10px] text-mango-700 font-semibold truncate block">📍 ${escapeHtml(b.shelf_location)}</span>` : ''}
             ${b.copy_barcode ? `<span class="text-[10px] text-ink/40 truncate block">${escapeHtml(b.copy_barcode)}</span>` : ''}
             ${b.on_site_only ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">📍 Sur place uniquement</span>` : ''}
+            ${b.is_new_release ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">✨ Nouveauté</span>` : ''}
           </span>
         </span>
         <span class="text-ink/60 truncate">${escapeHtml(b.author)}</span>
@@ -2202,6 +2316,7 @@
         </span>
       </div>`;
     }).join('');
+    updateBulkEditBar();
   }
 
   window.updateBookCategory = async function (id, category) {
@@ -2298,7 +2413,11 @@
         ${bookFieldRow('Illustrateur (nom et date)', 'bd-illustrator', b.illustrator)}
         ${bookFieldRow('Imprimeur', 'bd-printer', b.printer)}
       </div>
-      ${bookFieldRow('Couverture', 'bd-cover-color', b.cover_color, { select: ['Couleur', 'Noir et blanc'] })}
+      ${bookFieldRow('Couverture', 'bd-cover-color', b.cover_color || (b.cover_url ? '' : 'Sans couverture'), { select: ['Sans couverture', 'Couleur', 'Noir et blanc'] })}
+      <div class="grid grid-cols-2 gap-x-3">
+        ${bookFieldRow('Délai de prêt (jours)', 'bd-loan-duration', b.loan_duration_days_override, { type: 'number' })}
+        ${bookFieldRow('Nouveauté', 'bd-new-release', b.is_new_release ? 'Oui' : 'Non', { select: ['Non', 'Oui'] })}
+      </div>
       ${bookFieldRow('Résumé', 'bd-summary', b.summary, { textarea: true })}
 
       <button onclick="saveBookDetail(${b.id})" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
@@ -2327,6 +2446,8 @@
       illustrator: val('bd-illustrator'),
       printer: val('bd-printer'),
       cover_color: val('bd-cover-color'),
+      loan_duration_days_override: document.getElementById('bd-loan-duration').value.trim() ? Number(document.getElementById('bd-loan-duration').value) : null,
+      is_new_release: val('bd-new-release') === 'Oui',
       summary: val('bd-summary'),
     };
     const { error } = await supabase.from('books').update(payload).eq('id', id);

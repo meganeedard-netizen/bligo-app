@@ -37,9 +37,12 @@
 <main class="max-w-4xl mx-auto px-5 py-6">
 
   <div class="flex items-start justify-between gap-2 mb-5">
-    <div>
-      <h1 id="greeting" class="text-xl font-bold text-ink leading-tight">Bonjour</h1>
-      <p id="commune-display" class="text-xs text-ink/45 mt-0.5"></p>
+    <div class="flex items-center gap-2.5">
+      <img id="commune-logo" alt="" class="hidden w-10 h-10 rounded-full object-contain bg-white border border-mango-100 shrink-0">
+      <div>
+        <h1 id="greeting" class="text-xl font-bold text-ink leading-tight">Bonjour</h1>
+        <p id="commune-display" class="text-xs text-ink/45 mt-0.5"></p>
+      </div>
     </div>
     <a href="points.html" class="shrink-0 flex items-center gap-2 bg-white border border-mango-100 rounded-full pl-4 pr-1 py-1 shadow-sm">
       <span id="points-display" class="text-sm font-bold bg-gradient-to-r from-mango-500 to-hibiscus-600 bg-clip-text text-transparent">0</span>
@@ -738,6 +741,15 @@
     const name = profile?.full_name || currentUser.email;
     document.getElementById('greeting').textContent = 'Bonjour ' + name.split(' ')[0];
     document.getElementById('commune-display').textContent = myCommuneName ? `Médiathèque de ${myCommuneName}` : '';
+
+    const logoEl = document.getElementById('commune-logo');
+    if (myCommuneName) {
+      const slug = myCommuneName.normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      logoEl.onerror = () => logoEl.classList.add('hidden');
+      logoEl.onload = () => logoEl.classList.remove('hidden');
+      logoEl.src = `img/commune-logos/${slug}.png`;
+    }
     document.getElementById('points-display').textContent = `${profile?.loyalty_points ?? 0}`;
 
     renderCategoryFilters();

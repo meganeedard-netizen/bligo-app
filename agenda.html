@@ -39,6 +39,11 @@
 
 <main class="max-w-4xl mx-auto px-5 py-8">
 
+  <div class="flex gap-2 mb-5">
+    <button id="tab-upcoming" onclick="switchAgendaTab('upcoming')" class="flex-1 text-sm font-semibold rounded-full py-2 bg-ink text-white">À venir</button>
+    <button id="tab-history" onclick="switchAgendaTab('history')" class="flex-1 text-sm font-semibold rounded-full py-2 bg-mango-50 text-ink/60">Historique</button>
+  </div>
+
   <div id="events-list" class="flex flex-col gap-4"></div>
 
 </main>
@@ -91,6 +96,9 @@
     return `${startText} - ${endText}`;
   }
 
+  let agendaTab = 'upcoming';
+  let myCheckins = new Set();
+
   async function loadEvents() {
     const { data: eventsData, error } = await supabase
       .from('events')
@@ -102,16 +110,27 @@
     }
     events = eventsData || [];
 
-    const { data: rsvpsData } = await supabase.from('event_rsvps').select('event_id, user_id');
+    const [{ data: rsvpsData }, { data: checkinsData }] = await Promise.all([
+      supabase.from('event_rsvps').select('event_id, user_id'),
+      supabase.from('event_checkins').select('event_id').eq('user_id', currentUser.id),
+    ]);
     rsvpCounts = {};
     myRsvps = new Set();
     (rsvpsData || []).forEach(r => {
       rsvpCounts[r.event_id] = (rsvpCounts[r.event_id] || 0) + 1;
       if (r.user_id === currentUser.id) myRsvps.add(r.event_id);
     });
+    myCheckins = new Set((checkinsData || []).map(c => c.event_id));
 
     renderEvents();
   }
+
+  window.switchAgendaTab = function (tab) {
+    agendaTab = tab;
+    document.getElementById('tab-upcoming').className = 'flex-1 text-sm font-semibold rounded-full py-2 ' + (tab === 'upcoming' ? 'bg-ink text-white' : 'bg-mango-50 text-ink/60');
+    document.getElementById('tab-history').className = 'flex-1 text-sm font-semibold rounded-full py-2 ' + (tab === 'history' ? 'bg-ink text-white' : 'bg-mango-50 text-ink/60');
+    renderEvents();
+  };
 
   const EVENT_ICONS = {
     book: '<path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13Z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5v-13Z"/>',
@@ -130,11 +149,41 @@
 
   function renderEvents() {
     const list = document.getElementById('events-list');
-    if (events.length === 0) {
+    const now = new Date();
+
+    if (agendaTab === 'history') {
+      const past = events
+        .filter(e => new Date(e.event_date) < now && myRsvps.has(e.id))
+        .sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
+
+      if (past.length === 0) {
+        list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucun événement passé pour l'instant. Les événements auxquels tu t'inscris apparaîtront ici une fois passés.</p>`;
+        return;
+      }
+
+      list.innerHTML = past.map(e => `
+        <div class="bg-white border border-white shadow-md rounded-2xl p-4 flex gap-4 opacity-80">
+          <div class="w-12 h-12 rounded-xl bg-ink/10 flex items-center justify-center text-ink/50 shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconForEvent(e.title)}</svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-ink">${e.title}</p>
+            <p class="text-[11px] text-ink/45 font-semibold mt-0.5 capitalize">${formatEventDate(e.event_date, e.duration_minutes)}</p>
+            <p class="text-[11px] text-ink/45 mt-0.5">${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
+            <span class="inline-block mt-2 text-[10.5px] font-semibold rounded-lg px-2 py-1 ${myCheckins.has(e.id) ? 'bg-mango-50 text-mango-700' : 'bg-ink/5 text-ink/40'}">
+              ${myCheckins.has(e.id) ? 'Présence confirmée' : 'Inscrit·e'}
+            </span>
+          </div>
+        </div>`).join('');
+      return;
+    }
+
+    const upcoming = events.filter(e => new Date(e.event_date) >= now);
+    if (upcoming.length === 0) {
       list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucun événement à venir pour le moment.</p>`;
       return;
     }
-    list.innerHTML = events.map(e => {
+    list.innerHTML = upcoming.map(e => {
       const attending = myRsvps.has(e.id);
       const count = rsvpCounts[e.id] || 0;
       const full = e.max_seats != null && count >= e.max_seats && !attending;
