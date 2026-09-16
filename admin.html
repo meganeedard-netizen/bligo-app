@@ -2505,7 +2505,7 @@
         <span class="flex items-center gap-2 min-w-0">
           ${coverHtml}
           <span class="min-w-0">
-            <button onclick="openBookDetail(${b.id})" class="font-semibold text-ink truncate block text-left hover:underline">${escapeHtml(b.title)}</button>
+            <button onclick="openBookDetail(${b.id})" class="w-full font-semibold text-ink truncate block text-left hover:underline">${escapeHtml(b.title)}</button>
             ${b.shelf_location ? `<span class="text-[10px] text-mango-700 font-semibold truncate block">📍 ${escapeHtml(b.shelf_location)}</span>` : ''}
             ${b.copy_barcode ? `<span class="text-[10px] text-ink/40 truncate block">${escapeHtml(b.copy_barcode)}</span>` : ''}
             ${b.on_site_only ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">📍 Sur place uniquement</span>` : ''}
@@ -3426,7 +3426,7 @@
           ? `<img src="${escapeHtml(r.cover_url)}" alt="" class="w-8 h-11 object-cover rounded shrink-0 bg-mango-50">`
           : `<span class="w-8 h-11 rounded bg-mango-50 shrink-0"></span>`}
         <span class="min-w-0 flex-1">
-          <button onclick="openCuratedDetail('jeunesse', ${r.id})" class="block font-semibold text-ink truncate text-left hover:underline">${escapeHtml(r.title)}</button>
+          <button onclick="openCuratedDetail('jeunesse', ${r.id})" class="w-full block font-semibold text-ink truncate text-left hover:underline">${escapeHtml(r.title)}</button>
           <span class="block text-ink/50 text-xs truncate">${escapeHtml(r.author)}</span>
         </span>
         <span class="text-right shrink-0">
@@ -3462,7 +3462,7 @@
           ? `<img src="${escapeHtml(r.cover_url)}" alt="" class="w-8 h-11 object-cover rounded shrink-0 bg-mango-50">`
           : `<span class="w-8 h-11 rounded bg-mango-50 shrink-0"></span>`}
         <span class="min-w-0">
-          <button onclick="openCuratedDetail('top20', ${r.id})" class="block font-semibold text-ink truncate text-left hover:underline">${escapeHtml(r.title)}</button>
+          <button onclick="openCuratedDetail('top20', ${r.id})" class="w-full block font-semibold text-ink truncate text-left hover:underline">${escapeHtml(r.title)}</button>
           <span class="block text-ink/50 text-xs truncate">${escapeHtml(r.author)}</span>
         </span>
       </div>`).join('');
