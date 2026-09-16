@@ -48,6 +48,13 @@
 
 </main>
 
+<div id="event-modal-backdrop" onclick="closeEventModal(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative">
+    <button onclick="closeEventModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold z-10">✕</button>
+    <div id="event-modal-content" class="p-6"></div>
+  </div>
+</div>
+
 <nav class="fixed bottom-0 inset-x-0 z-30 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)]" style="transform: translateZ(0);">
   <div class="max-w-4xl mx-auto w-full flex items-center py-2 px-5">
   <a href="accueil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
@@ -139,13 +146,41 @@
     calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/>',
   };
 
-  function iconForEvent(title) {
-    const t = title.toLowerCase();
+  function iconForEvent(eventType) {
+    const t = (eventType || '').toLowerCase();
     if (t.includes('club de lecture')) return EVENT_ICONS.book;
     if (t.includes('heure du conte')) return EVENT_ICONS.moon;
-    if (t.includes('atelier') && t.includes('écriture')) return EVENT_ICONS.pen;
+    if (t.includes('atelier')) return EVENT_ICONS.pen;
     return EVENT_ICONS.calendar;
   }
+
+  function eventDetailHtml(e) {
+    const hours = Math.floor((e.duration_minutes || 90) / 60);
+    const mins = (e.duration_minutes || 90) % 60;
+    const durationLabel = [hours ? `${hours} h` : '', mins ? `${mins} min` : ''].filter(Boolean).join(' ');
+    return `
+      ${e.image_url ? `<img src="${e.image_url}" alt="" class="w-full aspect-[4/3] object-cover rounded-xl mb-4">` : ''}
+      <p class="text-xl font-bold text-ink leading-snug">${e.event_type || 'Événement'}</p>
+      ${e.title ? `<p class="text-base text-ink/60 mt-0.5">${e.title}</p>` : ''}
+      <p class="text-sm text-hibiscus-700 font-semibold mt-3 capitalize">${formatEventDate(e.event_date, e.duration_minutes)} · ${durationLabel}</p>
+      <p class="text-sm text-ink/60 mt-1">📍 ${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
+      ${e.description ? `<p class="text-sm text-ink/70 leading-relaxed mt-3">${e.description}</p>` : ''}
+    `;
+  }
+
+  window.openEventModal = function (id) {
+    const e = events.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('event-modal-content').innerHTML = eventDetailHtml(e);
+    document.getElementById('event-modal-backdrop').classList.remove('hidden');
+    document.getElementById('event-modal-backdrop').classList.add('flex');
+  };
+
+  window.closeEventModal = function (event) {
+    if (event && event.target.id !== 'event-modal-backdrop') return;
+    document.getElementById('event-modal-backdrop').classList.add('hidden');
+    document.getElementById('event-modal-backdrop').classList.remove('flex');
+  };
 
   function renderEvents() {
     const list = document.getElementById('events-list');
@@ -162,12 +197,13 @@
       }
 
       list.innerHTML = past.map(e => `
-        <div class="bg-white border border-white shadow-md rounded-2xl p-4 flex gap-4 opacity-80">
+        <div onclick="openEventModal(${e.id})" class="cursor-pointer bg-white border border-white shadow-md rounded-2xl p-4 flex gap-4 opacity-80">
           <div class="w-12 h-12 rounded-xl bg-ink/10 flex items-center justify-center text-ink/50 shrink-0">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconForEvent(e.title)}</svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconForEvent(e.event_type)}</svg>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold text-ink">${e.title}</p>
+            <p class="text-sm font-bold text-ink">${e.event_type || 'Événement'}</p>
+            ${e.title ? `<p class="text-xs text-ink/55">${e.title}</p>` : ''}
             <p class="text-[11px] text-ink/45 font-semibold mt-0.5 capitalize">${formatEventDate(e.event_date, e.duration_minutes)}</p>
             <p class="text-[11px] text-ink/45 mt-0.5">${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
             <span class="inline-block mt-2 text-[10.5px] font-semibold rounded-lg px-2 py-1 ${myCheckins.has(e.id) ? 'bg-mango-50 text-mango-700' : 'bg-ink/5 text-ink/40'}">
@@ -189,12 +225,13 @@
       const full = e.max_seats != null && count >= e.max_seats && !attending;
       const seatsLabel = e.max_seats != null ? `${count} / ${e.max_seats} place${e.max_seats > 1 ? 's' : ''}` : `${count} inscrit${count > 1 ? 's' : ''}`;
       return `
-        <div class="bg-white border border-white shadow-md rounded-2xl p-4 flex gap-4">
+        <div onclick="openEventModal(${e.id})" class="cursor-pointer bg-white border border-white shadow-md rounded-2xl p-4 flex gap-4">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white shrink-0">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconForEvent(e.title)}</svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconForEvent(e.event_type)}</svg>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold text-ink">${e.title}</p>
+            <p class="text-sm font-bold text-ink">${e.event_type || 'Événement'}</p>
+            ${e.title ? `<p class="text-xs text-ink/55">${e.title}</p>` : ''}
             <p class="text-[11px] text-hibiscus-700 font-semibold mt-0.5 capitalize">${formatEventDate(e.event_date, e.duration_minutes)}</p>
             <p class="text-[11px] text-ink/45 mt-0.5">${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
             ${e.description ? `<p class="text-xs text-ink/60 leading-relaxed mt-2">${e.description}</p>` : ''}
@@ -210,10 +247,10 @@
     }).join('');
 
     list.querySelectorAll('.rsvp-btn:not(:disabled)').forEach(btn => {
-      btn.addEventListener('click', () => toggleRsvp(Number(btn.dataset.eventId)));
+      btn.addEventListener('click', (ev) => { ev.stopPropagation(); toggleRsvp(Number(btn.dataset.eventId)); });
     });
     list.querySelectorAll('.ics-btn').forEach(btn => {
-      btn.addEventListener('click', () => downloadIcsForEvent(Number(btn.dataset.eventId)));
+      btn.addEventListener('click', (ev) => { ev.stopPropagation(); downloadIcsForEvent(Number(btn.dataset.eventId)); });
     });
   }
 
@@ -239,7 +276,7 @@
       `DTSTAMP:${fmt(new Date())}`,
       `DTSTART:${fmt(start)}`,
       `DTEND:${fmt(end)}`,
-      `SUMMARY:${escapeIcs(e.title)}`,
+      `SUMMARY:${escapeIcs(e.event_type ? (e.event_type + (e.title ? ' — ' + e.title : '')) : e.title)}`,
       location ? `LOCATION:${escapeIcs(location)}` : '',
       e.description ? `DESCRIPTION:${escapeIcs(e.description)}` : '',
       'END:VEVENT',
@@ -250,7 +287,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${e.title.replace(/[^\w\- ]/g, '').trim() || 'evenement'}.ics`;
+    a.download = `${(e.event_type || e.title || 'evenement').replace(/[^\w\- ]/g, '').trim() || 'evenement'}.ics`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
