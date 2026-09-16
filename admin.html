@@ -1415,6 +1415,7 @@
         // automatiquement, si l'agent en a saisi un pour ce lot.
         shelf_location: shelfLocation || suggestCote(meta.category, meta.author, meta.dewey),
         on_site_only: onSiteOnly,
+        commune_id: myCommuneId,
       };
 
       const { data: inserted, error } = await supabase.from('books').insert(payload).select().single();
@@ -2428,6 +2429,7 @@
       available: !fromDonation,
       equipped: !fromDonation,
       on_site_only: false,
+      commune_id: myCommuneId,
     }).select().single();
     if (error) {
       resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`;
