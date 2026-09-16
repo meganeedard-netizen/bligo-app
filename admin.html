@@ -2538,7 +2538,7 @@
     await loadTeamAndTariffs();
   };
 
-  function renderCatalogue() {
+  window.renderCatalogue = function renderCatalogue() {
     // Recherche par titre, auteur, ISBN ou code-barres de la médiathèque —
     // toujours sur l'ensemble du catalogue, pas seulement la page affichée.
     const query = normalizeKey(document.getElementById('catalogue-search')?.value || '');
