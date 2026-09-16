@@ -75,12 +75,6 @@
       <button onclick="switchScreen('stats')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="stats">
         Tendances
       </button>
-      <button onclick="switchScreen('jeunesse')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="jeunesse">
-        Top Jeunesse
-      </button>
-      <button onclick="switchScreen('top20')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="top20">
-        Sélection BliGO
-      </button>
       <button id="nav-team-btn" onclick="switchScreen('team')" style="touch-action: manipulation;" class="hidden agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="team">
         Comptes & tarifs
       </button>
@@ -414,45 +408,49 @@
 
       <!-- TENDANCES -->
       <section id="screen-stats" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Tendances d'emprunt</h2>
-        <p class="text-sm text-ink/55 mb-4">Les livres et les auteurs les plus empruntés, pour t'aider à choisir quoi racheter.</p>
+        <h2 class="text-lg font-bold text-ink mb-1">Tendances</h2>
+        <p class="text-sm text-ink/55 mb-4">Emprunts, sélections jeunesse et BliGO réunis : de quoi t'aider à choisir quoi racheter.</p>
 
-        <div class="flex flex-wrap items-center gap-3 mb-5">
-          <div class="flex items-center gap-1 bg-mango-50 border border-mango-100 rounded-full p-1 w-fit">
-            <button id="stats-scope-commune-btn" type="button" onclick="setStatsScope('commune')" style="touch-action: manipulation;" class="text-xs font-semibold px-4 py-1.5 rounded-full">Ma médiathèque</button>
-            <button id="stats-scope-community-btn" type="button" onclick="setStatsScope('community')" style="touch-action: manipulation;" class="text-xs font-semibold px-4 py-1.5 rounded-full">Tout le réseau</button>
-          </div>
-          <select id="stats-period" onchange="loadStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white">
-            <option value="month">Ce mois-ci</option>
-            <option value="year">Cette année</option>
-            <option value="all" selected>Depuis toujours</option>
-          </select>
+        <div class="flex items-center gap-1.5 bg-mango-50 border border-mango-100 rounded-full p-1.5 mb-5 w-fit flex-wrap">
+          <button id="stats-tab-emprunts-btn" type="button" onclick="switchStatsTab('emprunts')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Emprunts</button>
+          <button id="stats-tab-jeunesse-btn" type="button" onclick="switchStatsTab('jeunesse')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Top Jeunesse</button>
+          <button id="stats-tab-top20-btn" type="button" onclick="switchStatsTab('top20')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Sélection BliGO</button>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-5">
-          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden h-fit">
-            <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">Livres les plus empruntés</div>
-            <div id="stats-books-list"></div>
+        <div id="stats-panel-emprunts" class="stats-panel">
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <div class="flex items-center gap-1 bg-mango-50 border border-mango-100 rounded-full p-1 w-fit">
+              <button id="stats-scope-commune-btn" type="button" onclick="setStatsScope('commune')" style="touch-action: manipulation;" class="text-xs font-semibold px-4 py-1.5 rounded-full">Ma médiathèque</button>
+              <button id="stats-scope-community-btn" type="button" onclick="setStatsScope('community')" style="touch-action: manipulation;" class="text-xs font-semibold px-4 py-1.5 rounded-full">Tout le réseau</button>
+            </div>
+            <select id="stats-period" onchange="loadStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white">
+              <option value="month">Ce mois-ci</option>
+              <option value="year">Cette année</option>
+              <option value="all" selected>Depuis toujours</option>
+            </select>
           </div>
-          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden h-fit">
-            <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">Auteurs les plus empruntés</div>
-            <div id="stats-authors-list"></div>
+
+          <div class="grid md:grid-cols-2 gap-5">
+            <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden h-fit">
+              <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">Livres les plus empruntés</div>
+              <div id="stats-books-list"></div>
+            </div>
+            <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden h-fit">
+              <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">Auteurs les plus empruntés</div>
+              <div id="stats-authors-list"></div>
+            </div>
           </div>
         </div>
-      </section>
 
-      <!-- TOP JEUNESSE -->
-      <section id="screen-jeunesse" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Top Jeunesse</h2>
-        <p class="text-sm text-ink/55 mb-4">Une sélection jeunesse de référence, un repère d'achat pour ce rayon.</p>
-        <div id="jeunesse-readonly-list" class="flex flex-col gap-2"></div>
-      </section>
+        <div id="stats-panel-jeunesse" class="stats-panel hidden">
+          <p class="text-sm text-ink/55 mb-4">Une sélection jeunesse de référence, un repère d'achat pour ce rayon.</p>
+          <div id="jeunesse-readonly-list" class="flex flex-col gap-2"></div>
+        </div>
 
-      <!-- SELECTION DU MOIS -->
-      <section id="screen-top20" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Sélection BliGO</h2>
-        <p class="text-sm text-ink/55 mb-4">Les 20 livres les plus vendus en librairie ce mois-ci, choisis par l'administratrice BliGO. Un repère pour les achats, pas un livre du catalogue.</p>
-        <div id="top20-readonly-list" class="flex flex-col gap-2"></div>
+        <div id="stats-panel-top20" class="stats-panel hidden">
+          <p class="text-sm text-ink/55 mb-4">Les 20 livres les plus vendus en librairie ce mois-ci, choisis par l'administratrice BliGO. Un repère pour les achats, pas un livre du catalogue.</p>
+          <div id="top20-readonly-list" class="flex flex-col gap-2"></div>
+        </div>
       </section>
 
       <!-- COMPTES & TARIFS (direction uniquement) -->
@@ -649,7 +647,7 @@
     // pas le catalogue ni l'agenda culturel (RLS déjà bloquée côté base pour
     // ces écrans, ce masquage évite juste de montrer un écran inutilisable).
     if (!myIsDirection) {
-      ['scan', 'catalogue', 'agenda', 'stats', 'jeunesse', 'top20'].forEach(screen => {
+      ['scan', 'catalogue', 'agenda', 'stats'].forEach(screen => {
         document.querySelector(`.agent-nav-btn[data-screen="${screen}"]`)?.classList.add('hidden');
       });
     }
@@ -676,6 +674,7 @@
     // Prêt à scanner dès l'arrivée sur l'écran, sans avoir à cliquer dans le
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
     if (screen === 'loans') { switchLoanTab('scan'); document.getElementById('loan-barcode-input')?.focus(); }
+    if (screen === 'stats') switchStatsTab('emprunts');
   };
 
   // ---------- Scan photo (ISBN / EAN) ----------
@@ -3411,6 +3410,17 @@
   };
 
   // ---------- Tendances ----------
+
+  window.switchStatsTab = function (tab) {
+    ['emprunts', 'jeunesse', 'top20'].forEach(t => {
+      document.getElementById(`stats-panel-${t}`).classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById(`stats-tab-${t}-btn`);
+      const active = tab === t;
+      btn.classList.toggle('bg-white', active);
+      btn.classList.toggle('shadow-sm', active);
+      btn.classList.toggle('text-ink', active);
+    });
+  };
 
   window.setStatsScope = function (scope) {
     statsScope = scope;
