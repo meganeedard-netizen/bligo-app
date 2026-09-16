@@ -81,6 +81,9 @@
       <button onclick="switchScreen('top20')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="top20">
         Sélection BliGO
       </button>
+      <button id="nav-team-btn" onclick="switchScreen('team')" style="touch-action: manipulation;" class="hidden agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="team">
+        Comptes & tarifs
+      </button>
     </nav>
 
     <div class="flex-1 min-w-0">
@@ -423,6 +426,57 @@
         <div id="top20-readonly-list" class="flex flex-col gap-2"></div>
       </section>
 
+      <!-- COMPTES & TARIFS (direction uniquement) -->
+      <section id="screen-team" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Comptes agents</h2>
+        <p class="text-sm text-ink/55 mb-4">Réservé aux comptes direction. Crée un compte pour un nouveau membre de l'équipe.</p>
+
+        <div class="grid md:grid-cols-2 gap-5 mb-8">
+          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Nom complet</label>
+            <input id="team-full-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ex. Fabienne Casimir">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">E-mail</label>
+            <input id="team-email" type="email" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="agent@mediatheque.fr">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Mot de passe temporaire</label>
+            <input id="team-password" type="text" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="8 caractères minimum">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Niveau d'accès</label>
+            <select id="team-level" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3 bg-white">
+              <option value="agent">Agent (emprunt/retour, préinscriptions — pas d'accès au catalogue ni à l'agenda)</option>
+              <option value="direction">Direction (accès complet)</option>
+            </select>
+            <button onclick="createAgentAccount()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer le compte</button>
+          </div>
+
+          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
+            <div class="grid grid-cols-[1.4fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[380px]">
+              <span>Nom</span><span>Niveau</span><span></span>
+            </div>
+            <div id="team-list" class="min-w-[380px]"></div>
+          </div>
+        </div>
+
+        <h2 class="text-lg font-bold text-ink mb-1">Tarifs de la médiathèque</h2>
+        <p class="text-sm text-ink/55 mb-4">Modifiable uniquement par la direction. Un montant à 0 € n'est pas affiché comme un tarif gratuit officiel tant qu'il n'a pas été confirmé ici.</p>
+        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-md">
+          <div class="grid grid-cols-3 gap-2 mb-3">
+            <div>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Mineur (€/an)</label>
+              <input id="tariff-mineur" type="number" min="0" step="0.5" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Majeur (€/an)</label>
+              <input id="tariff-majeur" type="number" min="0" step="0.5" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Gratuité (€/an)</label>
+              <input id="tariff-gratuit" type="number" min="0" step="0.5" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+          </div>
+          <p id="tariff-updated-label" class="text-[11px] text-ink/40 mb-3"></p>
+          <button onclick="saveTariffs()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les tarifs</button>
+        </div>
+      </section>
+
     </div>
   </div>
 
@@ -452,6 +506,7 @@
   let currentAddedBookId = null;
   let statsScope = 'commune';
   let myCommuneId = null;
+  let myIsDirection = false;
   let eventCommunes = [];
   let events = [];
 
@@ -535,22 +590,33 @@
     }
     currentUser = session.user;
 
-    const { data: profile, error } = await supabase.from('profiles').select('role, commune_id').eq('id', currentUser.id).single();
+    const { data: profile, error } = await supabase.from('profiles').select('role, commune_id, agent_level').eq('id', currentUser.id).single();
     if (error || !['agent', 'super_admin'].includes(profile?.role)) {
       accessMessage.textContent = "Cette page est réservée au personnel de la médiathèque.";
       return;
     }
     myCommuneId = profile.commune_id || null;
+    myIsDirection = profile.role === 'super_admin' || (profile.role === 'agent' && profile.agent_level === 'direction');
+    document.getElementById('nav-team-btn').classList.toggle('hidden', !myIsDirection);
+    // Un compte agent restreint garde emprunt/retour et préinscriptions, mais
+    // pas le catalogue ni l'agenda culturel (RLS déjà bloquée côté base pour
+    // ces écrans, ce masquage évite juste de montrer un écran inutilisable).
+    if (!myIsDirection) {
+      ['scan', 'catalogue', 'agenda', 'stats', 'jeunesse', 'top20'].forEach(screen => {
+        document.querySelector(`.agent-nav-btn[data-screen="${screen}"]`)?.classList.add('hidden');
+      });
+    }
 
     document.getElementById('app-main').classList.remove('hidden');
     document.getElementById('batch-genre').innerHTML =
       `<option value="">Deviner automatiquement pour chaque livre</option>` + categoryOptionsHtml('');
-    switchScreen('scan');
+    switchScreen(myIsDirection ? 'scan' : 'preregistrations');
     setScanBatchMode(false);
     switchReservationTab('preparation');
     document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
     await loadCommunesForAgenda();
     await Promise.all([loadBooks(), loadReservations(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents()]);
+    if (myIsDirection) await loadTeamAndTariffs();
   }
 
   window.switchScreen = function (screen) {
@@ -1949,7 +2015,7 @@
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, subscriber_number, account_type, commune_id, flagged, flagged_reason')
+      .select('id, full_name, subscriber_number, account_type, commune_id, flagged, flagged_reason, tariff_category')
       .or(`subscriber_number.ilike.%${term}%,full_name.ilike.%${term}%`)
       .limit(10);
     if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
@@ -2020,7 +2086,7 @@
     if (error) { alert('Erreur : ' + error.message); return; }
     const { data: freshProfile } = await supabase
       .from('profiles')
-      .select('id, full_name, subscriber_number, account_type, commune_id, flagged, flagged_reason')
+      .select('id, full_name, subscriber_number, account_type, commune_id, flagged, flagged_reason, tariff_category')
       .eq('id', userId).single();
     if (freshProfile) await loadFicheFor(freshProfile);
   };
@@ -2083,6 +2149,8 @@
         </div>`
       : '';
 
+    const tariffLabels = { mineur: 'Mineur', majeur: 'Majeur', gratuit: 'Gratuité' };
+
     resultBox.innerHTML = `
       <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
         <div class="px-4 py-3.5 bg-mango-50 border-b border-mango-100 flex items-center justify-between">
@@ -2095,12 +2163,25 @@
             <button type="button" onclick="document.getElementById('fiche-search-input').value=''; document.getElementById('fiche-result').innerHTML='';" style="touch-action: manipulation;" class="text-[12px] font-semibold text-ink/50 hover:text-ink">Nouvelle recherche</button>
           </div>
         </div>
+        <div class="px-4 py-2.5 border-b border-mango-50 flex items-center gap-2 text-xs">
+          <span class="text-ink/50">Catégorie tarifaire :</span>
+          <select onchange="correctTariffCategory('${profile.id}', this.value)" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
+            <option value="" ${!profile.tariff_category ? 'selected' : ''} disabled>Non renseignée</option>
+            ${Object.entries(tariffLabels).map(([v, label]) => `<option value="${v}" ${profile.tariff_category === v ? 'selected' : ''}>${label}</option>`).join('')}
+          </select>
+          <span class="text-ink/35">À corriger si l'agent s'est trompé de case à la préinscription.</span>
+        </div>
         ${flaggedBannerHtml}
         <div class="divide-y divide-mango-50">
           ${rowsHtml}
         </div>
       </div>`;
   }
+
+  window.correctTariffCategory = async function (userId, category) {
+    const { error } = await supabase.rpc('set_tariff_category', { p_user_id: userId, p_category: category });
+    if (error) alert('Erreur : ' + error.message);
+  };
 
   async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null }) {
     const resultBox = document.getElementById('scan-result');
@@ -2250,6 +2331,86 @@
     const { error } = await supabase.from('books').update({ is_new_release: value }).in('id', [...selectedBookIds]);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadBooks();
+  };
+
+  // ---------- Comptes agents & tarifs (direction uniquement) ----------
+
+  async function loadTeamAndTariffs() {
+    if (!myCommuneId) return;
+
+    const [{ data: team, error: teamError }, { data: commune, error: communeError }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, agent_level').eq('commune_id', myCommuneId).eq('role', 'agent').order('full_name'),
+      supabase.from('communes').select('tariff_mineur_cents, tariff_majeur_cents, tariff_gratuit_cents, tariff_updated_at').eq('id', myCommuneId).single(),
+    ]);
+
+    if (teamError) { console.error(teamError); } else { renderTeamList(team || []); }
+
+    if (!communeError && commune) {
+      document.getElementById('tariff-mineur').value = (commune.tariff_mineur_cents / 100).toFixed(2);
+      document.getElementById('tariff-majeur').value = (commune.tariff_majeur_cents / 100).toFixed(2);
+      document.getElementById('tariff-gratuit').value = (commune.tariff_gratuit_cents / 100).toFixed(2);
+      document.getElementById('tariff-updated-label').textContent = commune.tariff_updated_at
+        ? `Dernière modification le ${formatDateShortAdmin(commune.tariff_updated_at)}`
+        : 'Jamais modifiés.';
+    }
+  }
+
+  function renderTeamList(team) {
+    const list = document.getElementById('team-list');
+    if (!team.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8 px-4">Aucun compte agent pour cette médiathèque.</p>`;
+      return;
+    }
+    list.innerHTML = team.map(t => `
+      <div class="grid grid-cols-[1.4fr_1fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+        <span class="font-semibold text-ink truncate">${escapeHtml(t.full_name)}</span>
+        <span class="text-ink/55 text-xs">${t.agent_level === 'direction' ? 'Direction' : 'Agent'}</span>
+        <button onclick="toggleAgentLevel('${t.id}', '${t.agent_level === 'direction' ? 'agent' : 'direction'}')" class="text-xs font-semibold text-mango-700 hover:text-mango-800 text-right">
+          ${t.agent_level === 'direction' ? 'Passer agent' : 'Passer direction'}
+        </button>
+      </div>`).join('');
+  }
+
+  window.toggleAgentLevel = async function (userId, newLevel) {
+    const { error } = await supabase.rpc('set_agent_level', { p_user_id: userId, p_level: newLevel });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadTeamAndTariffs();
+  };
+
+  window.createAgentAccount = async function () {
+    const full_name = document.getElementById('team-full-name').value.trim();
+    const email = document.getElementById('team-email').value.trim();
+    const password = document.getElementById('team-password').value;
+    const agent_level = document.getElementById('team-level').value;
+
+    if (!full_name || !email || password.length < 8) {
+      alert('Nom, e-mail et mot de passe (8 caractères minimum) sont obligatoires.');
+      return;
+    }
+
+    const { data, error } = await supabase.functions.invoke('create-agent-account', {
+      body: { full_name, email, password, agent_level, commune_id: myCommuneId },
+    });
+
+    if (error || !data?.ok) { alert('Erreur : ' + (data?.message || error?.message || 'échec de la création')); return; }
+
+    document.getElementById('team-full-name').value = '';
+    document.getElementById('team-email').value = '';
+    document.getElementById('team-password').value = '';
+    document.getElementById('team-level').value = 'agent';
+    await loadTeamAndTariffs();
+  };
+
+  window.saveTariffs = async function () {
+    const mineur = Math.round(Number(document.getElementById('tariff-mineur').value || 0) * 100);
+    const majeur = Math.round(Number(document.getElementById('tariff-majeur').value || 0) * 100);
+    const gratuit = Math.round(Number(document.getElementById('tariff-gratuit').value || 0) * 100);
+
+    const { error } = await supabase.rpc('update_commune_tariffs', {
+      p_commune_id: myCommuneId, p_mineur_cents: mineur, p_majeur_cents: majeur, p_gratuit_cents: gratuit,
+    });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadTeamAndTariffs();
   };
 
   function renderCatalogue() {
@@ -2413,10 +2574,17 @@
         ${bookFieldRow('Illustrateur (nom et date)', 'bd-illustrator', b.illustrator)}
         ${bookFieldRow('Imprimeur', 'bd-printer', b.printer)}
       </div>
-      ${bookFieldRow('Couverture', 'bd-cover-color', b.cover_color || (b.cover_url ? '' : 'Sans couverture'), { select: ['Sans couverture', 'Couleur', 'Noir et blanc'] })}
+      <div class="flex items-end gap-2 mb-1">
+        <div class="flex-1">${bookFieldRow('Couverture', 'bd-cover-color', b.cover_color || (b.cover_url ? '' : 'Sans couverture'), { select: ['Sans couverture', 'Couleur', 'Noir et blanc'] })}</div>
+        ${b.cover_url ? `<button type="button" onclick="detectCoverColor(${b.id})" id="bd-detect-btn" class="mb-3 text-xs font-semibold text-mango-700 border border-mango-100 rounded-lg px-2.5 py-1.5 whitespace-nowrap hover:bg-mango-50">Détecter automatiquement</button>` : ''}
+      </div>
       <div class="grid grid-cols-2 gap-x-3">
         ${bookFieldRow('Délai de prêt (jours)', 'bd-loan-duration', b.loan_duration_days_override, { type: 'number' })}
         ${bookFieldRow('Nouveauté', 'bd-new-release', b.is_new_release ? 'Oui' : 'Non', { select: ['Non', 'Oui'] })}
+      </div>
+      <div class="grid grid-cols-2 gap-x-3">
+        ${bookFieldRow('Âge conseillé', 'bd-age-range', b.age_range, { type: 'text' })}
+        ${bookFieldRow('Réservé aux adultes', 'bd-adult-only', b.adult_only ? 'Oui' : 'Non', { select: ['Non', 'Oui'] })}
       </div>
       ${bookFieldRow('Résumé', 'bd-summary', b.summary, { textarea: true })}
 
@@ -2424,6 +2592,26 @@
     `;
     document.getElementById('book-modal-backdrop').classList.remove('hidden');
     document.getElementById('book-modal-backdrop').classList.add('flex');
+  };
+
+  window.detectCoverColor = async function (id) {
+    const b = books.find(x => x.id === id);
+    if (!b?.cover_url) return;
+    const btn = document.getElementById('bd-detect-btn');
+    const original = btn.textContent;
+    btn.textContent = 'Analyse…';
+    btn.disabled = true;
+
+    const { data, error } = await supabase.functions.invoke('detect-cover-color', { body: { cover_url: b.cover_url } });
+
+    btn.textContent = original;
+    btn.disabled = false;
+
+    if (error || !data?.ok) {
+      alert('Détection impossible : ' + (data?.message || error?.message || 'erreur inconnue') + '. Sélectionne manuellement.');
+      return;
+    }
+    document.getElementById('bd-cover-color').value = data.color;
   };
 
   window.closeBookModal = function (event) {
@@ -2448,6 +2636,8 @@
       cover_color: val('bd-cover-color'),
       loan_duration_days_override: document.getElementById('bd-loan-duration').value.trim() ? Number(document.getElementById('bd-loan-duration').value) : null,
       is_new_release: val('bd-new-release') === 'Oui',
+      age_range: val('bd-age-range'),
+      adult_only: val('bd-adult-only') === 'Oui',
       summary: val('bd-summary'),
     };
     const { error } = await supabase.from('books').update(payload).eq('id', id);
@@ -2479,13 +2669,19 @@
       return;
     }
     list.innerHTML = preregistrations.map(p => `
-      <div class="grid grid-cols-1 sm:grid-cols-[1.6fr_1.3fr_1fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr_1fr_1.2fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
         <span>
           <span class="font-semibold text-ink block">${escapeHtml(p.full_name)}</span>
           <span class="text-[10.5px] text-mango-700 font-semibold">${escapeHtml(p.communes?.name || '')}</span>
         </span>
         <span class="text-ink/60 text-xs">${escapeHtml(p.subscriber_number)}</span>
         <span class="text-ink/60 text-xs">${formatEventDateShort(p.created_at)}</span>
+        <select id="prereg-tariff-${p.id}" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
+          <option value="" selected disabled>Catégorie tarifaire…</option>
+          <option value="mineur">Mineur</option>
+          <option value="majeur">Majeur</option>
+          <option value="gratuit">Gratuité (sans emploi)</option>
+        </select>
         <span class="sm:text-right">
           <button onclick="validateRegistration('${p.id}', '${escapeJsAttr(p.full_name)}')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-ink text-white rounded-full px-4 py-2.5 sm:py-1.5">Valider l'inscription</button>
         </span>
@@ -2493,7 +2689,14 @@
   }
 
   window.validateRegistration = async function (id, name) {
+    const tariffSelect = document.getElementById('prereg-tariff-' + id);
+    const tariff_category = tariffSelect?.value;
+    if (!tariff_category) { alert('Choisis la catégorie tarifaire (mineur / majeur / gratuité) avant de valider.'); return; }
     if (!confirm(`Confirmer la validation de l'inscription de ${name} ? Vérifie bien sa pièce d'identité et son justificatif de domicile (et son autorisation parentale si mineur) avant de continuer.`)) return;
+
+    const { error: tariffError } = await supabase.rpc('set_tariff_category', { p_user_id: id, p_category: tariff_category });
+    if (tariffError) { alert('Erreur : ' + tariffError.message); return; }
+
     const { error } = await supabase.rpc('validate_registration', { p_user_id: id });
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadPreregistrations();

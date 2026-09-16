@@ -462,11 +462,13 @@
           <p class="text-sm text-ink/55 mt-0.5">${b.author}</p>
           <div class="flex items-center gap-2 mt-2 flex-wrap">
             ${b.category ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-hibiscus-50 text-hibiscus-700">${b.category}</span>` : '<span></span>'}
+            ${b.age_range ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-mango-50 text-mango-700">${b.age_range}</span>` : ''}
             <button id="modal-wishlist-btn" class="ml-auto w-7 h-7 shrink-0 ${inWishlist ? 'text-hibiscus-600' : 'text-ink/25 hover:text-hibiscus-400'}">${heartIcon(inWishlist)}</button>
           </div>
         </div>
       </div>
       ${b.summary ? `<p class="text-sm text-ink/70 leading-relaxed mt-4">${b.summary}</p>` : `<p class="text-sm text-ink/40 italic mt-4">Résumé non disponible pour ce titre.</p>`}
+      ${(b.page_count || b.legal_deposit) ? `<p class="text-[11px] text-ink/40 mt-2">${[b.page_count ? `${b.page_count} pages` : '', b.legal_deposit ? `Dépôt légal ${b.legal_deposit}` : ''].filter(Boolean).join(' · ')}</p>` : ''}
       ${btnHtml}
     `;
 
