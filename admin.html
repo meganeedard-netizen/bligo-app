@@ -35,9 +35,10 @@
   <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
     <div class="flex items-center gap-2.5">
       <img src="img/bligo-icon.png" alt="BliGO" class="w-8 h-8 object-contain">
+      <img id="header-commune-logo" alt="" class="hidden w-8 h-8 rounded-full object-contain bg-white shadow-sm">
       <div>
         <p class="font-logo font-bold text-base text-ink leading-none">Bli<span class="text-mango-600">GO</span> <span class="text-ink/40 font-sans font-medium text-sm">· Back-office</span></p>
-        <p class="text-[11px] text-ink/45 leading-none mt-0.5">Médiathèque de Val-Fleuri</p>
+        <p id="header-commune-name" class="text-[11px] text-ink/45 leading-none mt-0.5">Médiathèque de Val-Fleuri</p>
       </div>
     </div>
     <div class="flex items-center gap-2 sm:gap-3">
@@ -685,6 +686,19 @@
     myCommuneId = profile.commune_id || null;
     myIsDirection = profile.role === 'super_admin' || (profile.role === 'agent' && profile.agent_level === 'direction');
     document.getElementById('nav-team-btn').classList.toggle('hidden', !myIsDirection);
+
+    if (myCommuneId) {
+      const { data: commune } = await supabase.from('communes').select('name').eq('id', myCommuneId).single();
+      if (commune?.name) {
+        document.getElementById('header-commune-name').textContent = `Médiathèque de ${commune.name}`;
+        const slug = commune.name.normalize('NFD').replace(/[̀-ͯ]/g, '')
+          .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const logoEl = document.getElementById('header-commune-logo');
+        logoEl.onload = () => logoEl.classList.remove('hidden');
+        logoEl.onerror = () => logoEl.classList.add('hidden');
+        logoEl.src = `img/commune-logos/${slug}.png`;
+      }
+    }
     // Un compte agent restreint garde emprunt/retour et préinscriptions, mais
     // pas le catalogue ni l'agenda culturel (RLS déjà bloquée côté base pour
     // ces écrans, ce masquage évite juste de montrer un écran inutilisable).
