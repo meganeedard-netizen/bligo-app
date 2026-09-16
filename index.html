@@ -79,6 +79,18 @@
           <p class="text-[11px] text-ink/45 mt-1.5 leading-relaxed">Accès au Click &amp; Collect de ta médiathèque. Un agent validera ton compte lors de ton prochain passage (pièce d'identité + justificatif de domicile). Si tu es mineur·e, prévois une autorisation parentale.</p>
         </div>
         <div>
+          <label class="text-xs font-semibold text-ink/60 block mb-1">Tu es…</label>
+          <div class="flex gap-2">
+            <label class="flex-1 flex items-center justify-center gap-1.5 border border-mango-100 rounded-lg px-3 py-2 text-sm cursor-pointer has-[:checked]:bg-mango-50 has-[:checked]:border-mango-300 has-[:checked]:font-semibold">
+              <input type="radio" name="signup-age-category" value="majeur" checked class="accent-mango-600">Majeur·e
+            </label>
+            <label class="flex-1 flex items-center justify-center gap-1.5 border border-mango-100 rounded-lg px-3 py-2 text-sm cursor-pointer has-[:checked]:bg-mango-50 has-[:checked]:border-mango-300 has-[:checked]:font-semibold">
+              <input type="radio" name="signup-age-category" value="mineur" class="accent-mango-600">Mineur·e
+            </label>
+          </div>
+          <p class="text-[11px] text-ink/45 mt-1.5 leading-relaxed">Vérifié par l'agent lors de ta première visite — en attendant, ça adapte déjà le catalogue que tu vois.</p>
+        </div>
+        <div>
           <label class="text-xs font-semibold text-ink/60 block mb-1">Code de parrainage <span class="text-ink/35 font-normal">(facultatif)</span></label>
           <input type="text" id="signup-referral" placeholder="N° d'abonné de la personne qui t'a parrainé" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
         </div>
@@ -181,12 +193,13 @@
     const commune_id = document.getElementById('signup-commune').value;
     const referral_code = document.getElementById('signup-referral').value.trim();
     const password = document.getElementById('signup-password').value;
+    const self_declared_category = document.querySelector('input[name="signup-age-category"]:checked')?.value || 'majeur';
     if (!commune_id) {
       messageEl.textContent = 'Choisis ta médiathèque.';
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }
-    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name, account_type: 'officiel', commune_id, referral_code } } });
+    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name, account_type: 'officiel', commune_id, referral_code, self_declared_category } } });
     if (error) {
       messageEl.textContent = error.message;
       messageEl.className = 'text-xs text-center mt-3 text-red-600';

@@ -166,6 +166,7 @@
   let currentUser = null;
   let isLibreAccount = false;
   let myCommuneId = null;
+  let isMinorAccount = false;
   let myCommuneName = '';
   let preferredCategories = [];
 
@@ -349,6 +350,12 @@
     let filtered = activeCategory === STAFF_PICK_FILTER
       ? books.filter(b => b.is_staff_pick)
       : activeCategory ? books.filter(b => b.category === activeCategory) : books;
+    // Un compte mineur ne voit même pas les livres réservés aux adultes (pas
+    // seulement bloqué à la réservation, voir aussi enforce_reservation_limits
+    // côté base pour le vrai garde-fou).
+    if (isMinorAccount) {
+      filtered = filtered.filter(b => !b.adult_only);
+    }
     if (q) {
       // Le résumé et la catégorie sont aussi regardés : sans ça, chercher
       // "développement personnel" ne trouvait rien tant que ces mots
@@ -738,13 +745,14 @@
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, role, loyalty_points, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, communes ( name )')
+      .select('full_name, role, loyalty_points, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, communes ( name )')
       .eq('id', currentUser.id).single();
 
     preferredCategories = profile?.preferred_categories || [];
     isLibreAccount = profile?.account_type === 'libre';
     myCommuneId = profile?.commune_id || null;
     myCommuneName = profile?.communes?.name || '';
+    isMinorAccount = profile?.tariff_category === 'mineur';
 
     // Jamais les deux fenêtres en même temps : on attend que les préférences de
     // lecture soient répondues (ou passées) avant de proposer le pop-up de
