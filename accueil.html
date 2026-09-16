@@ -339,7 +339,16 @@
 
     let filtered = activeCategory ? books.filter(b => b.category === activeCategory) : books;
     if (q) {
-      filtered = filtered.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
+      // Le résumé et la catégorie sont aussi regardés : sans ça, chercher
+      // "développement personnel" ne trouvait rien tant que ces mots
+      // n'étaient pas littéralement dans le titre, même pour un livre
+      // catégorisé "Bien-être" et dont le résumé en parle explicitement.
+      filtered = filtered.filter(b =>
+        b.title.toLowerCase().includes(q) ||
+        b.author.toLowerCase().includes(q) ||
+        (b.summary || '').toLowerCase().includes(q) ||
+        (b.category || '').toLowerCase().includes(q)
+      );
     }
     filtered = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
