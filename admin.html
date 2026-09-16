@@ -565,8 +565,8 @@
   const CATEGORY_KEYWORDS = [
     ['BD', ['manga', 'comic', 'graphic novel', 'bande dessinée']],
     ['Jeunesse', ['juvenile', 'children', 'jeunesse', 'young adult']],
-    ['Thriller', ['thriller', 'suspense', 'polic', 'crime fiction', 'mystery']],
-    ['Fantasy', ['science fiction', 'sci-fi', 'fantasy', 'fantastique']],
+    ['Thriller', ['thriller', 'suspense', 'polic', 'crime fiction', 'mystery', 'detective', 'espionnage']],
+    ['Fantasy', ['science fiction', 'science-fiction', 'sci-fi', 'fantasy', 'fantastique']],
     // Auteurs et documents antillais/caribéens : vérifié avant "Roman" pour
     // qu'un roman antillais parte bien en Fonds local, pas en Roman générique.
     ['Fonds local', ['antill', 'caribb', 'creole', 'créole', 'martinique', 'guadeloupe', 'haïti', 'haiti', 'guyane']],
@@ -1299,14 +1299,16 @@
       if (!meta) meta = await fetchFromOpenLibrary(isbn);
       if (meta && !meta.cover_url) meta.cover_url = await fetchCoverFromOpenLibrary(isbn);
       // Même filet que le scan simple : Open Library comble les trous
-      // d'éditeur/date/pages/langue que Google Books laisse souvent.
-      if (meta && (!meta.publisher || !meta.published_date || !meta.page_count || !meta.language)) {
+      // d'éditeur/date/pages/langue que Google Books laisse souvent, et ses
+      // "subjects" aident à deviner le genre quand Google Books n'a rien.
+      if (meta) {
         const ol = await fetchFromOpenLibrary(isbn);
         if (ol) {
           if (!meta.publisher) meta.publisher = ol.publisher;
           if (!meta.published_date) meta.published_date = ol.published_date;
           if (!meta.page_count) meta.page_count = ol.page_count;
           if (!meta.language) meta.language = ol.language;
+          if (ol.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, ol.rawCategoryText].filter(Boolean).join(' ');
         }
       }
 
@@ -1316,14 +1318,9 @@
         continue;
       }
 
-      meta.category = forcedGenre || guessCategory(meta.rawCategoryText, meta.title);
-      delete meta.rawCategoryText;
-      if (!meta.dewey && !COTE_LETTER_PREFIX[meta.category]) {
-        meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
-      }
-      if (!meta.format) {
-        meta.format = await fetchFormatFromOpenLibrary(isbn);
-      }
+      // BnF avant le calcul de catégorie : ses vedettes Rameau (ex. "Romans
+      // policiers") sont un signal de genre plus fiable que Google Books/Open
+      // Library pour un fonds français, voir guessCategory().
       const bnf = await fetchFromBnF(isbn, meta.title, meta.author);
       if (bnf) {
         meta.legal_deposit = bnf.legal_deposit;
@@ -1331,6 +1328,16 @@
         if (!meta.publisher) meta.publisher = bnf.publisher;
         if (!meta.page_count) meta.page_count = bnf.page_count;
         if (!meta.language) meta.language = bnf.language;
+        if (bnf.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, bnf.rawCategoryText].filter(Boolean).join(' ');
+      }
+
+      meta.category = forcedGenre || guessCategory(meta.rawCategoryText, meta.title);
+      delete meta.rawCategoryText;
+      if (!meta.dewey && !COTE_LETTER_PREFIX[meta.category]) {
+        meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
+      }
+      if (!meta.format) {
+        meta.format = await fetchFormatFromOpenLibrary(isbn);
       }
 
       const payload = {
@@ -1522,6 +1529,7 @@
 
       const fields = doc.getElementsByTagNameNS('*', 'datafield');
       const getField = (tag) => Array.from(fields).find(f => f.getAttribute('tag') === tag);
+      const getFields = (tag) => Array.from(fields).filter(f => f.getAttribute('tag') === tag);
       const getSub = (field, code) => {
         if (!field) return null;
         const subs = field.getElementsByTagNameNS('*', 'subfield');
@@ -1546,7 +1554,13 @@
       const pagesMatch = pagesRaw?.match(/(\d+)\s*p/);
       const language = getSub(f101, 'a');
 
-      if (!legal_deposit && !printer && !publisher && !pagesMatch && !language) return null;
+      // Tags 606/608 : vedettes Rameau (genre/sujet, ex. "Romans policiers",
+      // "Thrillers (romans)") — vocabulaire français précis, bien plus fiable
+      // pour deviner la catégorie que les libellés anglais de Google Books.
+      const genreTerms = [...getFields('606'), ...getFields('608')]
+        .map(f => getSub(f, 'a')).filter(Boolean).join(' ');
+
+      if (!legal_deposit && !printer && !publisher && !pagesMatch && !language && !genreTerms) return null;
 
       return {
         legal_deposit,
@@ -1554,6 +1568,7 @@
         publisher,
         page_count: pagesMatch ? Number(pagesMatch[1]) : null,
         language,
+        rawCategoryText: genreTerms || null,
       };
     } catch {
       return null;
@@ -1608,13 +1623,21 @@
     // qu'une deuxième source aurait pu combler. Un bibliothécaire qui scanne
     // un vrai code-barres doit repartir avec la fiche la plus complète
     // possible, pas juste ce que la première source avait.
-    if (meta && isIsbn && (!meta.publisher || !meta.published_date || !meta.page_count || !meta.language)) {
+    // Open Library toujours interrogée quand on a un ISBN, même si Google Books
+    // a déjà tout trouvé : ses "subjects" (ex. "Detective and mystery stories",
+    // "Thrillers") sont souvent bien plus précis que les catégories Google Books
+    // (souvent vides ou juste "Fiction"), et combinés au résumé donnent une bien
+    // meilleure devinette de genre — un thriller mal classé finit avec une cote
+    // de documentaire (DOC) au lieu d'une cote de roman, repéré le 16/09/2026
+    // sur un Michel Bussi resté sans catégorie détectée.
+    if (meta && isIsbn) {
       const ol = await fetchFromOpenLibrary(isbn);
       if (ol) {
         if (!meta.publisher) meta.publisher = ol.publisher;
         if (!meta.published_date) meta.published_date = ol.published_date;
         if (!meta.page_count) meta.page_count = ol.page_count;
         if (!meta.language) meta.language = ol.language;
+        if (ol.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, ol.rawCategoryText].filter(Boolean).join(' ');
       }
     }
     // Dernier recours : une couverture déjà ajoutée à la main par Mégane pour ce
@@ -1638,6 +1661,7 @@
         if (!meta.publisher) meta.publisher = bnf.publisher;
         if (!meta.page_count) meta.page_count = bnf.page_count;
         if (!meta.language) meta.language = bnf.language;
+        if (bnf.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, bnf.rawCategoryText].filter(Boolean).join(' ');
       }
     }
 
@@ -1674,9 +1698,10 @@
       return;
     }
 
-    // Fiche trouvée : classement automatique par mots-clés, puis enregistrement
-    // immédiat — l'agent n'a rien d'autre à faire qu'à confirmer l'état du livre
-    // (et corriger la catégorie si besoin).
+    // Fiche trouvée : classement automatique par mots-clés, mais on n'enregistre
+    // plus tout de suite — une recherche par titre/auteur peut se tromper de
+    // livre ou d'édition (déjà arrivé), l'agent doit voir la fiche et valider
+    // explicitement avant qu'elle n'entre au catalogue.
     meta.category = guessCategory(meta.rawCategoryText, meta.title);
     delete meta.rawCategoryText;
     // L'indice Dewey ne sert qu'aux documentaires (voir COTE_LETTER_PREFIX),
@@ -1685,7 +1710,46 @@
       meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
     }
     meta.isbn = isIsbn ? isbn : null;
-    const inserted = await insertBook(meta);
+    renderScanPreview(meta);
+  };
+
+  let pendingScanMeta = null;
+
+  function renderScanPreview(meta) {
+    pendingScanMeta = meta;
+    const resultBox = document.getElementById('scan-result');
+    const coverHtml = meta.cover_url
+      ? `<img src="${escapeHtml(meta.cover_url)}" alt="" class="w-14 h-20 object-cover rounded bg-mango-50 shrink-0">`
+      : `<div class="w-14 h-20 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml((meta.title || '?')[0])}</div>`;
+
+    resultBox.innerHTML = `
+      <div class="text-left w-full">
+        <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide mb-2">Fiche trouvée — vérifie avant de valider</p>
+        <div class="flex gap-3">
+          ${coverHtml}
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-ink">${escapeHtml(meta.title)}</p>
+            <p class="text-xs text-ink/55 mt-0.5">${escapeHtml(meta.author)}</p>
+            <select id="scan-preview-category" class="mt-1.5 border border-mango-100 rounded-full pl-2.5 pr-6 py-1 text-[11px] font-semibold text-mango-700 bg-mango-50">
+              ${categoryOptionsHtml(meta.category)}
+            </select>
+          </div>
+        </div>
+        ${meta.summary ? `<p class="text-xs text-ink/60 leading-relaxed mt-3 line-clamp-4">${escapeHtml(meta.summary)}</p>` : ''}
+        <div class="flex gap-2 mt-4">
+          <button onclick="confirmScanAdd()" class="flex-1 bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">✓ Valider et ajouter au catalogue</button>
+          <button onclick="resetScan()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Ce n'est pas le bon livre</button>
+        </div>
+      </div>`;
+  }
+
+  window.confirmScanAdd = async function () {
+    if (!pendingScanMeta) return;
+    const categorySelect = document.getElementById('scan-preview-category');
+    if (categorySelect) pendingScanMeta.category = categorySelect.value;
+
+    const inserted = await insertBook(pendingScanMeta);
+    pendingScanMeta = null;
     if (inserted) {
       await maybeRecordDonation(inserted.id, null);
       renderAddedCard(inserted);
@@ -2302,6 +2366,7 @@
 
   window.resetScan = function () {
     stopCamera();
+    pendingScanMeta = null;
     document.getElementById('scan-input').value = '';
     document.getElementById('camera-hint').textContent = '';
     document.getElementById('scan-result').innerHTML = `<p class="text-sm text-ink/40">En attente d'une recherche…</p>`;
