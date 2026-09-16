@@ -205,7 +205,9 @@
           style="font-size: 16px;"
           class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm mb-4 outline-none focus:ring-2 focus:ring-mango-300">
 
-        <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<span id="to-equip-badge" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></span></h3>
+        <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<span id="to-equip-badge" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></span>
+          <button onclick="checkAndFixCotes()" class="ml-3 align-middle text-[11px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1">Vérifier les cotes</button>
+        </h3>
 
         <div id="bulk-edit-bar" class="hidden bg-ink text-white rounded-xl p-3 mb-3 flex flex-wrap items-center gap-2 text-sm">
           <span class="font-semibold"><span id="bulk-edit-count">0</span> livre(s) sélectionné(s)</span>
@@ -626,6 +628,42 @@
     const numeric = dewey || COTE_DEWEY_DEFAULT[category] || 'DOC';
     return suffix ? `${numeric} ${suffix}` : numeric;
   }
+
+  // Repère les livres dont la cote ne correspond plus à leur catégorie
+  // actuelle (typiquement : catégorie corrigée après coup dans le menu
+  // déroulant, sans repasser par la cote — voir le cas Michel Bussi/"DOC BUS"
+  // du 16/09/2026). Volontairement limité aux catégories à préfixe lettre
+  // (Roman, Thriller, Fantasy, BD, Jeunesse, Fonds local) : les catégories
+  // documentaires (Bien-être, Maison, Histoire, Culture) utilisent un indice
+  // Dewey souvent affiné à la main, qu'on ne veut surtout pas écraser par un
+  // indice par défaut générique.
+  window.checkAndFixCotes = async function () {
+    const mismatches = [];
+    for (const b of books) {
+      const letters = COTE_LETTER_PREFIX[b.category];
+      if (!letters) continue;
+      const expected = suggestCote(b.category, b.author, null);
+      const currentPrefix = (b.shelf_location || '').trim().split(' ')[0];
+      if (currentPrefix !== letters) {
+        mismatches.push({ id: b.id, title: b.title, old: b.shelf_location || '(vide)', new: expected });
+      }
+    }
+
+    if (!mismatches.length) {
+      alert('Toutes les cotes sont cohérentes avec la catégorie actuelle de chaque livre.');
+      return;
+    }
+
+    const list = mismatches.map(m => `• ${m.title} : ${m.old} → ${m.new}`).join('\n');
+    if (!confirm(`${mismatches.length} cote(s) à corriger pour rester cohérente(s) avec la catégorie actuelle :\n\n${list}\n\nAppliquer ces changements ?`)) return;
+
+    for (const m of mismatches) {
+      await supabase.from('books').update({ shelf_location: m.new }).eq('id', m.id);
+      await supabase.from('book_copies').update({ shelf_location: m.new }).eq('book_id', m.id);
+    }
+    await loadBooks();
+    alert(`${mismatches.length} cote(s) mise(s) à jour.`);
+  };
 
   const accessMessage = document.getElementById('access-message');
 
