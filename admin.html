@@ -215,7 +215,15 @@
 
         <div id="bulk-edit-bar" class="hidden bg-ink text-white rounded-xl p-3 mb-3 flex flex-wrap items-center gap-2 text-sm">
           <span class="font-semibold"><span id="bulk-edit-count">0</span> livre(s) sélectionné(s)</span>
-          <input id="bulk-loan-duration" type="number" min="1" placeholder="Délai de prêt (jours)" class="border border-white/30 bg-white/10 placeholder-white/50 rounded-lg px-2 py-1.5 text-sm w-44">
+          <select id="bulk-loan-duration" class="border border-white/30 bg-white/10 rounded-lg px-2 py-1.5 text-sm w-44">
+            <option value="" selected>Délai de prêt…</option>
+            <option value="7">1 semaine</option>
+            <option value="14">2 semaines</option>
+            <option value="21">3 semaines</option>
+            <option value="28">4 semaines</option>
+            <option value="35">5 semaines</option>
+            <option value="42">6 semaines</option>
+          </select>
           <button onclick="applyBulkLoanDuration()" class="text-xs font-semibold bg-white text-ink rounded-lg px-3 py-1.5">Appliquer le délai</button>
           <button onclick="applyBulkNewRelease(true)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Marquer « Nouveauté »</button>
           <button onclick="applyBulkNewRelease(false)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Retirer « Nouveauté »</button>
@@ -2317,19 +2325,33 @@
     document.getElementById('bulk-edit-count').textContent = selectedBookIds.size;
   }
 
+  function selectedBookTitlesList() {
+    return books.filter(b => selectedBookIds.has(b.id)).map(b => `• ${b.title}`).join('\n');
+  }
+
   window.applyBulkLoanDuration = async function () {
-    const raw = document.getElementById('bulk-loan-duration').value.trim();
-    const days = raw ? Number(raw) : null;
+    const raw = document.getElementById('bulk-loan-duration').value;
+    if (!raw) { alert('Choisis un délai de prêt.'); return; }
     if (!selectedBookIds.size) return;
+    const days = Number(raw);
+    const weeks = days / 7;
+    const titles = selectedBookTitlesList();
+
     const { error } = await supabase.from('books').update({ loan_duration_days_override: days }).in('id', [...selectedBookIds]);
     if (error) { alert('Erreur : ' + error.message); return; }
+
+    alert(`Délai de ${weeks} semaine${weeks > 1 ? 's' : ''} appliqué aux ${selectedBookIds.size} livre(s) suivant(s) :\n\n${titles}`);
     await loadBooks();
   };
 
   window.applyBulkNewRelease = async function (value) {
     if (!selectedBookIds.size) return;
+    const titles = selectedBookTitlesList();
+
     const { error } = await supabase.from('books').update({ is_new_release: value }).in('id', [...selectedBookIds]);
     if (error) { alert('Erreur : ' + error.message); return; }
+
+    alert(`${value ? 'Marqués « Nouveauté »' : 'Retirés de « Nouveauté »'} pour les ${selectedBookIds.size} livre(s) suivant(s) :\n\n${titles}`);
     await loadBooks();
   };
 
@@ -2545,6 +2567,15 @@
       <input id="${id}" type="${opts.type || 'text'}" value="${escapeHtml(value ?? '')}" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-3">`;
   }
 
+  function loanDurationFieldHtml(id, days) {
+    const weekOptions = [1, 2, 3, 4, 5, 6];
+    return `<label class="text-xs font-semibold text-ink/60 block mb-1">Délai de prêt</label>
+      <select id="${id}" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-3 bg-white">
+        <option value="" ${!days ? 'selected' : ''}>Non précisé</option>
+        ${weekOptions.map(w => `<option value="${w * 7}" ${days === w * 7 ? 'selected' : ''}>${w} semaine${w > 1 ? 's' : ''}</option>`).join('')}
+      </select>`;
+  }
+
   window.openBookDetail = function (id) {
     const b = books.find(x => x.id === id);
     if (!b) return;
@@ -2579,7 +2610,7 @@
         ${b.cover_url ? `<button type="button" onclick="detectCoverColor(${b.id})" id="bd-detect-btn" class="mb-3 text-xs font-semibold text-mango-700 border border-mango-100 rounded-lg px-2.5 py-1.5 whitespace-nowrap hover:bg-mango-50">Détecter automatiquement</button>` : ''}
       </div>
       <div class="grid grid-cols-2 gap-x-3">
-        ${bookFieldRow('Délai de prêt (jours)', 'bd-loan-duration', b.loan_duration_days_override, { type: 'number' })}
+        ${loanDurationFieldHtml('bd-loan-duration', b.loan_duration_days_override)}
         ${bookFieldRow('Nouveauté', 'bd-new-release', b.is_new_release ? 'Oui' : 'Non', { select: ['Non', 'Oui'] })}
       </div>
       <div class="grid grid-cols-2 gap-x-3">
