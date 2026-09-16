@@ -27,8 +27,18 @@ const ALLOWED_HOST_SUFFIXES = [
   '.supabase.co',
 ];
 
+// Un navigateur envoie d'abord une requête OPTIONS de pré-vérification (CORS)
+// avant le vrai POST, à cause de l'en-tête Authorization. Sans ces en-têtes,
+// le navigateur bloque la requête avant même qu'elle n'atteigne la fonction —
+// ça remonte côté client comme "Failed to send a request to the Edge Function",
+// sans aucun détail utile (bloqué au niveau réseau, pas une vraie réponse HTTP).
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
 function isAllowedHost(hostname: string) {
@@ -36,6 +46,7 @@ function isAllowedHost(hostname: string) {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ ok: false, message: 'Méthode non supportée' }, 405);
 
   const authHeader = req.headers.get('Authorization') ?? '';
