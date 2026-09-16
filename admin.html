@@ -1764,7 +1764,67 @@
       meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
     }
     meta.isbn = isIsbn ? isbn : null;
+
+    // Même titre + même auteur déjà au catalogue (une autre édition scannée
+    // une autre fois, typiquement) : on propose d'ajouter un exemplaire à la
+    // fiche existante plutôt que de laisser créer une fiche en double, comme
+    // c'est arrivé le 16/09/2026 avec Michel Bussi.
+    const existingBook = books.find(b =>
+      normalizeKey(b.title) === normalizeKey(meta.title) && normalizeKey(b.author) === normalizeKey(meta.author)
+    );
+    if (existingBook) {
+      pendingScanMeta = meta;
+      renderExistingBookPreview(existingBook);
+      return;
+    }
+
     renderScanPreview(meta);
+  };
+
+  function renderExistingBookPreview(book) {
+    const resultBox = document.getElementById('scan-result');
+    const coverHtml = book.cover_url
+      ? `<img src="${escapeHtml(book.cover_url)}" alt="" class="w-14 h-20 object-cover rounded bg-mango-50 shrink-0">`
+      : `<div class="w-14 h-20 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml(book.cover_initial || book.title[0])}</div>`;
+    const totalCopies = book.total_copies || 0;
+
+    resultBox.innerHTML = `
+      <div class="text-left w-full">
+        <p class="text-[11px] font-bold text-mango-700 uppercase tracking-wide mb-2">Déjà au catalogue — ${totalCopies} exemplaire${totalCopies > 1 ? 's' : ''} actuellement</p>
+        <div class="flex gap-3">
+          ${coverHtml}
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-ink">${escapeHtml(book.title)}</p>
+            <p class="text-xs text-ink/55 mt-0.5">${escapeHtml(book.author)}</p>
+            <p class="text-[11px] text-mango-700 font-semibold mt-1">${book.available_count || 0}/${totalCopies} disponible${totalCopies > 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires à ajouter</label>
+        <input type="number" id="scan-existing-copies" min="1" value="1" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
+        <div class="flex gap-2 mt-4">
+          <button onclick="confirmAddCopiesToExisting(${book.id})" class="flex-1 bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">✓ Ajouter à cette fiche</button>
+        </div>
+        <button onclick="forceScanPreviewAsNew()" class="w-full mt-2 text-xs text-ink/40 hover:text-ink/60 underline">C'est une édition différente à part, créer une fiche séparée</button>
+      </div>`;
+  }
+
+  window.forceScanPreviewAsNew = function () {
+    if (pendingScanMeta) renderScanPreview(pendingScanMeta);
+  };
+
+  window.confirmAddCopiesToExisting = async function (bookId) {
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
+    const count = Math.max(1, parseInt(document.getElementById('scan-existing-copies')?.value, 10) || 1);
+    let index = (book.copies || []).length;
+    for (let i = 0; i < count; i++) {
+      index += 1;
+      await createCopyForBook(book, book.shelf_location, false, index);
+    }
+    pendingScanMeta = null;
+    await loadBooks();
+    const updated = books.find(b => b.id === bookId);
+    if (updated) renderAddedCard(updated);
   };
 
   let pendingScanMeta = null;
