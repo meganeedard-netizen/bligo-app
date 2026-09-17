@@ -608,6 +608,13 @@
           <p id="tariff-updated-label" class="text-[11px] text-ink/40 mb-3"></p>
           <button onclick="saveTariffs()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les tarifs</button>
         </div>
+
+        <h2 class="text-lg font-bold text-ink mb-1">Horaires d'ouverture</h2>
+        <p class="text-sm text-ink/55 mb-4">Affichés aux usagers depuis l'accueil de l'appli. Laisse vide ou écris « Fermé » pour un jour de fermeture.</p>
+        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-md">
+          <div id="opening-hours-fields" class="flex flex-col gap-2 mb-3"></div>
+          <button onclick="saveOpeningHours()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les horaires</button>
+        </div>
       </section>
 
       <!-- STATISTIQUES SIGB (direction uniquement) -->
@@ -2776,12 +2783,14 @@
 
   // ---------- Comptes agents & tarifs (direction uniquement) ----------
 
+  const WEEKDAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+
   async function loadTeamAndTariffs() {
     if (!myCommuneId) return;
 
     const [{ data: team, error: teamError }, { data: commune, error: communeError }] = await Promise.all([
       supabase.from('profiles').select('id, full_name, agent_level').eq('commune_id', myCommuneId).eq('role', 'agent').order('full_name'),
-      supabase.from('communes').select('tariff_mineur_cents, tariff_majeur_cents, tariff_gratuit_cents, tariff_updated_at').eq('id', myCommuneId).single(),
+      supabase.from('communes').select('tariff_mineur_cents, tariff_majeur_cents, tariff_gratuit_cents, tariff_updated_at, opening_hours').eq('id', myCommuneId).single(),
     ]);
 
     if (teamError) { console.error(teamError); } else { renderTeamList(team || []); }
@@ -2793,6 +2802,13 @@
       document.getElementById('tariff-updated-label').textContent = commune.tariff_updated_at
         ? `Dernière modification le ${formatDateShortAdmin(commune.tariff_updated_at)}`
         : 'Jamais modifiés.';
+
+      const hours = commune.opening_hours || {};
+      document.getElementById('opening-hours-fields').innerHTML = WEEKDAYS.map(day => `
+        <div class="grid grid-cols-[110px_1fr] items-center gap-2">
+          <label class="text-xs font-semibold text-ink/60 capitalize">${day}</label>
+          <input id="hours-${day}" value="${escapeHtml(hours[day] || '')}" placeholder="Ex. 9h - 12h / 14h - 18h" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
+        </div>`).join('');
     }
   }
 
@@ -2852,6 +2868,17 @@
     });
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadTeamAndTariffs();
+  };
+
+  window.saveOpeningHours = async function () {
+    const hours = {};
+    WEEKDAYS.forEach(day => { hours[day] = document.getElementById(`hours-${day}`).value.trim(); });
+
+    const { error } = await supabase.rpc('update_commune_opening_hours', {
+      p_commune_id: myCommuneId, p_opening_hours: hours,
+    });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert('Horaires enregistrés.');
   };
 
   let duplicatesFilterActive = false;

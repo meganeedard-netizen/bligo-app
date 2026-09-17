@@ -42,6 +42,7 @@
       <div>
         <h1 id="greeting" class="text-xl font-bold text-ink leading-tight">Bonjour</h1>
         <p id="commune-display" class="text-xs text-ink/45 mt-0.5"></p>
+        <button id="opening-hours-link" onclick="openOpeningHoursModal()" class="hidden text-[11px] font-semibold text-mango-700 underline mt-0.5">Horaires</button>
       </div>
     </div>
     <a href="points.html" class="shrink-0 flex items-center gap-2 bg-white border border-mango-100 rounded-full pl-4 pr-1 py-1 shadow-sm">
@@ -100,6 +101,15 @@
     <p class="text-base font-bold text-ink mb-2">Pré-inscription en attente de validation</p>
     <p class="text-sm text-ink/60 leading-relaxed">Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là. Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.</p>
     <button onclick="closePendingPopup()" class="w-full mt-5 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">J'ai compris</button>
+  </div>
+</div>
+
+<!-- Horaires d'ouverture -->
+<div id="opening-hours-backdrop" onclick="closeOpeningHoursModal(event)" class="hidden fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+    <button onclick="closeOpeningHoursModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+    <p class="text-base font-bold text-ink mb-4">Horaires d'ouverture</p>
+    <div id="opening-hours-list" class="flex flex-col gap-1.5"></div>
   </div>
 </div>
 
@@ -170,6 +180,7 @@
   let myCommuneId = null;
   let isMinorAccount = false;
   let myCommuneName = '';
+  let myOpeningHours = null;
   let preferredCategories = [];
 
   // ---------- Catalogue officiel : état ----------
@@ -729,6 +740,31 @@
     document.getElementById('pending-popup-backdrop').classList.remove('flex');
   };
 
+  function escapeHtmlHours(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  const OPENING_HOURS_DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+
+  window.openOpeningHoursModal = function () {
+    // getDay() : 0 = dimanche, 1 = lundi... on décale pour retrouver l'index
+    // dans OPENING_HOURS_DAYS (0 = lundi).
+    const todayIndex = (new Date().getDay() + 6) % 7;
+    document.getElementById('opening-hours-list').innerHTML = OPENING_HOURS_DAYS.map((day, i) => `
+      <div class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg ${i === todayIndex ? 'bg-mango-50' : ''}">
+        <span class="text-sm capitalize ${i === todayIndex ? 'font-bold text-ink' : 'text-ink/70'}">${day}</span>
+        <span class="text-sm ${i === todayIndex ? 'font-bold text-ink' : 'text-ink/60'}">${escapeHtmlHours(myOpeningHours?.[day] || 'Fermé')}</span>
+      </div>`).join('');
+    document.getElementById('opening-hours-backdrop').classList.remove('hidden');
+    document.getElementById('opening-hours-backdrop').classList.add('flex');
+  };
+
+  window.closeOpeningHoursModal = function (event) {
+    if (event && event.target.id !== 'opening-hours-backdrop') return;
+    document.getElementById('opening-hours-backdrop').classList.add('hidden');
+    document.getElementById('opening-hours-backdrop').classList.remove('flex');
+  };
+
   // ==================== RECHERCHE (barre unique, sous le défi de lecture) ====================
 
   document.getElementById('home-search-form').addEventListener('submit', (e) => {
@@ -762,13 +798,14 @@
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, role, loyalty_points, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, communes ( name )')
+      .select('full_name, role, loyalty_points, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, communes ( name, opening_hours )')
       .eq('id', currentUser.id).single();
 
     preferredCategories = profile?.preferred_categories || [];
     isLibreAccount = profile?.account_type === 'libre';
     myCommuneId = profile?.commune_id || null;
     myCommuneName = profile?.communes?.name || '';
+    myOpeningHours = profile?.communes?.opening_hours || null;
     isMinorAccount = profile?.tariff_category === 'mineur';
 
     // Jamais les deux fenêtres en même temps : on attend que les préférences de
@@ -788,6 +825,7 @@
     const name = profile?.full_name || currentUser.email;
     document.getElementById('greeting').textContent = 'Bonjour ' + name.split(' ')[0];
     document.getElementById('commune-display').textContent = myCommuneName ? `Médiathèque de ${myCommuneName}` : '';
+    document.getElementById('opening-hours-link').classList.toggle('hidden', !myOpeningHours || !Object.values(myOpeningHours).some(Boolean));
 
     const logoEl = document.getElementById('commune-logo');
     if (myCommuneName) {
