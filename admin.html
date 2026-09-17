@@ -2416,9 +2416,9 @@
   }
 
   window.filterFicheHistory = function () {
-    const query = normalizeKey(document.getElementById('fiche-history-search')?.value || '');
+    const query = searchNormalize(document.getElementById('fiche-history-search')?.value || '');
     const filtered = query
-      ? currentFicheItems.filter(it => normalizeKey(it.title + ' ' + it.author).includes(query))
+      ? currentFicheItems.filter(it => searchNormalize(it.title + ' ' + it.author).includes(query))
       : currentFicheItems;
     document.getElementById('fiche-history-list').innerHTML = renderFicheHistoryRows(filtered, currentFicheCommuneSettings);
   };
@@ -2649,11 +2649,11 @@
   // exemplaires du même titre.
   function bookSearchText(b) {
     const barcodes = (b.copies || []).map(c => c.barcode).join(' ');
-    return normalizeKey([b.title, b.author, b.isbn, barcodes].filter(Boolean).join(' '));
+    return searchNormalize([b.title, b.author, b.isbn, barcodes].filter(Boolean).join(' '));
   }
 
   window.toggleSelectAllBooks = function (checked) {
-    const query = normalizeKey(document.getElementById('catalogue-search')?.value || '');
+    const query = searchNormalize(document.getElementById('catalogue-search')?.value || '');
     const filtered = query
       ? books.filter(b => bookSearchText(b).includes(query))
       : books;
@@ -2838,7 +2838,7 @@
   window.renderCatalogue = function renderCatalogue() {
     // Recherche par titre, auteur, ISBN ou code-barres de la médiathèque —
     // toujours sur l'ensemble du catalogue, pas seulement la page affichée.
-    const query = normalizeKey(document.getElementById('catalogue-search')?.value || '');
+    const query = searchNormalize(document.getElementById('catalogue-search')?.value || '');
     let filtered = query
       ? books.filter(b => bookSearchText(b).includes(query))
       : books;
@@ -3456,6 +3456,17 @@
 
   function normalizeKey(s) {
     return (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  // Pour la recherche uniquement (catalogue, fiche usager) : en plus de
+  // normalizeKey(), ignore les accents. Sans ça, taper "etranger" ne
+  // retrouvait pas "L'Étranger" — repéré le 17/09/2026 sur la fiche usager.
+  // Volontairement séparée de normalizeKey() : cette dernière sert aussi de
+  // clé de correspondance avec cover_bank (déjà enregistrée avec accents en
+  // base), la changer aurait cassé la réutilisation des couvertures pour les
+  // titres accentués déjà connus.
+  function searchNormalize(s) {
+    return normalizeKey(s).normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
   async function lookupCoverBank(title, author) {

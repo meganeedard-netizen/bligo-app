@@ -343,10 +343,16 @@
     return r.status === 'recupere' && r.return_due_at && new Date(r.return_due_at) > new Date();
   }
 
+  // Ignore les accents en plus de la casse : sans ça, taper "etranger" ne
+  // retrouvait pas "L'Étranger" — repéré le 17/09/2026.
+  function searchNormalize(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
   function renderBooks() {
     const list = document.getElementById('book-list');
     const reservedBookIds = new Set(reservations.filter(isActiveReservation).map(r => r.books?.id));
-    const q = searchQuery.trim().toLowerCase();
+    const q = searchNormalize(searchQuery.trim());
 
     document.getElementById('staff-pick-caption').classList.toggle('hidden', activeCategory !== STAFF_PICK_FILTER);
 
@@ -365,10 +371,10 @@
       // n'étaient pas littéralement dans le titre, même pour un livre
       // catégorisé "Bien-être" et dont le résumé en parle explicitement.
       filtered = filtered.filter(b =>
-        b.title.toLowerCase().includes(q) ||
-        b.author.toLowerCase().includes(q) ||
-        (b.summary || '').toLowerCase().includes(q) ||
-        (b.category || '').toLowerCase().includes(q)
+        searchNormalize(b.title).includes(q) ||
+        searchNormalize(b.author).includes(q) ||
+        searchNormalize(b.summary).includes(q) ||
+        searchNormalize(b.category).includes(q)
       );
     }
     filtered = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
