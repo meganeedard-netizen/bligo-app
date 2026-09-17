@@ -62,7 +62,10 @@
   <div class="rounded-2xl p-6 text-white shadow-xl bg-gradient-to-br from-hibiscus-700 via-hibiscus-600 to-mango-600 relative overflow-hidden mb-6">
     <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
     <div class="absolute -right-2 bottom-6 w-16 h-16 rounded-full bg-white/10"></div>
-    <p class="font-logo font-bold text-sm relative">Bli<span class="text-mango-300">GO</span></p>
+    <div class="relative flex items-center gap-2">
+      <img id="card-commune-logo" alt="" class="hidden w-8 h-8 rounded-full object-contain bg-white shadow-sm shrink-0">
+      <p id="card-logo-text" class="font-logo font-bold text-sm">Bli<span class="text-mango-300">GO</span></p>
+    </div>
     <p id="card-subtitle" class="text-[11px] text-white/70 relative mb-4">Médiathèque de Val-Fleuri</p>
 
     <p id="card-name" class="text-lg font-bold relative"></p>
@@ -209,6 +212,24 @@
       : (profile?.communes?.name ? `Médiathèque de ${profile.communes.name}` : 'Médiathèque de Val-Fleuri');
 
     const communeName = profile?.communes?.name ? `Médiathèque de ${profile.communes.name}` : 'Médiathèque de Val-Fleuri';
+
+    // Logo de la commune à la place du mot-clé BliGO, comme sur l'accueil et
+    // le back-office — reste sur BliGO si l'image n'existe pas (ou compte
+    // Bibliothèque Libre, pas rattaché à une commune).
+    if (!isLibre && profile?.communes?.name) {
+      const slug = profile.communes.name.normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const logoEl = document.getElementById('card-commune-logo');
+      logoEl.onload = () => {
+        logoEl.classList.remove('hidden');
+        document.getElementById('card-logo-text').classList.add('hidden');
+      };
+      logoEl.onerror = () => {
+        logoEl.classList.add('hidden');
+        document.getElementById('card-logo-text').classList.remove('hidden');
+      };
+      logoEl.src = `img/commune-logos/${slug}.png`;
+    }
 
     const badge = document.getElementById('registration-badge');
     if (isLibre) {
