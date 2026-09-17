@@ -364,7 +364,7 @@
         </div>
 
         <div id="pr-panel-active" class="hidden">
-          <p class="text-sm text-ink/55 mb-4">Tous les livres actuellement empruntés dans ta médiathèque, triés par date de retour — les plus urgents en premier (en rouge si le retour est en retard).</p>
+          <p class="text-sm text-ink/55 mb-4">Tous les livres empruntés, classés par date de retour. Les retards apparaissent en rouge.</p>
           <div id="active-loans-list" class="flex flex-col gap-2.5 max-w-2xl"></div>
         </div>
 
@@ -2365,7 +2365,7 @@
   function renderActiveLoans() {
     const list = document.getElementById('active-loans-list');
     if (!activeLoans.length) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Aucun emprunt en cours.</p>`;
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Pas de prêt en cours.</p>`;
       return;
     }
     list.innerHTML = activeLoans.map(loanRowHtml).join('');
