@@ -418,7 +418,7 @@
 
           <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
             <div class="grid grid-cols-[1.6fr_1.2fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[560px]">
-              <span>Événement</span><span>Date</span><span>Inscrits</span><span></span>
+              <span>Événement</span><span class="text-center">Date</span><span class="text-center">Inscrits</span><span></span>
             </div>
             <div id="events-list" class="min-w-[560px]"></div>
           </div>
@@ -2330,12 +2330,12 @@
     const [{ data: loans, error: loansError }, { data: resa, error: resaError }] = await Promise.all([
       supabase
         .from('loans')
-        .select('id, due_at, borrowed_at, returned_at, book_copies ( books ( title, author ) )')
+        .select('id, due_at, borrowed_at, returned_at, book_copies ( barcode, books ( title, author, shelf_location, isbn ) )')
         .eq('user_id', profile.id)
         .order('borrowed_at', { ascending: false }),
       supabase
         .from('reservations')
-        .select('id, status, created_at, return_due_at, books ( title, author )')
+        .select('id, status, created_at, return_due_at, books ( title, author, shelf_location, isbn )')
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false }),
     ]);
@@ -2378,6 +2378,52 @@
     if (freshProfile) await loadFicheFor(freshProfile);
   };
 
+  let currentFicheItems = [];
+  let currentFicheCommuneSettings = null;
+
+  const FICHE_STATE_BADGE = {
+    retard: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">En retard</span>',
+    en_cours: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-mango-50 text-mango-700">En cours</span>',
+    en_attente: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Réservation en attente</span>',
+    rendu: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-ink/5 text-ink/45">Rendu</span>',
+  };
+
+  // Réutilisée pour l'affichage initial et pour le filtrage par la barre de
+  // recherche de l'historique (voir renderFiche / filterFicheHistory).
+  function renderFicheHistoryRows(items, communeSettings) {
+    if (!items.length) {
+      return `<p class="text-sm text-ink/40 text-center py-8">Aucun résultat.</p>`;
+    }
+    return items.map(it => {
+      const feeCents = it.state === 'retard' ? computeLateFeeCentsClient(it.dueAt, communeSettings) : 0;
+      const details = [
+        it.shelf_location ? `📍 ${escapeHtml(it.shelf_location)}` : '',
+        it.barcode ? `Code ${escapeHtml(it.barcode)}` : '',
+        it.isbn ? `ISBN ${escapeHtml(it.isbn)}` : '',
+      ].filter(Boolean).join(' · ');
+      return `
+        <div class="px-4 py-2.5 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-ink truncate">${escapeHtml(it.title)}</p>
+            <p class="text-[11px] text-ink/45">${escapeHtml(it.author)} · ${formatDateShortAdmin(it.date)}</p>
+            ${details ? `<p class="text-[10.5px] text-ink/40 mt-0.5">${details}</p>` : ''}
+          </div>
+          <div class="text-right shrink-0">
+            ${FICHE_STATE_BADGE[it.state] || ''}
+            ${feeCents > 0 ? `<p class="text-[10.5px] text-red-600 font-semibold mt-0.5">${(feeCents / 100).toFixed(2)} € de pénalité</p>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  window.filterFicheHistory = function () {
+    const query = normalizeKey(document.getElementById('fiche-history-search')?.value || '');
+    const filtered = query
+      ? currentFicheItems.filter(it => normalizeKey(it.title + ' ' + it.author).includes(query))
+      : currentFicheItems;
+    document.getElementById('fiche-history-list').innerHTML = renderFicheHistoryRows(filtered, currentFicheCommuneSettings);
+  };
+
   function renderFiche(profile, loans, resa, communeSettings) {
     const resultBox = document.getElementById('fiche-result');
     const now = new Date();
@@ -2385,11 +2431,16 @@
 
     // Unifie prêts comptoir et réservations en une seule chronologie, avec un
     // statut simple à 3 valeurs pour l'affichage (pas les statuts bruts des
-    // deux tables, différents l'un de l'autre).
+    // deux tables, différents l'une de l'autre). La cote/le code-barres ne
+    // sont connus que pour un prêt (exemplaire précis) — une réservation
+    // n'a pas encore d'exemplaire assigné tant qu'elle n'est pas récupérée.
     const items = [
       ...loans.map(l => ({
         title: l.book_copies?.books?.title || 'Livre supprimé',
         author: l.book_copies?.books?.author || '',
+        shelf_location: l.book_copies?.books?.shelf_location || null,
+        isbn: l.book_copies?.books?.isbn || null,
+        barcode: l.book_copies?.barcode || null,
         date: l.borrowed_at,
         state: l.returned_at ? 'rendu' : (new Date(l.due_at) <= now ? 'retard' : 'en_cours'),
         dueAt: l.due_at,
@@ -2397,6 +2448,9 @@
       ...resa.filter(r => r.status !== 'preparation').map(r => ({
         title: r.books?.title || 'Livre supprimé',
         author: r.books?.author || '',
+        shelf_location: r.books?.shelf_location || null,
+        isbn: r.books?.isbn || null,
+        barcode: null,
         date: r.created_at,
         state: r.status === 'recupere'
           ? (r.return_due_at && new Date(r.return_due_at) <= now ? 'retard' : 'en_cours')
@@ -2405,29 +2459,10 @@
       })),
     ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    const stateBadge = {
-      retard: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">En retard</span>',
-      en_cours: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-mango-50 text-mango-700">En cours</span>',
-      en_attente: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Réservation en attente</span>',
-      rendu: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-ink/5 text-ink/45">Rendu</span>',
-    };
+    currentFicheItems = items;
+    currentFicheCommuneSettings = communeSettings;
 
-    const rowsHtml = items.length
-      ? items.map(it => {
-          const feeCents = it.state === 'retard' ? computeLateFeeCentsClient(it.dueAt, communeSettings) : 0;
-          return `
-        <div class="px-4 py-2.5 flex items-center justify-between gap-3">
-          <div class="min-w-0">
-            <p class="text-sm font-semibold text-ink truncate">${escapeHtml(it.title)}</p>
-            <p class="text-[11px] text-ink/45">${escapeHtml(it.author)} · ${formatDateShortAdmin(it.date)}</p>
-          </div>
-          <div class="text-right shrink-0">
-            ${stateBadge[it.state] || ''}
-            ${feeCents > 0 ? `<p class="text-[10.5px] text-red-600 font-semibold mt-0.5">${(feeCents / 100).toFixed(2)} € de pénalité</p>` : ''}
-          </div>
-        </div>`;
-        }).join('')
-      : `<p class="text-sm text-ink/40 text-center py-8">Aucun emprunt ni réservation pour cet usager.</p>`;
+    const rowsHtml = renderFicheHistoryRows(items, communeSettings);
 
     const flaggedBannerHtml = profile.flagged
       ? `<div class="px-4 py-2.5 bg-red-50 border-b border-red-100 flex items-center justify-between gap-3">
@@ -2459,7 +2494,13 @@
           <span class="text-ink/35">À corriger si l'agent s'est trompé de case à la préinscription.</span>
         </div>
         ${flaggedBannerHtml}
-        <div class="divide-y divide-mango-50">
+        <div class="px-4 py-2.5 border-b border-mango-50">
+          <input id="fiche-history-search" type="text" autocomplete="off" oninput="filterFicheHistory()"
+            placeholder="Chercher un livre dans l'historique (déjà emprunté ?)"
+            style="font-size: 16px;"
+            class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+        </div>
+        <div id="fiche-history-list" class="divide-y divide-mango-50">
           ${rowsHtml}
         </div>
       </div>`;
@@ -3512,8 +3553,11 @@
             <span class="text-ink/45 text-[11px] block truncate">${escapeHtml(e.communes?.name || '')}${e.location ? ' · ' + escapeHtml(e.location) : ''}</span>
           </span>
         </span>
-        <span class="text-ink/60 text-xs">${formatEventDateShort(e.event_date)}</span>
-        <span class="text-ink/50 text-xs">${e.rsvpCount}${e.max_seats != null ? ' / ' + e.max_seats : ''} inscrit${e.rsvpCount > 1 ? 's' : ''}</span>
+        <span class="text-ink/60 text-xs text-center">
+          <span class="block">${new Date(e.event_date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+          <span class="block text-ink/45">${new Date(e.event_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+        </span>
+        <span class="text-ink/50 text-xs text-center">${e.rsvpCount}${e.max_seats != null ? ' / ' + e.max_seats : ''} inscrit${e.rsvpCount > 1 ? 's' : ''}</span>
         <span onclick="event.stopPropagation()" class="text-right flex gap-2 justify-end whitespace-nowrap">
           <button onclick="duplicateEvent(${e.id})" class="text-xs text-ink/50 hover:text-ink font-semibold">Dupliquer</button>
           <button onclick="editEvent(${e.id})" class="text-xs text-mango-700 hover:text-mango-800 font-semibold">Modifier</button>
