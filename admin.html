@@ -417,7 +417,7 @@
           </div>
 
           <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
-            <div class="grid grid-cols-[1.6fr_1.2fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[560px]">
+            <div class="grid grid-cols-[1.6fr_1.2fr_1fr_190px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[560px]">
               <span>Événement</span><span class="text-center">Date</span><span class="text-center">Inscrits</span><span></span>
             </div>
             <div id="events-list" class="min-w-[560px]"></div>
@@ -3544,7 +3544,7 @@
       return;
     }
     list.innerHTML = events.map(e => `
-      <div onclick="openEventDetail(${e.id})" class="grid grid-cols-[1.6fr_1.2fr_1fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm cursor-pointer hover:bg-mango-50/40">
+      <div onclick="openEventDetail(${e.id})" class="grid grid-cols-[1.6fr_1.2fr_1fr_190px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm cursor-pointer hover:bg-mango-50/40">
         <span class="flex items-center gap-2.5 min-w-0">
           ${eventAvatarHtml(e)}
           <span class="min-w-0">
