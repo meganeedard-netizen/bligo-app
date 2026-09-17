@@ -93,7 +93,7 @@
             <h2 class="text-lg font-bold text-ink mb-1">Catalogue</h2>
             <p class="text-sm text-ink/55">Tous les livres du fonds : recherche, change une catégorie, marque un don équipé, ou supprime une fiche.</p>
           </div>
-          <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition shrink-0">Ajouter nouveaux livres</button>
+          <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition shrink-0">Ajouter un nouveau document</button>
         </div>
 
         <!-- Scan / catalogage d'un nouveau livre -->
@@ -2818,7 +2818,7 @@
     document.getElementById('scan-result').innerHTML = `<p class="text-sm text-ink/40">En attente d'une recherche…</p>`;
   };
 
-  // « Ajouter nouveaux livres » fusionné dans l'écran Catalogue (17/09/2026) :
+  // « Ajouter un nouveau document » fusionné dans l'écran Catalogue (17/09/2026) :
   // ce n'est plus un écran de menu séparé, juste une autre vue de la même page.
   window.openScanView = function () {
     document.getElementById('catalogue-list-view').classList.add('hidden');
