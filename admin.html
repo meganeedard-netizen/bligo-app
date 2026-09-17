@@ -3627,8 +3627,6 @@
     });
 
     list.innerHTML = [...byUser.values()].map((group, idx) => {
-      const initials = (group.profile?.full_name || '?').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
-
       const itemsHtml = group.items.map(r => {
         let actionHtml = '';
         if (r.status === 'preparation') {
@@ -3678,12 +3676,9 @@
 
       return `
         <div class="${idx % 2 === 1 ? 'bg-mango-50/40' : 'bg-white'} border border-mango-100 rounded-xl p-4 shadow-sm">
-          <div class="flex items-center gap-2.5 mb-1">
-            <span class="w-8 h-8 rounded-full bg-gradient-to-br from-hibiscus-600 to-mango-500 text-white text-xs font-bold flex items-center justify-center shrink-0">${escapeHtml(initials)}</span>
-            <div class="min-w-0">
-              <p class="text-sm font-bold text-ink truncate">${escapeHtml(group.profile?.full_name || 'Usager inconnu')}</p>
-              <p class="text-[11px] text-ink/45">${escapeHtml(group.profile?.subscriber_number || '')} · ${group.items.length} livre${group.items.length > 1 ? 's' : ''}</p>
-            </div>
+          <div class="mb-1">
+            <p class="text-sm font-bold text-ink truncate">${escapeHtml(group.profile?.full_name || 'Usager inconnu')}</p>
+            <p class="text-[11px] text-ink/45">${escapeHtml(group.profile?.subscriber_number || '')} · ${group.items.length} livre${group.items.length > 1 ? 's' : ''}</p>
           </div>
           ${itemsHtml}
         </div>`;
