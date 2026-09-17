@@ -129,7 +129,7 @@
           </div>
 
           <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
-            <div class="grid grid-cols-[1.4fr_1.4fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[420px]">
+            <div class="grid grid-cols-[1.4fr_1.4fr_160px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[420px]">
               <span>Commune</span><span>Horaires</span><span></span>
             </div>
             <div id="communes-list" class="min-w-[420px]"></div>
@@ -144,7 +144,7 @@
 
         <h3 class="text-base font-bold text-ink mb-3">Sans confirmation de commune (<span id="unconfirmed-inline-count">0</span>)</h3>
         <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto mb-8">
-          <div class="grid grid-cols-[1.4fr_1fr_1.2fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[600px]">
+          <div class="grid grid-cols-[1.4fr_1fr_1.2fr_110px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[600px]">
             <span>Usager</span><span>N° abonné</span><span>Commune</span><span></span>
           </div>
           <div id="unconfirmed-list" class="min-w-[600px]"></div>
@@ -160,7 +160,7 @@
         <p class="text-sm text-ink/55 mb-5">Livres catalogués sans couverture trouvée sur Google Books ni Open Library. Ajoute une image : elle sera réutilisée automatiquement pour tout futur livre au même titre.</p>
 
         <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
-          <div class="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[720px]">
+          <div class="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_120px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[720px]">
             <span>Titre</span><span>Auteur</span><span>Catégorie</span><span>Origine</span><span></span>
           </div>
           <div id="missing-covers-list" class="min-w-[720px]"></div>
@@ -178,7 +178,7 @@
         </div>
 
         <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto mb-4">
-          <div class="grid grid-cols-[auto_auto_1.4fr_1.2fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[760px]">
+          <div class="grid grid-cols-[24px_28px_1.4fr_1.2fr_1fr_100px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[760px]">
             <span>#</span><span></span><span>Titre</span><span>Auteur</span><span>ISBN</span><span></span>
           </div>
           <div id="top20-rows" class="min-w-[760px]"></div>
@@ -283,7 +283,7 @@
       return;
     }
     list.innerHTML = communes.map(c => `
-      <div class="grid grid-cols-[1.4fr_1.4fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-[1.4fr_1.4fr_160px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
         <span class="font-semibold text-ink">${escapeHtml(c.name)}</span>
         <span class="text-ink/55 text-xs">${escapeHtml(c.opening_hours || '')}</span>
         <span class="text-right flex gap-2 justify-end whitespace-nowrap">
@@ -390,7 +390,7 @@
       return;
     }
     list.innerHTML = unconfirmedUsers.map(u => `
-      <div class="grid grid-cols-[1.4fr_1fr_1.2fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-[1.4fr_1fr_1.2fr_110px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
         <button onclick="openUserDetail('${u.id}')" class="text-left font-semibold text-ink hover:underline">${escapeHtml(u.full_name)}</button>
         <span class="text-ink/55 text-xs">${escapeHtml(u.subscriber_number)}</span>
         <select id="unconfirmed-commune-${u.id}" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
@@ -537,7 +537,7 @@
       return;
     }
     list.innerHTML = missingCovers.map((item, i) => `
-      <div class="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-[1.6fr_1.2fr_1fr_1fr_120px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
         <span class="font-semibold text-ink">${escapeHtml(item.title)}</span>
         <span class="text-ink/60">${escapeHtml(item.author)}</span>
         <span class="text-ink/50 text-xs">${escapeHtml(item.category || '—')}</span>
@@ -589,7 +589,7 @@
     let html = '';
     for (let rank = 1; rank <= 20; rank++) {
       html += `
-        <div class="grid grid-cols-[auto_auto_1.4fr_1.2fr_1fr_auto] gap-2 items-center px-4 py-2 border-t border-mango-50 first:border-t-0 text-sm">
+        <div class="grid grid-cols-[24px_28px_1.4fr_1.2fr_1fr_100px] gap-2 items-center px-4 py-2 border-t border-mango-50 first:border-t-0 text-sm">
           <span class="text-mango-600 font-bold text-xs">${rank}</span>
           <span id="top20-cover-${rank}" class="w-7 h-10 rounded bg-mango-50 shrink-0 bg-cover bg-center"></span>
           <input id="top20-title-${rank}" placeholder="Titre" class="border border-mango-100 rounded-lg px-2 py-1.5 text-sm min-w-0">

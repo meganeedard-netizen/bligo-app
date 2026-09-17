@@ -242,7 +242,7 @@
         </div>
 
         <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
-          <div class="hidden sm:grid grid-cols-[auto_1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[860px]">
+          <div class="hidden sm:grid grid-cols-[28px_1.6fr_1.2fr_1.3fr_0.9fr_100px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[860px]">
             <span><input type="checkbox" onchange="toggleSelectAllBooks(this.checked)"></span><span>Titre</span><span>Auteur</span><span>Catégorie</span><span class="text-center">Statut</span><span></span>
           </div>
           <div id="catalogue-list" class="sm:min-w-[860px]"></div>
@@ -303,8 +303,8 @@
         <p class="text-sm text-ink/55 mb-5">Valide l'inscription d'un usager après vérification d'une pièce d'identité et d'un justificatif de domicile sur place (et d'une autorisation parentale si l'usager est mineur). Sa carte et son QR code s'activent automatiquement.</p>
 
         <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
-          <div class="hidden sm:grid grid-cols-[1.6fr_1.3fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[560px]">
-            <span>Usager</span><span>N° abonné</span><span>Pré-inscrit le</span><span></span>
+          <div class="hidden sm:grid grid-cols-[1.4fr_1fr_1fr_1.2fr_160px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[560px]">
+            <span>Usager</span><span>N° abonné</span><span>Pré-inscrit le</span><span>Catégorie tarifaire</span><span></span>
           </div>
           <div id="preregistrations-list" class="sm:min-w-[560px]"></div>
         </div>
@@ -495,7 +495,7 @@
           </div>
 
           <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
-            <div class="grid grid-cols-[1.4fr_1fr_auto] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[380px]">
+            <div class="grid grid-cols-[1.4fr_1fr_130px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[380px]">
               <span>Nom</span><span>Niveau</span><span></span>
             </div>
             <div id="team-list" class="min-w-[380px]"></div>
@@ -527,7 +527,6 @@
       <!-- STATISTIQUES SIGB (direction uniquement) -->
       <section id="screen-sigb-stats" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Statistiques</h2>
-        <p class="text-sm text-ink/55 mb-2">Indicateurs déjà calculables automatiquement à partir des données de BliGO, préparés dans l'esprit du rapport annuel du ministère de la Culture (Neoscrib). Ce que BliGO ne sait pas encore mesurer (périodiques, finances, personnel, consultations sur place) n'apparaît pas ici — ce sera l'objet de prochaines étapes.</p>
         <div class="flex items-center gap-2 mb-4">
           <label class="text-xs font-semibold text-ink/60">Année</label>
           <select id="sigb-stats-year" onchange="loadSigbStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white"></select>
@@ -2499,6 +2498,7 @@
             placeholder="Chercher un livre dans l'historique (déjà emprunté ?)"
             style="font-size: 16px;"
             class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+          <p class="text-[10.5px] text-ink/40 mt-1.5">Juste pour information : un livre déjà emprunté peut toujours être réemprunté par l'usager à tout moment, rien ne l'en empêche.</p>
         </div>
         <div id="fiche-history-list" class="divide-y divide-mango-50">
           ${rowsHtml}
@@ -2758,7 +2758,7 @@
       return;
     }
     list.innerHTML = team.map(t => `
-      <div class="grid grid-cols-[1.4fr_1fr_auto] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-[1.4fr_1fr_130px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
         <span class="font-semibold text-ink truncate">${escapeHtml(t.full_name)}</span>
         <span class="text-ink/55 text-xs">${t.agent_level === 'direction' ? 'Direction' : 'Agent'}</span>
         <button onclick="toggleAgentLevel('${t.id}', '${t.agent_level === 'direction' ? 'agent' : 'direction'}')" class="text-xs font-semibold text-mango-700 hover:text-mango-800 text-right">
@@ -2884,7 +2884,7 @@
         ? `<img src="${b.cover_url}" alt="" class="w-8 aspect-[2/3] object-cover rounded bg-mango-50 shrink-0">`
         : `<div class="w-8 aspect-[2/3] rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-[10px] shrink-0">${escapeHtml(b.cover_initial || b.title[0])}</div>`;
       return `
-      <div class="grid grid-cols-1 sm:grid-cols-[auto_1.6fr_1.2fr_1.3fr_0.9fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm ${rowShadeClass}">
+      <div class="grid grid-cols-1 sm:grid-cols-[28px_1.6fr_1.2fr_1.3fr_0.9fr_100px] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm ${rowShadeClass}">
         <span><input type="checkbox" onchange="toggleSelectBook(${b.id}, this.checked)" ${selectedBookIds.has(b.id) ? 'checked' : ''}></span>
         <span class="flex items-center gap-2 min-w-0">
           ${coverHtml}
@@ -3176,7 +3176,7 @@
       return;
     }
     list.innerHTML = preregistrations.map(p => `
-      <div class="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr_1fr_1.2fr_auto] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr_1fr_1.2fr_160px] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
         <span>
           <span class="font-semibold text-ink block">${escapeHtml(p.full_name)}</span>
           <span class="text-[10.5px] text-mango-700 font-semibold">${escapeHtml(p.communes?.name || '')}</span>
@@ -3897,11 +3897,11 @@
     content.innerHTML = SIGB_STATS_BLOCKS.map(block => `
       <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
         <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">${block.title}</div>
-        <div class="grid grid-cols-[1fr_auto_auto] gap-2 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-ink/35">
+        <div class="grid grid-cols-[1fr_80px_64px] gap-2 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-ink/35">
           <span>Indicateur</span><span class="text-right">Valeur</span><span class="text-right w-16">Code</span>
         </div>
         ${block.rows.map(([key, label, code]) => `
-          <div class="grid grid-cols-[1fr_auto_auto] gap-2 px-4 py-2 items-center border-t border-mango-50 text-sm">
+          <div class="grid grid-cols-[1fr_80px_64px] gap-2 px-4 py-2 items-center border-t border-mango-50 text-sm">
             <span class="text-ink/80">${label}</span>
             <span class="text-right font-bold text-ink">${data?.[key] ?? 'NC'}</span>
             <span class="text-right w-16 text-[10px] text-ink/35 font-mono">${code}</span>
