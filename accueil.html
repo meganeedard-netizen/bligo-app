@@ -76,6 +76,7 @@
   <section class="mb-10">
     <span id="catalogue-status" class="text-xs text-ink/40"></span>
     <div id="category-filters" class="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-1"></div>
+    <p id="staff-pick-caption" class="hidden text-xs text-stone-400 mb-3">La sélection coup de cœur de votre médiathèque</p>
     <div id="book-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
   </section>
 
@@ -188,7 +189,7 @@
 
   const CATEGORY_ICONS = {
     'Tous': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
-    'Coup de cœur': '<img src="img/categories/coup-de-coeur.png" alt="" class="w-full h-full object-contain">',
+    'Favoris': '<img src="img/categories/favoris.png" alt="" class="w-full h-full object-contain">',
     'Fonds local': '<img src="img/categories/local.png?v=3" alt="" class="w-full h-full object-contain">',
     'Roman': '<img src="img/categories/roman.png?v=3" alt="" class="w-full h-full object-contain">',
     'Thriller': '<img src="img/categories/thriller.png?v=3" alt="" class="w-full h-full object-contain">',
@@ -227,7 +228,7 @@
     const el = document.getElementById('category-filters');
     const chips = [
       { label: 'Tous', value: null },
-      { label: 'Coup de cœur', value: STAFF_PICK_FILTER },
+      { label: 'Favoris', value: STAFF_PICK_FILTER },
       ...CATEGORIES.map(c => ({ label: c, value: c })),
     ];
     el.innerHTML = chips.map(c => `
@@ -346,6 +347,8 @@
     const list = document.getElementById('book-list');
     const reservedBookIds = new Set(reservations.filter(isActiveReservation).map(r => r.books?.id));
     const q = searchQuery.trim().toLowerCase();
+
+    document.getElementById('staff-pick-caption').classList.toggle('hidden', activeCategory !== STAFF_PICK_FILTER);
 
     let filtered = activeCategory === STAFF_PICK_FILTER
       ? books.filter(b => b.is_staff_pick)
