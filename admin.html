@@ -242,6 +242,12 @@
       <section id="screen-loans" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Emprunt / Retour</h2>
 
+        <div class="flex flex-wrap items-center gap-3 bg-white border border-mango-100 rounded-xl px-4 py-3 mb-4 shadow-sm">
+          <button onclick="addVisitorEntry(1)" style="touch-action: manipulation;" class="shrink-0 bg-ink text-white rounded-full px-4 py-2 text-sm font-semibold active:scale-[0.98] transition">+1 Visiteur</button>
+          <button onclick="addVisitorGroup()" style="touch-action: manipulation;" class="shrink-0 text-xs font-semibold text-ink/60 border border-mango-100 rounded-full px-3 py-2 hover:bg-mango-50">+ Groupe…</button>
+          <span class="text-xs text-ink/45 ml-auto">Entrées aujourd'hui : <span id="visitor-today-count" class="font-bold text-ink">0</span></span>
+        </div>
+
         <div class="flex items-center gap-1.5 bg-mango-50 border border-mango-100 rounded-full p-1.5 mb-5 w-fit flex-wrap">
           <button id="loan-tab-scan-btn" type="button" onclick="switchLoanTab('scan')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Scanner</button>
           <button id="loan-tab-active-btn" type="button" onclick="switchLoanTab('active')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Emprunts en cours (<span id="loan-active-count">0</span>)</button>
@@ -728,8 +734,32 @@
     });
     // Prêt à scanner dès l'arrivée sur l'écran, sans avoir à cliquer dans le
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
-    if (screen === 'loans') { switchLoanTab('scan'); document.getElementById('loan-barcode-input')?.focus(); }
+    if (screen === 'loans') { switchLoanTab('scan'); document.getElementById('loan-barcode-input')?.focus(); refreshVisitorCount(); }
     if (screen === 'stats') switchStatsTab('emprunts');
+  };
+
+  // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
+  // Volontairement anonyme : aucun nom ni numéro de carte, juste date/heure/
+  // site/nombre — voir sql/add_activity_log_and_visitor_counter.sql.
+
+  async function refreshVisitorCount() {
+    const { data, error } = await supabase.rpc('visitor_count_today');
+    if (error) { console.error(error); return; }
+    document.getElementById('visitor-today-count').textContent = data ?? 0;
+  }
+
+  window.addVisitorEntry = async function (count, motif) {
+    const { error } = await supabase.rpc('record_visitor_entry', { p_count: count, p_motif: motif || null });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await refreshVisitorCount();
+  };
+
+  window.addVisitorGroup = async function () {
+    const raw = prompt('Nombre de personnes dans ce groupe (famille, classe...) :', '2');
+    if (raw === null) return;
+    const count = parseInt(raw, 10);
+    if (!Number.isInteger(count) || count < 1) { alert('Indique un nombre entier positif.'); return; }
+    await addVisitorEntry(count, 'groupe');
   };
 
   // ---------- Scan photo (ISBN / EAN) ----------
