@@ -381,11 +381,21 @@
 
       <!-- AGENDA CULTUREL -->
       <section id="screen-agenda" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Agenda culturel</h2>
-        <p class="text-sm text-ink/55 mb-5">Ajoute un événement pour qu'il apparaisse dans l'agenda de l'appli usagers.</p>
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-1">
+          <div>
+            <h2 class="text-lg font-bold text-ink mb-1">Agenda culturel</h2>
+            <p class="text-sm text-ink/55">Ajoute un événement pour qu'il apparaisse dans l'agenda de l'appli usagers.</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="openPastEventsView()" style="touch-action: manipulation;" class="bg-hibiscus-50 text-hibiscus-700 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Événements passés</button>
+            <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un événement</button>
+          </div>
+        </div>
 
-        <div class="grid md:grid-cols-2 gap-5">
-          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm h-fit">
+        <!-- Formulaire (création / modification / duplication) -->
+        <div id="agenda-form-view" class="hidden mt-4">
+          <button onclick="closeEventForm()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour à l'agenda</button>
+          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-xl">
             <input type="hidden" id="event-id">
             <label class="text-xs font-semibold text-ink/60 block mb-1">Type d'événement (titre affiché)</label>
             <select id="event-type" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
@@ -459,17 +469,49 @@
             </div>
             <div class="flex gap-2">
               <button onclick="saveEvent()" class="flex-1 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
-              <button onclick="resetEventForm()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Annuler</button>
+              <button onclick="resetEventForm(); closeEventForm()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Annuler</button>
             </div>
 
             <div id="event-confirmation" class="hidden mt-5 pt-5 border-t border-mango-100"></div>
           </div>
+        </div>
 
-          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
+        <!-- Événements passés -->
+        <div id="agenda-past-view" class="hidden mt-4">
+          <button onclick="closePastEventsView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour à l'agenda</button>
+          <div class="relative max-w-xl mb-4">
+            <input id="agenda-past-search" type="text" autocomplete="off" oninput="renderPastEventsList()" placeholder="Chercher un événement passé"
+              style="font-size: 16px;"
+              class="w-full border border-mango-100 rounded-lg pl-3 pr-9 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+            <button type="button" onclick="clearSearchInput('agenda-past-search')" aria-label="Effacer" class="absolute right-3 top-1/2 -translate-y-1/2 text-ink/30 hover:text-ink/60 text-sm">✕</button>
+          </div>
+          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
             <div class="grid grid-cols-[1.6fr_1.2fr_1fr_190px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[560px]">
               <span>Événement</span><span class="text-center">Date</span><span class="text-center">Inscrits</span><span></span>
             </div>
-            <div id="events-list" class="min-w-[560px]"></div>
+            <div id="agenda-past-list" class="min-w-[560px]"></div>
+          </div>
+        </div>
+
+        <!-- Liste des événements à venir -->
+        <div id="agenda-list-view" class="mt-4">
+          <div id="agenda-empty-state" class="hidden text-center py-14">
+            <p class="text-sm text-ink/50 mb-4">Aucun événement pour l'instant dans l'agenda.</p>
+            <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer votre 1er évènement</button>
+          </div>
+          <div id="agenda-list-content">
+            <div class="relative max-w-xl mb-4">
+              <input id="agenda-search" type="text" autocomplete="off" oninput="renderEventsList()" placeholder="Chercher un événement (type, titre, lieu…)"
+                style="font-size: 16px;"
+                class="w-full border border-mango-100 rounded-lg pl-3 pr-9 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+              <button type="button" onclick="clearSearchInput('agenda-search')" aria-label="Effacer" class="absolute right-3 top-1/2 -translate-y-1/2 text-ink/30 hover:text-ink/60 text-sm">✕</button>
+            </div>
+            <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
+              <div class="grid grid-cols-[1.6fr_1.2fr_1fr_190px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[560px]">
+                <span>Événement</span><span class="text-center">Date</span><span class="text-center">Inscrits</span><span></span>
+              </div>
+              <div id="events-list" class="min-w-[560px]"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -810,6 +852,7 @@
     if (screen === 'stats') switchStatsTab('emprunts');
     if (screen === 'sigb-stats') initSigbStatsYearSelect();
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
+    if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
   };
 
   // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
@@ -3712,6 +3755,11 @@
     if (myCommuneId) document.getElementById('event-commune').value = myCommuneId;
   }
 
+  // Agenda simplifié (17/09/2026) : un écran = la liste des événements à
+  // venir avec recherche, un bouton bascule vers les événements passés (même
+  // recherche, même rendu de ligne), un autre ouvre le formulaire.
+  let currentAgendaView = 'list';
+
   async function loadEvents() {
     const { data: eventsData, error } = await supabase
       .from('events')
@@ -3725,15 +3773,15 @@
 
     events = (eventsData || []).map(e => ({ ...e, rsvpCount: rsvpCounts[e.id] || 0 }));
     renderEventsList();
+    renderPastEventsList();
   }
 
-  function renderEventsList() {
-    const list = document.getElementById('events-list');
-    if (!events.length) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucun événement pour l'instant.</p>`;
-      return;
-    }
-    list.innerHTML = events.map(e => `
+  function eventSearchText(e) {
+    return [e.event_type, e.title, e.description, e.communes?.name, e.location].filter(Boolean).join(' ');
+  }
+
+  function eventRowHtml(e) {
+    return `
       <div onclick="openEventDetail(${e.id})" class="grid grid-cols-[1.6fr_1.2fr_1fr_190px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm cursor-pointer hover:bg-mango-50/40">
         <span class="flex items-center gap-2.5 min-w-0">
           ${eventAvatarHtml(e)}
@@ -3753,8 +3801,83 @@
           <button onclick="editEvent(${e.id})" class="text-xs text-mango-700 hover:text-mango-800 font-semibold">Modifier</button>
           <button onclick="deleteEvent(${e.id}, '${escapeJsAttr(e.title)}')" class="text-xs text-red-500/70 hover:text-red-600 font-semibold">Supprimer</button>
         </span>
-      </div>`).join('');
+      </div>`;
   }
+
+  window.renderEventsList = function () {
+    const emptyState = document.getElementById('agenda-empty-state');
+    const listContent = document.getElementById('agenda-list-content');
+    if (!events.length) {
+      emptyState.classList.remove('hidden');
+      listContent.classList.add('hidden');
+      return;
+    }
+    emptyState.classList.add('hidden');
+    listContent.classList.remove('hidden');
+
+    const now = new Date();
+    const query = searchNormalize(document.getElementById('agenda-search')?.value || '');
+    const upcoming = events
+      .filter(e => new Date(e.event_date) >= now)
+      .filter(e => !query || searchNormalize(eventSearchText(e)).includes(query));
+
+    const list = document.getElementById('events-list');
+    if (!upcoming.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">${query ? 'Aucun événement ne correspond à ta recherche.' : "Aucun événement à venir pour l'instant."}</p>`;
+      return;
+    }
+    list.innerHTML = upcoming.map(eventRowHtml).join('');
+  };
+
+  window.renderPastEventsList = function () {
+    const now = new Date();
+    const query = searchNormalize(document.getElementById('agenda-past-search')?.value || '');
+    const past = events
+      .filter(e => new Date(e.event_date) < now)
+      .filter(e => !query || searchNormalize(eventSearchText(e)).includes(query))
+      .sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
+
+    const list = document.getElementById('agenda-past-list');
+    if (!past.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">${query ? 'Aucun événement ne correspond à ta recherche.' : 'Aucun événement passé.'}</p>`;
+      return;
+    }
+    list.innerHTML = past.map(eventRowHtml).join('');
+  };
+
+  window.openPastEventsView = function () {
+    currentAgendaView = 'past';
+    document.getElementById('agenda-list-view').classList.add('hidden');
+    document.getElementById('agenda-form-view').classList.add('hidden');
+    document.getElementById('agenda-past-view').classList.remove('hidden');
+    renderPastEventsList();
+  };
+
+  window.closePastEventsView = function () {
+    currentAgendaView = 'list';
+    document.getElementById('agenda-past-view').classList.add('hidden');
+    document.getElementById('agenda-list-view').classList.remove('hidden');
+  };
+
+  function showAgendaFormView() {
+    document.getElementById('agenda-list-view').classList.add('hidden');
+    document.getElementById('agenda-past-view').classList.add('hidden');
+    document.getElementById('agenda-form-view').classList.remove('hidden');
+  }
+
+  window.openEventForm = function () {
+    resetEventForm();
+    showAgendaFormView();
+  };
+
+  window.closeEventForm = function () {
+    document.getElementById('agenda-form-view').classList.add('hidden');
+    if (currentAgendaView === 'past') {
+      document.getElementById('agenda-past-view').classList.remove('hidden');
+    } else {
+      document.getElementById('agenda-list-view').classList.remove('hidden');
+    }
+  };
 
   // Fiche détaillée d'un événement, réutilisée à 3 endroits : la fenêtre qui
   // s'ouvre en cliquant un événement dans cette liste, le bandeau de
@@ -3856,6 +3979,7 @@
   window.editEvent = function (id) {
     const e = events.find(x => x.id === id);
     if (!e) return;
+    showAgendaFormView();
     document.getElementById('event-id').value = e.id;
     document.getElementById('event-title').value = e.title;
     document.getElementById('event-type').value = e.event_type || '';
@@ -3878,6 +4002,7 @@
   window.duplicateEvent = function (id) {
     const e = events.find(x => x.id === id);
     if (!e) return;
+    showAgendaFormView();
     document.getElementById('event-id').value = '';
     document.getElementById('event-title').value = e.title;
     document.getElementById('event-type').value = e.event_type || '';
