@@ -431,6 +431,7 @@
           <button id="stats-tab-emprunts-btn" type="button" onclick="switchStatsTab('emprunts')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Emprunts</button>
           <button id="stats-tab-jeunesse-btn" type="button" onclick="switchStatsTab('jeunesse')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Top Jeunesse</button>
           <button id="stats-tab-top20-btn" type="button" onclick="switchStatsTab('top20')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Sélection BliGO</button>
+          <button id="stats-tab-sigb-btn" type="button" onclick="switchStatsTab('sigb')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Statistiques SIGB</button>
         </div>
 
         <div id="stats-panel-emprunts" class="stats-panel">
@@ -466,6 +467,15 @@
         <div id="stats-panel-top20" class="stats-panel hidden">
           <p class="text-sm text-ink/55 mb-4">Les 20 livres les plus vendus en librairie ce mois-ci, choisis par l'administratrice BliGO. Un repère pour les achats, pas un livre du catalogue.</p>
           <div id="top20-readonly-list" class="flex flex-col gap-2"></div>
+        </div>
+
+        <div id="stats-panel-sigb" class="stats-panel hidden">
+          <p class="text-sm text-ink/55 mb-2">Indicateurs déjà calculables automatiquement à partir des données de BliGO, préparés dans l'esprit du rapport annuel du ministère de la Culture (Neoscrib). Ce que BliGO ne sait pas encore mesurer (périodiques, finances, personnel, consultations sur place) n'apparaît pas ici — ce sera l'objet de prochaines étapes.</p>
+          <div class="flex items-center gap-2 mb-4">
+            <label class="text-xs font-semibold text-ink/60">Année</label>
+            <select id="sigb-stats-year" onchange="loadSigbStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white"></select>
+          </div>
+          <div id="sigb-stats-content" class="flex flex-col gap-5"></div>
         </div>
       </section>
 
@@ -3727,7 +3737,7 @@
   // ---------- Tendances ----------
 
   window.switchStatsTab = function (tab) {
-    ['emprunts', 'jeunesse', 'top20'].forEach(t => {
+    ['emprunts', 'jeunesse', 'top20', 'sigb'].forEach(t => {
       document.getElementById(`stats-panel-${t}`).classList.toggle('hidden', t !== tab);
       const btn = document.getElementById(`stats-tab-${t}-btn`);
       const active = tab === t;
@@ -3735,6 +3745,90 @@
       btn.classList.toggle('shadow-sm', active);
       btn.classList.toggle('text-ink', active);
     });
+    if (tab === 'sigb') initSigbStatsYearSelect();
+  };
+
+  // ---------- Statistiques SIGB (Phase 2 du chantier "évolution vers un SIGB
+  // complet", voir BliGo_note_cadrage_SIGB_rapport_annuel.pdf) ----------
+
+  function initSigbStatsYearSelect() {
+    const select = document.getElementById('sigb-stats-year');
+    if (select.options.length) { loadSigbStats(); return; }
+    const currentYear = new Date().getFullYear();
+    select.innerHTML = [currentYear, currentYear - 1, currentYear - 2]
+      .map(y => `<option value="${y}">${y}</option>`).join('');
+    loadSigbStats();
+  }
+
+  const SIGB_STATS_BLOCKS = [
+    {
+      title: 'C2 — Catalogue',
+      rows: [
+        ['c2_notices_total', 'Nombre total de notices équipées', 'C202'],
+        ['c2_notices_added_year', 'Notices ajoutées dans l\'année', 'C205'],
+      ],
+    },
+    {
+      title: 'D1 — Livres imprimés',
+      rows: [
+        ['d1_fonds_adultes', 'Fonds adultes (au moment du calcul)', 'D101'],
+        ['d1_fonds_jeunesse', 'Fonds jeunesse (au moment du calcul)', 'D121'],
+        ['d1_acquisitions_year', 'Acquisitions dans l\'année', 'D103'],
+        ['d1_eliminations_year', 'Éliminations dans l\'année', 'D106'],
+      ],
+    },
+    {
+      title: 'E1 — Usagers',
+      rows: [
+        ['e1_inscrits_actifs', 'Inscrits actifs (au moment du calcul)', 'E101'],
+        ['e1_nouveaux_inscrits_year', 'Nouveaux inscrits dans l\'année', 'E102'],
+        ['e1_emprunteurs_actifs_year', 'Emprunteurs actifs dans l\'année', 'E140'],
+      ],
+    },
+    {
+      title: 'E2 — Prêts',
+      rows: [
+        ['e2_prets_total_year', 'Prêts total dans l\'année', 'E201'],
+        ['e2_prets_adultes_year', 'Dont prêts adultes', 'E202'],
+        ['e2_prets_jeunesse_year', 'Dont prêts jeunesse', 'E221'],
+      ],
+    },
+    {
+      title: 'E3 — Réservations',
+      rows: [
+        ['e3_reservations_year', 'Réservations créées dans l\'année', 'E304'],
+      ],
+    },
+    {
+      title: 'Fréquentation',
+      rows: [
+        ['frequentation_year', 'Entrées enregistrées dans l\'année (bouton +1 Visiteur)', 'E147'],
+      ],
+    },
+  ];
+
+  window.loadSigbStats = async function () {
+    const year = Number(document.getElementById('sigb-stats-year').value);
+    const content = document.getElementById('sigb-stats-content');
+    content.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Calcul en cours…</p>`;
+
+    const { data, error } = await supabase.rpc('sigb_annual_stats', { p_commune_id: myCommuneId, p_year: year });
+    if (error) { content.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+
+    content.innerHTML = SIGB_STATS_BLOCKS.map(block => `
+      <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
+        <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">${block.title}</div>
+        <div class="grid grid-cols-[1fr_auto_auto] gap-2 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-ink/35">
+          <span>Indicateur</span><span class="text-right">Valeur</span><span class="text-right w-16">Code</span>
+        </div>
+        ${block.rows.map(([key, label, code]) => `
+          <div class="grid grid-cols-[1fr_auto_auto] gap-2 px-4 py-2 items-center border-t border-mango-50 text-sm">
+            <span class="text-ink/80">${label}</span>
+            <span class="text-right font-bold text-ink">${data?.[key] ?? 'NC'}</span>
+            <span class="text-right w-16 text-[10px] text-ink/35 font-mono">${code}</span>
+          </div>`).join('')}
+      </div>`).join('') + `
+      <p class="text-[11px] text-ink/35">Automatique = calculé à partir des vraies données BliGO. Ces chiffres préparent la saisie Neoscrib, ils ne la remplacent pas.</p>`;
   };
 
   window.setStatsScope = function (scope) {
