@@ -91,67 +91,27 @@
           <div>
             <h2 class="text-lg font-bold text-ink mb-1">Catalogage</h2>
           </div>
-          <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition shrink-0">Ajouter un nouveau document</button>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="openInscritScanModal()" style="touch-action: manipulation;" class="border border-hibiscus-200 text-hibiscus-700 bg-hibiscus-50 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Scanner la carte de l'inscrit</button>
+            <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter un nouveau document</button>
+          </div>
+        </div>
+
+        <!-- Session de don en cours : visible depuis n'importe quelle vue de
+             cet écran (liste ou scan), pas seulement pendant le scan. -->
+        <div id="donor-session-bar" class="hidden mt-3 bg-hibiscus-50 border border-hibiscus-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p class="text-xs font-bold text-hibiscus-700 uppercase tracking-wide">Session de don en cours</p>
+            <p class="text-sm text-ink"><span id="donor-session-name" class="font-semibold"></span> · <span id="donor-session-count">0</span> livre(s) donné(s)</p>
+          </div>
+          <button type="button" onclick="endDonorSession()" class="text-xs font-semibold text-ink/50 border border-mango-100 rounded-full px-3 py-1.5 shrink-0">Terminer</button>
         </div>
 
         <!-- Scan / catalogage d'un nouveau livre -->
         <div id="catalogue-scan-view" class="hidden mt-4">
           <button onclick="closeScanView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
-          <p class="text-sm text-ink/55 mb-3">Recherche un ISBN (ou un titre) via Google Books, vérifie les métadonnées puis ajoute le livre au catalogue.</p>
 
-          <div class="flex items-center gap-1 bg-mango-50 border border-mango-100 rounded-full p-1 mb-4 w-fit">
-          <button id="mode-simple-btn" type="button" onclick="setScanBatchMode(false)" class="text-xs font-semibold px-4 py-1.5 rounded-full">Scan simple</button>
-          <button id="mode-batch-btn" type="button" onclick="setScanBatchMode(true)" class="text-xs font-semibold px-4 py-1.5 rounded-full">Scan en rafale (dons multiples)</button>
-        </div>
-
-        <div id="donor-session-bar" class="hidden mb-4 bg-hibiscus-50 border border-hibiscus-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-          <div>
-            <p class="text-xs font-bold text-hibiscus-700 uppercase tracking-wide">Session de don en cours</p>
-            <p class="text-sm text-ink"><span id="donor-session-name" class="font-semibold"></span> · <span id="donor-session-count">0</span> livre(s) donné(s)</p>
-          </div>
-          <div class="flex gap-2">
-            <button type="button" onclick="toggleCamera('donor')" class="text-xs font-semibold text-hibiscus-700 border border-hibiscus-200 bg-white rounded-full px-3 py-1.5">Changer</button>
-            <button type="button" onclick="endDonorSession()" class="text-xs font-semibold text-ink/50 border border-mango-100 rounded-full px-3 py-1.5">Terminer</button>
-          </div>
-        </div>
-        <button id="donor-session-start-btn" type="button" onclick="toggleCamera('donor')" style="touch-action: manipulation;"
-          class="w-full mb-1.5 bg-gradient-to-br from-mango-600 to-hibiscus-700 text-white rounded-lg py-3 text-sm font-semibold active:scale-[0.98] transition shadow-sm">
-          Scanner la carte du donateur
-        </button>
-        <div id="donor-camera-slot" class="mb-1.5"></div>
-
-        <div class="flex items-center gap-2 mb-1.5">
-          <div class="flex-1 h-px bg-mango-100"></div>
-          <span class="text-[10px] font-semibold text-ink/35 uppercase">ou</span>
-          <div class="flex-1 h-px bg-mango-100"></div>
-        </div>
-
-        <div class="grid grid-cols-[1fr_auto] gap-2 mb-1.5">
-          <input id="donor-subscriber-input" type="text" placeholder="N° d'abonné du donateur" style="touch-action: manipulation;" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
-          <button type="button" onclick="startDonorSessionFromInput()" style="touch-action: manipulation;" class="text-sm font-semibold bg-ink text-white rounded-lg px-4">Démarrer</button>
-        </div>
-
-        <p class="text-[11px] text-ink/45 mb-4">Pas de carte, pas de compte, ou pas rattaché à une commune ? Tu peux cataloguer le livre directement, sans rien renseigner ci-dessus — le don ne sera juste pas crédité en points de fidélité.</p>
-
-        <div class="grid md:grid-cols-2 gap-5 mb-8">
-          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
-            <div id="single-scan-extra">
-              <label class="text-xs font-semibold text-ink/60 block mb-1.5">ISBN scanné, ou titre / auteur</label>
-              <input id="scan-input" type="text" placeholder="Ex. 9782072700486 ou « Texaco Chamoiseau »"
-                class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-mango-300">
-            </div>
-
-            <div id="batch-genre-picker" class="hidden mb-3">
-              <label class="text-xs font-semibold text-ink/60 block mb-1.5">Genre des livres de cette étagère (avant de scanner)</label>
-              <select id="batch-genre" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-2"></select>
-              <label class="text-xs font-semibold text-ink/60 block mb-1.5">Rayon / emplacement (ex. « Rayon DAC - étagère 2 »)</label>
-              <input id="batch-shelf" type="text" placeholder="Rayon DAC - étagère 2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 mb-2">
-              <label class="flex items-center gap-2 text-xs font-semibold text-ink/60">
-                <input type="checkbox" id="batch-onsite-only">
-                Tout ce lot est en consultation sur place uniquement
-              </label>
-            </div>
-
+          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-xl">
             <div id="book-camera-slot">
               <div id="camera-view" class="hidden mb-3">
                 <div class="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
@@ -164,48 +124,48 @@
               </div>
             </div>
 
-            <button id="camera-toggle-btn" type="button" onclick="toggleCamera('book')"
-              class="w-full border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition mb-1.5">
-              Scanner avec la caméra
+            <button id="camera-toggle-btn" type="button" onclick="toggleCamera('book')" style="touch-action: manipulation;"
+              class="w-full bg-hibiscus-600 hover:bg-hibiscus-700 text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">
+              Scanner l'ISBN
+            </button>
+            <p id="camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
+
+            <label class="text-xs font-semibold text-ink/60 block mb-1.5">ISBN scanné (douchette), ou titre / auteur</label>
+            <input id="scan-input" type="text" placeholder="Ex. 9782072700486 ou « Texaco Chamoiseau »"
+              onkeydown="if(event.key==='Enter'){event.preventDefault(); searchBook();}"
+              style="font-size: 16px;"
+              class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300">
+            <button id="scan-btn" onclick="searchBook()"
+              class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition mb-1.5">
+              Rechercher
+            </button>
+            <input id="camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleCameraCapture(event)">
+            <button type="button" onclick="document.getElementById('camera-input').click()"
+              class="w-full text-[11px] font-semibold text-ink/45 hover:text-ink/70 py-1">
+              La caméra ne capte pas ? Prendre une photo à la place
             </button>
 
-            <div id="single-scan-extra-2">
-              <input id="camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleCameraCapture(event)">
-              <button type="button" onclick="document.getElementById('camera-input').click()"
-                class="w-full text-[11px] font-semibold text-ink/45 hover:text-ink/70 py-1">
-                La caméra ne capte pas ? Prendre une photo à la place
-              </button>
-            </div>
-            <p id="camera-hint" class="text-[11px] text-ink/45 text-center mb-1.5 h-4"></p>
-
-            <div id="single-scan-extra-3">
-              <button id="scan-btn" onclick="searchBook()"
-                class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition mb-2">
-                Rechercher sur Google Books
-              </button>
-              <button onclick="resetScan()" class="w-full text-xs text-ink/50 font-semibold py-1.5 hover:text-ink/80">
-                Réinitialiser
-              </button>
-            </div>
-
-            <div id="batch-controls" class="hidden">
-              <p class="text-xs text-ink/50 mb-2">Chaque bip confirme un livre ajouté à la liste — la caméra reste ouverte pour enchaîner. Rien n'est envoyé tant que tu n'as pas validé.</p>
-              <div class="flex gap-2">
-                <button onclick="validateBatch()" class="flex-1 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Valider (<span id="batch-count-btn">0</span> livre<span id="batch-count-plural">s</span>)</button>
-                <button onclick="clearBatchQueue()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Vider</button>
+            <details class="mt-3">
+              <summary class="text-[11px] font-semibold text-ink/45 cursor-pointer select-none">Ce lot est déjà d'un genre ou d'un rayon connu ?</summary>
+              <div class="mt-2">
+                <label class="text-xs font-semibold text-ink/60 block mb-1.5">Genre par défaut pour ce lot</label>
+                <select id="batch-genre" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-2"></select>
+                <label class="text-xs font-semibold text-ink/60 block mb-1.5">Rayon / emplacement (ex. « Rayon DAC - étagère 2 »)</label>
+                <input id="batch-shelf" type="text" placeholder="Rayon DAC - étagère 2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 mb-2">
+                <label class="flex items-center gap-2 text-xs font-semibold text-ink/60">
+                  <input type="checkbox" id="batch-onsite-only">
+                  Tout ce lot est en consultation sur place uniquement
+                </label>
               </div>
-            </div>
+            </details>
           </div>
 
-          <div id="scan-result" class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm flex items-center justify-center text-center">
-            <p class="text-sm text-ink/40">En attente d'une recherche…</p>
+          <div id="draft-books-empty" class="text-sm text-ink/40 text-center py-8">Les documents scannés apparaîtront ici, en brouillon, pour vérification avant mise en ligne.</div>
+          <div id="draft-books-actions" class="hidden items-center justify-between mt-6 mb-2 max-w-2xl">
+            <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">Brouillons (<span id="draft-books-count">0</span>)</p>
+            <button onclick="validateAllDrafts()" class="text-xs font-semibold bg-ink text-white rounded-full px-3.5 py-1.5">✓ Tout valider</button>
           </div>
-
-          <div id="batch-queue-panel" class="hidden bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
-            <p class="text-xs font-bold text-ink/60 uppercase tracking-wide mb-3">File d'attente (<span id="batch-queue-count">0</span>)</p>
-            <div id="batch-queue-list" class="flex flex-col gap-1.5 max-h-80 overflow-y-auto"></div>
-          </div>
-        </div>
+          <div id="draft-books-list" class="flex flex-col gap-3 max-w-2xl"></div>
         </div>
 
         <!-- Liste du catalogue -->
@@ -248,6 +208,35 @@
           </div>
           <div id="catalogue-list" class="sm:min-w-[860px]"></div>
         </div>
+        </div>
+
+        <!-- Scanner la carte de l'inscrit (session de don) -->
+        <div id="inscrit-scan-backdrop" onclick="closeInscritScanModal(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+            <button onclick="closeInscritScanModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+            <p class="text-base font-bold text-ink mb-1">Scanner la carte de l'inscrit</p>
+            <p class="text-xs text-ink/55 mb-4">Pour créditer ses points de fidélité sur les documents donnés à la suite.</p>
+
+            <div id="donor-camera-slot" class="mb-2"></div>
+            <button type="button" id="donor-session-start-btn" onclick="toggleCamera('donor')" style="touch-action: manipulation;"
+              class="w-full bg-gradient-to-br from-mango-600 to-hibiscus-700 text-white rounded-lg py-3 text-sm font-semibold active:scale-[0.98] transition shadow-sm mb-3">
+              Scanner la carte
+            </button>
+
+            <div class="flex items-center gap-2 mb-3">
+              <div class="flex-1 h-px bg-mango-100"></div>
+              <span class="text-[10px] font-semibold text-ink/35 uppercase">pas de carte</span>
+              <div class="flex-1 h-px bg-mango-100"></div>
+            </div>
+
+            <label class="text-xs font-semibold text-ink/60 block mb-1">N° d'abonné, nom ou prénom</label>
+            <input id="inscrit-scan-search" type="text" autocomplete="off" oninput="renderInscritScanResults()" placeholder="Chercher l'inscrit"
+              style="font-size: 16px;"
+              class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300">
+            <div id="inscrit-scan-results" class="flex flex-col gap-1.5 max-h-52 overflow-y-auto"></div>
+
+            <p class="text-[11px] text-ink/45 mt-3">Pas de carte, pas de compte, ou pas rattaché à une commune ? Tu peux fermer cette fenêtre et cataloguer directement — le don ne sera juste pas crédité en points de fidélité.</p>
+          </div>
         </div>
       </section>
 
@@ -673,7 +662,6 @@
   let reservations = [];
   let zxingReaders = {};
   let donorSession = null; // { id, full_name, count }
-  let currentAddedBookId = null;
   let statsScope = 'commune';
   let myCommuneId = null;
   let myIsDirection = false;
@@ -842,7 +830,6 @@
     document.getElementById('batch-genre').innerHTML =
       `<option value="">Deviner automatiquement pour chaque livre</option>` + categoryOptionsHtml('');
     switchScreen(myIsDirection ? 'catalogue' : 'users');
-    setScanBatchMode(false);
     switchReservationTab('preparation');
     document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
     await loadCommunesForAgenda();
@@ -936,7 +923,6 @@
       nativeFormats: ['qr_code'],
       zxingFormats: [BarcodeFormat.QR_CODE],
     },
-    copyBarcode: LIBRARY_BARCODE_PROFILE,
     loan: LIBRARY_BARCODE_PROFILE,
   };
 
@@ -1004,27 +990,16 @@
   let torchOn = false;
   let scanStartTime = 0;
   let scanState = null; // { mode, slotId, toggleBtnId, defaultLabel, onResult }
-  let batchMode = false;
   let lastBatchCode = null;
   let lastBatchCodeTime = 0;
-  const BATCH_STORAGE_KEY = 'bligo_batch_queue';
-  // Restaurée dès le chargement de la page : si la connexion tombe, que la page se
-  // recharge ou que le navigateur se ferme, les livres déjà scannés ne sont jamais
-  // perdus (indispensable en médiathèque où le réseau n'est pas toujours fiable).
-  let batchQueue = loadBatchQueueFromStorage(); // [{ localId, code }]
 
-  function loadBatchQueueFromStorage() {
-    try {
-      const raw = localStorage.getItem(BATCH_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveBatchQueue() {
-    try { localStorage.setItem(BATCH_STORAGE_KEY, JSON.stringify(batchQueue)); } catch {}
-  }
+  // Brouillons de catalogage (17/09/2026) : chaque ISBN scanné ou tapé part en
+  // recherche multi-API en arrière-plan et atterrit ici, en liste, pour
+  // vérification avant de valider chaque fiche — que ce soit un scan isolé ou
+  // plusieurs à la suite, un seul et même flux (plus de mode « simple »/
+  // « rafale » à choisir à l'avance).
+  // { localId, isbn, query, status: 'loading'|'found'|'existing'|'not_found', meta, existingBookId }
+  let draftBooks = [];
 
   // Bip sonore de confirmation à chaque scan réussi (comme une douchette de caisse).
   // + une vibration en complément : marche indépendamment du son sur Android
@@ -1055,12 +1030,11 @@
       slotId: 'book-camera-slot',
       toggleBtnId: 'camera-toggle-btn',
       hintId: 'camera-hint',
-      defaultLabel: 'Scanner avec la caméra',
-      hint: 'Vise le code-barres — il se surligne en orange une fois repéré.',
-      onResult: (code) => {
-        document.getElementById('scan-input').value = code;
-        searchBook();
-      },
+      defaultLabel: "Scanner l'ISBN",
+      hint: 'Vise le code-barres — il se surligne en orange une fois repéré. La caméra reste ouverte pour enchaîner.',
+      // Pas de onResult : contrairement aux autres modes, le scan livre ne
+      // ferme pas la caméra après une détection (voir scanLoop) — chaque code
+      // part directement en brouillon via addDraftFromIsbn().
     },
     donor: {
       slotId: 'donor-camera-slot',
@@ -1069,18 +1043,6 @@
       defaultLabel: 'Démarrer une session de don (scanner la carte du donateur)',
       hint: 'Vise le QR code de la carte du donateur.',
       onResult: (code) => startDonorSession(code),
-    },
-    copyBarcode: {
-      slotId: 'copy-barcode-camera-slot',
-      toggleBtnId: 'copy-barcode-camera-btn',
-      hintId: 'camera-hint',
-      defaultLabel: 'Scanner',
-      hint: 'Vise le code-barres de la médiathèque (celui collé sur le livre, pas l\'ISBN).',
-      onResult: (code) => {
-        const input = document.getElementById('copy-barcode-input');
-        if (input) input.value = code;
-        if (currentAddedBookId) updateCopyBarcode(currentAddedBookId, code);
-      },
     },
     loan: {
       slotId: 'loan-camera-slot',
@@ -1196,36 +1158,24 @@
       if (found?.text) {
         const code = found.text;
 
-        // Mode rafale : le même livre reste souvent quelques instants devant la
-        // caméra après le bip — on ignore les répétitions du même code pendant
-        // un court instant, sans ralentir la détection d'un livre différent.
-        if (batchMode && scanState.mode === 'book' && code === lastBatchCode && Date.now() - lastBatchCodeTime < 4000) {
+        // Le même livre reste souvent quelques instants devant la caméra
+        // après le bip — on ignore les répétitions du même code pendant un
+        // court instant, sans ralentir la détection d'un livre différent.
+        if (scanState.mode === 'book' && code === lastBatchCode && Date.now() - lastBatchCodeTime < 4000) {
           scanTimeoutId = setTimeout(scanLoop, 400);
           return;
         }
 
         drawHighlight(ctx, found.box, overlay.width);
 
-        // Mode rafale : on empile le code et la caméra continue de tourner —
-        // aucun appel réseau tant que l'agent n'a pas cliqué sur « Valider ».
-        if (batchMode && scanState.mode === 'book') {
+        // Scan livre : la caméra reste ouverte pour enchaîner, chaque code
+        // part directement en brouillon (recherche en arrière-plan) — un
+        // scan isolé ou une dizaine à la suite empruntent le même chemin.
+        if (scanState.mode === 'book') {
           lastBatchCode = code;
           lastBatchCodeTime = Date.now();
-          const hint = document.getElementById('camera-hint');
-          let added = addToBatchQueue(code);
-          if (!added) {
-            // Déjà présent dans la liste (scanné plus tôt, même hors de la fenêtre
-            // des 4 secondes) : par défaut on bloque, sauf si l'agent confirme qu'il
-            // s'agit vraiment d'un deuxième exemplaire du même livre.
-            const isSecondCopy = confirm(`Ce livre (code ${code}) est déjà dans la liste.\n\nAppuie sur OK si c'est un 2ᵉ exemplaire du même livre à ajouter quand même.\nAnnuler si c'est une erreur de scan.`);
-            if (isSecondCopy) added = addToBatchQueue(code, { forceDuplicate: true });
-          }
-          if (added) {
-            playBeep();
-            hint.textContent = `✓ Livre scanné (${batchQueue.length} au total) — vise le suivant.`;
-          } else {
-            hint.textContent = `Ce livre n'a pas été ajouté en double.`;
-          }
+          playBeep();
+          addDraftFromIsbn(code);
           scanTimeoutId = setTimeout(scanLoop, 700);
           return;
         }
@@ -1300,16 +1250,10 @@
   }
 
   // ---------- Session de don ----------
-  // L'agent scanne d'abord la carte du donateur (s'il a un compte) pour ouvrir une
-  // session, puis catalogue les livres donnés à la suite : chacun crédite
-  // automatiquement des points de fidélité, sans ressaisie.
-
-  window.startDonorSessionFromInput = function () {
-    const code = document.getElementById('donor-subscriber-input').value.trim();
-    if (!code) return;
-    startDonorSession(code);
-    document.getElementById('donor-subscriber-input').value = '';
-  };
+  // L'agent scanne d'abord la carte de l'inscrit (s'il en a une) pour ouvrir
+  // une session depuis le bouton « Scanner la carte de l'inscrit », puis
+  // catalogue les documents donnés à la suite : chacun crédite automatiquement
+  // des points de fidélité, sans ressaisie.
 
   async function startDonorSession(code) {
     const { data: profile, error } = await supabase
@@ -1323,7 +1267,51 @@
     }
     donorSession = { id: profile.id, full_name: profile.full_name, count: 0 };
     renderDonorSession();
+    closeInscritScanModal();
   }
+
+  window.openInscritScanModal = function () {
+    document.getElementById('inscrit-scan-search').value = '';
+    document.getElementById('inscrit-scan-results').innerHTML = '';
+    document.getElementById('inscrit-scan-backdrop').classList.remove('hidden');
+    document.getElementById('inscrit-scan-backdrop').classList.add('flex');
+  };
+
+  window.closeInscritScanModal = function (event) {
+    if (event && event.target.id !== 'inscrit-scan-backdrop') return;
+    stopCamera();
+    document.getElementById('inscrit-scan-backdrop').classList.add('hidden');
+    document.getElementById('inscrit-scan-backdrop').classList.remove('flex');
+  };
+
+  // Recherche par n° d'abonné ou nom/prénom quand l'inscrit n'a pas sa carte —
+  // réutilise la liste des inscrits déjà chargée si elle l'est, sinon la charge.
+  window.renderInscritScanResults = async function () {
+    const query = searchNormalize(document.getElementById('inscrit-scan-search')?.value || '');
+    const results = document.getElementById('inscrit-scan-results');
+    if (!query) { results.innerHTML = ''; return; }
+    if (!inscritsList.length) await loadInscritsList();
+    const matches = inscritsList
+      .filter(p => searchNormalize(p.full_name + ' ' + p.subscriber_number).includes(query))
+      .slice(0, 8);
+    if (!matches.length) {
+      results.innerHTML = `<p class="text-xs text-ink/40 text-center py-3">Aucun inscrit ne correspond.</p>`;
+      return;
+    }
+    results.innerHTML = matches.map(p => `
+      <button type="button" onclick="selectDonorProfile('${p.id}')" class="w-full text-left px-3 py-2 rounded-lg hover:bg-mango-50 border border-mango-100">
+        <span class="font-semibold text-ink block text-sm">${escapeHtml(p.full_name)}</span>
+        <span class="text-[11px] text-ink/50">${escapeHtml(p.subscriber_number)}</span>
+      </button>`).join('');
+  };
+
+  window.selectDonorProfile = function (id) {
+    const profile = inscritsList.find(p => p.id === id);
+    if (!profile) return;
+    donorSession = { id: profile.id, full_name: profile.full_name, count: 0 };
+    renderDonorSession();
+    closeInscritScanModal();
+  };
 
   window.endDonorSession = function () {
     donorSession = null;
@@ -1387,159 +1375,42 @@
     return null;
   }
 
-  // ---------- Scan en rafale (référencement/don de plusieurs dizaines de livres) ----------
-  // On empile juste les codes scannés en mémoire (aucun appel réseau), et c'est
-  // seulement au clic sur « Valider » qu'on va chercher les fiches et qu'on les
-  // ajoute — pensé pour enchaîner les scans très vite sans attendre à chaque livre.
+  // ---------- Brouillons de catalogage ----------
+  // Un ISBN scanné (douchette/caméra) ou tapé part en recherche multi-API
+  // (Google Books, Open Library, BnF) en arrière-plan et devient une carte
+  // brouillon ci-dessous, éditable et à valider une par une (ou toutes à la
+  // fois) avant d'entrer réellement au catalogue — même chemin qu'on scanne
+  // un seul document ou plusieurs à la suite.
 
-  window.setScanBatchMode = function (on) {
-    batchMode = on;
+  async function fetchBookMetaByIsbn(isbn, forcedGenre) {
+    let meta = await fetchFromGoogleBooks(`isbn:${isbn}`);
+    if (!meta) meta = await fetchFromOpenLibrary(isbn);
 
-    document.getElementById('mode-simple-btn').classList.toggle('bg-white', !on);
-    document.getElementById('mode-simple-btn').classList.toggle('shadow-sm', !on);
-    document.getElementById('mode-simple-btn').classList.toggle('text-ink', !on);
-    document.getElementById('mode-batch-btn').classList.toggle('bg-white', on);
-    document.getElementById('mode-batch-btn').classList.toggle('shadow-sm', on);
-    document.getElementById('mode-batch-btn').classList.toggle('text-ink', on);
-
-    document.getElementById('single-scan-extra').classList.toggle('hidden', on);
-    document.getElementById('single-scan-extra-2').classList.toggle('hidden', on);
-    document.getElementById('single-scan-extra-3').classList.toggle('hidden', on);
-    document.getElementById('batch-genre-picker').classList.toggle('hidden', !on);
-    document.getElementById('batch-controls').classList.toggle('hidden', !on);
-    document.getElementById('scan-result').classList.toggle('hidden', on);
-    document.getElementById('batch-queue-panel').classList.toggle('hidden', !on);
-
-    if (!on) stopCamera();
-    else renderBatchQueue();
-  };
-
-  function addToBatchQueue(code, { forceDuplicate = false } = {}) {
-    // Un même code-barres scanné deux fois par erreur (avant ou après la fenêtre
-    // de 4 secondes) ne doit pas créer deux lignes dans la liste — sauf si l'agent
-    // confirme explicitement qu'il s'agit d'un deuxième exemplaire du même livre.
-    if (!forceDuplicate && batchQueue.some(item => item.code === code)) return false;
-    batchQueue.push({ localId: `${Date.now()}-${Math.random()}`, code });
-    saveBatchQueue();
-    renderBatchQueue();
-    return true;
-  }
-
-  function renderBatchQueue() {
-    const count = batchQueue.length;
-    document.getElementById('batch-queue-count').textContent = count;
-    document.getElementById('batch-count-btn').textContent = count;
-    document.getElementById('batch-count-plural').textContent = count > 1 ? 's' : '';
-
-    const list = document.getElementById('batch-queue-list');
-    if (!count) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-6">Aucun livre scanné pour l'instant.</p>`;
-      return;
+    if (meta && !meta.cover_url) {
+      meta.cover_url = await fetchCoverFromOpenLibrary(isbn);
     }
-    list.innerHTML = batchQueue.map((item, i) => {
-      const sameCode = batchQueue.filter(x => x.code === item.code);
-      const dupTag = sameCode.length > 1 ? ` · exemplaire ${sameCode.indexOf(item) + 1}/${sameCode.length}` : '';
-      return `
-      <div class="flex items-center justify-between gap-2 bg-mango-50 rounded-lg px-3 py-1.5">
-        <span class="text-xs text-ink/70">${i + 1}. ${escapeHtml(item.code)}${dupTag}</span>
-        <button onclick="removeFromBatchQueue('${item.localId}')" class="text-[11px] text-red-500/70 hover:text-red-600 font-semibold">✕</button>
-      </div>`;
-    }).join('');
-  }
-
-  window.removeFromBatchQueue = function (localId) {
-    batchQueue = batchQueue.filter(i => i.localId !== localId);
-    saveBatchQueue();
-    renderBatchQueue();
-  };
-
-  window.clearBatchQueue = function () {
-    if (batchQueue.length && !confirm(`Vider la liste des ${batchQueue.length} livre(s) scanné(s) ?`)) return;
-    batchQueue = [];
-    saveBatchQueue();
-    renderBatchQueue();
-  };
-
-  window.validateBatch = async function () {
-    if (!batchQueue.length) return;
-    stopCamera();
-
-    // Pas la peine d'insister si le réseau est manifestement coupé (fréquent en
-    // médiathèque) : on garde la liste intacte pour réessayer plus tard, au lieu de
-    // passer de longues secondes à échouer sur chaque livre.
-    if (!navigator.onLine) {
-      alert(`Pas de connexion internet détectée. Les ${batchQueue.length} livre(s) scanné(s) restent enregistrés — réessaie « Valider » une fois reconnecté.`);
-      return;
+    // Open Library toujours interrogée quand on a un ISBN, même si Google Books
+    // a déjà tout trouvé : ses "subjects" sont souvent bien plus précis que les
+    // catégories Google Books pour deviner le genre (voir guessCategory()).
+    if (meta) {
+      const ol = await fetchFromOpenLibrary(isbn);
+      if (ol) {
+        if (!meta.publisher) meta.publisher = ol.publisher;
+        if (!meta.published_date) meta.published_date = ol.published_date;
+        if (!meta.page_count) meta.page_count = ol.page_count;
+        if (!meta.language) meta.language = ol.language;
+        if (ol.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, ol.rawCategoryText].filter(Boolean).join(' ');
+      }
     }
-
-    // Choisi avant de scanner : si l'agent sait déjà que toute l'étagère est
-    // d'un même genre et/ou d'un même rayon, inutile de le ressaisir livre par livre.
-    const forcedGenre = document.getElementById('batch-genre').value || null;
-    const shelfLocation = document.getElementById('batch-shelf').value.trim() || null;
-    const onSiteOnly = document.getElementById('batch-onsite-only').checked;
-    // Les livres qui arrivent pendant une session de don ne sont pas encore
-    // plastifiés/étiquetés : ils restent hors catalogue jusqu'à validation
-    // par un agent (voir toggleEquipped plus bas et sql/add_book_equipping.sql).
-    const fromDonation = !!donorSession;
-
-    const queue = batchQueue;
-    batchQueue = [];
-    saveBatchQueue();
-    renderBatchQueue();
-
-    const list = document.getElementById('batch-queue-list');
-    list.innerHTML = queue.map(item => `
-      <div class="flex items-center justify-between gap-2 bg-mango-50 rounded-lg px-3 py-1.5" id="batch-row-${item.localId}">
-        <span class="text-xs text-ink/70 truncate">${escapeHtml(item.code)}</span>
-        <span class="text-[11px] text-ink/40 shrink-0">En attente…</span>
-      </div>`).join('');
-
-    let ok = 0;
-    const failedCodes = [];
-    let connectionLost = false;
-
-    for (let i = 0; i < queue.length; i++) {
-      const item = queue[i];
-
-      // Le réseau peut tomber en plein milieu d'un lot de plusieurs dizaines de
-      // livres : dès que ça arrive, on arrête et on remet le reste en attente au
-      // lieu de tout perdre ou d'enchaîner des échecs interminables.
-      if (!navigator.onLine) {
-        connectionLost = true;
-        batchQueue = queue.slice(i);
-        saveBatchQueue();
-        break;
-      }
-
-      const row = document.getElementById(`batch-row-${item.localId}`);
-      const isbn = item.code.replace(/-/g, '');
-
-      let meta = await fetchFromGoogleBooks(`isbn:${isbn}`);
-      if (!meta) meta = await fetchFromOpenLibrary(isbn);
-      if (meta && !meta.cover_url) meta.cover_url = await fetchCoverFromOpenLibrary(isbn);
-      // Même filet que le scan simple : Open Library comble les trous
-      // d'éditeur/date/pages/langue que Google Books laisse souvent, et ses
-      // "subjects" aident à deviner le genre quand Google Books n'a rien.
-      if (meta) {
-        const ol = await fetchFromOpenLibrary(isbn);
-        if (ol) {
-          if (!meta.publisher) meta.publisher = ol.publisher;
-          if (!meta.published_date) meta.published_date = ol.published_date;
-          if (!meta.page_count) meta.page_count = ol.page_count;
-          if (!meta.language) meta.language = ol.language;
-          if (ol.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, ol.rawCategoryText].filter(Boolean).join(' ');
-        }
-      }
-
-      if (!meta) {
-        failedCodes.push(item.code);
-        if (row) row.innerHTML = `<span class="text-xs text-ink/70 truncate">${escapeHtml(item.code)}</span><span class="text-[11px] text-red-600 font-semibold shrink-0">Non trouvé</span>`;
-        continue;
-      }
-
-      // BnF avant le calcul de catégorie : ses vedettes Rameau (ex. "Romans
-      // policiers") sont un signal de genre plus fiable que Google Books/Open
-      // Library pour un fonds français, voir guessCategory().
+    if (meta && !meta.cover_url) {
+      meta.cover_url = await lookupCoverBank(meta.title, meta.author);
+    }
+    if (meta && !meta.format) {
+      meta.format = await fetchFormatFromOpenLibrary(isbn);
+    }
+    // Dépôt légal et imprimeur : le métier de la BnF, aucune des deux autres
+    // sources ne les a.
+    if (meta) {
       const bnf = await fetchFromBnF(isbn, meta.title, meta.author);
       if (bnf) {
         meta.legal_deposit = bnf.legal_deposit;
@@ -1549,70 +1420,254 @@
         if (!meta.language) meta.language = bnf.language;
         if (bnf.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, bnf.rawCategoryText].filter(Boolean).join(' ');
       }
-
-      meta.category = forcedGenre || guessCategory(meta.rawCategoryText, meta.title);
-      delete meta.rawCategoryText;
-      if (!meta.dewey && !COTE_LETTER_PREFIX[meta.category]) {
-        meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
-      }
-      if (!meta.format) {
-        meta.format = await fetchFormatFromOpenLibrary(isbn);
-      }
-
-      const payload = {
-        title: meta.title,
-        author: meta.author,
-        category: meta.category,
-        summary: meta.summary,
-        cover_url: meta.cover_url,
-        cover_initial: meta.title[0].toUpperCase(),
-        available: !fromDonation,
-        equipped: !fromDonation,
-        isbn,
-        publisher: meta.publisher || null,
-        published_date: meta.published_date || null,
-        page_count: meta.page_count || null,
-        language: meta.language || null,
-        format: meta.format || null,
-        legal_deposit: meta.legal_deposit || null,
-        printer: meta.printer || null,
-        // Le rayon forcé pour toute l'étagère prime sur la cote proposée
-        // automatiquement, si l'agent en a saisi un pour ce lot.
-        shelf_location: shelfLocation || suggestCote(meta.category, meta.author, meta.dewey),
-        on_site_only: onSiteOnly,
-        commune_id: myCommuneId,
-      };
-
-      const { data: inserted, error } = await supabase.from('books').insert(payload).select().single();
-
-      if (error) {
-        failedCodes.push(item.code);
-        if (row) row.innerHTML = `<span class="text-xs text-ink/70 truncate">${escapeHtml(item.code)}</span><span class="text-[11px] text-red-600 font-semibold shrink-0">Erreur</span>`;
-        continue;
-      }
-
-      ok += 1;
-      if (row) row.innerHTML = `<span class="text-xs text-ink font-semibold truncate">${escapeHtml(meta.title)}</span><span class="text-[11px] text-mango-700 font-semibold shrink-0">✓ Ajouté</span>`;
-
-      // Code-barres provisoire pour chaque exemplaire du lot, l'agent les
-      // remplace un par un par les vrais codes plus tard (liste du catalogue),
-      // inutile de ralentir le scan en rafale pour les saisir un par un ici.
-      await createCopyForBook(inserted, payload.shelf_location, fromDonation);
-
-      if (donorSession) {
-        await maybeRecordDonation(inserted.id, null);
-      }
     }
 
-    await loadBooks();
-    renderBatchQueue();
+    if (!meta) return null;
 
-    const summary = document.createElement('div');
-    summary.className = 'mt-3 pt-3 border-t border-mango-100 text-sm';
-    summary.innerHTML = `<p class="font-semibold text-ink">${ok} livre(s) ajouté(s)${failedCodes.length ? `, ${failedCodes.length} non trouvé(s)` : ''}.</p>` +
-      (failedCodes.length ? `<p class="text-xs text-ink/50 mt-1">Codes non trouvés : ${failedCodes.map(c => escapeHtml(c)).join(', ')} — à compléter via le scan simple.</p>` : '') +
-      (connectionLost ? `<p class="text-xs text-red-600 font-semibold mt-1">Connexion perdue en cours de route — ${batchQueue.length} livre(s) restant(s) remis en attente, réessaie « Valider » une fois reconnecté.</p>` : '');
-    list.appendChild(summary);
+    meta.category = forcedGenre || guessCategory(meta.rawCategoryText, meta.title);
+    delete meta.rawCategoryText;
+    if (!meta.dewey && !COTE_LETTER_PREFIX[meta.category]) {
+      meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
+    }
+    meta.isbn = isbn;
+    return meta;
+  }
+
+  function addDraftFromIsbn(rawCode) {
+    const isbn = rawCode.replace(/-/g, '');
+    if (draftBooks.some(d => d.isbn === isbn)) {
+      const isSecondCopy = confirm(`Ce document (code ${isbn}) est déjà dans les brouillons.\n\nAppuie sur OK si c'est un 2ᵉ exemplaire à ajouter quand même.\nAnnuler si c'est une erreur de scan.`);
+      if (!isSecondCopy) return;
+    }
+    const localId = `${Date.now()}-${Math.random()}`;
+    draftBooks.push({ localId, isbn, status: 'loading' });
+    renderDraftBooks();
+    fillDraftFromIsbn(localId);
+  }
+
+  async function fillDraftFromIsbn(localId) {
+    const forcedGenre = document.getElementById('batch-genre')?.value || null;
+    const meta = await fetchBookMetaByIsbn(draftBooks.find(d => d.localId === localId)?.isbn, forcedGenre);
+    applyFetchedMeta(localId, meta);
+  }
+
+  // Même titre + même auteur déjà au catalogue (une autre édition scannée une
+  // autre fois, typiquement) : on propose d'ajouter un exemplaire à la fiche
+  // existante plutôt que de laisser créer une fiche en double.
+  function applyFetchedMeta(localId, meta) {
+    const draft = draftBooks.find(d => d.localId === localId);
+    if (!draft) return;
+
+    if (!meta) {
+      draft.status = 'not_found';
+      draft.title = draft.title || '';
+      draft.author = draft.author || '';
+      draft.category = draft.category || 'Autres';
+      draft.summary = draft.summary || '';
+      renderDraftBooks();
+      return;
+    }
+
+    const existingBook = books.find(b =>
+      normalizeKey(b.title) === normalizeKey(meta.title) && normalizeKey(b.author) === normalizeKey(meta.author)
+    );
+    draft.meta = meta;
+    draft.category = meta.category;
+    draft.copyCount = 1;
+    if (existingBook) {
+      draft.status = 'existing';
+      draft.existingBookId = existingBook.id;
+    } else {
+      draft.status = 'found';
+    }
+    renderDraftBooks();
+  }
+
+  // En scan en rafale, une autre fiche peut finir sa recherche (et donc
+  // re-rendre toute la liste) pendant que l'agent modifie encore celle-ci —
+  // on répercute chaque changement dans draftBooks tout de suite pour ne rien
+  // perdre au prochain rendu.
+  window.updateDraftField = function (localId, field, value) {
+    const draft = draftBooks.find(d => d.localId === localId);
+    if (!draft) return;
+    draft[field] = value;
+  };
+
+  window.forceDraftAsNew = function (localId) {
+    const draft = draftBooks.find(d => d.localId === localId);
+    if (!draft) return;
+    draft.status = 'found';
+    draft.existingBookId = null;
+    renderDraftBooks();
+  };
+
+  window.removeDraft = function (localId) {
+    draftBooks = draftBooks.filter(d => d.localId !== localId);
+    renderDraftBooks();
+  };
+
+  window.validateDraft = async function (localId) {
+    const draft = draftBooks.find(d => d.localId === localId);
+    if (!draft) return;
+
+    if (draft.status === 'existing') {
+      const book = books.find(b => b.id === draft.existingBookId);
+      if (!book) return;
+      const count = Math.max(1, parseInt(draft.copyCount, 10) || 1);
+      let index = (book.copies || []).length;
+      for (let i = 0; i < count; i++) {
+        index += 1;
+        await createCopyForBook(book, book.shelf_location, !!donorSession, index);
+      }
+      if (donorSession) await maybeRecordDonation(book.id, null);
+      await loadBooks();
+      window.removeDraft(localId);
+      return;
+    }
+
+    if (draft.status !== 'found') return;
+    draft.meta.category = draft.category;
+    draft.meta.copyCount = Math.max(1, parseInt(draft.copyCount, 10) || 1);
+    draft.meta.shelfOverride = document.getElementById('batch-shelf')?.value.trim() || null;
+    draft.meta.onSiteOnly = document.getElementById('batch-onsite-only')?.checked || false;
+
+    const inserted = await insertBook(draft.meta);
+    if (inserted) await maybeRecordDonation(inserted.id, null);
+    window.removeDraft(localId);
+  };
+
+  window.validateAllDrafts = async function () {
+    const ids = draftBooks.filter(d => d.status === 'found' || d.status === 'existing').map(d => d.localId);
+    for (const id of ids) {
+      await window.validateDraft(id);
+    }
+  };
+
+  window.addManualDraftBook = async function (localId) {
+    const draft = draftBooks.find(d => d.localId === localId);
+    if (!draft) return;
+    const title = (draft.title || '').trim();
+    if (!title) return;
+    const author = (draft.author || '').trim() || 'Auteur inconnu';
+    const category = draft.category;
+    const summary = (draft.summary || '').trim() || null;
+    const shelfOverride = document.getElementById('batch-shelf')?.value.trim() || null;
+    const onSiteOnly = document.getElementById('batch-onsite-only')?.checked || false;
+    const cover_url = await lookupCoverBank(title, author);
+
+    const inserted = await insertBook({ title, author, category, summary, cover_url, shelfOverride, onSiteOnly });
+    if (inserted) await maybeRecordDonation(inserted.id, null);
+    window.removeDraft(localId);
+  };
+
+  function draftCardHtml(d) {
+    if (d.status === 'loading') {
+      return `
+        <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
+          <div class="w-10 h-14 rounded bg-mango-50 shrink-0"></div>
+          <p class="text-sm text-ink/50">Recherche… ${escapeHtml(d.isbn || d.query || '')}</p>
+        </div>`;
+    }
+
+    if (d.status === 'not_found') {
+      return `
+        <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-[11px] font-bold text-ink/40 uppercase tracking-wide">Aucune fiche trouvée${d.isbn ? ` — ${escapeHtml(d.isbn)}` : ''}</p>
+            <button onclick="removeDraft('${d.localId}')" class="text-xs text-ink/40 hover:text-ink/60 underline shrink-0">Supprimer</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-1.5 mb-1.5">
+            <input id="cover-photo-input-${d.localId}" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleCoverPhoto(event, '${d.localId}')">
+            <button type="button" onclick="document.getElementById('cover-photo-input-${d.localId}').click()" class="border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">
+              Photo du recto (titre / auteur)
+            </button>
+            <input id="back-photo-input-${d.localId}" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleBackPhoto(event, '${d.localId}')">
+            <button type="button" onclick="document.getElementById('back-photo-input-${d.localId}').click()" class="border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">
+              Photo du verso (résumé + genre)
+            </button>
+          </div>
+          <p id="cover-ocr-status-${d.localId}" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
+          <div id="cover-ocr-lines-${d.localId}" class="hidden mb-3"></div>
+
+          <label class="text-xs font-semibold text-ink/60 block mb-1">Titre</label>
+          <input id="draft-title-${d.localId}" value="${escapeHtml(d.title || '')}" oninput="updateDraftField('${d.localId}', 'title', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Titre du document">
+          <label class="text-xs font-semibold text-ink/60 block mb-1">Auteur</label>
+          <input id="draft-author-${d.localId}" value="${escapeHtml(d.author || '')}" oninput="updateDraftField('${d.localId}', 'author', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Auteur">
+          <label class="text-xs font-semibold text-ink/60 block mb-1">Catégorie</label>
+          <select id="draft-category-${d.localId}" onchange="updateDraftField('${d.localId}', 'category', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
+            ${categoryOptionsHtml(d.category)}
+          </select>
+          <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé (optionnel)</label>
+          <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Résumé du 4e de couverture">${escapeHtml(d.summary || '')}</textarea>
+          <button onclick="addManualDraftBook('${d.localId}')" class="w-full bg-mango-600 text-white rounded-lg py-2 text-sm font-semibold">Valider la fiche</button>
+        </div>`;
+    }
+
+    if (d.status === 'existing') {
+      const book = books.find(b => b.id === d.existingBookId);
+      const title = book?.title || d.meta.title;
+      const author = book?.author || d.meta.author;
+      const totalCopies = book?.total_copies || 0;
+      const coverHtml = book?.cover_url
+        ? `<img src="${escapeHtml(book.cover_url)}" alt="" class="w-12 h-16 object-cover rounded bg-mango-50 shrink-0">`
+        : `<div class="w-12 h-16 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-lg shrink-0">${escapeHtml((title || '?')[0])}</div>`;
+      return `
+        <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+          <p class="text-[11px] font-bold text-mango-700 uppercase tracking-wide mb-2">Déjà au catalogue — ${totalCopies} exemplaire${totalCopies > 1 ? 's' : ''}</p>
+          <div class="flex gap-3">
+            ${coverHtml}
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-bold text-ink">${escapeHtml(title)}</p>
+              <p class="text-xs text-ink/55 mt-0.5">${escapeHtml(author)}</p>
+            </div>
+          </div>
+          <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires à ajouter</label>
+          <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
+          <div class="flex gap-2 mt-3">
+            <button onclick="validateDraft('${d.localId}')" class="flex-1 bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">✓ Ajouter à cette fiche</button>
+            <button onclick="removeDraft('${d.localId}')" class="text-xs text-ink/40 hover:text-ink/60 underline shrink-0 px-2">Supprimer</button>
+          </div>
+          <button onclick="forceDraftAsNew('${d.localId}')" class="w-full mt-2 text-xs text-ink/40 hover:text-ink/60 underline">C'est une édition différente à part, créer une fiche séparée</button>
+        </div>`;
+    }
+
+    // found
+    const coverHtml = d.meta.cover_url
+      ? `<img src="${escapeHtml(d.meta.cover_url)}" alt="" class="w-12 h-16 object-cover rounded bg-mango-50 shrink-0">`
+      : `<div class="w-12 h-16 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-lg shrink-0">${escapeHtml((d.meta.title || '?')[0])}</div>`;
+    return `
+      <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide">Brouillon — vérifie avant de valider</p>
+          <button onclick="removeDraft('${d.localId}')" class="text-xs text-ink/40 hover:text-ink/60 underline shrink-0">Supprimer</button>
+        </div>
+        <div class="flex gap-3">
+          ${coverHtml}
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-ink">${escapeHtml(d.meta.title)}</p>
+            <p class="text-xs text-ink/55 mt-0.5">${escapeHtml(d.meta.author)}</p>
+            <select id="draft-category-${d.localId}" onchange="updateDraftField('${d.localId}', 'category', this.value)" class="mt-1.5 border border-mango-100 rounded-full pl-2.5 pr-6 py-1 text-[11px] font-semibold text-mango-700 bg-mango-50">
+              ${categoryOptionsHtml(d.category)}
+            </select>
+          </div>
+        </div>
+        ${d.meta.summary ? `<p class="text-xs text-ink/60 leading-relaxed mt-3 line-clamp-4">${escapeHtml(d.meta.summary)}</p>` : ''}
+        <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires</label>
+        <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
+        <button onclick="validateDraft('${d.localId}')" class="w-full mt-3 bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">✓ Valider la fiche</button>
+      </div>`;
+  }
+
+  window.renderDraftBooks = function () {
+    const empty = document.getElementById('draft-books-empty');
+    const actions = document.getElementById('draft-books-actions');
+    const list = document.getElementById('draft-books-list');
+    empty.classList.toggle('hidden', draftBooks.length > 0);
+    actions.classList.toggle('hidden', draftBooks.length === 0);
+    actions.classList.toggle('flex', draftBooks.length > 0);
+    document.getElementById('draft-books-count').textContent = draftBooks.length;
+    list.innerHTML = draftBooks.map(draftCardHtml).join('');
   };
 
   // ---------- Catalogage ----------
@@ -1820,225 +1875,28 @@
 
   window.searchBook = async function () {
     const input = document.getElementById('scan-input');
-    const resultBox = document.getElementById('scan-result');
     const query = input.value.trim();
     if (!query) return;
-
-    resultBox.innerHTML = `<p class="text-sm text-ink/50">Recherche en cours…</p>`;
+    input.value = '';
 
     const isIsbn = /^[0-9-]{10,17}$/.test(query);
-    const isbn = query.replace(/-/g, '');
+    if (isIsbn) {
+      addDraftFromIsbn(query);
+      return;
+    }
 
-    let meta = await fetchFromGoogleBooks(isIsbn ? `isbn:${isbn}` : query);
-    if (!meta && isIsbn) meta = await fetchFromOpenLibrary(isbn);
+    // Recherche par titre/auteur : un seul résultat direct, Open Library et la
+    // BnF n'ont rien à apporter sans ISBN.
+    const localId = `${Date.now()}-${Math.random()}`;
+    draftBooks.push({ localId, isbn: null, query, status: 'loading' });
+    renderDraftBooks();
 
-    // Une source peut connaître le livre sans avoir sa couverture — on complète
-    // avec l'autre source avant d'abandonner et d'afficher juste l'initiale colorée.
-    if (meta && !meta.cover_url && isIsbn) {
-      meta.cover_url = await fetchCoverFromOpenLibrary(isbn);
-    }
-    // Même chose pour éditeur/date/pages/langue : Google Books peut connaître
-    // le livre sans avoir tous ces champs (fréquent pour l'éditeur) — on
-    // comble ce qui manque avec Open Library plutôt que de laisser des trous
-    // qu'une deuxième source aurait pu combler. Un bibliothécaire qui scanne
-    // un vrai code-barres doit repartir avec la fiche la plus complète
-    // possible, pas juste ce que la première source avait.
-    // Open Library toujours interrogée quand on a un ISBN, même si Google Books
-    // a déjà tout trouvé : ses "subjects" (ex. "Detective and mystery stories",
-    // "Thrillers") sont souvent bien plus précis que les catégories Google Books
-    // (souvent vides ou juste "Fiction"), et combinés au résumé donnent une bien
-    // meilleure devinette de genre — un thriller mal classé finit avec une cote
-    // de documentaire (DOC) au lieu d'une cote de roman, repéré le 16/09/2026
-    // sur un Michel Bussi resté sans catégorie détectée.
-    if (meta && isIsbn) {
-      const ol = await fetchFromOpenLibrary(isbn);
-      if (ol) {
-        if (!meta.publisher) meta.publisher = ol.publisher;
-        if (!meta.published_date) meta.published_date = ol.published_date;
-        if (!meta.page_count) meta.page_count = ol.page_count;
-        if (!meta.language) meta.language = ol.language;
-        if (ol.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, ol.rawCategoryText].filter(Boolean).join(' ');
-      }
-    }
-    // Dernier recours : une couverture déjà ajoutée à la main par Mégane pour ce
-    // titre/auteur (livre absent de Google Books ET Open Library).
-    if (meta && !meta.cover_url) {
-      meta.cover_url = await lookupCoverBank(meta.title, meta.author);
-    }
-    // Le format physique (poche, broché, relié…) n'existe que sur Open
-    // Library, jamais sur Google Books — et seulement pour une partie des
-    // fiches. Une info en plus quand elle est là, tant pis sinon.
-    if (meta && !meta.format && isIsbn) {
-      meta.format = await fetchFormatFromOpenLibrary(isbn);
-    }
-    // Dépôt légal et imprimeur : aucune des deux sources ci-dessus ne les a,
-    // c'est le métier de la BnF.
+    const meta = await fetchFromGoogleBooks(query);
     if (meta) {
-      const bnf = await fetchFromBnF(isIsbn ? isbn : null, meta.title, meta.author);
-      if (bnf) {
-        meta.legal_deposit = bnf.legal_deposit;
-        meta.printer = bnf.printer;
-        if (!meta.publisher) meta.publisher = bnf.publisher;
-        if (!meta.page_count) meta.page_count = bnf.page_count;
-        if (!meta.language) meta.language = bnf.language;
-        if (bnf.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, bnf.rawCategoryText].filter(Boolean).join(' ');
-      }
+      meta.category = guessCategory(meta.rawCategoryText, meta.title);
+      delete meta.rawCategoryText;
     }
-
-    if (!meta) {
-      resultBox.innerHTML = `
-        <div class="text-left w-full">
-          <p class="text-sm text-ink/50 mb-3">Aucune fiche trouvée${isIsbn ? ` pour le code ${escapeHtml(isbn)}` : ''}. Complète les infos ci-dessous pour l'ajouter quand même.</p>
-
-          <div class="grid grid-cols-2 gap-1.5 mb-1.5">
-            <input id="cover-photo-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleCoverPhoto(event)">
-            <button type="button" onclick="document.getElementById('cover-photo-input').click()" class="border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">
-              Photo du recto (titre / auteur)
-            </button>
-            <input id="back-photo-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleBackPhoto(event)">
-            <button type="button" onclick="document.getElementById('back-photo-input').click()" class="border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">
-              Photo du verso (résumé + genre)
-            </button>
-          </div>
-          <p id="cover-ocr-status" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
-          <div id="cover-ocr-lines" class="hidden mb-3"></div>
-
-          <label class="text-xs font-semibold text-ink/60 block mb-1">Titre</label>
-          <input id="manual-title" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Titre du livre">
-          <label class="text-xs font-semibold text-ink/60 block mb-1">Auteur</label>
-          <input id="manual-author" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Auteur">
-          <label class="text-xs font-semibold text-ink/60 block mb-1">Catégorie</label>
-          <select id="manual-category" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
-            ${categoryOptionsHtml('Autres')}
-          </select>
-          <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé (optionnel)</label>
-          <textarea id="manual-summary" rows="5" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Résumé du 4e de couverture"></textarea>
-          <button onclick="addManualBook()" class="w-full bg-mango-600 text-white rounded-lg py-2 text-sm font-semibold">Ajouter au catalogue</button>
-        </div>`;
-      return;
-    }
-
-    // Fiche trouvée : classement automatique par mots-clés, mais on n'enregistre
-    // plus tout de suite — une recherche par titre/auteur peut se tromper de
-    // livre ou d'édition (déjà arrivé), l'agent doit voir la fiche et valider
-    // explicitement avant qu'elle n'entre au catalogue.
-    meta.category = guessCategory(meta.rawCategoryText, meta.title);
-    delete meta.rawCategoryText;
-    // L'indice Dewey ne sert qu'aux documentaires (voir COTE_LETTER_PREFIX),
-    // inutile de le chercher pour un roman ou une BD.
-    if (isIsbn && !meta.dewey && !COTE_LETTER_PREFIX[meta.category]) {
-      meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
-    }
-    meta.isbn = isIsbn ? isbn : null;
-
-    // Même titre + même auteur déjà au catalogue (une autre édition scannée
-    // une autre fois, typiquement) : on propose d'ajouter un exemplaire à la
-    // fiche existante plutôt que de laisser créer une fiche en double, comme
-    // c'est arrivé le 16/09/2026 avec Michel Bussi.
-    const existingBook = books.find(b =>
-      normalizeKey(b.title) === normalizeKey(meta.title) && normalizeKey(b.author) === normalizeKey(meta.author)
-    );
-    if (existingBook) {
-      pendingScanMeta = meta;
-      renderExistingBookPreview(existingBook);
-      return;
-    }
-
-    renderScanPreview(meta);
-  };
-
-  function renderExistingBookPreview(book) {
-    const resultBox = document.getElementById('scan-result');
-    const coverHtml = book.cover_url
-      ? `<img src="${escapeHtml(book.cover_url)}" alt="" class="w-14 h-20 object-cover rounded bg-mango-50 shrink-0">`
-      : `<div class="w-14 h-20 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml(book.cover_initial || book.title[0])}</div>`;
-    const totalCopies = book.total_copies || 0;
-
-    resultBox.innerHTML = `
-      <div class="text-left w-full">
-        <p class="text-[11px] font-bold text-mango-700 uppercase tracking-wide mb-2">Déjà au catalogue — ${totalCopies} exemplaire${totalCopies > 1 ? 's' : ''} actuellement</p>
-        <div class="flex gap-3">
-          ${coverHtml}
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold text-ink">${escapeHtml(book.title)}</p>
-            <p class="text-xs text-ink/55 mt-0.5">${escapeHtml(book.author)}</p>
-            <p class="text-[11px] text-mango-700 font-semibold mt-1">${book.available_count || 0}/${totalCopies} disponible${totalCopies > 1 ? 's' : ''}</p>
-          </div>
-        </div>
-        <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires à ajouter</label>
-        <input type="number" id="scan-existing-copies" min="1" value="1" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
-        <div class="flex gap-2 mt-4">
-          <button onclick="confirmAddCopiesToExisting(${book.id})" class="flex-1 bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">✓ Ajouter à cette fiche</button>
-        </div>
-        <button onclick="forceScanPreviewAsNew()" class="w-full mt-2 text-xs text-ink/40 hover:text-ink/60 underline">C'est une édition différente à part, créer une fiche séparée</button>
-      </div>`;
-  }
-
-  window.forceScanPreviewAsNew = function () {
-    if (pendingScanMeta) renderScanPreview(pendingScanMeta);
-  };
-
-  window.confirmAddCopiesToExisting = async function (bookId) {
-    const book = books.find(b => b.id === bookId);
-    if (!book) return;
-    const count = Math.max(1, parseInt(document.getElementById('scan-existing-copies')?.value, 10) || 1);
-    let index = (book.copies || []).length;
-    for (let i = 0; i < count; i++) {
-      index += 1;
-      await createCopyForBook(book, book.shelf_location, false, index);
-    }
-    pendingScanMeta = null;
-    await loadBooks();
-    const updated = books.find(b => b.id === bookId);
-    if (updated) renderAddedCard(updated);
-  };
-
-  let pendingScanMeta = null;
-
-  function renderScanPreview(meta) {
-    pendingScanMeta = meta;
-    const resultBox = document.getElementById('scan-result');
-    const coverHtml = meta.cover_url
-      ? `<img src="${escapeHtml(meta.cover_url)}" alt="" class="w-14 h-20 object-cover rounded bg-mango-50 shrink-0">`
-      : `<div class="w-14 h-20 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml((meta.title || '?')[0])}</div>`;
-
-    resultBox.innerHTML = `
-      <div class="text-left w-full">
-        <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide mb-2">Fiche trouvée — vérifie avant de valider</p>
-        <div class="flex gap-3">
-          ${coverHtml}
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold text-ink">${escapeHtml(meta.title)}</p>
-            <p class="text-xs text-ink/55 mt-0.5">${escapeHtml(meta.author)}</p>
-            <select id="scan-preview-category" class="mt-1.5 border border-mango-100 rounded-full pl-2.5 pr-6 py-1 text-[11px] font-semibold text-mango-700 bg-mango-50">
-              ${categoryOptionsHtml(meta.category)}
-            </select>
-          </div>
-        </div>
-        ${meta.summary ? `<p class="text-xs text-ink/60 leading-relaxed mt-3 line-clamp-4">${escapeHtml(meta.summary)}</p>` : ''}
-        <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires</label>
-        <input type="number" id="scan-preview-copies" min="1" value="1" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
-        <p class="text-[10.5px] text-ink/40 mt-1">Un code-barres provisoire par exemplaire (BLIGO-000123, -2, -3…), à remplacer plus tard.</p>
-        <div class="flex gap-2 mt-4">
-          <button onclick="confirmScanAdd()" class="flex-1 bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">✓ Valider et ajouter au catalogue</button>
-          <button onclick="resetScan()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Ce n'est pas le bon livre</button>
-        </div>
-      </div>`;
-  }
-
-  window.confirmScanAdd = async function () {
-    if (!pendingScanMeta) return;
-    const categorySelect = document.getElementById('scan-preview-category');
-    if (categorySelect) pendingScanMeta.category = categorySelect.value;
-    const copiesInput = document.getElementById('scan-preview-copies');
-    pendingScanMeta.copyCount = Math.max(1, parseInt(copiesInput?.value, 10) || 1);
-
-    const inserted = await insertBook(pendingScanMeta);
-    pendingScanMeta = null;
-    if (inserted) {
-      await maybeRecordDonation(inserted.id, null);
-      renderAddedCard(inserted);
-    }
+    applyFetchedMeta(localId, meta);
   };
 
   // ---------- Photo de couverture (titre / auteur par reconnaissance de texte) ----------
@@ -2047,14 +1905,16 @@
 
   let tesseractWorker = null;
   let ocrLines = [];
+  let ocrLinesDraftId = null;
 
-  window.handleCoverPhoto = async function (event) {
+  window.handleCoverPhoto = async function (event, localId) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
 
-    const status = document.getElementById('cover-ocr-status');
-    const linesBox = document.getElementById('cover-ocr-lines');
+    ocrLinesDraftId = localId;
+    const status = document.getElementById(`cover-ocr-status-${localId}`);
+    const linesBox = document.getElementById(`cover-ocr-lines-${localId}`);
     status.textContent = 'Lecture du texte de la couverture… (quelques secondes)';
     linesBox.classList.add('hidden');
     linesBox.innerHTML = '';
@@ -2080,8 +1940,9 @@
 
   window.assignOcrLine = function (index, field) {
     const line = ocrLines[index];
-    if (line == null) return;
-    document.getElementById(field === 'title' ? 'manual-title' : 'manual-author').value = line;
+    if (line == null || !ocrLinesDraftId) return;
+    document.getElementById(field === 'title' ? `draft-title-${ocrLinesDraftId}` : `draft-author-${ocrLinesDraftId}`).value = line;
+    updateDraftField(ocrLinesDraftId, field, line);
   };
 
   async function ocrRawTextFromFile(file) {
@@ -2124,12 +1985,12 @@
   // Photo du verso : le texte de la 4e de couverture est un vrai résumé —
   // plus facile à lire pour l'OCR qu'un titre stylisé, et bien plus fiable
   // que les catégories brutes pour deviner le genre du livre.
-  window.handleBackPhoto = async function (event) {
+  window.handleBackPhoto = async function (event, localId) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
 
-    const status = document.getElementById('cover-ocr-status');
+    const status = document.getElementById(`cover-ocr-status-${localId}`);
     status.textContent = 'Lecture du résumé (verso)… (quelques secondes)';
 
     try {
@@ -2141,11 +2002,14 @@
         return;
       }
 
-      document.getElementById('manual-summary').value = summary.slice(0, 2000);
+      const summaryValue = summary.slice(0, 2000);
+      document.getElementById(`draft-summary-${localId}`).value = summaryValue;
+      updateDraftField(localId, 'summary', summaryValue);
 
-      const titleValue = document.getElementById('manual-title').value;
+      const titleValue = document.getElementById(`draft-title-${localId}`).value;
       const guessed = guessCategory(summary, titleValue);
-      document.getElementById('manual-category').value = guessed;
+      document.getElementById(`draft-category-${localId}`).value = guessed;
+      updateDraftField(localId, 'category', guessed);
 
       status.textContent = `Résumé rempli — genre proposé : ${guessed} (modifiable).`;
     } catch (e) {
@@ -2153,27 +2017,14 @@
     }
   };
 
-  window.addManualBook = async function () {
-    const title = document.getElementById('manual-title').value.trim();
-    const author = document.getElementById('manual-author').value.trim() || 'Auteur inconnu';
-    const category = document.getElementById('manual-category').value;
-    const summary = document.getElementById('manual-summary').value.trim() || null;
-    if (!title) return;
-    const cover_url = await lookupCoverBank(title, author);
-    const inserted = await insertBook({ title, author, category, summary, cover_url });
-    if (inserted) {
-      await maybeRecordDonation(inserted.id, null);
-      renderAddedCard(inserted);
-    }
-  };
 
   // Crée l'exemplaire physique correspondant au livre qui vient d'être
   // catalogué. Code-barres provisoire (BLIGO-xxxxxx, unique puisque basé sur
   // l'id du livre) tant que l'agent n'a rien saisi : jamais un format imposé
   // par BliGO pour une vraie médiathèque, chaque commune garde le sien —
   // l'agent le remplace par le vrai code dès qu'il le connaît (voir
-  // updateCopyBarcode). status 'processing' pour un don tant qu'il n'est pas
-  // équipé (plastifié/étiqueté), 'available' sinon.
+  // updateCopyBarcode). Achat ou don, un nouvel exemplaire part toujours en
+  // 'processing' (à équiper) — voir insertBook (17/09/2026).
   async function createCopyForBook(book, cote, fromDonation, copyIndex = 1) {
     const communeId = myCommuneId || eventCommunes[0]?.id || null;
     if (!communeId) return null;
@@ -2185,18 +2036,23 @@
       owner_commune_id: communeId,
       current_commune_id: communeId,
       shelf_location: cote,
-      status: fromDonation ? 'processing' : 'available',
+      status: 'processing',
       source: fromDonation ? 'donation' : 'purchase',
     }).select().single();
     if (error) { console.error('Erreur création exemplaire :', error); return null; }
     return data;
   }
 
-  window.updateCopyBarcode = async function (bookId, barcode) {
+  // Champ éditable directement dans la fiche exemplaire (douchette ou saisie
+  // manuelle) : c'est là que l'agent renseigne le vrai code une fois le livre
+  // plastifié/étiqueté, avant de cliquer « Rendre disponible ».
+  window.updateCopyBarcode = async function (copyId, bookId, barcode) {
     const value = barcode.trim();
     if (!value) return;
-    const { error } = await supabase.from('book_copies').update({ barcode: value }).eq('book_id', bookId);
+    const { error } = await supabase.from('book_copies').update({ barcode: value }).eq('id', copyId);
     if (error) { alert('Erreur : ' + error.message); return; }
+    await loadBooks();
+    openBookDetail(bookId);
   };
 
   // ---------- Emprunt / Retour ----------
@@ -2748,24 +2604,24 @@
     if (error) alert('Erreur : ' + error.message);
   };
 
-  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, copyCount = 1 }) {
-    const resultBox = document.getElementById('scan-result');
-    // Même logique que le scan par lot : un livre issu d'un don reste hors
-    // catalogue tant qu'il n'a pas été plastifié/étiqueté par un agent.
+  // Achat ou don, un document validé reste en Brouillon → À équiper tant
+  // qu'un agent n'a pas cliqué « Rendre disponible » (voir markEquipped) — la
+  // fiche est complète mais le livre n'a pas encore été plastifié/étiqueté.
+  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
     const fromDonation = !!donorSession;
-    const cote = suggestCote(category, author, dewey);
+    const cote = shelfOverride || suggestCote(category, author, dewey);
     const { data, error } = await supabase.from('books').insert({
       title, author, category, summary, cover_url, isbn,
       publisher, published_date, page_count, language, format, legal_deposit, printer,
       shelf_location: cote,
       cover_initial: title[0].toUpperCase(),
-      available: !fromDonation,
-      equipped: !fromDonation,
-      on_site_only: false,
+      available: false,
+      equipped: false,
+      on_site_only: onSiteOnly,
       commune_id: myCommuneId,
     }).select().single();
     if (error) {
-      resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`;
+      alert('Erreur : ' + error.message);
       return null;
     }
     // Certaines médiathèques ont plusieurs exemplaires du même titre : un
@@ -2779,59 +2635,6 @@
     return data;
   }
 
-  function renderAddedCard(book) {
-    const resultBox = document.getElementById('scan-result');
-    currentAddedBookId = book.id;
-    const coverHtml = book.cover_url
-      ? `<img src="${book.cover_url}" alt="" class="w-14 h-20 object-cover rounded bg-mango-50 shrink-0">`
-      : `<div class="w-14 h-20 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml(book.cover_initial || book.title[0])}</div>`;
-
-    resultBox.innerHTML = `
-      <div class="text-left w-full">
-        <p class="text-[11px] font-bold ${book.equipped ? 'text-mango-700' : 'text-hibiscus-700'} uppercase tracking-wide mb-2">${book.equipped ? '✓ Ajouté au catalogue' : '⏳ Enregistré — à plastifier et étiqueter avant mise en ligne'}</p>
-        <div class="flex gap-3">
-          ${coverHtml}
-          <div class="flex-1">
-            <p class="text-sm font-bold text-ink">${escapeHtml(book.title)}</p>
-            <p class="text-xs text-ink/55 mt-0.5">${escapeHtml(book.author)}</p>
-            <select onchange="updateBookCategory(${book.id}, this.value)" class="mt-1.5 border border-mango-100 rounded-full pl-2.5 pr-6 py-1 text-[11px] font-semibold text-mango-700 bg-mango-50">
-              ${categoryOptionsHtml(book.category)}
-            </select>
-          </div>
-        </div>
-
-        <label class="text-[11px] font-semibold text-ink/60 block mt-3 mb-1">Cote (proposée automatiquement, modifiable)</label>
-        <input type="text" value="${escapeHtml(book.shelf_location || '')}" placeholder="Ex. R MUS ou 641.5 DUP"
-          onchange="updateShelfLocation(${book.id}, this.value)"
-          class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-mango-300">
-
-        <label class="text-[11px] font-semibold text-ink/60 block mt-3 mb-1">Code-barres de la médiathèque</label>
-        <div id="copy-barcode-camera-slot" class="mb-1.5"></div>
-        <div class="flex gap-1.5">
-          <input type="text" id="copy-barcode-input" value="${escapeHtml(book.copy_barcode || '')}" placeholder="Scanne (douchette ou caméra) ou tape le code"
-            onchange="updateCopyBarcode(${book.id}, this.value)"
-            class="flex-1 min-w-0 border border-mango-100 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-mango-300">
-          <button type="button" id="copy-barcode-camera-btn" onclick="toggleCamera('copyBarcode')" style="touch-action: manipulation;" class="shrink-0 text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg px-3">📷</button>
-        </div>
-        <p class="text-[10.5px] text-ink/40 mt-1">Pas encore de code (livre pas encore étiqueté) ? Laisse le code provisoire, à remplacer plus tard.</p>
-
-        <label class="flex items-center gap-2 mt-3 text-xs font-semibold text-ink/70">
-          <input type="checkbox" onchange="updateOnSiteOnly(${book.id}, this.checked)" ${book.on_site_only ? 'checked' : ''}>
-          Consultation sur place uniquement (non empruntable)
-        </label>
-
-        <button onclick="scanAnotherBook()" class="w-full mt-4 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold">Scanner un autre livre</button>
-      </div>`;
-  }
-
-  window.resetScan = function () {
-    stopCamera();
-    pendingScanMeta = null;
-    document.getElementById('scan-input').value = '';
-    document.getElementById('camera-hint').textContent = '';
-    document.getElementById('scan-result').innerHTML = `<p class="text-sm text-ink/40">En attente d'une recherche…</p>`;
-  };
-
   // « Ajouter un nouveau document » fusionné dans l'écran Catalogue (17/09/2026) :
   // ce n'est plus un écran de menu séparé, juste une autre vue de la même page.
   window.openScanView = function () {
@@ -2843,14 +2646,6 @@
     stopCamera();
     document.getElementById('catalogue-scan-view').classList.add('hidden');
     document.getElementById('catalogue-list-view').classList.remove('hidden');
-  };
-
-  // Bouton « Scanner un autre livre » après un ajout : on relance directement la
-  // caméra au lieu de juste revenir à l'écran d'attente (qui obligeait à re-taper
-  // sur « Scanner avec la caméra » et donnait l'impression que ça restait bloqué).
-  window.scanAnotherBook = function () {
-    resetScan();
-    toggleCamera('book');
   };
 
   async function loadBooks() {
@@ -3168,7 +2963,7 @@
             <button onclick="markEquipped(${b.id})"
               style="touch-action: manipulation;"
               class="w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full bg-hibiscus-50 text-hibiscus-700">
-              ⏳ À équiper
+              ⏳ À équiper — Rendre disponible
             </button>
           ` : `
             <span class="inline-block w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full ${b.available_count > 0 ? 'bg-mango-50 text-mango-700' : 'bg-ink/5 text-ink/40'}">
@@ -3266,7 +3061,9 @@
       const canWithdraw = c.status === 'available' || c.status === 'processing';
       return `
         <div class="flex items-center justify-between gap-2 border-t border-mango-50 py-2 first:border-t-0 first:pt-0">
-          <span class="text-xs text-ink/70 truncate">${escapeHtml(c.barcode)}</span>
+          <input type="text" value="${escapeHtml(c.barcode)}" placeholder="Scanne (douchette) ou tape le code"
+            onchange="updateCopyBarcode(${c.id}, ${b.id}, this.value)"
+            class="flex-1 min-w-0 text-xs text-ink/70 border border-transparent hover:border-mango-100 focus:border-mango-200 rounded px-1.5 py-1 outline-none">
           <span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full shrink-0 ${badge.classes}">${badge.label}</span>
           ${canWithdraw ? `<button onclick="withdrawCopy(${c.id}, ${b.id})" class="text-[11px] text-red-500/70 hover:text-red-600 font-semibold shrink-0">Retirer</button>` : '<span class="w-12 shrink-0"></span>'}
         </div>`;
