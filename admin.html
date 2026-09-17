@@ -335,29 +335,28 @@
       <section id="screen-reservations" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Prêts &amp; réservations</h2>
 
-        <div class="flex items-center gap-1.5 bg-mango-50 border border-mango-100 rounded-full p-1.5 mb-5 w-fit flex-wrap">
-          <button id="pr-tab-reservations-btn" type="button" onclick="switchPrTab('reservations')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+        <div class="flex items-center gap-6 border-b border-mango-100 mb-5 flex-wrap">
+          <button id="pr-tab-reservations-btn" type="button" onclick="switchPrTab('reservations')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-ink text-ink">
             Réservations (<span id="reservations-open-count">0</span>)
           </button>
-          <button id="pr-tab-active-btn" type="button" onclick="switchPrTab('active')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+          <button id="pr-tab-active-btn" type="button" onclick="switchPrTab('active')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
             Prêts en cours (<span id="loan-active-count">0</span>)
           </button>
-          <button id="pr-tab-retours-btn" type="button" onclick="switchPrTab('retours')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+          <button id="pr-tab-retours-btn" type="button" onclick="switchPrTab('retours')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
             Retours
           </button>
         </div>
 
         <div id="pr-panel-reservations">
-          <p class="text-sm text-ink/55 mb-4">Prépare les commandes du jour, puis fais-les passer à « Prêt » une fois en rayon. Une réservation prête non récupérée sous 48h remet le livre en circulation automatiquement.</p>
-
-          <div class="flex items-center gap-1.5 bg-mango-50 border border-mango-100 rounded-full p-1.5 mb-5 w-fit flex-wrap">
-            <button id="resa-tab-preparation-btn" type="button" onclick="switchReservationTab('preparation')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+          <div class="flex items-center gap-2 mb-5 flex-wrap">
+            <span class="text-[10px] font-bold text-ink/35 uppercase tracking-wide mr-0.5">Filtrer</span>
+            <button id="resa-tab-preparation-btn" type="button" onclick="switchReservationTab('preparation')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-ink text-white border-ink">
               À préparer (<span id="resa-count-preparation">0</span>)
             </button>
-            <button id="resa-tab-pret-btn" type="button" onclick="switchReservationTab('pret')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+            <button id="resa-tab-pret-btn" type="button" onclick="switchReservationTab('pret')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-ink/55 border-mango-100">
               Prêtes à récupérer (<span id="resa-count-pret">0</span>)
             </button>
-            <button id="resa-tab-expiree-btn" type="button" onclick="switchReservationTab('expiree')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full text-red-600">
+            <button id="resa-tab-expiree-btn" type="button" onclick="switchReservationTab('expiree')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-red-600 border-red-100">
               À remettre en rayon (<span id="resa-count-expiree">0</span>)
             </button>
           </div>
@@ -2321,9 +2320,10 @@
       document.getElementById(`pr-panel-${t}`).classList.toggle('hidden', t !== tab);
       const btn = document.getElementById(`pr-tab-${t}-btn`);
       const active = tab === t;
-      btn.classList.toggle('bg-white', active);
-      btn.classList.toggle('shadow-sm', active);
+      btn.classList.toggle('border-ink', active);
       btn.classList.toggle('text-ink', active);
+      btn.classList.toggle('border-transparent', !active);
+      btn.classList.toggle('text-ink/40', !active);
     });
     if (tab === 'active') loadActiveLoans();
     if (tab === 'retours') document.getElementById('loan-barcode-input')?.focus();
@@ -3463,13 +3463,24 @@
 
   window.switchReservationTab = function (tab) {
     reservationTab = tab;
-    ['preparation', 'pret', 'expiree'].forEach(t => {
+    ['preparation', 'pret'].forEach(t => {
       const btn = document.getElementById(`resa-tab-${t}-btn`);
       const active = tab === t;
-      btn.classList.toggle('bg-white', active);
-      btn.classList.toggle('shadow-sm', active);
-      if (t !== 'expiree') btn.classList.toggle('text-ink', active);
+      btn.classList.toggle('bg-ink', active);
+      btn.classList.toggle('text-white', active);
+      btn.classList.toggle('border-ink', active);
+      btn.classList.toggle('bg-white', !active);
+      btn.classList.toggle('text-ink/55', !active);
+      btn.classList.toggle('border-mango-100', !active);
     });
+    const expireeBtn = document.getElementById('resa-tab-expiree-btn');
+    const expireeActive = tab === 'expiree';
+    expireeBtn.classList.toggle('bg-red-600', expireeActive);
+    expireeBtn.classList.toggle('text-white', expireeActive);
+    expireeBtn.classList.toggle('border-red-600', expireeActive);
+    expireeBtn.classList.toggle('bg-white', !expireeActive);
+    expireeBtn.classList.toggle('text-red-600', !expireeActive);
+    expireeBtn.classList.toggle('border-red-100', !expireeActive);
     renderReservations();
   };
 
