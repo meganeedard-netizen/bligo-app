@@ -86,6 +86,9 @@
       <button id="nav-team-btn" onclick="switchScreen('team')" style="touch-action: manipulation;" class="hidden agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="team">
         Comptes & tarifs
       </button>
+      <button id="nav-sigb-stats-btn" onclick="switchScreen('sigb-stats')" style="touch-action: manipulation;" class="hidden agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="sigb-stats">
+        Statistiques
+      </button>
     </nav>
 
     <div class="flex-1 min-w-0">
@@ -431,7 +434,6 @@
           <button id="stats-tab-emprunts-btn" type="button" onclick="switchStatsTab('emprunts')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Emprunts</button>
           <button id="stats-tab-jeunesse-btn" type="button" onclick="switchStatsTab('jeunesse')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Top Jeunesse</button>
           <button id="stats-tab-top20-btn" type="button" onclick="switchStatsTab('top20')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Sélection BliGO</button>
-          <button id="stats-tab-sigb-btn" type="button" onclick="switchStatsTab('sigb')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Statistiques SIGB</button>
         </div>
 
         <div id="stats-panel-emprunts" class="stats-panel">
@@ -469,14 +471,6 @@
           <div id="top20-readonly-list" class="flex flex-col gap-2"></div>
         </div>
 
-        <div id="stats-panel-sigb" class="stats-panel hidden">
-          <p class="text-sm text-ink/55 mb-2">Indicateurs déjà calculables automatiquement à partir des données de BliGO, préparés dans l'esprit du rapport annuel du ministère de la Culture (Neoscrib). Ce que BliGO ne sait pas encore mesurer (périodiques, finances, personnel, consultations sur place) n'apparaît pas ici — ce sera l'objet de prochaines étapes.</p>
-          <div class="flex items-center gap-2 mb-4">
-            <label class="text-xs font-semibold text-ink/60">Année</label>
-            <select id="sigb-stats-year" onchange="loadSigbStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white"></select>
-          </div>
-          <div id="sigb-stats-content" class="flex flex-col gap-5"></div>
-        </div>
       </section>
 
       <!-- COMPTES & TARIFS (direction uniquement) -->
@@ -528,6 +522,17 @@
           <p id="tariff-updated-label" class="text-[11px] text-ink/40 mb-3"></p>
           <button onclick="saveTariffs()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les tarifs</button>
         </div>
+      </section>
+
+      <!-- STATISTIQUES SIGB (direction uniquement) -->
+      <section id="screen-sigb-stats" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Statistiques</h2>
+        <p class="text-sm text-ink/55 mb-2">Indicateurs déjà calculables automatiquement à partir des données de BliGO, préparés dans l'esprit du rapport annuel du ministère de la Culture (Neoscrib). Ce que BliGO ne sait pas encore mesurer (périodiques, finances, personnel, consultations sur place) n'apparaît pas ici — ce sera l'objet de prochaines étapes.</p>
+        <div class="flex items-center gap-2 mb-4">
+          <label class="text-xs font-semibold text-ink/60">Année</label>
+          <select id="sigb-stats-year" onchange="loadSigbStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white"></select>
+        </div>
+        <div id="sigb-stats-content" class="flex flex-col gap-5"></div>
       </section>
 
     </div>
@@ -705,6 +710,7 @@
     myCommuneId = profile.commune_id || null;
     myIsDirection = profile.role === 'super_admin' || (profile.role === 'agent' && profile.agent_level === 'direction');
     document.getElementById('nav-team-btn').classList.toggle('hidden', !myIsDirection);
+    document.getElementById('nav-sigb-stats-btn').classList.toggle('hidden', !myIsDirection);
 
     if (myCommuneId) {
       const { data: commune } = await supabase.from('communes').select('name').eq('id', myCommuneId).single();
@@ -754,6 +760,7 @@
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
     if (screen === 'loans') { switchLoanTab('scan'); document.getElementById('loan-barcode-input')?.focus(); refreshVisitorCount(); }
     if (screen === 'stats') switchStatsTab('emprunts');
+    if (screen === 'sigb-stats') initSigbStatsYearSelect();
   };
 
   // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
@@ -3737,7 +3744,7 @@
   // ---------- Tendances ----------
 
   window.switchStatsTab = function (tab) {
-    ['emprunts', 'jeunesse', 'top20', 'sigb'].forEach(t => {
+    ['emprunts', 'jeunesse', 'top20'].forEach(t => {
       document.getElementById(`stats-panel-${t}`).classList.toggle('hidden', t !== tab);
       const btn = document.getElementById(`stats-tab-${t}-btn`);
       const active = tab === t;
@@ -3745,7 +3752,6 @@
       btn.classList.toggle('shadow-sm', active);
       btn.classList.toggle('text-ink', active);
     });
-    if (tab === 'sigb') initSigbStatsYearSelect();
   };
 
   // ---------- Statistiques SIGB (Phase 2 du chantier "évolution vers un SIGB
