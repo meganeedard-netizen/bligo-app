@@ -2640,7 +2640,6 @@
             <option value="" ${!profile.tariff_category ? 'selected' : ''} disabled>Non renseignée</option>
             ${Object.entries(tariffLabels).map(([v, label]) => `<option value="${v}" ${profile.tariff_category === v ? 'selected' : ''}>${label}</option>`).join('')}
           </select>
-          <span class="text-ink/35">À corriger si l'agent s'est trompé de case à la préinscription.</span>
         </div>
         ${flaggedBannerHtml}
         <div class="px-4 py-2.5 border-b border-mango-50">
