@@ -90,7 +90,6 @@
         <div class="flex flex-wrap items-start justify-between gap-3 mb-1">
           <div>
             <h2 class="text-lg font-bold text-ink mb-1">Catalogage</h2>
-            <p class="text-sm text-ink/55">Tous les livres du fonds : recherche, change une catégorie, marque un don équipé, ou supprime une fiche.</p>
           </div>
           <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition shrink-0">Ajouter un nouveau document</button>
         </div>
@@ -219,8 +218,8 @@
         </div>
 
         <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<span id="to-equip-badge" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></span>
-          <button onclick="checkAndFixCotes()" class="ml-3 align-middle text-[11px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1">Vérifier les cotes</button>
-          <button id="duplicates-toggle-btn" onclick="toggleDuplicatesFilter()" class="ml-2 align-middle text-[11px] font-semibold text-hibiscus-700 border border-hibiscus-200 bg-hibiscus-50 rounded-full px-3 py-1">Doublons potentiels</button>
+          <button id="duplicates-badge" onclick="toggleDuplicatesFilter()" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></button>
+          <button id="cotes-badge" onclick="checkAndFixCotes()" class="hidden ml-2 align-middle text-[11px] font-bold text-mango-700 bg-mango-50 px-2 py-0.5 rounded-full"></button>
         </h3>
         <p id="duplicates-banner" class="hidden text-xs text-hibiscus-700 font-semibold mb-2"></p>
 
@@ -763,7 +762,11 @@
   // documentaires (Bien-être, Maison, Histoire, Culture) utilisent un indice
   // Dewey souvent affiné à la main, qu'on ne veut surtout pas écraser par un
   // indice par défaut générique.
-  window.checkAndFixCotes = async function () {
+  //
+  // Calculée automatiquement à chaque affichage du catalogue (badge dans
+  // l'en-tête) plutôt que sur un clic — l'agent n'a rien à déclencher pour
+  // savoir qu'il y a quelque chose à vérifier (17/09/2026).
+  function findCoteMismatches() {
     const mismatches = [];
     for (const b of books) {
       const letters = COTE_LETTER_PREFIX[b.category];
@@ -774,11 +777,12 @@
         mismatches.push({ id: b.id, title: b.title, old: b.shelf_location || '(vide)', new: expected });
       }
     }
+    return mismatches;
+  }
 
-    if (!mismatches.length) {
-      alert('Toutes les cotes sont cohérentes avec la catégorie actuelle de chaque livre.');
-      return;
-    }
+  window.checkAndFixCotes = async function () {
+    const mismatches = findCoteMismatches();
+    if (!mismatches.length) return;
 
     const list = mismatches.map(m => `• ${m.title} : ${m.old} → ${m.new}`).join('\n');
     if (!confirm(`${mismatches.length} cote(s) à corriger pour rester cohérente(s) avec la catégorie actuelle :\n\n${list}\n\nAppliquer ces changements ?`)) return;
@@ -788,7 +792,6 @@
       await supabase.from('book_copies').update({ shelf_location: m.new }).eq('book_id', m.id);
     }
     await loadBooks();
-    alert(`${mismatches.length} cote(s) mise(s) à jour.`);
   };
 
   const accessMessage = document.getElementById('access-message');
@@ -3073,8 +3076,8 @@
 
   window.toggleDuplicatesFilter = function () {
     duplicatesFilterActive = !duplicatesFilterActive;
-    document.getElementById('duplicates-toggle-btn').classList.toggle('bg-hibiscus-600', duplicatesFilterActive);
-    document.getElementById('duplicates-toggle-btn').classList.toggle('text-white', duplicatesFilterActive);
+    document.getElementById('duplicates-badge').classList.toggle('bg-hibiscus-600', duplicatesFilterActive);
+    document.getElementById('duplicates-badge').classList.toggle('text-white', duplicatesFilterActive);
     renderCatalogue();
   };
 
@@ -3086,7 +3089,19 @@
       ? books.filter(b => bookSearchText(b).includes(query))
       : books;
 
+    // Doublons et cotes à corriger : détectés automatiquement à chaque
+    // affichage, affichés en badge dans l'en-tête (masqué si tout est en
+    // ordre) — pas besoin d'un bouton « vérifier » pour le savoir.
     const duplicateGroups = findDuplicateGroups();
+    const duplicatesBadge = document.getElementById('duplicates-badge');
+    duplicatesBadge.textContent = `${duplicateGroups.length} doublon${duplicateGroups.length > 1 ? 's' : ''} potentiel${duplicateGroups.length > 1 ? 's' : ''}`;
+    duplicatesBadge.classList.toggle('hidden', duplicateGroups.length === 0);
+
+    const coteMismatches = findCoteMismatches();
+    const cotesBadge = document.getElementById('cotes-badge');
+    cotesBadge.textContent = `${coteMismatches.length} cote${coteMismatches.length > 1 ? 's' : ''} à vérifier`;
+    cotesBadge.classList.toggle('hidden', coteMismatches.length === 0);
+
     const banner = document.getElementById('duplicates-banner');
     if (duplicatesFilterActive) {
       const duplicateIds = new Set(duplicateGroups.flat().map(b => b.id));
