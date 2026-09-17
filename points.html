@@ -227,23 +227,31 @@
     { code: 'vide_bibliotheque', name: 'Vide-Bibliothèque', description: '3 dons déposés dans l\'année', reward: 100 },
     { code: 'critique_litteraire', name: 'Critique Littéraire', description: '3 avis déposés sur des livres', reward: 50 },
     { code: 'marathon_10_livres', name: 'Marathon 10 Livres', description: '10 livres marqués comme lus', reward: 100 },
+    { code: 'evenement_culturel', name: 'Événement Culturel', description: 'Présent à 5 événements culturels', reward: 80 },
   ];
 
   async function renderDefis(userId) {
-    const [{ data: completed }, { count: donations1y }, { count: reviewsCount }, { count: readCount }] = await Promise.all([
+    const [{ data: completed }, { count: donations1y }, { count: reviewsCount }, { count: readCount }, { data: rsvpEvents }] = await Promise.all([
       supabase.from('defis_completed').select('defi_code').eq('user_id', userId),
       supabase.from('free_books').select('id', { count: 'exact', head: true }).eq('donated_by', userId).gte('created_at', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()),
       supabase.from('book_reviews').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'recupere'),
+      // Pas de vrai pointage de présence à l'entrée d'un événement : une
+      // inscription à un événement dont la date est passée fait office de
+      // "présence" (voir sql/add_evenement_culturel_defi.sql).
+      supabase.from('event_rsvps').select('events ( event_date )').eq('user_id', userId),
     ]);
+
+    const eventsAttendedCount = (rsvpEvents || []).filter(r => r.events?.event_date && new Date(r.events.event_date) < new Date()).length;
 
     const completedCodes = new Set((completed || []).map(d => d.defi_code));
     const progressByCode = {
       vide_bibliotheque: donations1y || 0,
       critique_litteraire: reviewsCount || 0,
       marathon_10_livres: readCount || 0,
+      evenement_culturel: eventsAttendedCount,
     };
-    const goalByCode = { vide_bibliotheque: 3, critique_litteraire: 3, marathon_10_livres: 10 };
+    const goalByCode = { vide_bibliotheque: 3, critique_litteraire: 3, marathon_10_livres: 10, evenement_culturel: 5 };
 
     document.getElementById('defis-list').innerHTML = DEFIS.map(d => {
       const done = completedCodes.has(d.code);
