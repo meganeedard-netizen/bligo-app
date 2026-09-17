@@ -73,6 +73,8 @@
       <button onclick="switchScreen('agenda')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="agenda">
         Agenda culturel
       </button>
+      <div id="nav-divider-pilotage" class="w-px self-stretch sm:w-auto sm:h-px bg-white/10 mx-1 sm:mx-0 sm:my-1.5 shrink-0"></div>
+
       <button onclick="switchScreen('stats')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="stats">
         Tendances
       </button>
@@ -830,6 +832,7 @@
       ['catalogue', 'agenda', 'stats'].forEach(screen => {
         document.querySelector(`.agent-nav-btn[data-screen="${screen}"]`)?.classList.add('hidden');
       });
+      document.getElementById('nav-divider-pilotage').classList.add('hidden');
     }
 
     document.getElementById('app-main').classList.remove('hidden');
