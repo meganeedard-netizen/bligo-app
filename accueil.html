@@ -69,7 +69,8 @@
     <div class="relative">
       <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/35 pointer-events-none" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.3" cy="10.3" r="6"/><path d="M20 20l-4.8-4.8"/></svg>
       <input id="search-input" type="text" placeholder="Rechercher un livre, un auteur…"
-        class="w-full border border-mango-100 rounded-full pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-mango-300 shadow-sm bg-white">
+        class="w-full border border-mango-100 rounded-full pl-10 pr-9 py-3 text-sm outline-none focus:ring-2 focus:ring-mango-300 shadow-sm bg-white">
+      <button type="button" onclick="clearSearchInput()" aria-label="Effacer" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink/30 hover:text-ink/60 text-sm">✕</button>
     </div>
   </form>
 
@@ -740,6 +741,13 @@
     searchQuery = e.target.value;
     renderBooks();
   });
+
+  window.clearSearchInput = function () {
+    const el = document.getElementById('search-input');
+    el.value = '';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.focus();
+  };
 
   // ==================== INIT ====================
 
