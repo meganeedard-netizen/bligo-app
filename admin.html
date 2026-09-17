@@ -58,11 +58,8 @@
 
     <nav class="sm:w-56 shrink-0 bg-[#1B4B43] text-white rounded-xl p-2.5 flex sm:flex-col gap-1.5 overflow-x-auto h-fit">
       <button onclick="switchScreen('reservations')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="reservations">
-        Réservations
+        Prêts &amp; réservations
         <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="reservations-count">0</span>
-      </button>
-      <button onclick="switchScreen('loans')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="loans">
-        Emprunt / Retour
       </button>
       <button onclick="switchScreen('users')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="users">
         Inscrits
@@ -256,38 +253,6 @@
       </section>
 
       <!-- EMPRUNT / RETOUR -->
-      <section id="screen-loans" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Emprunt / Retour</h2>
-
-        <div class="flex items-center gap-1.5 bg-mango-50 border border-mango-100 rounded-full p-1.5 mb-5 w-fit flex-wrap">
-          <button id="loan-tab-scan-btn" type="button" onclick="switchLoanTab('scan')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Scanner</button>
-          <button id="loan-tab-active-btn" type="button" onclick="switchLoanTab('active')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">Emprunts en cours (<span id="loan-active-count">0</span>)</button>
-        </div>
-
-        <div id="loan-panel-scan">
-          <p class="text-sm text-ink/55 mb-4">Scanne le code-barres du livre (douchette filaire, Bluetooth, ou caméra) pour l'emprunter ou enregistrer son retour.</p>
-
-          <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
-            <div id="loan-camera-slot" class="mb-2"></div>
-            <div class="flex gap-2">
-              <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Scanne ou tape le code-barres du livre"
-                onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupLoanBarcode();}"
-                style="font-size: 16px;"
-                class="flex-1 min-w-0 border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
-              <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan')" style="touch-action: manipulation;" class="shrink-0 bg-mango-50 border border-mango-200 text-mango-700 rounded-lg px-4 text-xl">📷</button>
-            </div>
-            <button onclick="lookupLoanBarcode()" style="touch-action: manipulation;" class="w-full mt-3 bg-ink text-white rounded-lg py-3 text-sm font-semibold active:scale-[0.98] transition">Valider</button>
-          </div>
-
-          <div id="loan-result" class="mt-5 max-w-xl"></div>
-        </div>
-
-        <div id="loan-panel-active" class="hidden">
-          <p class="text-sm text-ink/55 mb-4">Tous les livres actuellement empruntés dans ta médiathèque, triés par date de retour — les plus urgents en premier.</p>
-          <div id="active-loans-list" class="flex flex-col gap-2.5 max-w-2xl"></div>
-        </div>
-
-      </section>
 
       <!-- INSCRITS (liste + fiche de l'inscrit) -->
       <section id="screen-users" class="agent-screen hidden">
@@ -366,24 +331,62 @@
         </div>
       </section>
 
-      <!-- RESERVATIONS -->
+      <!-- PRÊTS & RÉSERVATIONS -->
       <section id="screen-reservations" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Réservations Click &amp; Collect</h2>
-        <p class="text-sm text-ink/55 mb-4">Prépare les commandes du jour, puis fais-les passer à « Prêt » une fois en rayon. Une réservation prête non récupérée sous 48h remet le livre en circulation automatiquement.</p>
+        <h2 class="text-lg font-bold text-ink mb-1">Prêts &amp; réservations</h2>
 
         <div class="flex items-center gap-1.5 bg-mango-50 border border-mango-100 rounded-full p-1.5 mb-5 w-fit flex-wrap">
-          <button id="resa-tab-preparation-btn" type="button" onclick="switchReservationTab('preparation')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
-            À préparer (<span id="resa-count-preparation">0</span>)
+          <button id="pr-tab-reservations-btn" type="button" onclick="switchPrTab('reservations')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+            Réservations (<span id="reservations-open-count">0</span>)
           </button>
-          <button id="resa-tab-pret-btn" type="button" onclick="switchReservationTab('pret')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
-            Prêtes — en attente (<span id="resa-count-pret">0</span>)
+          <button id="pr-tab-active-btn" type="button" onclick="switchPrTab('active')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+            Prêts en cours (<span id="loan-active-count">0</span>)
           </button>
-          <button id="resa-tab-expiree-btn" type="button" onclick="switchReservationTab('expiree')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full text-red-600">
-            À remettre en rayon (<span id="resa-count-expiree">0</span>)
+          <button id="pr-tab-retours-btn" type="button" onclick="switchPrTab('retours')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+            Retours
           </button>
         </div>
 
-        <div id="reservations-list" class="flex flex-col gap-3"></div>
+        <div id="pr-panel-reservations">
+          <p class="text-sm text-ink/55 mb-4">Prépare les commandes du jour, puis fais-les passer à « Prêt » une fois en rayon. Une réservation prête non récupérée sous 48h remet le livre en circulation automatiquement.</p>
+
+          <div class="flex items-center gap-1.5 bg-mango-50 border border-mango-100 rounded-full p-1.5 mb-5 w-fit flex-wrap">
+            <button id="resa-tab-preparation-btn" type="button" onclick="switchReservationTab('preparation')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+              À préparer (<span id="resa-count-preparation">0</span>)
+            </button>
+            <button id="resa-tab-pret-btn" type="button" onclick="switchReservationTab('pret')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full">
+              Prêtes à récupérer (<span id="resa-count-pret">0</span>)
+            </button>
+            <button id="resa-tab-expiree-btn" type="button" onclick="switchReservationTab('expiree')" style="touch-action: manipulation;" class="text-[13px] font-semibold px-4 py-2 rounded-full text-red-600">
+              À remettre en rayon (<span id="resa-count-expiree">0</span>)
+            </button>
+          </div>
+
+          <div id="reservations-list" class="flex flex-col gap-3"></div>
+        </div>
+
+        <div id="pr-panel-active" class="hidden">
+          <p class="text-sm text-ink/55 mb-4">Tous les livres actuellement empruntés dans ta médiathèque, triés par date de retour — les plus urgents en premier (en rouge si le retour est en retard).</p>
+          <div id="active-loans-list" class="flex flex-col gap-2.5 max-w-2xl"></div>
+        </div>
+
+        <div id="pr-panel-retours" class="hidden">
+          <p class="text-sm text-ink/55 mb-4">Scanne le code-barres du livre (douchette filaire, Bluetooth, ou caméra) pour enregistrer son retour — ou un emprunt comptoir si le livre est disponible.</p>
+
+          <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
+            <div id="loan-camera-slot" class="mb-2"></div>
+            <div class="flex gap-2">
+              <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Scanne ou tape le code-barres du livre"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupLoanBarcode();}"
+                style="font-size: 16px;"
+                class="flex-1 min-w-0 border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
+              <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan')" style="touch-action: manipulation;" class="shrink-0 bg-mango-50 border border-mango-200 text-mango-700 rounded-lg px-4 text-xl">📷</button>
+            </div>
+            <button onclick="lookupLoanBarcode()" style="touch-action: manipulation;" class="w-full mt-3 bg-ink text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition">Scanner un retour</button>
+          </div>
+
+          <div id="loan-result" class="mt-5 max-w-xl"></div>
+        </div>
       </section>
 
       <!-- AGENDA CULTUREL -->
@@ -825,7 +828,7 @@
     document.getElementById('header-visitor-widget').classList.remove('hidden');
     document.getElementById('header-visitor-widget').classList.add('flex');
     await refreshVisitorCount();
-    // Un compte agent restreint garde emprunt/retour et préinscriptions, mais
+    // Un compte agent restreint garde prêts & réservations et inscrits, mais
     // pas le catalogue ni l'agenda culturel (RLS déjà bloquée côté base pour
     // ces écrans, ce masquage évite juste de montrer un écran inutilisable).
     if (!myIsDirection) {
@@ -856,7 +859,7 @@
     });
     // Prêt à scanner dès l'arrivée sur l'écran, sans avoir à cliquer dans le
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
-    if (screen === 'loans') { switchLoanTab('scan'); document.getElementById('loan-barcode-input')?.focus(); refreshVisitorCount(); }
+    if (screen === 'reservations') { switchPrTab('reservations'); refreshVisitorCount(); }
     if (screen === 'stats') switchStatsTab('emprunts');
     if (screen === 'sigb-stats') initSigbStatsYearSelect();
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
@@ -2309,20 +2312,21 @@
   // ---------- Emprunts en cours + Fiche usager ----------
 
   let activeLoans = [];
-  let loanTab = 'scan';
 
-  window.switchLoanTab = function (tab) {
-    loanTab = tab;
-    ['scan', 'active'].forEach(t => {
-      document.getElementById(`loan-panel-${t}`).classList.toggle('hidden', t !== tab);
-      const btn = document.getElementById(`loan-tab-${t}-btn`);
+  // Réservations, Prêts en cours et Retours fusionnés dans un seul écran
+  // « Prêts & réservations » (17/09/2026) : 3 onglets de haut niveau au lieu
+  // de deux écrans de menu séparés.
+  window.switchPrTab = function (tab) {
+    ['reservations', 'active', 'retours'].forEach(t => {
+      document.getElementById(`pr-panel-${t}`).classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById(`pr-tab-${t}-btn`);
       const active = tab === t;
       btn.classList.toggle('bg-white', active);
       btn.classList.toggle('shadow-sm', active);
       btn.classList.toggle('text-ink', active);
     });
     if (tab === 'active') loadActiveLoans();
-    if (tab === 'scan') document.getElementById('loan-barcode-input')?.focus();
+    if (tab === 'retours') document.getElementById('loan-barcode-input')?.focus();
   };
 
   // Tous les emprunts en cours de la médiathèque de l'agent connecté (pas les
@@ -3544,6 +3548,7 @@
     document.getElementById('resa-count-pret').textContent = pretCount;
     document.getElementById('resa-count-expiree').textContent = expireeCount;
     document.getElementById('reservations-count').textContent = preparationCount + pretCount;
+    document.getElementById('reservations-open-count').textContent = preparationCount + pretCount;
 
     const list = document.getElementById('reservations-list');
 
