@@ -370,10 +370,12 @@
 
         <div id="pr-panel-retours" class="hidden">
           <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
-            <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan'); document.getElementById('loan-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-3">Faire un retour</button>
+            <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan'); document.getElementById('loan-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">Faire un retour</button>
+            <p id="loan-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
             <div id="loan-camera-slot" class="mb-2"></div>
-            <label for="loan-barcode-input" class="text-xs font-semibold text-ink/60 block mb-1.5">Scanner le code-barres de la bibliothèque</label>
-            <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Ex. 3760123456789"
+            <label for="loan-barcode-input" class="text-xs font-semibold text-ink/60 block mb-1">Taper le code-barres de la bibliothèque</label>
+            <p class="text-[11px] text-ink/40 mb-1.5">Si la caméra ou la douchette ne fonctionne pas.</p>
+            <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Ex. 7180020158"
               onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupLoanBarcode();}"
               style="font-size: 16px;"
               class="w-full border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
@@ -1052,6 +1054,7 @@
     book: {
       slotId: 'book-camera-slot',
       toggleBtnId: 'camera-toggle-btn',
+      hintId: 'camera-hint',
       defaultLabel: 'Scanner avec la caméra',
       hint: 'Vise le code-barres — il se surligne en orange une fois repéré.',
       onResult: (code) => {
@@ -1062,6 +1065,7 @@
     donor: {
       slotId: 'donor-camera-slot',
       toggleBtnId: 'donor-session-start-btn',
+      hintId: 'camera-hint',
       defaultLabel: 'Démarrer une session de don (scanner la carte du donateur)',
       hint: 'Vise le QR code de la carte du donateur.',
       onResult: (code) => startDonorSession(code),
@@ -1069,6 +1073,7 @@
     copyBarcode: {
       slotId: 'copy-barcode-camera-slot',
       toggleBtnId: 'copy-barcode-camera-btn',
+      hintId: 'camera-hint',
       defaultLabel: 'Scanner',
       hint: 'Vise le code-barres de la médiathèque (celui collé sur le livre, pas l\'ISBN).',
       onResult: (code) => {
@@ -1080,8 +1085,9 @@
     loan: {
       slotId: 'loan-camera-slot',
       toggleBtnId: 'loan-camera-btn',
+      hintId: 'loan-camera-hint',
       defaultLabel: 'Faire un retour',
-      hint: 'Vise le code-barres du livre.',
+      hint: 'Scanner le code-barres de la bibliothèque',
       onResult: (code) => {
         document.getElementById('loan-barcode-input').value = code;
         lookupLoanBarcode();
@@ -1113,7 +1119,7 @@
     document.getElementById(scanState.slotId).appendChild(document.getElementById('camera-view'));
 
     const view = document.getElementById('camera-view');
-    const hint = document.getElementById('camera-hint');
+    const hint = document.getElementById(scanState.hintId);
     const toggleBtn = document.getElementById(scanState.toggleBtnId);
     const torchBtn = document.getElementById('torch-btn');
     const video = document.getElementById('scan-video');
@@ -1242,7 +1248,7 @@
       const torchBtn = document.getElementById('torch-btn');
       if (!torchOn && !torchBtn.classList.contains('hidden') && Date.now() - scanStartTime > 2500) {
         window.toggleTorch();
-        document.getElementById('camera-hint').textContent = 'Toujours rien : flash activé automatiquement.';
+        document.getElementById(scanState.hintId).textContent = 'Toujours rien : flash activé automatiquement.';
       }
     }
 
@@ -1288,6 +1294,8 @@
     if (torchBtn) { torchBtn.classList.add('hidden'); torchBtn.textContent = 'Flash'; }
     const ctx = overlay?.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+    const loanHint = document.getElementById('loan-camera-hint');
+    if (loanHint) loanHint.textContent = '';
     scanState = null;
   }
 
