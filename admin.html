@@ -372,7 +372,8 @@
           <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
             <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan'); document.getElementById('loan-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-3">Faire un retour</button>
             <div id="loan-camera-slot" class="mb-2"></div>
-            <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Scanner le code-barres de la bibliothèque"
+            <label for="loan-barcode-input" class="text-xs font-semibold text-ink/60 block mb-1.5">Scanner le code-barres de la bibliothèque</label>
+            <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Ex. 3760123456789"
               onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupLoanBarcode();}"
               style="font-size: 16px;"
               class="w-full border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
