@@ -180,6 +180,8 @@
         <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<span id="to-equip-badge" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></span>
           <button id="duplicates-badge" onclick="toggleDuplicatesFilter()" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></button>
           <button id="cotes-badge" onclick="checkAndFixCotes()" class="hidden ml-2 align-middle text-[11px] font-bold text-mango-700 bg-mango-50 px-2 py-0.5 rounded-full"></button>
+          <button id="covercolor-badge" onclick="detectMissingCoverColors()" class="hidden ml-2 align-middle text-[11px] font-bold text-mango-700 bg-mango-50 px-2 py-0.5 rounded-full"></button>
+          <button id="incomplete-badge" onclick="reenrichIncompleteBooks()" class="hidden ml-2 align-middle text-[11px] font-bold text-mango-700 bg-mango-50 px-2 py-0.5 rounded-full"></button>
         </h3>
         <p id="duplicates-banner" class="hidden text-xs text-hibiscus-700 font-semibold mb-2"></p>
 
@@ -785,6 +787,91 @@
       await supabase.from('book_copies').update({ shelf_location: m.new }).eq('book_id', m.id);
     }
     await loadBooks();
+  };
+
+  // Rattrapage en masse (18/09/2026) : détecte couleur/N&B pour tous les
+  // livres déjà catalogués qui ont une couverture mais pas encore de valeur
+  // (catalogués avant l'auto-détection, ou dont la détection au catalogage
+  // avait échoué). Un appel réseau par livre, fait en séquence (pas en
+  // parallèle) pour ne pas surcharger l'Edge Function.
+  window.detectMissingCoverColors = async function () {
+    const targets = books.filter(b => b.cover_url && !b.cover_color);
+    if (!targets.length) return;
+    if (!confirm(`Analyser automatiquement la couverture de ${targets.length} livre(s) pour détecter couleur / noir et blanc ?`)) return;
+
+    const badge = document.getElementById('covercolor-badge');
+    let done = 0, failed = 0;
+    for (const b of targets) {
+      badge.textContent = `Analyse ${done + 1}/${targets.length}…`;
+      const color = await fetchCoverColorFromApi(b.cover_url);
+      if (color) {
+        await supabase.from('books').update({ cover_color: color }).eq('id', b.id);
+        done++;
+      } else {
+        failed++;
+      }
+    }
+    await loadBooks();
+    if (failed) alert(`${done} couverture(s) détectée(s). ${failed} n'ont pas pu être analysées (image inaccessible) — à faire manuellement dans leur fiche.`);
+  };
+
+  // Champs bibliographiques que le catalogage tente de remplir via les 3 API
+  // (Google Books, Open Library, BnF) — utilisés pour repérer une fiche
+  // incomplète et pour savoir quoi (re)compléter dans reenrichIncompleteBooks.
+  const BOOK_ENRICH_FIELDS = ['publisher', 'published_date', 'page_count', 'language', 'format', 'legal_deposit', 'printer', 'summary'];
+
+  // Rattrapage en masse (18/09/2026) : relance les 3 API pour chaque livre
+  // dont il manque au moins un champ bibliographique, et ne complète QUE les
+  // champs vides — ne touche jamais à une valeur déjà présente (saisie à la
+  // main ou trouvée avant les corrections du jour). Corrige rétroactivement
+  // deux bugs trouvés le 18/09/2026 : l'ancien chemin Open Library renvoyait
+  // une 404 systématique (endpoint changé côté Open Library), et le tag BnF
+  // 214 (utilisé par de nombreuses notices récentes) n'était pas lu, seul le
+  // 210 l'était.
+  window.reenrichIncompleteBooks = async function () {
+    const targets = books.filter(b => b.isbn && BOOK_ENRICH_FIELDS.some(f => !b[f]));
+    if (!targets.length) return;
+    if (!confirm(`Relancer la recherche Google Books / Open Library / BnF pour ${targets.length} fiche(s) incomplète(s), et compléter les champs vides (rien n'est écrasé) ?`)) return;
+
+    const badge = document.getElementById('incomplete-badge');
+    let updatedCount = 0, unchangedCount = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const b = targets[i];
+      badge.textContent = `Analyse ${i + 1}/${targets.length}…`;
+
+      const gb = await fetchFromGoogleBooks(`isbn:${b.isbn}`);
+      const ol = await fetchFromOpenLibrary(b.isbn);
+      const format = await fetchFormatFromOpenLibrary(b.isbn);
+      const bnf = await fetchFromBnF(b.isbn, b.title, b.author);
+
+      const patch = {};
+      const publisher = b.publisher || gb?.publisher || ol?.publisher || bnf?.publisher;
+      const published_date = b.published_date || gb?.published_date || ol?.published_date;
+      const page_count = b.page_count || gb?.page_count || ol?.page_count || bnf?.page_count;
+      const language = b.language || gb?.language || ol?.language || bnf?.language;
+      const legal_deposit = b.legal_deposit || bnf?.legal_deposit;
+      const printer = b.printer || bnf?.printer;
+      // Résumé BnF en dernier recours seulement, même règle qu'au catalogage.
+      const summary = b.summary || gb?.summary || bnf?.summary;
+
+      if (publisher && publisher !== b.publisher) patch.publisher = publisher;
+      if (published_date && published_date !== b.published_date) patch.published_date = published_date;
+      if (page_count && page_count !== b.page_count) patch.page_count = page_count;
+      if (language && language !== b.language) patch.language = language;
+      if (format && format !== b.format) patch.format = format;
+      if (legal_deposit && legal_deposit !== b.legal_deposit) patch.legal_deposit = legal_deposit;
+      if (printer && printer !== b.printer) patch.printer = printer;
+      if (summary && summary !== b.summary) patch.summary = summary;
+
+      if (Object.keys(patch).length) {
+        await supabase.from('books').update(patch).eq('id', b.id);
+        updatedCount++;
+      } else {
+        unchangedCount++;
+      }
+    }
+    await loadBooks();
+    alert(`${updatedCount} fiche(s) complétée(s). ${unchangedCount} n'avaient rien de plus à trouver sur les 3 sources.`);
   };
 
   const accessMessage = document.getElementById('access-message');
@@ -1425,6 +1512,10 @@
         if (!meta.publisher) meta.publisher = bnf.publisher;
         if (!meta.page_count) meta.page_count = bnf.page_count;
         if (!meta.language) meta.language = bnf.language;
+        // Dernier recours seulement (18/09/2026) : Google Books et Open Library
+        // n'ont pas toujours de résumé éditeur pour l'édition exacte scannée,
+        // la BnF en a parfois un — jamais utilisé pour écraser les deux autres.
+        if (!meta.summary && bnf.summary) meta.summary = bnf.summary;
         if (bnf.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, bnf.rawCategoryText].filter(Boolean).join(' ');
       }
     }
@@ -1723,9 +1814,15 @@
 
   // Second recours : Google Books ne connaît pas toutes les éditions (notamment
   // les éditions locales/anciennes) — Open Library en indexe souvent d'autres.
+  //
+  // Chemin /api/books.json (pas /api/books, ni format=json en paramètre) :
+  // Open Library a changé son routage entre le 16/09 et le 18/09/2026 — l'ancien
+  // chemin renvoie une 404 systématique désormais (vérifié en direct, y compris
+  // sur des ISBN très connus), ce qui cassait silencieusement tout le
+  // complément éditeur/date/pages/langue/genre par cette source.
   async function fetchFromOpenLibrary(isbn) {
     try {
-      const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+      const res = await fetch(`https://openlibrary.org/api/books.json?bibkeys=ISBN:${isbn}&jscmd=data`);
       const data = await res.json();
       const item = data[`ISBN:${isbn}`];
       if (!item?.title) return null;
@@ -1752,7 +1849,7 @@
   // Google Books a déjà répondu pour le titre/auteur/couverture.
   async function fetchDeweyFromOpenLibrary(isbn) {
     try {
-      const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+      const res = await fetch(`https://openlibrary.org/api/books.json?bibkeys=ISBN:${isbn}&jscmd=data`);
       const data = await res.json();
       const item = data[`ISBN:${isbn}`];
       return item?.classifications?.dewey_decimal_class?.[0] || null;
@@ -1821,17 +1918,28 @@
 
       // Tag 210 $d : la mention de dépôt légal telle qu'imprimée sur le
       // livre (ex. "DL 2017"), uniquement l'année, jamais le mois.
+      //
+      // Beaucoup de notices BnF récentes utilisent le tag 214 (plus récent)
+      // à la place du 210 pour la même information — vérifié en direct le
+      // 18/09/2026 sur un livre où le 210 était absent alors que la BnF avait
+      // bien éditeur/dépôt légal/imprimeur, juste en 214. Le 214 peut
+      // apparaître en plusieurs occurrences : une pour éditeur/lieu/date
+      // (ind2 ≠ "3"), une séparée pour la mention d'impression (ind2 = "3",
+      // ex. "impr. en Espagne", dans $a et non $g comme sur le 210).
       const f210 = getField('210');
+      const f214s = getFields('214');
+      const f214main = f214s.find(f => f.getAttribute('ind2') !== '3') || null;
+      const f214printer = f214s.find(f => f.getAttribute('ind2') === '3') || null;
       const f215 = getField('215');
       const f101 = getField('101');
 
       // Uniquement l'année (ex. "DL 2017") : le numéro de référence interne
       // de la BnF (tag 020, ex. "FR 09619805") n'est pas une date, on ne le
       // garde plus depuis le 15/09/2026 pour ne pas prêter à confusion.
-      const legal_deposit = getSub(f210, 'd') || null;
+      const legal_deposit = getSub(f210, 'd') || getSub(f214main, 'd') || null;
 
-      const printer = getSub(f210, 'g');
-      const publisher = getSub(f210, 'c');
+      const printer = getSub(f210, 'g') || getSub(f214printer, 'a') || null;
+      const publisher = getSub(f210, 'c') || getSub(f214main, 'c') || null;
       const pagesRaw = getSub(f215, 'a'); // ex. "1 volume 566 p"
       const pagesMatch = pagesRaw?.match(/(\d+)\s*p/);
       const language = getSub(f101, 'a');
@@ -1842,7 +1950,12 @@
       const genreTerms = [...getFields('606'), ...getFields('608')]
         .map(f => getSub(f, 'a')).filter(Boolean).join(' ');
 
-      if (!legal_deposit && !printer && !publisher && !pagesMatch && !language && !genreTerms) return null;
+      // Tag 330 $a : résumé éditeur, quand la BnF le fournit — utilisé en
+      // dernier recours seulement (jamais pour écraser Google Books/Open
+      // Library), voir fetchBookMetaByIsbn (18/09/2026).
+      const summary = getSub(getField('330'), 'a');
+
+      if (!legal_deposit && !printer && !publisher && !pagesMatch && !language && !genreTerms && !summary) return null;
 
       return {
         legal_deposit,
@@ -1850,6 +1963,7 @@
         publisher,
         page_count: pagesMatch ? Number(pagesMatch[1]) : null,
         language,
+        summary,
         rawCategoryText: genreTerms || null,
       };
     } catch {
@@ -2617,9 +2731,14 @@
   async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
     const fromDonation = !!donorSession;
     const cote = shelfOverride || suggestCote(category, author, dewey);
+    // Détection couleur/N&B automatique dès le catalogage si une couverture a
+    // été trouvée (18/09/2026) — l'agent n'a plus besoin d'ouvrir la fiche
+    // après coup pour le savoir.
+    const cover_color = cover_url ? await fetchCoverColorFromApi(cover_url) : null;
     const { data, error } = await supabase.from('books').insert({
       title, author, category, summary, cover_url, isbn,
       publisher, published_date, page_count, language, format, legal_deposit, printer,
+      cover_color,
       shelf_location: cote,
       cover_initial: title[0].toUpperCase(),
       available: false,
@@ -2928,6 +3047,21 @@
     cotesBadge.textContent = `${coteMismatches.length} cote${coteMismatches.length > 1 ? 's' : ''} à vérifier`;
     cotesBadge.classList.toggle('hidden', coteMismatches.length === 0);
 
+    // Livres déjà catalogués avant l'auto-détection couleur/N&B (18/09/2026),
+    // ou dont la détection au catalogage avait échoué (image inaccessible…).
+    const missingCoverColors = books.filter(b => b.cover_url && !b.cover_color);
+    const covercolorBadge = document.getElementById('covercolor-badge');
+    covercolorBadge.textContent = `${missingCoverColors.length} couverture${missingCoverColors.length > 1 ? 's' : ''} à détecter`;
+    covercolorBadge.classList.toggle('hidden', missingCoverColors.length === 0);
+
+    // Fiches incomplètes (18/09/2026) : cataloguées pendant que l'appel Open
+    // Library était cassé (404 côté Open Library, corrigé ce jour) ou avant
+    // la lecture du tag BnF 214 — voir reenrichIncompleteBooks().
+    const incompleteBooks = books.filter(b => b.isbn && BOOK_ENRICH_FIELDS.some(f => !b[f]));
+    const incompleteBadge = document.getElementById('incomplete-badge');
+    incompleteBadge.textContent = `${incompleteBooks.length} fiche${incompleteBooks.length > 1 ? 's' : ''} à compléter`;
+    incompleteBadge.classList.toggle('hidden', incompleteBooks.length === 0);
+
     const banner = document.getElementById('duplicates-banner');
     if (duplicatesFilterActive) {
       const duplicateIds = new Set(duplicateGroups.flat().map(b => b.id));
@@ -3129,6 +3263,7 @@
       ? `<img src="${escapeHtml(b.cover_url)}" alt="" class="w-16 h-24 object-cover rounded bg-mango-50 shrink-0">`
       : `<div class="w-16 h-24 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shrink-0">${escapeHtml(b.cover_initial || b.title[0])}</div>`;
 
+    document.getElementById('book-modal-content').dataset.bookId = id;
     document.getElementById('book-modal-content').innerHTML = `
       <div class="flex gap-3 mb-4">
         ${coverHtml}
@@ -3153,8 +3288,11 @@
         ${bookFieldRow('Imprimeur', 'bd-printer', b.printer)}
       </div>
       <div class="flex items-end gap-2 mb-1">
-        <div class="flex-1">${bookFieldRow('Couverture', 'bd-cover-color', b.cover_color || (b.cover_url ? '' : 'Sans couverture'), { select: ['Sans couverture', 'Couleur', 'Noir et blanc'] })}</div>
-        ${b.cover_url ? `<button type="button" onclick="detectCoverColor(${b.id})" id="bd-detect-btn" class="mb-3 text-xs font-semibold text-mango-700 border border-mango-100 rounded-lg px-2.5 py-1.5 whitespace-nowrap hover:bg-mango-50">Détecter automatiquement</button>` : ''}
+        <div class="flex-1">
+          ${bookFieldRow('Couverture', 'bd-cover-color', b.cover_color || (b.cover_url ? '' : 'Sans couverture'), { select: ['Sans couverture', 'Couleur', 'Noir et blanc'] })}
+          ${(b.cover_url && !b.cover_color) ? `<p id="bd-cover-detect-status" class="text-[10.5px] text-mango-700 -mt-2 mb-3">Détection automatique en cours…</p>` : ''}
+        </div>
+        ${b.cover_url ? `<button type="button" onclick="detectCoverColor(${b.id})" id="bd-detect-btn" class="mb-3 text-xs font-semibold text-mango-700 border border-mango-100 rounded-lg px-2.5 py-1.5 whitespace-nowrap hover:bg-mango-50">Redétecter</button>` : ''}
       </div>
       <div class="grid grid-cols-2 gap-x-3">
         ${loanDurationFieldHtml('bd-loan-duration', b.loan_duration_days_override)}
@@ -3173,7 +3311,51 @@
     `;
     document.getElementById('book-modal-backdrop').classList.remove('hidden');
     document.getElementById('book-modal-backdrop').classList.add('flex');
+
+    // Fiche déjà cataloguée avant la détection auto (18/09/2026), ou dont la
+    // détection au catalogage avait échoué : on la tente à la consultation,
+    // sans action de l'agent, et on l'enregistre tout de suite en base.
+    if (b.cover_url && !b.cover_color) autoDetectAndSaveCoverColor(id);
   };
+
+  // Centralise l'appel à l'Edge Function detect-cover-color (voir
+  // supabase/functions/detect-cover-color) — utilisée au catalogage
+  // (insertBook), à la consultation de fiche (autoDetectAndSaveCoverColor),
+  // au rattrapage en masse (detectMissingCoverColors) et au bouton manuel
+  // (detectCoverColor) : un seul endroit à faire évoluer si besoin.
+  async function fetchCoverColorFromApi(coverUrl) {
+    if (!coverUrl) return null;
+    try {
+      const { data, error } = await supabase.functions.invoke('detect-cover-color', { body: { cover_url: coverUrl } });
+      if (error || !data?.ok) return null;
+      return data.color;
+    } catch {
+      return null;
+    }
+  }
+
+  async function autoDetectAndSaveCoverColor(id) {
+    const color = await fetchCoverColorFromApi(books.find(x => x.id === id)?.cover_url);
+    const b = books.find(x => x.id === id);
+    if (!b) return;
+    const status = document.getElementById('bd-cover-detect-status');
+    if (!color) {
+      if (status && document.getElementById('book-modal-content')?.dataset.bookId == id) {
+        status.textContent = 'Détection automatique impossible, choisis manuellement.';
+      }
+      return;
+    }
+    const { error } = await supabase.from('books').update({ cover_color: color }).eq('id', id);
+    if (error) return;
+    b.cover_color = color;
+    // La fiche peut avoir été fermée ou changée pendant l'appel réseau —
+    // on ne touche à l'affichage que si c'est toujours la même qui est ouverte.
+    if (document.getElementById('book-modal-content')?.dataset.bookId == id) {
+      const select = document.getElementById('bd-cover-color');
+      if (select) select.value = color;
+      if (status) status.remove();
+    }
+  }
 
   window.detectCoverColor = async function (id) {
     const b = books.find(x => x.id === id);
@@ -3183,16 +3365,16 @@
     btn.textContent = 'Analyse…';
     btn.disabled = true;
 
-    const { data, error } = await supabase.functions.invoke('detect-cover-color', { body: { cover_url: b.cover_url } });
+    const color = await fetchCoverColorFromApi(b.cover_url);
 
     btn.textContent = original;
     btn.disabled = false;
 
-    if (error || !data?.ok) {
-      alert('Détection impossible : ' + (data?.message || error?.message || 'erreur inconnue') + '. Sélectionne manuellement.');
+    if (!color) {
+      alert('Détection impossible. Sélectionne manuellement.');
       return;
     }
-    document.getElementById('bd-cover-color').value = data.color;
+    document.getElementById('bd-cover-color').value = color;
   };
 
   window.closeBookModal = function (event) {
