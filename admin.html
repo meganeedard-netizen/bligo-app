@@ -67,6 +67,10 @@
       <button onclick="switchScreen('catalogue')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="catalogue">
         Catalogage
       </button>
+      <button onclick="switchScreen('logistics')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="logistics">
+        Rangement &amp; transferts
+        <span id="logistics-badge" class="hidden ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+      </button>
       <button onclick="switchScreen('agenda')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="agenda">
         Agenda culturel
       </button>
@@ -376,6 +380,76 @@
           </div>
 
           <div id="loan-result" class="mt-5 max-w-xl"></div>
+        </div>
+      </section>
+
+      <!-- RANGEMENT & TRANSFERTS -->
+      <section id="screen-logistics" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Rangement &amp; transferts</h2>
+
+        <div class="flex items-center gap-6 border-b border-mango-100 mb-5 flex-wrap">
+          <button id="log-tab-shelving-btn" type="button" onclick="switchLogisticsTab('shelving')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-ink text-ink">
+            Rangement
+          </button>
+          <button id="log-tab-transfers-btn" type="button" onclick="switchLogisticsTab('transfers')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
+            Transferts (<span id="transfers-total-count">0</span>)
+          </button>
+        </div>
+
+        <div id="log-panel-shelving">
+          <p class="text-sm text-ink/55 mb-4">Scanne un livre rendu ou fraîchement équipé pour savoir où le ranger.</p>
+          <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
+            <div id="shelving-camera-slot" class="mb-2"></div>
+            <button type="button" id="shelving-camera-btn" onclick="toggleCamera('shelving'); document.getElementById('shelving-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">Scanner un livre à ranger</button>
+            <p id="shelving-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
+            <label for="shelving-barcode-input" class="text-xs font-semibold text-ink/60 block mb-1">Taper le code-barres de la bibliothèque</label>
+            <p class="text-[11px] text-ink/40 mb-1.5">Si la caméra ou la douchette ne fonctionne pas.</p>
+            <input id="shelving-barcode-input" type="text" autocomplete="off" placeholder="Ex. 7180020158"
+              onkeydown="if(event.key==='Enter'){event.preventDefault(); doShelvingLookup();}"
+              style="font-size: 16px;"
+              class="w-full border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
+          </div>
+          <div id="shelving-result" class="mt-5 max-w-xl"></div>
+        </div>
+
+        <div id="log-panel-transfers" class="hidden">
+          <p class="text-sm text-ink/55 mb-4">Un livre rendu ou réservé loin de sa médiathèque d'origine passe automatiquement ici, à envoyer ou à recevoir.</p>
+
+          <div class="grid md:grid-cols-2 gap-5 mb-6">
+            <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
+              <p class="text-xs font-bold uppercase tracking-wide text-ink/50 px-4 py-2.5 bg-mango-50">À envoyer d'ici</p>
+              <div id="transfers-outgoing-list"></div>
+            </div>
+            <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
+              <p class="text-xs font-bold uppercase tracking-wide text-ink/50 px-4 py-2.5 bg-mango-50">En route vers ici</p>
+              <div id="transfers-incoming-list"></div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-5">
+            <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm">
+              <p class="text-sm font-bold text-ink mb-3">Confirmer un envoi</p>
+              <div id="transfer-send-camera-slot" class="mb-2"></div>
+              <button type="button" id="transfer-send-camera-btn" onclick="toggleCamera('transferSend'); document.getElementById('transfer-send-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner le livre qui part</button>
+              <p id="transfer-send-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
+              <input id="transfer-send-barcode-input" type="text" autocomplete="off" placeholder="Code-barres de la bibliothèque"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); doTransferSend();}"
+                style="font-size: 16px;"
+                class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+              <div id="transfer-send-result" class="mt-3"></div>
+            </div>
+            <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm">
+              <p class="text-sm font-bold text-ink mb-3">Confirmer une réception</p>
+              <div id="transfer-receive-camera-slot" class="mb-2"></div>
+              <button type="button" id="transfer-receive-camera-btn" onclick="toggleCamera('transferReceive'); document.getElementById('transfer-receive-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner le livre qui arrive</button>
+              <p id="transfer-receive-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
+              <input id="transfer-receive-barcode-input" type="text" autocomplete="off" placeholder="Code-barres de la bibliothèque"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); doTransferReceive();}"
+                style="font-size: 16px;"
+                class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+              <div id="transfer-receive-result" class="mt-3"></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -845,7 +919,7 @@
     switchReservationTab('preparation');
     document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
     await loadCommunesForAgenda();
-    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents()]);
+    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents(), loadTransfers()]);
     if (myIsDirection) await loadTeamAndTariffs();
   }
 
@@ -864,6 +938,7 @@
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
     if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
     if (screen === 'catalogue') { closeScanView(); }
+    if (screen === 'logistics') { switchLogisticsTab('shelving'); loadTransfers(); }
   };
 
   // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
@@ -936,6 +1011,9 @@
       zxingFormats: [BarcodeFormat.QR_CODE],
     },
     loan: LIBRARY_BARCODE_PROFILE,
+    shelving: LIBRARY_BARCODE_PROFILE,
+    transferSend: LIBRARY_BARCODE_PROFILE,
+    transferReceive: LIBRARY_BARCODE_PROFILE,
   };
 
   function zxingHints(mode) {
@@ -1068,6 +1146,39 @@
       onResult: (code) => {
         document.getElementById('loan-barcode-input').value = code;
         lookupLoanBarcode();
+      },
+    },
+    shelving: {
+      slotId: 'shelving-camera-slot',
+      toggleBtnId: 'shelving-camera-btn',
+      hintId: 'shelving-camera-hint',
+      defaultLabel: 'Scanner un livre à ranger',
+      hint: 'Scanner le code-barres de la bibliothèque',
+      onResult: (code) => {
+        document.getElementById('shelving-barcode-input').value = code;
+        doShelvingLookup();
+      },
+    },
+    transferSend: {
+      slotId: 'transfer-send-camera-slot',
+      toggleBtnId: 'transfer-send-camera-btn',
+      hintId: 'transfer-send-camera-hint',
+      defaultLabel: 'Scanner le livre qui part',
+      hint: 'Scanner le code-barres de la bibliothèque',
+      onResult: (code) => {
+        document.getElementById('transfer-send-barcode-input').value = code;
+        doTransferSend();
+      },
+    },
+    transferReceive: {
+      slotId: 'transfer-receive-camera-slot',
+      toggleBtnId: 'transfer-receive-camera-btn',
+      hintId: 'transfer-receive-camera-hint',
+      defaultLabel: 'Scanner le livre qui arrive',
+      hint: 'Scanner le code-barres de la bibliothèque',
+      onResult: (code) => {
+        document.getElementById('transfer-receive-barcode-input').value = code;
+        doTransferReceive();
       },
     },
   };
@@ -2353,6 +2464,129 @@
     input.value = '';
     input.focus();
   };
+
+  // ---------- Rangement & transferts (21/09/2026) ----------
+  // scan_shelving/transfer_send/transfer_receive existaient déjà côté base
+  // depuis le 13/09/2026 (voir sql/add_scan_operations.sql), jamais reliés à
+  // une interface jusqu'ici.
+
+  window.switchLogisticsTab = function (tab) {
+    ['shelving', 'transfers'].forEach(t => {
+      document.getElementById(`log-panel-${t}`).classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById(`log-tab-${t}-btn`);
+      const active = tab === t;
+      btn.classList.toggle('border-ink', active);
+      btn.classList.toggle('text-ink', active);
+      btn.classList.toggle('border-transparent', !active);
+      btn.classList.toggle('text-ink/40', !active);
+    });
+    if (tab === 'transfers') loadTransfers();
+  };
+
+  window.doShelvingLookup = async function () {
+    const input = document.getElementById('shelving-barcode-input');
+    const barcode = input.value.trim();
+    const resultBox = document.getElementById('shelving-result');
+    if (!barcode) return;
+    resultBox.innerHTML = `<p class="text-sm text-ink/50">Recherche…</p>`;
+
+    const { data, error } = await supabase.rpc('scan_shelving', { p_barcode: barcode });
+    if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+
+    if (!data.ok) {
+      resultBox.innerHTML = `<div class="bg-red-50 border border-red-100 rounded-xl p-4"><p class="text-sm font-bold text-red-700">${escapeHtml(data.message)}</p></div>`;
+      return;
+    }
+
+    playBeep();
+    resultBox.innerHTML = `
+      <div class="bg-mango-50 border border-mango-100 rounded-xl p-4">
+        <p class="text-sm font-bold text-ink">${escapeHtml(data.title || '')}</p>
+        ${data.author ? `<p class="text-xs text-ink/55">${escapeHtml(data.author)}</p>` : ''}
+        <p class="text-sm font-bold text-mango-700 mt-2">${data.shelf_location ? `À ranger en ${escapeHtml(data.shelf_location)}.` : escapeHtml(data.message)}</p>
+      </div>`;
+    input.value = '';
+    input.focus();
+  };
+
+  window.doTransferSend = async function () {
+    const input = document.getElementById('transfer-send-barcode-input');
+    const barcode = input.value.trim();
+    const resultBox = document.getElementById('transfer-send-result');
+    if (!barcode) return;
+
+    const { data, error } = await supabase.rpc('transfer_send', { p_barcode: barcode });
+    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (!data.ok) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(data.message)}</p>`; return; }
+
+    playBeep();
+    resultBox.innerHTML = `<p class="text-xs font-semibold text-mango-700">✓ ${escapeHtml(data.message)}</p>`;
+    input.value = '';
+    input.focus();
+    await loadTransfers();
+  };
+
+  window.doTransferReceive = async function () {
+    const input = document.getElementById('transfer-receive-barcode-input');
+    const barcode = input.value.trim();
+    const resultBox = document.getElementById('transfer-receive-result');
+    if (!barcode) return;
+
+    const { data, error } = await supabase.rpc('transfer_receive', { p_barcode: barcode });
+    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (!data.ok) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(data.message)}</p>`; return; }
+
+    playBeep();
+    resultBox.innerHTML = `<p class="text-xs font-semibold text-mango-700">✓ ${escapeHtml(data.message)}</p>`;
+    input.value = '';
+    input.focus();
+    await loadTransfers();
+  };
+
+  // Transferts en attente concernant cette médiathèque : à envoyer (elle est
+  // l'origine, statut 'requested') et à recevoir (elle est la destination,
+  // statut 'in_transit') — sert aussi de badge de notification dans le menu.
+  async function loadTransfers() {
+    if (!myCommuneId) return;
+
+    const [{ data: outgoing, error: e1 }, { data: incoming, error: e2 }] = await Promise.all([
+      supabase.from('transfers').select('id, copy_id, to_commune_id, requested_at, book_copies ( barcode, books ( title, author ) )')
+        .eq('from_commune_id', myCommuneId).eq('status', 'requested').order('requested_at'),
+      supabase.from('transfers').select('id, copy_id, from_commune_id, sent_at, book_copies ( barcode, books ( title, author ) )')
+        .eq('to_commune_id', myCommuneId).eq('status', 'in_transit').order('sent_at'),
+    ]);
+    if (e1) console.error(e1);
+    if (e2) console.error(e2);
+
+    const communeIds = [...new Set([
+      ...(outgoing || []).map(t => t.to_commune_id),
+      ...(incoming || []).map(t => t.from_commune_id),
+    ])];
+    const { data: communesData } = communeIds.length
+      ? await supabase.from('communes').select('id, name').in('id', communeIds)
+      : { data: [] };
+    const communeById = Object.fromEntries((communesData || []).map(c => [c.id, c]));
+
+    const total = (outgoing?.length || 0) + (incoming?.length || 0);
+    const badge = document.getElementById('logistics-badge');
+    badge.textContent = total;
+    badge.classList.toggle('hidden', total === 0);
+    document.getElementById('transfers-total-count').textContent = total;
+
+    const outList = document.getElementById('transfers-outgoing-list');
+    outList.innerHTML = (outgoing && outgoing.length) ? outgoing.map(t => `
+      <div class="px-4 py-2.5 border-t border-mango-50 text-sm">
+        <p class="font-semibold text-ink truncate">${escapeHtml(t.book_copies?.books?.title || '?')}</p>
+        <p class="text-xs text-ink/50">${escapeHtml(t.book_copies?.barcode || '')} → ${escapeHtml(communeById[t.to_commune_id]?.name || '')}</p>
+      </div>`).join('') : `<p class="text-sm text-ink/40 text-center py-6 px-4">Rien à envoyer pour le moment.</p>`;
+
+    const inList = document.getElementById('transfers-incoming-list');
+    inList.innerHTML = (incoming && incoming.length) ? incoming.map(t => `
+      <div class="px-4 py-2.5 border-t border-mango-50 text-sm">
+        <p class="font-semibold text-ink truncate">${escapeHtml(t.book_copies?.books?.title || '?')}</p>
+        <p class="text-xs text-ink/50">${escapeHtml(t.book_copies?.barcode || '')} ← ${escapeHtml(communeById[t.from_commune_id]?.name || '')}</p>
+      </div>`).join('') : `<p class="text-sm text-ink/40 text-center py-6 px-4">Rien en route pour le moment.</p>`;
+  }
 
   // ---------- Emprunts en cours + Fiche usager ----------
 
