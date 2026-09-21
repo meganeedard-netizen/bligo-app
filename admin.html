@@ -32,7 +32,7 @@
 <body class="bg-white text-ink min-h-screen">
 
 <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-mango-100 shadow-sm">
-  <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
+  <div class="max-w-7xl mx-auto px-5 py-3 flex items-center justify-between flex-wrap gap-y-2 gap-x-3">
     <div class="flex items-center gap-2.5">
       <img id="header-commune-logo" alt="" class="hidden w-8 h-8 rounded-full object-contain bg-white shadow-sm">
       <div>
@@ -52,7 +52,7 @@
   </div>
 </header>
 
-<main id="app-main" class="max-w-6xl mx-auto px-5 py-8 hidden">
+<main id="app-main" class="max-w-7xl mx-auto px-5 py-8 hidden">
 
   <div class="flex flex-col sm:flex-row gap-5">
 
@@ -112,7 +112,7 @@
           <button onclick="closeScanView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
 
           <div class="flex flex-col lg:flex-row lg:items-start gap-6">
-            <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm w-full lg:max-w-xl lg:shrink-0">
+            <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm w-full lg:max-w-sm lg:shrink-0">
               <div id="book-camera-slot">
                 <div id="camera-view" class="hidden mb-3">
                   <div class="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
@@ -167,7 +167,7 @@
                 <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">Brouillons (<span id="draft-books-count">0</span>)</p>
                 <button onclick="validateAllDrafts()" class="text-xs font-semibold bg-ink text-white rounded-full px-3.5 py-1.5">✓ Tout valider</button>
               </div>
-              <div id="draft-books-list" class="flex flex-col gap-3"></div>
+              <div id="draft-books-list" class="grid grid-cols-1 2xl:grid-cols-2 gap-3 items-start"></div>
             </div>
           </div>
         </div>
@@ -845,7 +845,7 @@
 
       const gb = await fetchFromGoogleBooks(`isbn:${b.isbn}`);
       const ol = await fetchFromOpenLibrary(b.isbn);
-      const format = await fetchFormatFromOpenLibrary(b.isbn);
+      const olDetails = await fetchEditionDetailsFromOpenLibrary(b.isbn);
       const bnf = await fetchFromBnF(b.isbn, b.title, b.author);
 
       const patch = {};
@@ -853,10 +853,12 @@
       const published_date = b.published_date || gb?.published_date || ol?.published_date;
       const page_count = b.page_count || gb?.page_count || ol?.page_count || bnf?.page_count;
       const language = b.language || gb?.language || ol?.language || bnf?.language;
+      const format = olDetails?.format;
       const legal_deposit = b.legal_deposit || bnf?.legal_deposit;
       const printer = b.printer || bnf?.printer;
-      // Résumé BnF en dernier recours seulement, même règle qu'au catalogage.
-      const summary = b.summary || gb?.summary || bnf?.summary;
+      // Google Books d'abord, puis Open Library (résumé repris du site de
+      // l'éditeur), et la BnF en tout dernier recours seulement (18/09/2026).
+      const summary = b.summary || gb?.summary || olDetails?.summary || bnf?.summary;
 
       if (publisher && publisher !== b.publisher) patch.publisher = publisher;
       if (published_date && published_date !== b.published_date) patch.published_date = published_date;
@@ -1506,8 +1508,12 @@
     if (meta && !meta.cover_url) {
       meta.cover_url = await lookupCoverBank(meta.title, meta.author);
     }
-    if (meta && !meta.format) {
-      meta.format = await fetchFormatFromOpenLibrary(isbn);
+    if (meta && (!meta.format || !meta.summary)) {
+      const details = await fetchEditionDetailsFromOpenLibrary(isbn);
+      if (details) {
+        if (!meta.format) meta.format = details.format;
+        if (!meta.summary) meta.summary = details.summary;
+      }
     }
     // Dépôt légal et imprimeur : le métier de la BnF, aucune des deux autres
     // sources ne les a.
@@ -1836,7 +1842,7 @@
         </div>
         <label class="text-xs font-semibold text-ink/60 block mb-1">Éditeur</label>
         <input id="draft-publisher-${d.localId}" value="${escapeHtml(d.publisher || '')}" oninput="updateDraftField('${d.localId}', 'publisher', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
-        <div class="grid grid-cols-3 gap-2 mb-2">
+        <div class="grid grid-cols-2 gap-2 mb-2">
           <div>
             <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre de pages</label>
             <input type="number" id="draft-page-count-${d.localId}" value="${escapeHtml(d.page_count || '')}" oninput="updateDraftField('${d.localId}', 'page_count', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
@@ -1845,11 +1851,11 @@
             <label class="text-xs font-semibold text-ink/60 block mb-1">Langue d'origine</label>
             <input id="draft-language-${d.localId}" value="${escapeHtml(d.language || '')}" oninput="updateDraftField('${d.localId}', 'language', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
           </div>
-          <div>
-            <label class="text-xs font-semibold text-ink/60 block mb-1">Format</label>
-            <input id="draft-format-${d.localId}" value="${escapeHtml(d.format || '')}" oninput="updateDraftField('${d.localId}', 'format', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
-          </div>
         </div>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Format</label>
+        <select id="draft-format-${d.localId}" onchange="updateDraftField('${d.localId}', 'format', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
+          ${formatOptionsHtml(d.format)}
+        </select>
         <label class="text-xs font-semibold text-ink/60 block mb-1">Dépôt légal</label>
         <input id="draft-legal-deposit-${d.localId}" value="${escapeHtml(d.legal_deposit || '')}" oninput="updateDraftField('${d.localId}', 'legal_deposit', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Catégorie</label>
@@ -1969,30 +1975,63 @@
     }
   }
 
-  // Traduit les libellés anglais d'Open Library vers ce qu'un agent français
-  // attend de voir. Toute valeur non reconnue reste vide plutôt qu'affichée
-  // telle quelle en anglais.
+  // Typologie de document utilisée en médiathèque (21/09/2026) — remplace
+  // l'ancien format éditeur brut (poche/broché/relié seuls) par les grandes
+  // familles de documents que l'agent doit distinguer au catalogage.
+  const FORMAT_OPTIONS = [
+    'Livre broché',
+    'Livre relié',
+    'Livre de poche',
+    'Périodiques (journaux quotidiens, magazines, revues spécialisées)',
+    'Beaux livres et usuels (encyclopédies, dictionnaires, atlas, livres d\'art)',
+    'Documents graphiques et cartographiques (cartes, plans, estampes, partitions)',
+  ];
+
+  function formatOptionsHtml(selected) {
+    const options = FORMAT_OPTIONS.map(f => `<option value="${escapeHtml(f)}" ${f === selected ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('');
+    return `<option value="" ${!selected ? 'selected' : ''}>Non précisé</option>${options}`;
+  }
+
+  // Traduit le format physique brut d'Open Library (en anglais, valable
+  // seulement pour un livre) vers la typologie ci-dessus. Une entrée non
+  // reconnue (ou absente) laisse le champ vide plutôt que d'imposer une
+  // valeur au hasard — l'agent choisit alors lui-même dans la liste.
   const PHYSICAL_FORMAT_FR = {
-    'paperback': 'Broché',
-    'mass market paperback': 'Poche',
-    'trade paperback': 'Broché',
-    'hardcover': 'Relié',
-    'hardback': 'Relié',
-    'library binding': 'Relié',
-    'board book': 'Cartonné',
-    'spiral-bound': 'Reliure spirale',
+    'paperback': 'Livre broché',
+    'trade paperback': 'Livre broché',
+    'mass market paperback': 'Livre de poche',
+    'hardcover': 'Livre relié',
+    'hardback': 'Livre relié',
+    'library binding': 'Livre relié',
   };
 
-  // Le format physique (poche, broché, relié…) n'existe que sur l'endpoint
-  // "fiche complète" d'Open Library (/isbn/…), pas sur jscmd=data utilisé
-  // ailleurs pour l'indice Dewey — d'où cet appel séparé.
-  async function fetchFormatFromOpenLibrary(isbn) {
+  // Nettoie le résumé tel que repris par Open Library depuis le site de
+  // l'éditeur : guillemets encadrants et mention de source collée sans
+  // espace en fin de texte (ex. « ...création."Site web del'éditeur. »).
+  function cleanOpenLibrarySummary(raw) {
+    return raw
+      .replace(/["'’]?\s*site\s*web\s*de\s*l['’]?\s*[ée]diteur\.?\s*["'’]?\s*$/i, '')
+      .replace(/^["'’]+/, '')
+      .replace(/["'’]+$/, '')
+      .trim() || null;
+  }
+
+  // Format physique et résumé n'existent que sur l'endpoint "fiche complète"
+  // d'Open Library (/isbn/…), pas sur jscmd=data utilisé ailleurs pour
+  // l'indice Dewey — d'où cet appel séparé, mutualisé pour les deux (21/09/2026,
+  // le résumé d'Open Library sert de 2e recours quand Google Books n'en a pas,
+  // avant même la BnF qui ne fournit un résumé éditeur que rarement).
+  async function fetchEditionDetailsFromOpenLibrary(isbn) {
     try {
       const res = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
       if (!res.ok) return null;
       const data = await res.json();
       const raw = (data.physical_format || '').toLowerCase().trim();
-      return PHYSICAL_FORMAT_FR[raw] || null;
+      const descValue = typeof data.description === 'string' ? data.description : data.description?.value;
+      return {
+        format: PHYSICAL_FORMAT_FR[raw] || null,
+        summary: descValue ? cleanOpenLibrarySummary(descValue) : null,
+      };
     } catch {
       return null;
     }
@@ -3392,7 +3431,7 @@
         ${bookFieldRow('Date de publication', 'bd-published-date', b.published_date)}
         ${bookFieldRow('Nombre de pages', 'bd-page-count', b.page_count, { type: 'number' })}
         ${bookFieldRow('Langue d\'origine', 'bd-language', b.language)}
-        ${bookFieldRow('Format', 'bd-format', b.format)}
+        ${bookFieldRow('Format', 'bd-format', b.format, { select: FORMAT_OPTIONS })}
         ${bookFieldRow('Dépôt légal', 'bd-legal-deposit', b.legal_deposit)}
         ${bookFieldRow('Traducteur', 'bd-translator', b.translator)}
         ${bookFieldRow('Illustrateur (nom et date)', 'bd-illustrator', b.illustrator)}
