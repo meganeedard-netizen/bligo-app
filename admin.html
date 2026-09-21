@@ -1588,6 +1588,10 @@
     draft.publisher = meta.publisher || '';
     draft.published_date = meta.published_date || '';
     draft.summary = meta.summary || '';
+    draft.page_count = meta.page_count || '';
+    draft.language = meta.language || '';
+    draft.legal_deposit = meta.legal_deposit || '';
+    draft.format = meta.format || '';
     if (existingBook) {
       draft.status = 'existing';
       draft.existingBookId = existingBook.id;
@@ -1659,6 +1663,10 @@
     draft.meta.publisher = (draft.publisher || '').trim() || null;
     draft.meta.published_date = (draft.published_date || '').trim() || null;
     draft.meta.summary = (draft.summary || '').trim() || null;
+    draft.meta.page_count = parseInt(draft.page_count, 10) || null;
+    draft.meta.language = (draft.language || '').trim() || null;
+    draft.meta.legal_deposit = (draft.legal_deposit || '').trim() || null;
+    draft.meta.format = (draft.format || '').trim() || null;
     draft.meta.category = draft.category;
     draft.meta.copyCount = Math.max(1, parseInt(draft.copyCount, 10) || 1);
     draft.meta.shelfOverride = document.getElementById('batch-shelf')?.value.trim() || null;
@@ -1828,6 +1836,22 @@
         </div>
         <label class="text-xs font-semibold text-ink/60 block mb-1">Éditeur</label>
         <input id="draft-publisher-${d.localId}" value="${escapeHtml(d.publisher || '')}" oninput="updateDraftField('${d.localId}', 'publisher', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+        <div class="grid grid-cols-3 gap-2 mb-2">
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre de pages</label>
+            <input type="number" id="draft-page-count-${d.localId}" value="${escapeHtml(d.page_count || '')}" oninput="updateDraftField('${d.localId}', 'page_count', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Langue d'origine</label>
+            <input id="draft-language-${d.localId}" value="${escapeHtml(d.language || '')}" oninput="updateDraftField('${d.localId}', 'language', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Format</label>
+            <input id="draft-format-${d.localId}" value="${escapeHtml(d.format || '')}" oninput="updateDraftField('${d.localId}', 'format', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          </div>
+        </div>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Dépôt légal</label>
+        <input id="draft-legal-deposit-${d.localId}" value="${escapeHtml(d.legal_deposit || '')}" oninput="updateDraftField('${d.localId}', 'legal_deposit', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Catégorie</label>
         <select id="draft-category-${d.localId}" onchange="updateDraftField('${d.localId}', 'category', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
           ${categoryOptionsHtml(d.category)}
