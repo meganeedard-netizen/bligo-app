@@ -3189,6 +3189,15 @@
     // ordre) — pas besoin d'un bouton « vérifier » pour le savoir.
     const duplicateGroups = findDuplicateGroups();
     const duplicatesBadge = document.getElementById('duplicates-badge');
+    // Plus aucun doublon alors que le filtre était actif (dernier doublon
+    // supprimé à l'instant) : on quitte le filtre automatiquement — sinon le
+    // badge qui sert à le désactiver disparaît lui-même (count = 0) et
+    // l'agent reste bloqué sur la liste filtrée vide, sans bouton pour
+    // revenir au catalogue complet (bug remonté le 21/09/2026).
+    if (duplicatesFilterActive && duplicateGroups.length === 0) {
+      duplicatesFilterActive = false;
+      duplicatesBadge.classList.remove('bg-hibiscus-600', 'text-white');
+    }
     duplicatesBadge.textContent = `${duplicateGroups.length} doublon${duplicateGroups.length > 1 ? 's' : ''} potentiel${duplicateGroups.length > 1 ? 's' : ''}`;
     duplicatesBadge.classList.toggle('hidden', duplicateGroups.length === 0);
 
