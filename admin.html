@@ -181,7 +181,7 @@
           <button type="button" onclick="clearSearchInput('catalogue-search')" aria-label="Effacer" class="absolute right-3 top-1/2 -translate-y-1/2 text-ink/30 hover:text-ink/60 text-sm">✕</button>
         </div>
 
-        <h3 class="text-base font-bold text-ink mb-3">Tous les livres (<span id="catalogue-count">0</span>)<button id="to-equip-badge" onclick="toggleToEquipFilter()" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></button>
+        <h3 class="text-base font-bold text-ink mb-3"><button type="button" onclick="resetCatalogueFilters()" class="hover:underline">Tous les livres</button> (<span id="catalogue-count">0</span>)<button id="to-equip-badge" onclick="toggleToEquipFilter()" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></button>
           <button id="duplicates-badge" onclick="toggleDuplicatesFilter()" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></button>
           <button id="cotes-badge" onclick="checkAndFixCotes()" class="hidden ml-2 align-middle text-[11px] font-bold text-mango-700 bg-mango-50 px-2 py-0.5 rounded-full"></button>
           <button id="covercolor-badge" onclick="detectMissingCoverColors()" class="hidden ml-2 align-middle text-[11px] font-bold text-mango-700 bg-mango-50 px-2 py-0.5 rounded-full"></button>
@@ -3120,6 +3120,18 @@
     duplicatesFilterActive = !duplicatesFilterActive;
     document.getElementById('duplicates-badge').classList.toggle('bg-hibiscus-600', duplicatesFilterActive);
     document.getElementById('duplicates-badge').classList.toggle('text-white', duplicatesFilterActive);
+    renderCatalogue();
+  };
+
+  // Cliquer sur « Tous les livres » quitte n'importe quel filtre (à équiper,
+  // doublons) pour revenir directement à la liste complète du catalogue —
+  // plus intuitif que de devoir recliquer sur le badge du filtre actif
+  // (demandé par Mégane le 21/09/2026).
+  window.resetCatalogueFilters = function () {
+    toEquipFilterActive = false;
+    duplicatesFilterActive = false;
+    document.getElementById('to-equip-badge').classList.remove('bg-hibiscus-600', 'text-white');
+    document.getElementById('duplicates-badge').classList.remove('bg-hibiscus-600', 'text-white');
     renderCatalogue();
   };
 
