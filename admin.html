@@ -79,7 +79,7 @@
         Statistiques
       </button>
       <button id="nav-team-btn" onclick="switchScreen('team')" style="touch-action: manipulation;" class="hidden agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="team">
-        Comptes & tarifs
+        Tarifs médiathèque
       </button>
     </nav>
 
@@ -564,35 +564,8 @@
 
       </section>
 
-      <!-- COMPTES & TARIFS (direction uniquement) -->
+      <!-- TARIFS MÉDIATHÈQUE (direction uniquement) -->
       <section id="screen-team" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Comptes agents</h2>
-        <p class="text-sm text-ink/55 mb-4">Réservé aux comptes direction. Crée un compte pour un nouveau membre de l'équipe.</p>
-
-        <div class="grid md:grid-cols-2 gap-5 mb-8">
-          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
-            <label class="text-xs font-semibold text-ink/60 block mb-1">Nom complet</label>
-            <input id="team-full-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ex. Fabienne Casimir">
-            <label class="text-xs font-semibold text-ink/60 block mb-1">E-mail</label>
-            <input id="team-email" type="email" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="agent@mediatheque.fr">
-            <label class="text-xs font-semibold text-ink/60 block mb-1">Mot de passe temporaire</label>
-            <input id="team-password" type="text" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="8 caractères minimum">
-            <label class="text-xs font-semibold text-ink/60 block mb-1">Niveau d'accès</label>
-            <select id="team-level" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3 bg-white">
-              <option value="agent">Agent (emprunt/retour, préinscriptions — pas d'accès au catalogue ni à l'agenda)</option>
-              <option value="direction">Direction (accès complet)</option>
-            </select>
-            <button onclick="createAgentAccount()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer le compte</button>
-          </div>
-
-          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
-            <div class="grid grid-cols-[1.4fr_1fr_130px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[380px]">
-              <span>Nom</span><span>Niveau</span><span></span>
-            </div>
-            <div id="team-list" class="min-w-[380px]"></div>
-          </div>
-        </div>
-
         <h2 class="text-lg font-bold text-ink mb-1">Tarifs de la médiathèque</h2>
         <p class="text-sm text-ink/55 mb-4">Modifiable uniquement par la direction. Un montant à 0 € n'est pas affiché comme un tarif gratuit officiel tant qu'il n'a pas été confirmé ici.</p>
         <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-md">
@@ -2989,19 +2962,22 @@
     await loadBooks();
   };
 
-  // ---------- Comptes agents & tarifs (direction uniquement) ----------
+  // ---------- Tarifs & horaires (direction uniquement) ----------
+  // La création des comptes agents a été retirée d'ici le 21/09/2026 : elle
+  // se fait désormais uniquement depuis superadmin.html (voir createAgentAccount
+  // là-bas), pour que ce soit clairement Mégane seule qui crée les comptes —
+  // la fonction Edge create-agent-account accepte déjà un appelant super_admin.
 
   const WEEKDAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
   async function loadTeamAndTariffs() {
     if (!myCommuneId) return;
 
-    const [{ data: team, error: teamError }, { data: commune, error: communeError }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, agent_level').eq('commune_id', myCommuneId).eq('role', 'agent').order('full_name'),
-      supabase.from('communes').select('tariff_mineur_cents, tariff_majeur_cents, tariff_gratuit_cents, tariff_updated_at, opening_hours').eq('id', myCommuneId).single(),
-    ]);
-
-    if (teamError) { console.error(teamError); } else { renderTeamList(team || []); }
+    const { data: commune, error: communeError } = await supabase
+      .from('communes')
+      .select('tariff_mineur_cents, tariff_majeur_cents, tariff_gratuit_cents, tariff_updated_at, opening_hours')
+      .eq('id', myCommuneId)
+      .single();
 
     if (!communeError && commune) {
       document.getElementById('tariff-mineur').value = (commune.tariff_mineur_cents / 100).toFixed(2);
@@ -3019,52 +2995,6 @@
         </div>`).join('');
     }
   }
-
-  function renderTeamList(team) {
-    const list = document.getElementById('team-list');
-    if (!team.length) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8 px-4">Aucun compte agent pour cette médiathèque.</p>`;
-      return;
-    }
-    list.innerHTML = team.map(t => `
-      <div class="grid grid-cols-[1.4fr_1fr_130px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
-        <span class="font-semibold text-ink truncate">${escapeHtml(t.full_name)}</span>
-        <span class="text-ink/55 text-xs">${t.agent_level === 'direction' ? 'Direction' : 'Agent'}</span>
-        <button onclick="toggleAgentLevel('${t.id}', '${t.agent_level === 'direction' ? 'agent' : 'direction'}')" class="text-xs font-semibold text-mango-700 hover:text-mango-800 text-right">
-          ${t.agent_level === 'direction' ? 'Passer agent' : 'Passer direction'}
-        </button>
-      </div>`).join('');
-  }
-
-  window.toggleAgentLevel = async function (userId, newLevel) {
-    const { error } = await supabase.rpc('set_agent_level', { p_user_id: userId, p_level: newLevel });
-    if (error) { alert('Erreur : ' + error.message); return; }
-    await loadTeamAndTariffs();
-  };
-
-  window.createAgentAccount = async function () {
-    const full_name = document.getElementById('team-full-name').value.trim();
-    const email = document.getElementById('team-email').value.trim();
-    const password = document.getElementById('team-password').value;
-    const agent_level = document.getElementById('team-level').value;
-
-    if (!full_name || !email || password.length < 8) {
-      alert('Nom, e-mail et mot de passe (8 caractères minimum) sont obligatoires.');
-      return;
-    }
-
-    const { data, error } = await supabase.functions.invoke('create-agent-account', {
-      body: { full_name, email, password, agent_level, commune_id: myCommuneId },
-    });
-
-    if (error || !data?.ok) { alert('Erreur : ' + (data?.message || error?.message || 'échec de la création')); return; }
-
-    document.getElementById('team-full-name').value = '';
-    document.getElementById('team-email').value = '';
-    document.getElementById('team-password').value = '';
-    document.getElementById('team-level').value = 'agent';
-    await loadTeamAndTariffs();
-  };
 
   window.saveTariffs = async function () {
     const mineur = Math.round(Number(document.getElementById('tariff-mineur').value || 0) * 100);

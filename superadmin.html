@@ -54,6 +54,9 @@
       <button onclick="switchScreen('communes')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="communes">
         Communes
       </button>
+      <button onclick="switchScreen('team-accounts')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="team-accounts">
+        Comptes agents
+      </button>
       <button onclick="switchScreen('users')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="users">
         Usagers
         <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="unconfirmed-count">0</span>
@@ -133,6 +136,41 @@
               <span>Commune</span><span>Horaires</span><span></span>
             </div>
             <div id="communes-list" class="min-w-[420px]"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COMPTES AGENTS -->
+      <section id="screen-team-accounts" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Comptes agents</h2>
+        <p class="text-sm text-ink/55 mb-4">Crée un compte pour un membre de l'équipe d'une médiathèque (agent ou direction). Seule l'administratrice de BliGO peut créer ces comptes.</p>
+
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Médiathèque</label>
+        <select id="team-commune-select" onchange="loadTeamForCommune()" class="w-full max-w-sm border border-mango-100 rounded-lg px-3 py-2 text-sm mb-5 bg-white">
+          <option value="">Choisis une médiathèque…</option>
+        </select>
+
+        <div id="team-accounts-body" class="hidden grid md:grid-cols-2 gap-5">
+          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Nom complet</label>
+            <input id="team-full-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ex. Fabienne Casimir">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">E-mail</label>
+            <input id="team-email" type="email" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="agent@mediatheque.fr">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Mot de passe temporaire</label>
+            <input id="team-password" type="text" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="8 caractères minimum">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Niveau d'accès</label>
+            <select id="team-level" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3 bg-white">
+              <option value="agent">Agent (emprunt/retour, préinscriptions — pas d'accès au catalogue ni à l'agenda)</option>
+              <option value="direction">Direction (accès complet)</option>
+            </select>
+            <button onclick="createAgentAccount()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer le compte</button>
+          </div>
+
+          <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
+            <div class="grid grid-cols-[1.4fr_1fr_130px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[380px]">
+              <span>Nom</span><span>Niveau</span><span></span>
+            </div>
+            <div id="team-accounts-list" class="min-w-[380px]"></div>
           </div>
         </div>
       </section>
@@ -274,6 +312,7 @@
     if (error) { console.error(error); return; }
     communes = data || [];
     renderCommunes();
+    populateTeamCommuneSelect();
   }
 
   function renderCommunes() {
@@ -359,6 +398,79 @@
     const { error } = await supabase.from('communes').delete().eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadCommunes();
+  };
+
+  // ---------- Comptes agents ----------
+  // Déplacé depuis admin.html le 21/09/2026 : seule l'administratrice de
+  // BliGO (super_admin) crée les comptes agent/direction désormais, pour
+  // que ce soit clair pour les médiathèques. La fonction Edge
+  // create-agent-account acceptait déjà un appelant super_admin, avec
+  // n'importe quel commune_id (elle n'a pas changé).
+
+  function populateTeamCommuneSelect() {
+    const select = document.getElementById('team-commune-select');
+    const previous = select.value;
+    select.innerHTML = '<option value="">Choisis une médiathèque…</option>' +
+      communes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    if (previous && communes.some(c => String(c.id) === previous)) select.value = previous;
+  }
+
+  window.loadTeamForCommune = async function () {
+    const communeId = document.getElementById('team-commune-select').value;
+    const body = document.getElementById('team-accounts-body');
+    body.classList.toggle('hidden', !communeId);
+    if (!communeId) return;
+
+    const { data: team, error } = await supabase
+      .from('profiles').select('id, full_name, agent_level')
+      .eq('commune_id', communeId).eq('role', 'agent').order('full_name');
+
+    const list = document.getElementById('team-accounts-list');
+    if (error) { console.error(error); return; }
+    if (!team.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8 px-4">Aucun compte agent pour cette médiathèque.</p>`;
+      return;
+    }
+    list.innerHTML = team.map(t => `
+      <div class="grid grid-cols-[1.4fr_1fr_130px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+        <span class="font-semibold text-ink truncate">${escapeHtml(t.full_name)}</span>
+        <span class="text-ink/55 text-xs">${t.agent_level === 'direction' ? 'Direction' : 'Agent'}</span>
+        <button onclick="toggleAgentLevel('${t.id}', '${t.agent_level === 'direction' ? 'agent' : 'direction'}')" class="text-xs font-semibold text-mango-700 hover:text-mango-800 text-right">
+          ${t.agent_level === 'direction' ? 'Passer agent' : 'Passer direction'}
+        </button>
+      </div>`).join('');
+  };
+
+  window.toggleAgentLevel = async function (userId, newLevel) {
+    const { error } = await supabase.rpc('set_agent_level', { p_user_id: userId, p_level: newLevel });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadTeamForCommune();
+  };
+
+  window.createAgentAccount = async function () {
+    const commune_id = document.getElementById('team-commune-select').value;
+    const full_name = document.getElementById('team-full-name').value.trim();
+    const email = document.getElementById('team-email').value.trim();
+    const password = document.getElementById('team-password').value;
+    const agent_level = document.getElementById('team-level').value;
+
+    if (!commune_id) { alert('Choisis d\'abord une médiathèque.'); return; }
+    if (!full_name || !email || password.length < 8) {
+      alert('Nom, e-mail et mot de passe (8 caractères minimum) sont obligatoires.');
+      return;
+    }
+
+    const { data, error } = await supabase.functions.invoke('create-agent-account', {
+      body: { full_name, email, password, agent_level, commune_id: Number(commune_id) },
+    });
+
+    if (error || !data?.ok) { alert('Erreur : ' + (data?.message || error?.message || 'échec de la création')); return; }
+
+    document.getElementById('team-full-name').value = '';
+    document.getElementById('team-email').value = '';
+    document.getElementById('team-password').value = '';
+    document.getElementById('team-level').value = 'agent';
+    await loadTeamForCommune();
   };
 
   // ---------- Usagers ----------
