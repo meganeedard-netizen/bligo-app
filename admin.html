@@ -111,61 +111,65 @@
         <div id="catalogue-scan-view" class="hidden mt-4">
           <button onclick="closeScanView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
 
-          <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-xl">
-            <div id="book-camera-slot">
-              <div id="camera-view" class="hidden mb-3">
-                <div class="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
-                  <video id="scan-video" class="absolute inset-0 w-full h-full object-cover" playsinline muted autoplay></video>
-                  <canvas id="scan-overlay" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
-                </div>
-                <div class="flex justify-end mt-1.5">
-                  <button id="torch-btn" type="button" onclick="toggleTorch()" class="hidden shrink-0 text-[11px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-2.5 py-1">Flash</button>
+          <div class="flex flex-col lg:flex-row lg:items-start gap-6">
+            <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm w-full lg:max-w-xl lg:shrink-0">
+              <div id="book-camera-slot">
+                <div id="camera-view" class="hidden mb-3">
+                  <div class="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
+                    <video id="scan-video" class="absolute inset-0 w-full h-full object-cover" playsinline muted autoplay></video>
+                    <canvas id="scan-overlay" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                  </div>
+                  <div class="flex justify-end mt-1.5">
+                    <button id="torch-btn" type="button" onclick="toggleTorch()" class="hidden shrink-0 text-[11px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-2.5 py-1">Flash</button>
+                  </div>
                 </div>
               </div>
+
+              <button id="camera-toggle-btn" type="button" onclick="toggleCamera('book')" style="touch-action: manipulation;"
+                class="w-full bg-hibiscus-600 hover:bg-hibiscus-700 text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">
+                Scanner l'ISBN
+              </button>
+              <p id="camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
+
+              <label class="text-xs font-semibold text-ink/60 block mb-1.5">ISBN scanné (douchette), ou titre / auteur</label>
+              <input id="scan-input" type="text" placeholder="Ex. 9782072700486 ou « Texaco Chamoiseau »"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); searchBook();}"
+                style="font-size: 16px;"
+                class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300">
+              <button id="scan-btn" onclick="searchBook()"
+                class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition mb-1.5">
+                Rechercher
+              </button>
+              <input id="camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleCameraCapture(event)">
+              <button type="button" onclick="document.getElementById('camera-input').click()"
+                class="w-full text-[11px] font-semibold text-ink/45 hover:text-ink/70 py-1">
+                La caméra ne capte pas ? Prendre une photo à la place
+              </button>
+
+              <details class="mt-3">
+                <summary class="text-[11px] font-semibold text-ink/45 cursor-pointer select-none">Ce lot est déjà d'un genre ou d'un rayon connu ?</summary>
+                <div class="mt-2">
+                  <label class="text-xs font-semibold text-ink/60 block mb-1.5">Genre par défaut pour ce lot</label>
+                  <select id="batch-genre" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-2"></select>
+                  <label class="text-xs font-semibold text-ink/60 block mb-1.5">Rayon / emplacement (ex. « Rayon DAC - étagère 2 »)</label>
+                  <input id="batch-shelf" type="text" placeholder="Rayon DAC - étagère 2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 mb-2">
+                  <label class="flex items-center gap-2 text-xs font-semibold text-ink/60">
+                    <input type="checkbox" id="batch-onsite-only">
+                    Tout ce lot est en consultation sur place uniquement
+                  </label>
+                </div>
+              </details>
             </div>
 
-            <button id="camera-toggle-btn" type="button" onclick="toggleCamera('book')" style="touch-action: manipulation;"
-              class="w-full bg-hibiscus-600 hover:bg-hibiscus-700 text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">
-              Scanner l'ISBN
-            </button>
-            <p id="camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
-
-            <label class="text-xs font-semibold text-ink/60 block mb-1.5">ISBN scanné (douchette), ou titre / auteur</label>
-            <input id="scan-input" type="text" placeholder="Ex. 9782072700486 ou « Texaco Chamoiseau »"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); searchBook();}"
-              style="font-size: 16px;"
-              class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300">
-            <button id="scan-btn" onclick="searchBook()"
-              class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition mb-1.5">
-              Rechercher
-            </button>
-            <input id="camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleCameraCapture(event)">
-            <button type="button" onclick="document.getElementById('camera-input').click()"
-              class="w-full text-[11px] font-semibold text-ink/45 hover:text-ink/70 py-1">
-              La caméra ne capte pas ? Prendre une photo à la place
-            </button>
-
-            <details class="mt-3">
-              <summary class="text-[11px] font-semibold text-ink/45 cursor-pointer select-none">Ce lot est déjà d'un genre ou d'un rayon connu ?</summary>
-              <div class="mt-2">
-                <label class="text-xs font-semibold text-ink/60 block mb-1.5">Genre par défaut pour ce lot</label>
-                <select id="batch-genre" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-2"></select>
-                <label class="text-xs font-semibold text-ink/60 block mb-1.5">Rayon / emplacement (ex. « Rayon DAC - étagère 2 »)</label>
-                <input id="batch-shelf" type="text" placeholder="Rayon DAC - étagère 2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 mb-2">
-                <label class="flex items-center gap-2 text-xs font-semibold text-ink/60">
-                  <input type="checkbox" id="batch-onsite-only">
-                  Tout ce lot est en consultation sur place uniquement
-                </label>
+            <div class="flex-1 min-w-0">
+              <div id="draft-books-empty" class="text-sm text-ink/40 text-center py-8">Les documents scannés apparaîtront ici, en brouillon, pour vérification avant mise en ligne.</div>
+              <div id="draft-books-actions" class="hidden items-center justify-between mb-2">
+                <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">Brouillons (<span id="draft-books-count">0</span>)</p>
+                <button onclick="validateAllDrafts()" class="text-xs font-semibold bg-ink text-white rounded-full px-3.5 py-1.5">✓ Tout valider</button>
               </div>
-            </details>
+              <div id="draft-books-list" class="flex flex-col gap-3"></div>
+            </div>
           </div>
-
-          <div id="draft-books-empty" class="text-sm text-ink/40 text-center py-8">Les documents scannés apparaîtront ici, en brouillon, pour vérification avant mise en ligne.</div>
-          <div id="draft-books-actions" class="hidden items-center justify-between mt-6 mb-2 max-w-2xl">
-            <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">Brouillons (<span id="draft-books-count">0</span>)</p>
-            <button onclick="validateAllDrafts()" class="text-xs font-semibold bg-ink text-white rounded-full px-3.5 py-1.5">✓ Tout valider</button>
-          </div>
-          <div id="draft-books-list" class="flex flex-col gap-3 max-w-2xl"></div>
         </div>
 
         <!-- Liste du catalogue -->
@@ -1094,6 +1098,9 @@
   // « rafale » à choisir à l'avance).
   // { localId, isbn, query, status: 'loading'|'found'|'existing'|'not_found', meta, existingBookId }
   let draftBooks = [];
+  // Brouillons dont l'agent a ouvert la fiche complète pour la vérifier avant
+  // de valider (21/09/2026) — voir toggleDraftVerify.
+  let expandedDraftIds = new Set();
 
   // Bip sonore de confirmation à chaque scan réussi (comme une douchette de caisse).
   // + une vibration en complément : marche indépendamment du son sur Android
@@ -1572,6 +1579,15 @@
     draft.meta = meta;
     draft.category = meta.category;
     draft.copyCount = 1;
+    // Champs dupliqués à plat sur le brouillon (plutôt que dans .meta) pour
+    // que la fiche de vérification les édite sans toucher meta tant que
+    // l'agent n'a pas cliqué « Valider » — voir validateDraft.
+    draft.title = meta.title || '';
+    draft.author = meta.author || '';
+    draft.isbn = meta.isbn || draft.isbn || '';
+    draft.publisher = meta.publisher || '';
+    draft.published_date = meta.published_date || '';
+    draft.summary = meta.summary || '';
     if (existingBook) {
       draft.status = 'existing';
       draft.existingBookId = existingBook.id;
@@ -1601,6 +1617,15 @@
 
   window.removeDraft = function (localId) {
     draftBooks = draftBooks.filter(d => d.localId !== localId);
+    expandedDraftIds.delete(localId);
+    renderDraftBooks();
+  };
+
+  // Ouvre/replie la fiche complète d'un brouillon pour vérification avant
+  // validation (21/09/2026) — voir draftCardHtml, statut 'found'.
+  window.toggleDraftVerify = function (localId) {
+    if (expandedDraftIds.has(localId)) expandedDraftIds.delete(localId);
+    else expandedDraftIds.add(localId);
     renderDraftBooks();
   };
 
@@ -1624,6 +1649,16 @@
     }
 
     if (draft.status !== 'found') return;
+    // Répercute les corrections faites dans la fiche de vérification (titre,
+    // auteur, ISBN, éditeur, date, résumé) sur meta avant l'insertion —
+    // updateDraftField ne touche que le brouillon à plat, jamais meta
+    // directement, pour ne rien insérer avant le clic sur « Valider ».
+    draft.meta.title = (draft.title || '').trim() || draft.meta.title;
+    draft.meta.author = (draft.author || '').trim() || draft.meta.author;
+    draft.meta.isbn = (draft.isbn || '').trim() || draft.meta.isbn || null;
+    draft.meta.publisher = (draft.publisher || '').trim() || null;
+    draft.meta.published_date = (draft.published_date || '').trim() || null;
+    draft.meta.summary = (draft.summary || '').trim() || null;
     draft.meta.category = draft.category;
     draft.meta.copyCount = Math.max(1, parseInt(draft.copyCount, 10) || 1);
     draft.meta.shelfOverride = document.getElementById('batch-shelf')?.value.trim() || null;
@@ -1734,26 +1769,78 @@
     const coverHtml = d.meta.cover_url
       ? `<img src="${escapeHtml(d.meta.cover_url)}" alt="" class="w-12 h-16 object-cover rounded bg-mango-50 shrink-0">`
       : `<div class="w-12 h-16 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-lg shrink-0">${escapeHtml((d.meta.title || '?')[0])}</div>`;
+
+    if (!expandedDraftIds.has(d.localId)) {
+      // Vue compacte : aperçu de la fiche récupérée automatiquement, pas
+      // encore éditable — l'agent doit cliquer « Vérifier » pour la corriger.
+      return `
+        <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide">Brouillon — à vérifier avant validation</p>
+            <button onclick="removeDraft('${d.localId}')" class="text-xs text-ink/40 hover:text-ink/60 underline shrink-0">Supprimer</button>
+          </div>
+          <div class="flex gap-3">
+            ${coverHtml}
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-bold text-ink">${escapeHtml(d.meta.title)}</p>
+              <p class="text-xs text-ink/55 mt-0.5">${escapeHtml(d.meta.author)}</p>
+              <select id="draft-category-${d.localId}" onchange="updateDraftField('${d.localId}', 'category', this.value)" class="mt-1.5 border border-mango-100 rounded-full pl-2.5 pr-6 py-1 text-[11px] font-semibold text-mango-700 bg-mango-50">
+                ${categoryOptionsHtml(d.category)}
+              </select>
+            </div>
+          </div>
+          ${d.meta.summary ? `<p class="text-xs text-ink/60 leading-relaxed mt-3 line-clamp-4">${escapeHtml(d.meta.summary)}</p>` : ''}
+          <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires</label>
+          <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
+          <button onclick="toggleDraftVerify('${d.localId}')" class="w-full mt-3 border border-mango-200 text-ink rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">🔍 Vérifier la fiche</button>
+        </div>`;
+    }
+
+    // Vue dépliée : fiche complète éditable, pour corriger les champs
+    // récupérés automatiquement (titre, auteur, ISBN, éditeur…) avant de
+    // valider — validateDraft répercute ces champs sur meta au moment du clic.
     return `
       <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between mb-2">
-          <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide">Brouillon — vérifie avant de valider</p>
+          <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide">Vérification de la fiche</p>
           <button onclick="removeDraft('${d.localId}')" class="text-xs text-ink/40 hover:text-ink/60 underline shrink-0">Supprimer</button>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-3 mb-3">
           ${coverHtml}
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold text-ink">${escapeHtml(d.meta.title)}</p>
-            <p class="text-xs text-ink/55 mt-0.5">${escapeHtml(d.meta.author)}</p>
-            <select id="draft-category-${d.localId}" onchange="updateDraftField('${d.localId}', 'category', this.value)" class="mt-1.5 border border-mango-100 rounded-full pl-2.5 pr-6 py-1 text-[11px] font-semibold text-mango-700 bg-mango-50">
-              ${categoryOptionsHtml(d.category)}
-            </select>
+          <div class="flex-1 min-w-0 flex items-center">
+            <p class="text-xs text-ink/45">Vérifie chaque champ avant de valider, corrige si besoin.</p>
           </div>
         </div>
-        ${d.meta.summary ? `<p class="text-xs text-ink/60 leading-relaxed mt-3 line-clamp-4">${escapeHtml(d.meta.summary)}</p>` : ''}
-        <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires</label>
-        <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
-        <button onclick="validateDraft('${d.localId}')" class="w-full mt-3 bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">✓ Valider la fiche</button>
+
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Titre</label>
+        <input id="draft-title-${d.localId}" value="${escapeHtml(d.title || '')}" oninput="updateDraftField('${d.localId}', 'title', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Auteur</label>
+        <input id="draft-author-${d.localId}" value="${escapeHtml(d.author || '')}" oninput="updateDraftField('${d.localId}', 'author', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">ISBN</label>
+            <input id="draft-isbn-${d.localId}" value="${escapeHtml(d.isbn || '')}" oninput="updateDraftField('${d.localId}', 'isbn', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Date de publication</label>
+            <input id="draft-published-date-${d.localId}" value="${escapeHtml(d.published_date || '')}" oninput="updateDraftField('${d.localId}', 'published_date', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          </div>
+        </div>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Éditeur</label>
+        <input id="draft-publisher-${d.localId}" value="${escapeHtml(d.publisher || '')}" oninput="updateDraftField('${d.localId}', 'publisher', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Catégorie</label>
+        <select id="draft-category-${d.localId}" onchange="updateDraftField('${d.localId}', 'category', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
+          ${categoryOptionsHtml(d.category)}
+        </select>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé</label>
+        <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">${escapeHtml(d.summary || '')}</textarea>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre d'exemplaires</label>
+        <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-3">
+
+        <div class="flex gap-2">
+          <button onclick="toggleDraftVerify('${d.localId}')" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-lg px-3 shrink-0">← Retour</button>
+          <button onclick="validateDraft('${d.localId}')" class="flex-1 bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">✓ Valider la fiche</button>
+        </div>
       </div>`;
   }
 
@@ -2166,7 +2253,7 @@
 
   // Champ éditable directement dans la fiche exemplaire (douchette ou saisie
   // manuelle) : c'est là que l'agent renseigne le vrai code une fois le livre
-  // plastifié/étiqueté, avant de cliquer « Rendre disponible ».
+  // plastifié/étiqueté, avant de cliquer « À équiper ».
   window.updateCopyBarcode = async function (copyId, bookId, barcode) {
     const value = barcode.trim();
     if (!value) return;
@@ -2725,9 +2812,9 @@
     if (error) alert('Erreur : ' + error.message);
   };
 
-  // Achat ou don, un document validé reste en Brouillon → À équiper tant
-  // qu'un agent n'a pas cliqué « Rendre disponible » (voir markEquipped) — la
-  // fiche est complète mais le livre n'a pas encore été plastifié/étiqueté.
+  // Achat ou don, un document validé reste en statut « À équiper » tant
+  // qu'un agent n'a pas cliqué dessus (voir markEquipped) — la fiche est
+  // complète mais le livre n'a pas encore été plastifié/étiqueté.
   async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
     const fromDonation = !!donorSession;
     const cote = shelfOverride || suggestCote(category, author, dewey);
@@ -3124,7 +3211,7 @@
             <button onclick="markEquipped(${b.id})"
               style="touch-action: manipulation;"
               class="w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full bg-hibiscus-50 text-hibiscus-700">
-              ⏳ À équiper — Rendre disponible
+              ⏳ À équiper
             </button>
           ` : `
             <span class="inline-block w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full ${b.available_count > 0 ? 'bg-mango-50 text-mango-700' : 'bg-ink/5 text-ink/40'}">
