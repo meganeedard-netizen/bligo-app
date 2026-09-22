@@ -61,15 +61,15 @@
         Prêts &amp; réservations
         <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full" id="reservations-count">0</span>
       </button>
+      <button onclick="switchScreen('logistics')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="logistics">
+        Transferts
+        <span id="logistics-badge" class="hidden ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+      </button>
       <button onclick="switchScreen('users')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="users">
         Inscrits
       </button>
       <button onclick="switchScreen('catalogue')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="catalogue">
         Catalogage
-      </button>
-      <button onclick="switchScreen('logistics')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="logistics">
-        Rangement &amp; transferts
-        <span id="logistics-badge" class="hidden ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full">0</span>
       </button>
       <button onclick="switchScreen('agenda')" style="touch-action: manipulation;" class="agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="agenda">
         Agenda culturel
@@ -379,34 +379,9 @@
 
       <!-- RANGEMENT & TRANSFERTS -->
       <section id="screen-logistics" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Rangement &amp; transferts</h2>
+        <h2 class="text-lg font-bold text-ink mb-1">Transferts (<span id="transfers-total-count">0</span>)</h2>
 
-        <div class="flex items-center gap-6 border-b border-mango-100 mb-5 flex-wrap">
-          <button id="log-tab-shelving-btn" type="button" onclick="switchLogisticsTab('shelving')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-ink text-ink">
-            Rangement
-          </button>
-          <button id="log-tab-transfers-btn" type="button" onclick="switchLogisticsTab('transfers')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
-            Transferts (<span id="transfers-total-count">0</span>)
-          </button>
-        </div>
-
-        <div id="log-panel-shelving">
-          <p class="text-sm text-ink/55 mb-4">Scanne un livre rendu ou fraîchement équipé pour savoir où le ranger.</p>
-          <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
-            <div id="shelving-camera-slot" class="mb-2"></div>
-            <button type="button" id="shelving-camera-btn" onclick="toggleCamera('shelving'); document.getElementById('shelving-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">Scanner un livre à ranger</button>
-            <p id="shelving-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
-            <label for="shelving-barcode-input" class="text-xs font-semibold text-ink/60 block mb-1">Taper le code-barres de la bibliothèque</label>
-            <p class="text-[11px] text-ink/40 mb-1.5">Si la caméra ou la douchette ne fonctionne pas.</p>
-            <input id="shelving-barcode-input" type="text" autocomplete="off" placeholder="Ex. 7180020158"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); doShelvingLookup();}"
-              style="font-size: 16px;"
-              class="w-full border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
-          </div>
-          <div id="shelving-result" class="mt-5 max-w-xl"></div>
-        </div>
-
-        <div id="log-panel-transfers" class="hidden">
+        <div id="log-panel-transfers" class="mt-4">
           <p class="text-sm text-ink/55 mb-4">Un livre rendu ou réservé loin de sa médiathèque d'origine passe automatiquement ici, à envoyer ou à recevoir.</p>
 
           <div class="grid md:grid-cols-2 gap-5 mb-6">
@@ -932,7 +907,7 @@
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
     if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
     if (screen === 'catalogue') { closeScanView(); }
-    if (screen === 'logistics') { switchLogisticsTab('shelving'); loadTransfers(); }
+    if (screen === 'logistics') loadTransfers();
   };
 
   // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
@@ -977,7 +952,6 @@
       zxingFormats: [BarcodeFormat.QR_CODE],
     },
     loan: LIBRARY_BARCODE_PROFILE,
-    shelving: LIBRARY_BARCODE_PROFILE,
     transferSend: LIBRARY_BARCODE_PROFILE,
     transferReceive: LIBRARY_BARCODE_PROFILE,
   };
@@ -1107,17 +1081,6 @@
       onResult: (code) => {
         document.getElementById('loan-barcode-input').value = code;
         lookupLoanBarcode();
-      },
-    },
-    shelving: {
-      slotId: 'shelving-camera-slot',
-      toggleBtnId: 'shelving-camera-btn',
-      hintId: 'shelving-camera-hint',
-      defaultLabel: 'Scanner un livre à ranger',
-      hint: 'Scanner le code-barres de la bibliothèque',
-      onResult: (code) => {
-        document.getElementById('shelving-barcode-input').value = code;
-        doShelvingLookup();
       },
     },
     transferSend: {
@@ -2390,49 +2353,11 @@
     input.focus();
   };
 
-  // ---------- Rangement & transferts (21/09/2026) ----------
-  // scan_shelving/transfer_send/transfer_receive existaient déjà côté base
-  // depuis le 13/09/2026 (voir sql/add_scan_operations.sql), jamais reliés à
-  // une interface jusqu'ici.
-
-  window.switchLogisticsTab = function (tab) {
-    ['shelving', 'transfers'].forEach(t => {
-      document.getElementById(`log-panel-${t}`).classList.toggle('hidden', t !== tab);
-      const btn = document.getElementById(`log-tab-${t}-btn`);
-      const active = tab === t;
-      btn.classList.toggle('border-ink', active);
-      btn.classList.toggle('text-ink', active);
-      btn.classList.toggle('border-transparent', !active);
-      btn.classList.toggle('text-ink/40', !active);
-    });
-    if (tab === 'transfers') loadTransfers();
-  };
-
-  window.doShelvingLookup = async function () {
-    const input = document.getElementById('shelving-barcode-input');
-    const barcode = input.value.trim();
-    const resultBox = document.getElementById('shelving-result');
-    if (!barcode) return;
-    resultBox.innerHTML = `<p class="text-sm text-ink/50">Recherche…</p>`;
-
-    const { data, error } = await supabase.rpc('scan_shelving', { p_barcode: barcode });
-    if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
-
-    if (!data.ok) {
-      resultBox.innerHTML = `<div class="bg-red-50 border border-red-100 rounded-xl p-4"><p class="text-sm font-bold text-red-700">${escapeHtml(data.message)}</p></div>`;
-      return;
-    }
-
-    playBeep();
-    resultBox.innerHTML = `
-      <div class="bg-mango-50 border border-mango-100 rounded-xl p-4">
-        <p class="text-sm font-bold text-ink">${escapeHtml(data.title || '')}</p>
-        ${data.author ? `<p class="text-xs text-ink/55">${escapeHtml(data.author)}</p>` : ''}
-        <p class="text-sm font-bold text-mango-700 mt-2">${data.shelf_location ? `À ranger en ${escapeHtml(data.shelf_location)}.` : escapeHtml(data.message)}</p>
-      </div>`;
-    input.value = '';
-    input.focus();
-  };
+  // ---------- Transferts (21/09/2026) ----------
+  // transfer_send/transfer_receive existaient déjà côté base depuis le
+  // 13/09/2026 (voir sql/add_scan_operations.sql), jamais reliés à une
+  // interface jusqu'ici. Rangement retiré le 22/09/2026 (redondant avec le
+  // bouton Retour de Prêts & réservations, voir scan_return).
 
   window.doTransferSend = async function () {
     const input = document.getElementById('transfer-send-barcode-input');
