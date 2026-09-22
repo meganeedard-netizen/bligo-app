@@ -144,12 +144,6 @@
                 class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition mb-1.5">
                 Rechercher
               </button>
-              <input id="camera-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleCameraCapture(event)">
-              <button type="button" onclick="document.getElementById('camera-input').click()"
-                class="w-full text-[11px] font-semibold text-ink/45 hover:text-ink/70 py-1">
-                La caméra ne capte pas ? Prendre une photo à la place
-              </button>
-
               <details class="mt-3">
                 <summary class="text-[11px] font-semibold text-ink/45 cursor-pointer select-none">Ce lot est déjà d'un genre ou d'un rayon connu ?</summary>
                 <div class="mt-2">
@@ -965,34 +959,6 @@
     await addVisitorEntry(count, 'groupe');
   };
 
-  // ---------- Scan photo (ISBN / EAN) ----------
-  // Ouvre directement l'appli caméra native du téléphone (comme prendre une photo) :
-  // mise au point, zoom et flash sont gérés par le téléphone lui-même, pas par le navigateur.
-  // On lit ensuite le code-barres sur la photo prise, en une seule fois.
-
-  window.handleCameraCapture = async function (event) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    const hint = document.getElementById('camera-hint');
-    hint.textContent = 'Lecture du code-barres…';
-
-    try {
-      const code = await decodeBarcodeFromFile(file);
-      if (!code) {
-        hint.textContent = 'Aucun code-barres trouvé sur la photo — réessaie en te rapprochant du code, bien à plat et net.';
-        return;
-      }
-      hint.textContent = '';
-      playBeep();
-      document.getElementById('scan-input').value = code;
-      await searchBook();
-    } catch (e) {
-      hint.textContent = 'Erreur de lecture : ' + e.message;
-    }
-  };
-
   // Codes-barres internes de médiathèque : profil volontairement large,
   // chaque commune a le sien, souvent en Code 128 ou Code 39 (parfois
   // Codabar sur d'anciens systèmes), jamais un ISBN. Partagé par tous les
@@ -1064,11 +1030,6 @@
     }
   }
 
-  async function tryDecodeBitmap(bitmap) {
-    const found = await detectWithBox(bitmap, 'book');
-    return found ? found.text : null;
-  }
-
   // ---------- Scan caméra en direct (avec cadre orange) ----------
 
   let scanStream = null;
@@ -1124,7 +1085,7 @@
       toggleBtnId: 'camera-toggle-btn',
       hintId: 'camera-hint',
       defaultLabel: "Scanner l'ISBN",
-      hint: 'Vise le code-barres — il se surligne en orange une fois repéré. La caméra reste ouverte pour enchaîner.',
+      hint: '',
       // Pas de onResult : contrairement aux autres modes, le scan livre ne
       // ferme pas la caméra après une détection (voir scanLoop) — chaque code
       // part directement en brouillon via addDraftFromIsbn().
@@ -1463,42 +1424,6 @@
     if (error) { console.error(error); return; }
     donorSession.count += 1;
     renderDonorSession();
-  }
-
-  // Recadre une zone de la photo (fractions 0-1 de sa largeur/hauteur) et l'agrandit,
-  // pour donner au lecteur une image où le code-barres occupe une plus grande surface.
-  async function cropBitmap(bitmap, xf, yf, wf, hf) {
-    const sx = bitmap.width * xf, sy = bitmap.height * yf;
-    const sw = bitmap.width * wf, sh = bitmap.height * hf;
-    const scale = Math.min(3, 1400 / sw);
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(sw * scale);
-    canvas.height = Math.round(sh * scale);
-    canvas.getContext('2d').drawImage(bitmap, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-    return createImageBitmap(canvas);
-  }
-
-  async function decodeBarcodeFromFile(file) {
-    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-
-    let code = await tryDecodeBitmap(bitmap);
-    if (code) return code;
-
-    // Le code-barres est souvent petit dans une photo prise à distance : on
-    // recadre automatiquement plusieurs zones probables (agrandies) et on
-    // retente sur chacune — ça évite d'avoir à viser au pixel près.
-    const zones = [
-      [0.15, 0.15, 0.7, 0.7],   // centre
-      [0.1, 0.35, 0.8, 0.3],    // bande centrale horizontale (forme typique d'un code-barres)
-      [0, 0, 0.6, 0.6], [0.4, 0, 0.6, 0.6], [0, 0.4, 0.6, 0.6], [0.4, 0.4, 0.6, 0.6], // 4 quadrants
-    ];
-    for (const [xf, yf, wf, hf] of zones) {
-      const tile = await cropBitmap(bitmap, xf, yf, wf, hf);
-      code = await tryDecodeBitmap(tile);
-      tile.close?.();
-      if (code) return code;
-    }
-    return null;
   }
 
   // ---------- Brouillons de catalogage ----------
