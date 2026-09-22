@@ -3996,6 +3996,17 @@
   };
 
   window.setStatus = async function (id, status) {
+    // « Récupéré » doit créer un vrai prêt (table loans, exemplaire assigné)
+    // pour apparaître dans Prêts en cours — pas juste changer le statut de la
+    // réservation (bug corrigé le 22/09/2026, voir
+    // sql/fix_reservation_pickup_creates_loan.sql).
+    if (status === 'recupere') {
+      const { data, error } = await supabase.rpc('mark_reservation_picked_up', { p_reservation_id: id });
+      if (error) { alert('Erreur : ' + error.message); return; }
+      if (!data.ok) { alert(data.message); return; }
+      await loadReservations();
+      return;
+    }
     const payload = { status };
     if (status === 'pret') payload.ready_at = new Date().toISOString();
     const { error } = await supabase.from('reservations').update(payload).eq('id', id);
