@@ -888,7 +888,7 @@
     switchReservationTab('preparation');
     document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
     await loadCommunesForAgenda();
-    await Promise.all([loadBooks(), loadReservations(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents(), loadTransfers()]);
+    await Promise.all([loadBooks(), loadReservations(), loadActiveLoans(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents(), loadTransfers()]);
     if (myIsDirection) await loadTeamAndTariffs();
   }
 
@@ -2331,6 +2331,7 @@
     const input = document.getElementById('loan-barcode-input');
     input.value = '';
     input.focus();
+    await loadActiveLoans();
   };
 
   window.doLoanReturn = async function (barcode) {
@@ -2351,6 +2352,7 @@
     const input = document.getElementById('loan-barcode-input');
     input.value = '';
     input.focus();
+    await loadActiveLoans();
   };
 
   // ---------- Transferts (21/09/2026) ----------
@@ -3854,7 +3856,7 @@
       const { data, error } = await supabase.rpc('mark_reservation_picked_up', { p_reservation_id: id });
       if (error) { alert('Erreur : ' + error.message); return; }
       if (!data.ok) { alert(data.message); return; }
-      await loadReservations();
+      await Promise.all([loadReservations(), loadActiveLoans()]);
       return;
     }
     const payload = { status };
