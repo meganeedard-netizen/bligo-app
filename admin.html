@@ -1066,6 +1066,10 @@
   let scanState = null; // { mode, slotId, toggleBtnId, defaultLabel, onResult }
   let lastBatchCode = null;
   let lastBatchCodeTime = 0;
+  // Modes où la caméra reste ouverte pour enchaîner plusieurs scans sans la
+  // rouvrir (22/09/2026) : catalogage en rafale, check-in à l'entrée d'un
+  // événement. Les autres modes se ferment après un seul scan.
+  const BURST_SCAN_MODES = ['book', 'checkin'];
 
   // Brouillons de catalogage (17/09/2026) : chaque ISBN scanné ou tapé part en
   // recherche multi-API en arrière-plan et atterrit ici, en liste, pour
@@ -1137,12 +1141,9 @@
       toggleBtnId: 'checkin-camera-btn',
       hintId: 'checkin-camera-hint',
       defaultLabel: 'Scanner la carte de l\'usager',
-      hint: 'Vise le QR code de la carte de l\'usager.',
-      onResult: (code) => {
-        const input = document.getElementById('checkin-subscriber-input');
-        input.value = code;
-        confirmEventCheckin(code, Number(input.dataset.eventId));
-      },
+      hint: 'Vise le QR code — la caméra reste ouverte pour enchaîner les participants.',
+      // Pas de onResult : mode en rafale (voir BURST_SCAN_MODES et
+      // scanLoop), la caméra ne se ferme pas après une détection.
     },
     loan: {
       slotId: 'loan-camera-slot',
@@ -1280,10 +1281,10 @@
       if (found?.text) {
         const code = found.text;
 
-        // Le même livre reste souvent quelques instants devant la caméra
+        // Le même code reste souvent quelques instants devant la caméra
         // après le bip — on ignore les répétitions du même code pendant un
-        // court instant, sans ralentir la détection d'un livre différent.
-        if (scanState.mode === 'book' && code === lastBatchCode && Date.now() - lastBatchCodeTime < 4000) {
+        // court instant, sans ralentir la détection d'un code différent.
+        if (BURST_SCAN_MODES.includes(scanState.mode) && code === lastBatchCode && Date.now() - lastBatchCodeTime < 4000) {
           scanTimeoutId = setTimeout(scanLoop, 400);
           return;
         }
@@ -1298,6 +1299,20 @@
           lastBatchCodeTime = Date.now();
           playBeep();
           addDraftFromIsbn(code);
+          scanTimeoutId = setTimeout(scanLoop, 700);
+          return;
+        }
+
+        // Check-in événement (22/09/2026) : la caméra reste ouverte aussi,
+        // pour enregistrer les participants les uns après les autres à
+        // l'entrée, sans rouvrir la caméra à chaque personne.
+        if (scanState.mode === 'checkin') {
+          lastBatchCode = code;
+          lastBatchCodeTime = Date.now();
+          playBeep();
+          const input = document.getElementById('checkin-subscriber-input');
+          input.value = code;
+          confirmEventCheckin(code, Number(input.dataset.eventId));
           scanTimeoutId = setTimeout(scanLoop, 700);
           return;
         }
@@ -4448,6 +4463,7 @@
 
   window.closeEventDetail = function (event) {
     if (event && event.target.id !== 'event-detail-backdrop') return;
+    stopCamera(); // le check-in reste ouvert en rafale, à couper si on ferme la fenêtre pendant un scan.
     document.getElementById('event-detail-backdrop').classList.add('hidden');
     document.getElementById('event-detail-backdrop').classList.remove('flex');
   };
