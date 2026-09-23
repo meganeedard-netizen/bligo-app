@@ -1,9 +1,10 @@
 -- BliGO — Personnalisation de l'interface par médiathèque (22/09/2026)
 -- ============================================================
 -- Chaque médiathèque peut remplacer son propre logo et les deux teintes
--- principales de l'appli usager (le vert "ink" et le dégradé orange/hibiscus,
--- devenu un dégradé dans UNE seule couleur choisie) — jamais le back-office
--- agent, qui reste neutre pour tout le monde.
+-- principales (le vert "ink" et le dégradé orange/hibiscus, devenu un
+-- dégradé dans UNE seule couleur choisie) — appliqué à l'appli usager ET au
+-- logiciel agent (utile pour les démos commerciales auprès des médiathèques,
+-- demandé le 23/09/2026), jamais à l'espace super admin.
 
 alter table public.communes add column if not exists theme_ink_hex text;
 alter table public.communes add column if not exists theme_accent_hex text;
