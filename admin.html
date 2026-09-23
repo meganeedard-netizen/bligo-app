@@ -353,7 +353,7 @@
             </button>
           </div>
 
-          <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl mb-5">
+          <div id="pickup-scan-block" class="hidden bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl mb-5">
             <p class="text-sm font-bold text-ink mb-1">Remettre une commande à un usager</p>
             <p class="text-xs text-ink/55 mb-3">Scanne la carte (QR code) de l'usager : ses réservations prêtes à récupérer s'affichent, à confirmer en un clic — le prêt est enregistré automatiquement.</p>
             <div id="pickup-camera-slot" class="mb-2"></div>
@@ -3880,6 +3880,9 @@
     expireeBtn.classList.toggle('bg-white', !expireeActive);
     expireeBtn.classList.toggle('text-red-600', !expireeActive);
     expireeBtn.classList.toggle('border-red-100', !expireeActive);
+    // Le scan carte usager ne sert à confirmer une remise que pour les
+    // réservations déjà prêtes — pas de sens dans les deux autres filtres.
+    document.getElementById('pickup-scan-block').classList.toggle('hidden', tab !== 'pret');
     renderReservations();
   };
 
