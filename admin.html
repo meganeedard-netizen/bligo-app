@@ -95,7 +95,8 @@
           <div>
             <h2 class="text-lg font-bold text-ink mb-1">Catalogage</h2>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button id="export-catalogue-btn" onclick="openExportModal()" style="touch-action: manipulation;" class="hidden border border-ink/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Exporter le catalogue</button>
             <button onclick="openInscritScanModal()" style="touch-action: manipulation;" class="border border-hibiscus-200 text-hibiscus-700 bg-hibiscus-50 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Scanner la carte de l'inscrit</button>
             <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter un nouveau document</button>
           </div>
@@ -352,6 +353,20 @@
             </button>
           </div>
 
+          <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl mb-5">
+            <p class="text-sm font-bold text-ink mb-1">Remettre une commande à un usager</p>
+            <p class="text-xs text-ink/55 mb-3">Scanne la carte (QR code) de l'usager : ses réservations prêtes à récupérer s'affichent, à confirmer en un clic — le prêt est enregistré automatiquement.</p>
+            <div id="pickup-camera-slot" class="mb-2"></div>
+            <button type="button" id="pickup-camera-btn" onclick="toggleCamera('pickup'); document.getElementById('pickup-subscriber-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner la carte de l'usager</button>
+            <p id="pickup-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
+            <label for="pickup-subscriber-input" class="text-xs font-semibold text-ink/60 block mb-1">Ou taper le numéro d'abonné</label>
+            <input id="pickup-subscriber-input" type="text" autocomplete="off" placeholder="Numéro d'abonné"
+              onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupUsagerForPickup(this.value);}"
+              style="font-size: 16px;"
+              class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+            <div id="pickup-result" class="mt-3"></div>
+          </div>
+
           <div id="reservations-list" class="flex flex-col gap-3"></div>
         </div>
 
@@ -448,6 +463,11 @@
               <option value="Atelier">Atelier</option>
               <option value="Exposition">Exposition</option>
               <option value="Débat">Débat</option>
+              <option value="Concert">Concert</option>
+              <option value="Théâtre">Théâtre</option>
+              <option value="Spectacle">Spectacle</option>
+              <option value="Cinéma">Cinéma</option>
+              <option value="Conférence">Conférence</option>
               <option value="Autre">Autre</option>
             </select>
             <label class="text-xs font-semibold text-ink/60 block mb-1">Sous-titre</label>
@@ -661,6 +681,26 @@
   </div>
 </div>
 
+<!-- Export du catalogue (direction) -->
+<div id="export-modal-backdrop" onclick="closeExportModal(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative p-6">
+    <button onclick="closeExportModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+    <h3 class="text-lg font-bold text-ink mb-1">Exporter le catalogue</h3>
+    <p class="text-sm text-ink/60 mb-4">Les données de ta médiathèque t'appartiennent : récupère tout ton catalogue, avec chaque exemplaire (code-barres, cote, statut), pour l'ouvrir dans un tableur ou l'importer dans un autre logiciel.</p>
+    <div class="flex flex-col gap-2">
+      <button onclick="exportCatalogue('csv')" class="w-full text-left border border-mango-100 rounded-xl px-4 py-3 hover:bg-mango-50 transition">
+        <span class="block text-sm font-bold text-ink">CSV (Excel, LibreOffice)</span>
+        <span class="block text-xs text-ink/55">Une ligne par exemplaire, toutes les informations du livre</span>
+      </button>
+      <button onclick="exportCatalogue('unimarc')" class="w-full text-left border border-mango-100 rounded-xl px-4 py-3 hover:bg-mango-50 transition">
+        <span class="block text-sm font-bold text-ink">UNIMARC (.mrc, ISO 2709)</span>
+        <span class="block text-xs text-ink/55">Format standard des logiciels de bibliothèque (Koha, PMB, Orphée…), exemplaires en zone 995</span>
+      </button>
+    </div>
+    <p id="export-status" class="text-xs text-ink/60 mt-3"></p>
+  </div>
+</div>
+
 <!-- Fiche événement -->
 <div id="event-detail-backdrop" onclick="closeEventDetail(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative">
@@ -854,6 +894,7 @@
     myIsDirection = profile.role === 'super_admin' || (profile.role === 'agent' && profile.agent_level === 'direction');
     document.getElementById('nav-team-btn').classList.toggle('hidden', !myIsDirection);
     document.getElementById('nav-sigb-stats-btn').classList.toggle('hidden', !myIsDirection);
+    document.getElementById('export-catalogue-btn').classList.toggle('hidden', !myIsDirection);
 
     if (myCommuneId) {
       const { data: commune } = await supabase.from('communes').select('name').eq('id', myCommuneId).single();
@@ -948,6 +989,10 @@
       zxingFormats: [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128],
     },
     donor: {
+      nativeFormats: ['qr_code'],
+      zxingFormats: [BarcodeFormat.QR_CODE],
+    },
+    pickup: {
       nativeFormats: ['qr_code'],
       zxingFormats: [BarcodeFormat.QR_CODE],
     },
@@ -1071,6 +1116,17 @@
       defaultLabel: 'Démarrer une session de don (scanner la carte du donateur)',
       hint: 'Vise le QR code de la carte du donateur.',
       onResult: (code) => startDonorSession(code),
+    },
+    pickup: {
+      slotId: 'pickup-camera-slot',
+      toggleBtnId: 'pickup-camera-btn',
+      hintId: 'pickup-camera-hint',
+      defaultLabel: 'Scanner la carte de l\'usager',
+      hint: 'Vise le QR code de la carte de l\'usager.',
+      onResult: (code) => {
+        document.getElementById('pickup-subscriber-input').value = code;
+        lookupUsagerForPickup(code);
+      },
     },
     loan: {
       slotId: 'loan-camera-slot',
@@ -2956,6 +3012,172 @@
     renderCatalogue();
   }
 
+  // ---------- Export du catalogue (CSV / UNIMARC) ----------
+  // « Vos données vous appartiennent » (22/09/2026) : la direction récupère
+  // tout le catalogue de sa médiathèque, une ligne ou une zone 995 par
+  // exemplaire, dans les deux formats que les médiathèques utilisent pour
+  // passer d'un logiciel à l'autre. Même format que celui demandé aux
+  // médiathèques qui rejoignent BliGO pour la reprise de leur fonds.
+  const COPY_STATUS_LABEL = {
+    available: 'En rayon', reserved: 'Réservé', borrowed: 'Emprunté', in_transit: 'En transit',
+    processing: 'En équipement', lost: 'Perdu', withdrawn: 'Retiré du fonds',
+  };
+
+  window.openExportModal = function () {
+    document.getElementById('export-status').textContent = '';
+    const backdrop = document.getElementById('export-modal-backdrop');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
+  };
+
+  window.closeExportModal = function (event) {
+    if (event && event.target.id !== 'export-modal-backdrop') return;
+    const backdrop = document.getElementById('export-modal-backdrop');
+    backdrop.classList.add('hidden');
+    backdrop.classList.remove('flex');
+  };
+
+  // Livres + exemplaires de la médiathèque de l'agent (tout le catalogue pour
+  // un super_admin sans commune). Les exemplaires sont relus en base plutôt
+  // que pris dans `books` : loadBooks() ne charge pas la cote ni la
+  // médiathèque propriétaire de chaque exemplaire.
+  async function fetchExportData() {
+    let copiesQuery = supabase.from('book_copies').select('book_id, barcode, status, shelf_location, owner_commune_id');
+    if (myCommuneId) copiesQuery = copiesQuery.eq('owner_commune_id', myCommuneId);
+    const [{ data: copies, error }, { data: communes }] = await Promise.all([
+      copiesQuery,
+      supabase.from('communes').select('id, name'),
+    ]);
+    if (error) throw error;
+    const communeName = Object.fromEntries((communes || []).map(c => [c.id, c.name]));
+    const copiesByBook = {};
+    (copies || []).forEach(c => { (copiesByBook[c.book_id] ||= []).push(c); });
+    const exportBooks = books.filter(b => !myCommuneId || b.commune_id === myCommuneId || copiesByBook[b.id]);
+    return { exportBooks, copiesByBook, communeName };
+  }
+
+  function exportFileBase() {
+    const name = document.getElementById('header-commune-name')?.textContent || 'catalogue';
+    const slug = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    return `bligo-${slug}-${new Date().toISOString().slice(0, 10)}`;
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function buildCatalogueCsv({ exportBooks, copiesByBook, communeName }) {
+    const headers = ['ISBN', 'Titre', 'Auteur', 'Catégorie', 'Cote', 'Code-barres', 'Statut exemplaire', 'Médiathèque',
+      'Éditeur', 'Date de publication', 'Pages', 'Langue', 'Format', 'Dépôt légal', 'Traducteur', 'Illustrateur',
+      'Imprimeur', 'Tranche d\'âge', 'Consultation sur place', 'Nouveauté', 'Délai de prêt (jours)', 'Résumé', 'Couverture', 'Date de catalogage'];
+    const cell = v => {
+      const s = v == null ? '' : String(v);
+      return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = [headers];
+    exportBooks.forEach(b => {
+      const copies = copiesByBook[b.id]?.length ? copiesByBook[b.id] : [null];
+      copies.forEach(c => rows.push([
+        b.isbn, b.title, b.author, b.category, c?.shelf_location || b.shelf_location, c?.barcode,
+        c ? (COPY_STATUS_LABEL[c.status] || c.status) : '', communeName[c?.owner_commune_id ?? b.commune_id] || '',
+        b.publisher, b.published_date, b.page_count, b.language, b.format, b.legal_deposit, b.translator, b.illustrator,
+        b.printer, b.age_range, b.on_site_only ? 'Oui' : 'Non', b.is_new_release ? 'Oui' : 'Non',
+        b.loan_duration_days_override, b.summary, b.cover_url, b.created_at?.slice(0, 10),
+      ]));
+    });
+    // Point-virgule + BOM : ouverture directe et accents corrects dans Excel en français.
+    return '﻿' + rows.map(r => r.map(cell).join(';')).join('\r\n');
+  }
+
+  // UNIMARC ISO 2709 encodé en UTF-8 (déclaré en 100$a positions 26-29 « 50 »).
+  // Longueurs et adresses du répertoire comptées en octets, pas en caractères.
+  const MARC_FT = '\x1E', MARC_RT = '\x1D', MARC_SF = '\x1F';
+  const utf8 = new TextEncoder();
+
+  const MARC_LANG = {
+    fr: 'fre', fre: 'fre', fra: 'fre', francais: 'fre', en: 'eng', eng: 'eng', anglais: 'eng', english: 'eng',
+    es: 'spa', spa: 'spa', espagnol: 'spa', de: 'ger', ger: 'ger', deu: 'ger', allemand: 'ger',
+    it: 'ita', ita: 'ita', italien: 'ita', pt: 'por', por: 'por', portugais: 'por', creole: 'cpf', cpf: 'cpf',
+  };
+
+  function marcLang(language) {
+    const key = (language || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    return MARC_LANG[key] || null;
+  }
+
+  function marcField(ind, subfields) {
+    const subs = subfields.filter(([, v]) => v != null && String(v).trim() !== '')
+      .map(([code, v]) => MARC_SF + code + String(v).replace(/[\x1D\x1E\x1F]/g, ' ').trim());
+    return subs.length ? ind + subs.join('') : null;
+  }
+
+  function buildMarcRecord(b, copies, communeName) {
+    const fields = [];
+    const add = (tag, data) => { if (data != null) fields.push([tag, data]); };
+    const year = (String(b.published_date || '').match(/\d{4}/) || [])[0] || '    ';
+    const created = (b.created_at || new Date().toISOString()).slice(0, 10).replace(/-/g, '');
+    const lang = marcLang(b.language);
+
+    add('001', `BLIGO${b.id}`);
+    add('010', marcField('  ', [['a', b.isbn]]));
+    add('100', marcField('  ', [['a', `${created}d${year}    u  y0frey50      ba`]]));
+    add('101', lang ? marcField('0 ', [['a', lang]]) : null);
+    add('200', marcField('1 ', [['a', b.title], ['f', b.author], ['g', b.translator ? `trad. ${b.translator}` : null]]));
+    add('210', marcField('  ', [['c', b.publisher], ['d', b.published_date], ['g', b.printer]]));
+    add('215', marcField('  ', [['a', b.page_count ? `${b.page_count} p.` : null], ['d', b.format]]));
+    add('330', marcField('  ', [['a', b.summary]]));
+    add('610', marcField('0 ', [['a', b.category]]));
+    add('700', marcField(' 0', [['a', b.author], ['4', '070']]));
+    add('702', b.translator ? marcField(' 0', [['a', b.translator], ['4', '730']]) : null);
+    add('702', b.illustrator ? marcField(' 0', [['a', b.illustrator], ['4', '440']]) : null);
+    add('801', marcField(' 0', [['a', 'FR'], ['b', 'BliGO'], ['c', created]]));
+    (copies || []).forEach(c => add('995', marcField('  ', [
+      ['b', communeName[c.owner_commune_id]], ['f', c.barcode], ['k', c.shelf_location || b.shelf_location],
+      ['o', COPY_STATUS_LABEL[c.status] || c.status],
+    ])));
+
+    let directory = '';
+    let body = [];
+    let offset = 0;
+    fields.forEach(([tag, data]) => {
+      const bytes = utf8.encode(data + MARC_FT);
+      directory += tag + String(bytes.length).padStart(4, '0') + String(offset).padStart(5, '0');
+      body.push(bytes);
+      offset += bytes.length;
+    });
+    const dirBytes = utf8.encode(directory + MARC_FT);
+    const baseAddress = 24 + dirBytes.length;
+    const recordLength = baseAddress + offset + 1;
+    const leader = String(recordLength).padStart(5, '0') + 'nam  22' + String(baseAddress).padStart(5, '0') + '   450 ';
+    return [utf8.encode(leader), dirBytes, ...body, utf8.encode(MARC_RT)];
+  }
+
+  window.exportCatalogue = async function (format) {
+    const status = document.getElementById('export-status');
+    status.textContent = 'Préparation de l\'export…';
+    try {
+      const data = await fetchExportData();
+      if (!data.exportBooks.length) { status.textContent = 'Aucun livre à exporter pour le moment.'; return; }
+      if (format === 'csv') {
+        downloadBlob(new Blob([buildCatalogueCsv(data)], { type: 'text/csv;charset=utf-8' }), `${exportFileBase()}.csv`);
+      } else {
+        const parts = data.exportBooks.flatMap(b => buildMarcRecord(b, data.copiesByBook[b.id], data.communeName));
+        downloadBlob(new Blob(parts, { type: 'application/marc' }), `${exportFileBase()}.mrc`);
+      }
+      status.textContent = `Export terminé : ${data.exportBooks.length} livre(s).`;
+    } catch (e) {
+      console.error(e);
+      status.textContent = 'L\'export a échoué, réessaie dans un instant.';
+    }
+  };
+
   let selectedBookIds = new Set();
 
   window.toggleSelectBook = function (id, checked) {
@@ -3847,6 +4069,68 @@
     document.getElementById('cover-zoom-backdrop').classList.remove('flex');
   };
 
+  // Remise d'une commande par scan de la carte usager (22/09/2026) : évite de
+  // chercher la bonne réservation dans la liste, et enregistre le prêt
+  // directement (mark_reservation_picked_up), comme "Marquer récupéré".
+  window.lookupUsagerForPickup = async function (code) {
+    const subscriber = (code || '').trim();
+    const resultBox = document.getElementById('pickup-result');
+    if (!subscriber) return;
+    resultBox.innerHTML = `<p class="text-sm text-ink/50">Recherche…</p>`;
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('subscriber_number', subscriber)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      resultBox.innerHTML = `<div class="bg-red-50 border border-red-100 rounded-xl p-4"><p class="text-sm font-bold text-red-700">Aucun usager trouvé pour « ${escapeHtml(subscriber)} ».</p></div>`;
+      return;
+    }
+
+    const { data: ready, error: readyError } = await supabase
+      .from('reservations')
+      .select('id, books ( title, author )')
+      .eq('user_id', profile.id)
+      .eq('status', 'pret')
+      .order('ready_at');
+
+    if (readyError) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(readyError.message)}</p>`; return; }
+
+    if (!ready || !ready.length) {
+      resultBox.innerHTML = `
+        <div class="bg-mango-50 border border-mango-100 rounded-xl p-4">
+          <p class="text-sm font-bold text-ink">${escapeHtml(profile.full_name)}</p>
+          <p class="text-xs text-ink/55 mt-1">Aucune réservation prête à récupérer pour cet usager.</p>
+        </div>`;
+      return;
+    }
+
+    resultBox.innerHTML = `
+      <div class="bg-white border border-mango-100 rounded-xl overflow-hidden">
+        <p class="text-xs font-bold uppercase tracking-wide text-ink/50 px-4 py-2.5 bg-mango-50">${escapeHtml(profile.full_name)} — ${ready.length} prête${ready.length > 1 ? 's' : ''} à récupérer</p>
+        ${ready.map(r => `
+          <div class="flex items-center gap-3 px-4 py-3 border-t border-mango-50">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.books?.title || '?')}</p>
+              <p class="text-xs text-ink/55 truncate">${escapeHtml(r.books?.author || '')}</p>
+            </div>
+            <button onclick="confirmPickup(${r.id})" class="shrink-0 text-xs font-semibold bg-mango-600 text-white rounded-full px-3.5 py-2">Confirmer la remise</button>
+          </div>`).join('')}
+      </div>`;
+  };
+
+  window.confirmPickup = async function (reservationId) {
+    const { data, error } = await supabase.rpc('mark_reservation_picked_up', { p_reservation_id: reservationId });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    if (!data.ok) { alert(data.message); return; }
+    playBeep();
+    document.getElementById('pickup-result').innerHTML = `<div class="bg-mango-50 border border-mango-100 rounded-xl p-4"><p class="text-sm font-bold text-mango-700">✓ ${escapeHtml(data.message)}</p></div>`;
+    document.getElementById('pickup-subscriber-input').value = '';
+    await Promise.all([loadReservations(), loadActiveLoans()]);
+  };
+
   window.setStatus = async function (id, status) {
     // « Récupéré » doit créer un vrai prêt (table loans, exemplaire assigné)
     // pour apparaître dans Prêts en cours — pas juste changer le statut de la
@@ -3932,6 +4216,13 @@
     moon: '<path d="M15 3.5a7.5 7.5 0 1 0 5.5 12.6A9 9 0 0 1 15 3.5Z"/><path d="M19 3.3l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5Z"/>',
     pen: '<path d="M4 20.5l1-4L15.5 6l3 3L8 19.5l-4 1Z"/><path d="M13.5 7.5l3 3"/>',
     calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/>',
+    music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+    mask: '<path d="M4 4h16v8a8 8 0 0 1-16 0V4Z"/><path d="M8.5 9h.01M15.5 9h.01"/><path d="M9 14c1.7 1.4 4.3 1.4 6 0"/>',
+    star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"/>',
+    film: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
+    frame: '<rect x="3.5" y="4" width="17" height="16" rx="1.5"/><path d="M3.5 16l5-5 4 4 3-3 5 5"/><circle cx="15.5" cy="8.5" r="1.3"/>',
+    chat: '<path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3.5V15H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M19 9h1a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1v3l-3-3h-4"/>',
   };
 
   function iconForEvent(eventType) {
@@ -3939,6 +4230,13 @@
     if (t.includes('club de lecture')) return EVENT_ICONS.book;
     if (t.includes('heure du conte')) return EVENT_ICONS.moon;
     if (t.includes('atelier')) return EVENT_ICONS.pen;
+    if (t.includes('concert')) return EVENT_ICONS.music;
+    if (t.includes('théâtre')) return EVENT_ICONS.mask;
+    if (t.includes('spectacle')) return EVENT_ICONS.star;
+    if (t.includes('cinéma')) return EVENT_ICONS.film;
+    if (t.includes('conférence')) return EVENT_ICONS.mic;
+    if (t.includes('exposition')) return EVENT_ICONS.frame;
+    if (t.includes('débat')) return EVENT_ICONS.chat;
     return EVENT_ICONS.calendar;
   }
 
