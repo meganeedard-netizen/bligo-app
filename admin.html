@@ -85,6 +85,9 @@
       <button id="nav-team-btn" onclick="switchScreen('team')" style="touch-action: manipulation;" class="hidden agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="team">
         Tarifs médiathèque
       </button>
+      <button id="nav-settings-btn" onclick="switchScreen('settings')" style="touch-action: manipulation;" class="hidden agent-nav-btn text-left px-3.5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="settings">
+        Réglages
+      </button>
     </nav>
 
     <div class="flex-1 min-w-0">
@@ -658,6 +661,33 @@
         </div>
       </section>
 
+      <!-- RÉGLAGES : personnalisation de l'apparence (direction uniquement) -->
+      <section id="screen-settings" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Réglages</h2>
+        <p class="text-sm text-ink/55 mb-6">Réservé à la direction. Personnalise l'apparence de l'appli usager pour ta médiathèque — le logiciel agent, lui, ne change pas de couleurs.</p>
+
+        <h3 class="text-base font-bold text-ink mb-2">Logo</h3>
+        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-md mb-8">
+          <div class="flex items-center gap-4 mb-3">
+            <img id="settings-logo-preview" alt="" class="hidden w-16 h-16 rounded-full object-contain bg-mango-50 border border-mango-100">
+            <p id="settings-logo-empty" class="text-xs text-ink/45">Aucun logo envoyé pour l'instant — celui de BliGO s'affiche par défaut.</p>
+          </div>
+          <input id="settings-logo-file" type="file" accept="image/png,image/jpeg,image/svg+xml" class="hidden" onchange="previewSettingsLogo(event)">
+          <button type="button" onclick="document.getElementById('settings-logo-file').click()" class="w-full border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2.5 text-sm font-semibold">Choisir un logo</button>
+        </div>
+
+        <h3 class="text-base font-bold text-ink mb-2">Couleur principale</h3>
+        <p class="text-xs text-ink/55 mb-3">Remplace le vert BliGO utilisé pour les titres et les boutons. Clique à nouveau sur la couleur choisie pour revenir au vert par défaut.</p>
+        <div id="settings-ink-palette" class="grid grid-cols-6 gap-2 max-w-md mb-8"></div>
+
+        <h3 class="text-base font-bold text-ink mb-2">Couleur dégradé</h3>
+        <p class="text-xs text-ink/55 mb-3">Remplace le dégradé orange/hibiscus par un dégradé dans cette seule couleur. Clique à nouveau sur la couleur choisie pour revenir au dégradé par défaut.</p>
+        <div id="settings-accent-palette" class="grid grid-cols-6 gap-2 max-w-md mb-6"></div>
+
+        <button onclick="saveCommuneTheme()" class="max-w-md w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer l'apparence</button>
+        <p id="settings-save-status" class="text-[11px] text-ink/45 mt-2 h-4"></p>
+      </section>
+
       <!-- STATISTIQUES SIGB (direction uniquement) -->
       <section id="screen-sigb-stats" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Statistiques</h2>
@@ -895,17 +925,24 @@
     document.getElementById('nav-team-btn').classList.toggle('hidden', !myIsDirection);
     document.getElementById('nav-sigb-stats-btn').classList.toggle('hidden', !myIsDirection);
     document.getElementById('export-catalogue-btn').classList.toggle('hidden', !myIsDirection);
+    document.getElementById('nav-settings-btn').classList.toggle('hidden', !myIsDirection);
 
     if (myCommuneId) {
-      const { data: commune } = await supabase.from('communes').select('name').eq('id', myCommuneId).single();
+      const { data: commune } = await supabase.from('communes').select('name, logo_url').eq('id', myCommuneId).single();
       if (commune?.name) {
         document.getElementById('header-commune-name').textContent = `Médiathèque de ${commune.name}`;
-        const slug = commune.name.normalize('NFD').replace(/[̀-ͯ]/g, '')
-          .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         const logoEl = document.getElementById('header-commune-logo');
         logoEl.onload = () => logoEl.classList.remove('hidden');
         logoEl.onerror = () => logoEl.classList.add('hidden');
-        logoEl.src = `img/commune-logos/${slug}.png`;
+        if (commune.logo_url) {
+          logoEl.src = commune.logo_url;
+        } else {
+          // Ancienne convention (fichier déposé manuellement), tant que la
+          // médiathèque n'a pas envoyé son logo depuis Réglages (22/09/2026).
+          const slug = commune.name.normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          logoEl.src = `img/commune-logos/${slug}.png`;
+        }
       }
     }
 
@@ -949,6 +986,7 @@
     if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
     if (screen === 'catalogue') { closeScanView(); }
     if (screen === 'logistics') loadTransfers();
+    if (screen === 'settings') loadCommuneSettings();
   };
 
   // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
@@ -3356,6 +3394,105 @@
     });
     if (error) { alert('Erreur : ' + error.message); return; }
     alert('Horaires enregistrés.');
+  };
+
+  // ---------- Réglages : personnalisation de l'apparence (22/09/2026) ----------
+  // 12 couleurs fixes (roue chromatique classique) à choisir pour remplacer le
+  // vert BliGO (ink) et le dégradé orange/hibiscus (devenu un dégradé dans une
+  // seule des 12), voir js/theme.js pour la génération du dégradé.
+  const THEME_PALETTE = [
+    { name: 'Jaune', hex: '#F2C438' },
+    { name: 'Jaune-orange', hex: '#F5A623' },
+    { name: 'Orange', hex: '#F0791C' },
+    { name: 'Rouge-orangé', hex: '#E8542E' },
+    { name: 'Rouge', hex: '#E23B3B' },
+    { name: 'Rouge-violet', hex: '#B23A6B' },
+    { name: 'Violet', hex: '#7B4FE0' },
+    { name: 'Bleu-violet', hex: '#5A4FCF' },
+    { name: 'Bleu', hex: '#2D6CDF' },
+    { name: 'Bleu-vert', hex: '#1FA6A0' },
+    { name: 'Vert', hex: '#2E9E5B' },
+    { name: 'Jaune-vert', hex: '#8DC63F' },
+  ];
+
+  let selectedInkHex = null;
+  let selectedAccentHex = null;
+  let pendingLogoFile = null;
+
+  function renderThemePalette(containerId, selected, onPick) {
+    document.getElementById(containerId).innerHTML = THEME_PALETTE.map(c => `
+      <button type="button" onclick="${onPick}('${c.hex}')" title="${c.name}"
+        class="w-full aspect-square rounded-lg border-2 ${selected === c.hex ? 'border-ink' : 'border-transparent'}"
+        style="background:${c.hex}"></button>`).join('');
+  }
+
+  // Recliquer sur la couleur déjà choisie la désélectionne (retour aux
+  // couleurs BliGO par défaut) plutôt que d'obliger à en choisir une autre.
+  window.pickInkColor = function (hex) {
+    selectedInkHex = selectedInkHex === hex ? null : hex;
+    renderThemePalette('settings-ink-palette', selectedInkHex, 'pickInkColor');
+  };
+
+  window.pickAccentColor = function (hex) {
+    selectedAccentHex = selectedAccentHex === hex ? null : hex;
+    renderThemePalette('settings-accent-palette', selectedAccentHex, 'pickAccentColor');
+  };
+
+  async function loadCommuneSettings() {
+    if (!myCommuneId) return;
+    const { data: commune } = await supabase.from('communes').select('theme_ink_hex, theme_accent_hex, logo_url').eq('id', myCommuneId).single();
+    selectedInkHex = commune?.theme_ink_hex || null;
+    selectedAccentHex = commune?.theme_accent_hex || null;
+    pendingLogoFile = null;
+    document.getElementById('settings-save-status').textContent = '';
+
+    const preview = document.getElementById('settings-logo-preview');
+    const empty = document.getElementById('settings-logo-empty');
+    if (commune?.logo_url) {
+      preview.src = commune.logo_url;
+      preview.classList.remove('hidden');
+      empty.classList.add('hidden');
+    } else {
+      preview.classList.add('hidden');
+      empty.classList.remove('hidden');
+    }
+
+    renderThemePalette('settings-ink-palette', selectedInkHex, 'pickInkColor');
+    renderThemePalette('settings-accent-palette', selectedAccentHex, 'pickAccentColor');
+  }
+
+  window.previewSettingsLogo = function (event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    pendingLogoFile = file;
+    const preview = document.getElementById('settings-logo-preview');
+    document.getElementById('settings-logo-empty').classList.add('hidden');
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove('hidden');
+  };
+
+  window.saveCommuneTheme = async function () {
+    if (!myCommuneId) return;
+    const status = document.getElementById('settings-save-status');
+    status.textContent = 'Enregistrement…';
+
+    let logo_url = null;
+    if (pendingLogoFile) {
+      const ext = (pendingLogoFile.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${myCommuneId}/logo.${ext}`;
+      const { error: upErr } = await supabase.storage.from('commune-logos').upload(path, pendingLogoFile, { upsert: true });
+      if (upErr) { status.textContent = ''; alert('Erreur upload logo : ' + upErr.message); return; }
+      const { data: pub } = supabase.storage.from('commune-logos').getPublicUrl(path);
+      logo_url = pub.publicUrl + '?t=' + Date.now(); // le nom de fichier ne change pas, on évite un logo mis en cache après remplacement
+    }
+
+    const { error } = await supabase.rpc('update_commune_theme', {
+      p_commune_id: myCommuneId, p_ink_hex: selectedInkHex, p_accent_hex: selectedAccentHex, p_logo_url: logo_url,
+    });
+    if (error) { status.textContent = ''; alert('Erreur : ' + error.message); return; }
+    pendingLogoFile = null;
+    status.textContent = '✓ Apparence enregistrée.';
+    await loadCommuneSettings();
   };
 
   let duplicatesFilterActive = false;

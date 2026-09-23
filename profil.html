@@ -12,9 +12,9 @@
     theme: { extend: {
       fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
       colors: {
-        ink: '#1B4B43',
-        mango: { 50:'#FFF7ED',100:'#FFEAD2',200:'#FFD4A3',300:'#FFB86B',400:'#FFA33F',500:'#FF9B2E',600:'#F07F14',700:'#C7630F',800:'#9E4E12',900:'#7C3F12' },
-        hibiscus: { 50:'#FFF0F5',100:'#FFDCE9',200:'#FFB8D3',300:'#FF8FB9',400:'#F2609A',500:'#E8437A',600:'#C92C61',700:'#A3234E',800:'#7E1C3D',900:'#5F1730' }
+        ink: 'var(--color-ink, #1B4B43)',
+        mango: { 50:'var(--color-mango-50, #FFF7ED)',100:'var(--color-mango-100, #FFEAD2)',200:'var(--color-mango-200, #FFD4A3)',300:'var(--color-mango-300, #FFB86B)',400:'var(--color-mango-400, #FFA33F)',500:'var(--color-mango-500, #FF9B2E)',600:'var(--color-mango-600, #F07F14)',700:'var(--color-mango-700, #C7630F)',800:'var(--color-mango-800, #9E4E12)',900:'var(--color-mango-900, #7C3F12)' },
+        hibiscus: { 50:'var(--color-hibiscus-50, #FFF0F5)',100:'var(--color-hibiscus-100, #FFDCE9)',200:'var(--color-hibiscus-200, #FFB8D3)',300:'var(--color-hibiscus-300, #FF8FB9)',400:'var(--color-hibiscus-400, #F2609A)',500:'var(--color-hibiscus-500, #E8437A)',600:'var(--color-hibiscus-600, #C92C61)',700:'var(--color-hibiscus-700, #A3234E)',800:'var(--color-hibiscus-800, #7E1C3D)',900:'var(--color-hibiscus-900, #5F1730)' }
       }
     } }
   }
@@ -153,6 +153,8 @@
 
 <script type="module">
   import { supabase } from './js/supabaseClient.js';
+  import { applyCachedTheme, applyCommuneTheme } from './js/theme.js';
+  applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js';
 
 
@@ -168,8 +170,9 @@
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, role, subscriber_number, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, registration_status, account_type, commune_id, loyalty_points, communes ( name )')
+      .select('full_name, role, subscriber_number, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, registration_status, account_type, commune_id, loyalty_points, communes ( name, theme_ink_hex, theme_accent_hex, logo_url )')
       .eq('id', currentUser.id).single();
+    applyCommuneTheme(profile?.communes);
     if (profile?.role === 'agent' || profile?.role === 'super_admin') {
       document.getElementById('agent-section').classList.remove('hidden');
       document.getElementById('admin-link').classList.remove('hidden');
@@ -217,8 +220,6 @@
     // le back-office — reste sur BliGO si l'image n'existe pas (ou compte
     // Bibliothèque Libre, pas rattaché à une commune).
     if (!isLibre && profile?.communes?.name) {
-      const slug = profile.communes.name.normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const logoEl = document.getElementById('card-commune-logo');
       logoEl.onload = () => {
         logoEl.classList.remove('hidden');
@@ -228,7 +229,15 @@
         logoEl.classList.add('hidden');
         document.getElementById('card-logo-text').classList.remove('hidden');
       };
-      logoEl.src = `img/commune-logos/${slug}.png`;
+      if (profile.communes.logo_url) {
+        logoEl.src = profile.communes.logo_url;
+      } else {
+        // Ancienne convention (fichier déposé manuellement), tant que la
+        // médiathèque n'a pas envoyé son logo depuis les réglages (22/09/2026).
+        const slug = profile.communes.name.normalize('NFD').replace(/[̀-ͯ]/g, '')
+          .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        logoEl.src = `img/commune-logos/${slug}.png`;
+      }
     }
 
     const badge = document.getElementById('registration-badge');

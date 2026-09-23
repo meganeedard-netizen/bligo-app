@@ -12,9 +12,9 @@
     theme: { extend: {
       fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
       colors: {
-        ink: '#1B4B43',
-        mango: { 50:'#FFF7ED',100:'#FFEAD2',200:'#FFD4A3',300:'#FFB86B',400:'#FFA33F',500:'#FF9B2E',600:'#F07F14',700:'#C7630F',800:'#9E4E12',900:'#7C3F12' },
-        hibiscus: { 50:'#FFF0F5',100:'#FFDCE9',200:'#FFB8D3',300:'#FF8FB9',400:'#F2609A',500:'#E8437A',600:'#C92C61',700:'#A3234E',800:'#7E1C3D',900:'#5F1730' }
+        ink: 'var(--color-ink, #1B4B43)',
+        mango: { 50:'var(--color-mango-50, #FFF7ED)',100:'var(--color-mango-100, #FFEAD2)',200:'var(--color-mango-200, #FFD4A3)',300:'var(--color-mango-300, #FFB86B)',400:'var(--color-mango-400, #FFA33F)',500:'var(--color-mango-500, #FF9B2E)',600:'var(--color-mango-600, #F07F14)',700:'var(--color-mango-700, #C7630F)',800:'var(--color-mango-800, #9E4E12)',900:'var(--color-mango-900, #7C3F12)' },
+        hibiscus: { 50:'var(--color-hibiscus-50, #FFF0F5)',100:'var(--color-hibiscus-100, #FFDCE9)',200:'var(--color-hibiscus-200, #FFB8D3)',300:'var(--color-hibiscus-300, #FF8FB9)',400:'var(--color-hibiscus-400, #F2609A)',500:'var(--color-hibiscus-500, #E8437A)',600:'var(--color-hibiscus-600, #C92C61)',700:'var(--color-hibiscus-700, #A3234E)',800:'var(--color-hibiscus-800, #7E1C3D)',900:'var(--color-hibiscus-900, #5F1730)' }
       }
     } }
   }
@@ -112,6 +112,8 @@
 
 <script type="module">
   import { supabase } from './js/supabaseClient.js';
+  import { applyCachedTheme } from './js/theme.js';
+  applyCachedTheme();
 
   const eyeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
   const eyeOffIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a15.4 15.4 0 0 1-3.2 4.1M6.5 6.6C3.7 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 4.6-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
