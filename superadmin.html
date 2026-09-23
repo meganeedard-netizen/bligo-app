@@ -84,6 +84,8 @@
             <input id="commune-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Ex. Le Moule">
             <label class="text-xs font-semibold text-ink/60 block mb-1">Fuseau horaire</label>
             <input id="commune-timezone" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="America/Guadeloupe" value="America/Guadeloupe">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Jour de tournée de transferts</label>
+            <input id="commune-transfer-day" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Ex. Lundi (laisser vide si pas encore assignée)">
 
             <p class="text-xs font-bold uppercase tracking-wide text-ink/40 mb-2 mt-4">Règles de prêt de cette médiathèque</p>
             <div class="grid grid-cols-3 gap-2 mb-2">
@@ -336,6 +338,7 @@
     document.getElementById('commune-id').value = c.id;
     document.getElementById('commune-name').value = c.name;
     document.getElementById('commune-timezone').value = c.timezone || 'America/Guadeloupe';
+    document.getElementById('commune-transfer-day').value = c.transfer_day || '';
     document.getElementById('commune-max-general').value = c.max_loans_general ?? 3;
     document.getElementById('commune-max-jeunesse').value = c.max_loans_jeunesse ?? 3;
     document.getElementById('commune-max-new-releases').value = c.max_loans_new_releases ?? 1;
@@ -350,6 +353,7 @@
     document.getElementById('commune-id').value = '';
     document.getElementById('commune-name').value = '';
     document.getElementById('commune-timezone').value = 'America/Guadeloupe';
+    document.getElementById('commune-transfer-day').value = '';
     document.getElementById('commune-max-general').value = 3;
     document.getElementById('commune-max-jeunesse').value = 3;
     document.getElementById('commune-max-new-releases').value = 1;
@@ -364,10 +368,11 @@
     const id = document.getElementById('commune-id').value;
     const name = document.getElementById('commune-name').value.trim();
     const timezone = document.getElementById('commune-timezone').value.trim() || 'America/Guadeloupe';
+    const transfer_day = document.getElementById('commune-transfer-day').value.trim() || null;
     if (!name) { alert('Le nom est obligatoire.'); return; }
     const loanDurationRaw = document.getElementById('commune-loan-duration').value.trim();
     const payload = {
-      name, timezone,
+      name, timezone, transfer_day,
       max_loans_general: Number(document.getElementById('commune-max-general').value) || 3,
       max_loans_jeunesse: Number(document.getElementById('commune-max-jeunesse').value) || 3,
       max_loans_new_releases: Number(document.getElementById('commune-max-new-releases').value) || 0,

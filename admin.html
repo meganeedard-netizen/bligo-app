@@ -405,7 +405,10 @@
 
           <div class="grid md:grid-cols-2 gap-5 mb-6">
             <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
-              <p class="text-xs font-bold uppercase tracking-wide text-ink/50 px-4 py-2.5 bg-mango-50">À envoyer d'ici</p>
+              <p class="text-xs font-bold uppercase tracking-wide text-ink/50 px-4 py-2.5 bg-mango-50 flex items-center justify-between">
+                À envoyer d'ici, par tournée
+                <button id="print-labels-btn" onclick="printTransferLabels()" class="hidden text-[10px] font-bold normal-case bg-mango-600 text-white px-2.5 py-1 rounded-full">Imprimer les étiquettes</button>
+              </p>
               <div id="transfers-outgoing-list"></div>
             </div>
             <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
@@ -2527,14 +2530,35 @@
     await loadTransfers();
   };
 
+  // Une étiquette par livre à envoyer : usager, titre, destination, jour de
+  // tournée — à coller dessus avant de le mettre dans le bac de cette
+  // tournée (23/09/2026, voir #print-labels-area et son <style> d'impression).
+  window.printTransferLabels = function () {
+    const area = document.getElementById('print-labels-area');
+    area.innerHTML = pendingOutgoingTransfers.map(t => `
+      <div class="label" style="border:2px dashed #999;border-radius:10px;padding:18px;margin:0 0 16px;font-family:sans-serif;">
+        <p style="font-size:22px;font-weight:800;margin:0 0 4px;">→ ${escapeHtml(t.destName)}</p>
+        <p style="font-size:12px;color:#666;margin:0 0 12px;text-transform:uppercase;letter-spacing:.05em;">Tournée : ${escapeHtml(t.day)}</p>
+        <p style="font-size:17px;font-weight:700;margin:0 0 2px;">${escapeHtml(t.title)}</p>
+        ${t.author ? `<p style="font-size:13px;color:#444;margin:0 0 10px;">${escapeHtml(t.author)}</p>` : ''}
+        ${t.usager ? `<p style="font-size:15px;margin:0 0 6px;">Pour : <strong>${escapeHtml(t.usager)}</strong></p>` : ''}
+        <p style="font-family:monospace;font-size:13px;margin:0;">${escapeHtml(t.barcode)}</p>
+      </div>`).join('');
+    window.print();
+  };
+
   // Transferts en attente concernant cette médiathèque : à envoyer (elle est
   // l'origine, statut 'requested') et à recevoir (elle est la destination,
   // statut 'in_transit') — sert aussi de badge de notification dans le menu.
+  // Livres en attente d'envoi (23/09/2026), gardés en mémoire pour imprimer
+  // les étiquettes sans refaire de requête — voir printTransferLabels().
+  let pendingOutgoingTransfers = [];
+
   async function loadTransfers() {
     if (!myCommuneId) return;
 
     const [{ data: outgoing, error: e1 }, { data: incoming, error: e2 }] = await Promise.all([
-      supabase.from('transfers').select('id, copy_id, to_commune_id, requested_at, book_copies ( barcode, books ( title, author ) )')
+      supabase.from('transfers').select('id, copy_id, to_commune_id, reservation_id, requested_at, book_copies ( barcode, books ( title, author ) )')
         .eq('from_commune_id', myCommuneId).eq('status', 'requested').order('requested_at'),
       supabase.from('transfers').select('id, copy_id, from_commune_id, sent_at, book_copies ( barcode, books ( title, author ) )')
         .eq('to_commune_id', myCommuneId).eq('status', 'in_transit').order('sent_at'),
@@ -2547,9 +2571,19 @@
       ...(incoming || []).map(t => t.from_commune_id),
     ])];
     const { data: communesData } = communeIds.length
-      ? await supabase.from('communes').select('id, name').in('id', communeIds)
+      ? await supabase.from('communes').select('id, name, transfer_day').in('id', communeIds)
       : { data: [] };
     const communeById = Object.fromEntries((communesData || []).map(c => [c.id, c]));
+
+    // Nom de l'usager qui attend chaque livre (pour l'étiquette), via la
+    // réservation à l'origine du transfert — absent pour un transfert né
+    // d'un simple retour mal aiguillé (pas de réservation liée).
+    const reservationIds = [...new Set((outgoing || []).map(t => t.reservation_id).filter(Boolean))];
+    let usagerByReservation = {};
+    if (reservationIds.length) {
+      const { data: resaData } = await supabase.from('reservations').select('id, profiles ( full_name )').in('id', reservationIds);
+      usagerByReservation = Object.fromEntries((resaData || []).map(r => [r.id, r.profiles?.full_name || null]));
+    }
 
     const total = (outgoing?.length || 0) + (incoming?.length || 0);
     const badge = document.getElementById('logistics-badge');
@@ -2557,11 +2591,33 @@
     badge.classList.toggle('hidden', total === 0);
     document.getElementById('transfers-total-count').textContent = total;
 
+    // Regroupé par tournée (jour) puis par médiathèque de destination : ce
+    // que l'agent prépare doit correspondre à la tournée qui vient chercher.
+    const outByDay = {};
+    (outgoing || []).forEach(t => {
+      const dest = communeById[t.to_commune_id];
+      const day = dest?.transfer_day || 'Tournée non définie';
+      const destName = dest?.name || '?';
+      outByDay[day] = outByDay[day] || {};
+      outByDay[day][destName] = outByDay[day][destName] || [];
+      outByDay[day][destName].push(t);
+    });
+    const dayOrder = Object.keys(outByDay).sort((a, b) =>
+      a === 'Tournée non définie' ? 1 : b === 'Tournée non définie' ? -1 : a.localeCompare(b));
+
     const outList = document.getElementById('transfers-outgoing-list');
-    outList.innerHTML = (outgoing && outgoing.length) ? outgoing.map(t => `
-      <div class="px-4 py-2.5 border-t border-mango-50 text-sm">
-        <p class="font-semibold text-ink truncate">${escapeHtml(t.book_copies?.books?.title || '?')}</p>
-        <p class="text-xs text-ink/50">${escapeHtml(t.book_copies?.barcode || '')} → ${escapeHtml(communeById[t.to_commune_id]?.name || '')}</p>
+    outList.innerHTML = dayOrder.length ? dayOrder.map(day => `
+      <div class="border-t border-mango-100">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-mango-700 bg-mango-50/60 px-4 py-1.5">Tournée : ${escapeHtml(day)}</p>
+        ${Object.entries(outByDay[day]).map(([destName, items]) => `
+          <div class="px-4 py-2">
+            <p class="text-xs font-bold text-ink/60 mb-1">→ ${escapeHtml(destName)} (${items.length})</p>
+            ${items.map(t => `
+              <div class="py-1">
+                <p class="text-sm font-semibold text-ink truncate">${escapeHtml(t.book_copies?.books?.title || '?')}</p>
+                <p class="text-xs text-ink/50 truncate">${escapeHtml(t.book_copies?.barcode || '')}${usagerByReservation[t.reservation_id] ? ' · pour ' + escapeHtml(usagerByReservation[t.reservation_id]) : ''}</p>
+              </div>`).join('')}
+          </div>`).join('')}
       </div>`).join('') : `<p class="text-sm text-ink/40 text-center py-6 px-4">Rien à envoyer pour le moment.</p>`;
 
     const inList = document.getElementById('transfers-incoming-list');
@@ -2570,6 +2626,16 @@
         <p class="font-semibold text-ink truncate">${escapeHtml(t.book_copies?.books?.title || '?')}</p>
         <p class="text-xs text-ink/50">${escapeHtml(t.book_copies?.barcode || '')} ← ${escapeHtml(communeById[t.from_commune_id]?.name || '')}</p>
       </div>`).join('') : `<p class="text-sm text-ink/40 text-center py-6 px-4">Rien en route pour le moment.</p>`;
+
+    pendingOutgoingTransfers = (outgoing || []).map(t => ({
+      title: t.book_copies?.books?.title || '?',
+      author: t.book_copies?.books?.author || '',
+      barcode: t.book_copies?.barcode || '',
+      destName: communeById[t.to_commune_id]?.name || '?',
+      day: communeById[t.to_commune_id]?.transfer_day || 'Tournée non définie',
+      usager: usagerByReservation[t.reservation_id] || null,
+    }));
+    document.getElementById('print-labels-btn').classList.toggle('hidden', pendingOutgoingTransfers.length === 0);
   }
 
   // ---------- Emprunts en cours + Fiche usager ----------
@@ -4193,7 +4259,7 @@
       const itemsHtml = group.items.map(r => {
         let actionHtml = '';
         if (r.status === 'preparation') {
-          actionHtml = `<button onclick="setStatus(${r.id}, 'pret')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer prêt</button>`;
+          actionHtml = `<button onclick="prepareReservation(${r.id})" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer prêt</button>`;
         } else if (r.status === 'pret') {
           actionHtml = `<button onclick="setStatus(${r.id}, 'recupere')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-mango-600 text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer récupéré</button>`;
         }
@@ -4320,6 +4386,19 @@
     document.getElementById('pickup-result').innerHTML = `<div class="bg-mango-50 border border-mango-100 rounded-xl p-4"><p class="text-sm font-bold text-mango-700">✓ ${escapeHtml(data.message)}</p></div>`;
     document.getElementById('pickup-subscriber-input').value = '';
     await Promise.all([loadReservations(), loadActiveLoans()]);
+  };
+
+  // « Marquer prêt » vérifie maintenant la disponibilité réelle plutôt que de
+  // changer le statut en confiance (23/09/2026) : si le seul exemplaire
+  // disponible est dans une autre médiathèque du réseau, demande un
+  // transfert (visible dans Transferts) au lieu de prétendre que le livre
+  // est là. Voir sql/add_transfer_routes_and_prepare.sql.
+  window.prepareReservation = async function (id) {
+    const { data, error } = await supabase.rpc('prepare_reservation', { p_reservation_id: id });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    if (!data.ok) { alert(data.message); return; }
+    if (data.needs_transfer) alert(data.message);
+    await loadReservations();
   };
 
   window.setStatus = async function (id, status) {
@@ -5149,5 +5228,16 @@
 
   init();
 </script>
+
+<!-- Étiquettes de transfert à imprimer (23/09/2026) — masqué à l'écran, seule
+     cette zone s'imprime (voir le <style> ci-dessous). -->
+<div id="print-labels-area" class="hidden"></div>
+<style>
+  @media print {
+    body > *:not(#print-labels-area) { display: none !important; }
+    #print-labels-area { display: block !important; }
+    #print-labels-area .label { page-break-after: always; }
+  }
+</style>
 </body>
 </html>
