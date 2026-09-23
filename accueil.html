@@ -12,7 +12,8 @@
     theme: { extend: {
       fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
       colors: {
-        ink: 'var(--color-ink, #1B4B43)',
+        ink: '#1B4B43',
+        brand: 'var(--color-brand, #1B4B43)',
         mango: { 50:'var(--color-mango-50, #FFF7ED)',100:'var(--color-mango-100, #FFEAD2)',200:'var(--color-mango-200, #FFD4A3)',300:'var(--color-mango-300, #FFB86B)',400:'var(--color-mango-400, #FFA33F)',500:'var(--color-mango-500, #FF9B2E)',600:'var(--color-mango-600, #F07F14)',700:'var(--color-mango-700, #C7630F)',800:'var(--color-mango-800, #9E4E12)',900:'var(--color-mango-900, #7C3F12)' },
         hibiscus: { 50:'var(--color-hibiscus-50, #FFF0F5)',100:'var(--color-hibiscus-100, #FFDCE9)',200:'var(--color-hibiscus-200, #FFB8D3)',300:'var(--color-hibiscus-300, #FF8FB9)',400:'var(--color-hibiscus-400, #F2609A)',500:'var(--color-hibiscus-500, #E8437A)',600:'var(--color-hibiscus-600, #C92C61)',700:'var(--color-hibiscus-700, #A3234E)',800:'var(--color-hibiscus-800, #7E1C3D)',900:'var(--color-hibiscus-900, #5F1730)' }
       }
@@ -85,7 +86,7 @@
 </main>
 
 <!-- Overlay détail livre -->
-<div id="book-modal-backdrop" onclick="closeBookModal(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="book-modal-backdrop" onclick="closeBookModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm flex items-center justify-center p-4">
   <div id="book-modal-card" class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative">
     <button onclick="closeBookModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold z-10">✕</button>
     <div id="book-modal-content" class="p-6"></div>
@@ -94,18 +95,18 @@
 </div>
 
 <!-- Pop-up pré-inscription -->
-<div id="pending-popup-backdrop" onclick="closePendingPopup(event)" class="hidden fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="pending-popup-backdrop" onclick="closePendingPopup(event)" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
     <button onclick="closePendingPopup()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
     <svg class="w-8 h-8 text-mango-600 mb-3" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
     <p class="text-base font-bold text-ink mb-2">Pré-inscription en attente de validation</p>
     <p class="text-sm text-ink/60 leading-relaxed">Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là. Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.</p>
-    <button onclick="closePendingPopup()" class="w-full mt-5 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">J'ai compris</button>
+    <button onclick="closePendingPopup()" class="w-full mt-5 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">J'ai compris</button>
   </div>
 </div>
 
 <!-- Horaires d'ouverture -->
-<div id="opening-hours-backdrop" onclick="closeOpeningHoursModal(event)" class="hidden fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="opening-hours-backdrop" onclick="closeOpeningHoursModal(event)" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
     <button onclick="closeOpeningHoursModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
     <p class="text-base font-bold text-ink mb-4">Horaires d'ouverture</p>
@@ -114,7 +115,7 @@
 </div>
 
 <!-- Onboarding : préférences de lecture -->
-<div id="onboarding-modal-backdrop" class="hidden fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="onboarding-modal-backdrop" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full max-h-[85vh] overflow-y-auto p-6">
     <p class="text-base font-bold text-ink mb-1">Tes goûts de lecture</p>
     <p class="text-xs text-ink/55 mb-5">Réponds en 30 secondes pour recevoir des recommandations personnalisées sur ton accueil.</p>
@@ -125,16 +126,16 @@
     <p class="text-xs font-semibold text-ink/70 mb-2">Combien de livres environ par mois ?</p>
     <div id="onboarding-pace" class="flex gap-1.5 mb-7"></div>
 
-    <button id="onboarding-submit-btn" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition mb-2">Valider mes préférences</button>
+    <button id="onboarding-submit-btn" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition mb-2">Valider mes préférences</button>
     <button id="onboarding-skip-btn" class="w-full text-xs text-ink/40 hover:text-ink/60 font-semibold py-1">Répondre plus tard</button>
   </div>
 </div>
 
 <!-- Message d'erreur / info habillé aux couleurs de l'appli (remplace alert()) -->
-<div id="app-alert-backdrop" onclick="closeAppAlert(event)" class="hidden fixed inset-0 z-[60] bg-ink/50 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="app-alert-backdrop" onclick="closeAppAlert(event)" class="hidden fixed inset-0 z-[60] bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
     <p id="app-alert-message" class="text-sm text-ink/80 leading-relaxed mb-5"></p>
-    <button onclick="closeAppAlert()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Compris</button>
+    <button onclick="closeAppAlert()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Compris</button>
   </div>
 </div>
 
@@ -166,7 +167,7 @@
   </div>
 </nav>
 
-<button id="scroll-top-btn" aria-label="Revenir en haut" class="hidden fixed bottom-20 right-5 z-20 w-11 h-11 rounded-full bg-ink text-white shadow-lg flex items-center justify-center active:scale-95 transition">
+<button id="scroll-top-btn" aria-label="Revenir en haut" class="hidden fixed bottom-20 right-5 z-20 w-11 h-11 rounded-full bg-brand text-white shadow-lg flex items-center justify-center active:scale-95 transition">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
 </button>
 
@@ -247,7 +248,7 @@
     ];
     el.innerHTML = chips.map(c => `
       <button data-value="${c.value ?? ''}" class="category-chip shrink-0 flex flex-col items-center justify-center gap-1 w-20 py-2.5 px-1.5 rounded-xl transition ${
-        activeCategory === c.value ? 'bg-ink text-white' : 'bg-white text-ink/60'
+        activeCategory === c.value ? 'bg-brand text-white' : 'bg-white text-ink/60'
       }"><span class="w-10 h-10 shrink-0">${CATEGORY_ICONS[c.label] || ''}</span><span class="text-[11.5px] font-semibold leading-tight text-center">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span></button>
     `).join('');
     el.querySelectorAll('.category-chip').forEach(btn => {
@@ -402,15 +403,15 @@
       const inWishlist = wishlist.includes(b.id);
       let btnHtml;
       if (b.on_site_only) {
-        btnHtml = `<span class="block w-full mt-2 text-center text-[11px] font-semibold bg-ink/5 text-ink/50 rounded-lg py-1.5">📍 Consultation sur place</span>`;
+        btnHtml = `<span class="block w-full mt-2 text-center text-[11px] font-semibold bg-brand/5 text-ink/50 rounded-lg py-1.5">📍 Consultation sur place</span>`;
       } else if (isLibreAccount) {
         btnHtml = `<a href="profil.html" class="block w-full mt-2 text-center text-[10.5px] font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-1.5">Rattache-toi à une commune</a>`;
       } else if (!b.available) {
-        btnHtml = `<button data-book-id="${b.id}" class="alert-btn w-full mt-2 text-[11px] font-semibold rounded-lg py-1.5 ${inWishlist ? 'bg-mango-50 text-mango-700 border border-mango-200' : 'bg-ink text-white'}">${inWishlist ? '🔔 Alerte activée' : '🔔 Recevoir une alerte'}</button>`;
+        btnHtml = `<button data-book-id="${b.id}" class="alert-btn w-full mt-2 text-[11px] font-semibold rounded-lg py-1.5 ${inWishlist ? 'bg-mango-50 text-mango-700 border border-mango-200' : 'bg-brand text-white'}">${inWishlist ? '🔔 Alerte activée' : '🔔 Recevoir une alerte'}</button>`;
       } else if (reservedBookIds.has(b.id)) {
         btnHtml = `<button disabled class="w-full mt-2 text-[11px] font-semibold bg-mango-100 text-mango-700 rounded-lg py-1.5">Réservé</button>`;
       } else {
-        btnHtml = `<button data-book-id="${b.id}" class="reserve-btn w-full mt-2 text-[11px] font-semibold bg-ink text-white rounded-lg py-1.5 active:scale-[0.97] transition">Réserver</button>`;
+        btnHtml = `<button data-book-id="${b.id}" class="reserve-btn w-full mt-2 text-[11px] font-semibold bg-brand text-white rounded-lg py-1.5 active:scale-[0.97] transition">Réserver</button>`;
       }
       const cov = b.cover_url
         ? `<img id="cover-${b.id}" src="${b.cover_url}" alt="" class="aspect-[2/3] w-full object-cover rounded-lg bg-mango-50 shadow-sm">`
@@ -486,15 +487,15 @@
 
     let btnHtml = '';
     if (b.on_site_only) {
-      btnHtml = `<p class="w-full mt-4 text-center text-sm font-semibold bg-ink/5 text-ink/50 rounded-lg py-2.5">📍 Consultation sur place uniquement</p>`;
+      btnHtml = `<p class="w-full mt-4 text-center text-sm font-semibold bg-brand/5 text-ink/50 rounded-lg py-2.5">📍 Consultation sur place uniquement</p>`;
     } else if (isLibreAccount) {
       btnHtml = `<a href="profil.html" class="block w-full mt-4 text-center text-sm font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-2.5">Réservé aux usagers d'une commune — rattache ton compte</a>`;
     } else if (!b.available) {
-      btnHtml = `<button id="modal-alert-btn" class="w-full mt-4 text-sm font-semibold rounded-lg py-2.5 ${inWishlist ? 'bg-mango-50 text-mango-700 border border-mango-200' : 'bg-ink text-white'}">${inWishlist ? '🔔 Alerte activée' : '🔔 Recevoir une alerte'}</button>`;
+      btnHtml = `<button id="modal-alert-btn" class="w-full mt-4 text-sm font-semibold rounded-lg py-2.5 ${inWishlist ? 'bg-mango-50 text-mango-700 border border-mango-200' : 'bg-brand text-white'}">${inWishlist ? '🔔 Alerte activée' : '🔔 Recevoir une alerte'}</button>`;
     } else if (reserved) {
       btnHtml = `<button disabled class="w-full mt-4 text-sm font-semibold bg-mango-100 text-mango-700 rounded-lg py-2.5">Déjà réservé</button>`;
     } else {
-      btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-sm font-semibold bg-ink text-white rounded-lg py-2.5 active:scale-[0.98] transition">Réserver</button>`;
+      btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-sm font-semibold bg-brand text-white rounded-lg py-2.5 active:scale-[0.98] transition">Réserver</button>`;
     }
 
     const existingCover = document.getElementById('cover-' + b.id);
@@ -668,9 +669,9 @@
         selectedCategories = selectedCategories.includes(value)
           ? selectedCategories.filter(v => v !== value)
           : [...selectedCategories, value];
-        btn.classList.toggle('bg-ink', selectedCategories.includes(value));
+        btn.classList.toggle('bg-brand', selectedCategories.includes(value));
         btn.classList.toggle('text-white', selectedCategories.includes(value));
-        btn.classList.toggle('border-ink', selectedCategories.includes(value));
+        btn.classList.toggle('border-brand', selectedCategories.includes(value));
         btn.classList.toggle('bg-white', !selectedCategories.includes(value));
         btn.classList.toggle('text-ink/60', !selectedCategories.includes(value));
         btn.classList.toggle('border-mango-100', !selectedCategories.includes(value));
@@ -686,9 +687,9 @@
         selectedPace = Number(btn.dataset.value);
         paceBox.querySelectorAll('.onboarding-pace-btn').forEach(b => {
           const active = b === btn;
-          b.classList.toggle('bg-ink', active);
+          b.classList.toggle('bg-brand', active);
           b.classList.toggle('text-white', active);
-          b.classList.toggle('border-ink', active);
+          b.classList.toggle('border-brand', active);
           b.classList.toggle('bg-white', !active);
           b.classList.toggle('text-ink/60', !active);
           b.classList.toggle('border-mango-100', !active);

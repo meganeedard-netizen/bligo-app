@@ -1,9 +1,16 @@
-// BliGO — thème personnalisé par médiathèque (22/09/2026)
+// BliGO — thème personnalisé par médiathèque (22-23/09/2026)
 //
-// Chaque page usager utilise déjà les couleurs Tailwind "ink"/"mango"/
-// "hibiscus" partout (voir tailwind.config de chaque page, qui les résout
-// depuis des variables CSS --color-*). Changer ces variables suffit donc à
-// re-teinter toute la page sans toucher un seul nom de classe existant.
+// Chaque page usager utilise déjà les couleurs Tailwind "brand"/"mango"/
+// "hibiscus" pour ses boutons et encadrés colorés (voir tailwind.config de
+// chaque page, qui les résout depuis des variables CSS --color-*). Changer
+// ces variables suffit donc à re-teinter toute la page sans toucher un seul
+// nom de classe existant.
+//
+// Important (corrigé le 23/09/2026, retour de Mégane) : le texte ("ink")
+// reste TOUJOURS fixe, jamais teinté — seuls les fonds/bordures/dégradés
+// (mango, hibiscus, et le nouveau "brand" qui remplace bg-ink/border-ink)
+// changent. Mélanger texte et fond donnait un rendu illisible/moche dès
+// qu'une médiathèque choisissait une couleur vive.
 //
 // "mango" et "hibiscus" pointent vers LE MÊME dégradé généré à partir d'une
 // seule couleur choisie par la médiathèque (ex. un dégradé de jaune) — sur
@@ -44,25 +51,36 @@ function hslToHex(h, s, l) {
 // 900 très sombre) pour que le rendu reste cohérent quelle que soit la
 // couleur choisie.
 const RAMP_LIGHTNESS = { 50: 95, 100: 89, 200: 78, 300: 66, 400: 56, 500: 49, 600: 40, 700: 32, 800: 25, 900: 19 };
+const RAMP_STEPS = Object.keys(RAMP_LIGHTNESS);
 
 export function generateRamp(baseHex) {
   const [h, s] = hexToHsl(baseHex);
   const sat = Math.max(s, 55); // évite une palette trop grisée si la couleur choisie est pâle
   const ramp = {};
-  for (const step in RAMP_LIGHTNESS) ramp[step] = hslToHex(h, sat, RAMP_LIGHTNESS[step]);
+  for (const step of RAMP_STEPS) ramp[step] = hslToHex(h, sat, RAMP_LIGHTNESS[step]);
   return ramp;
 }
 
 const CACHE_KEY = 'bligo_theme';
 
-function setVars(inkHex, accentHex) {
+// Toujours retirer explicitement la variable quand la valeur est vide (pas
+// juste "ne rien faire") — sinon un ancien thème reste affiché après un
+// retour aux couleurs par défaut (bouton Réinitialiser).
+function setVars(brandHex, accentHex) {
   const root = document.documentElement.style;
-  if (inkHex) root.setProperty('--color-ink', inkHex);
+  if (brandHex) root.setProperty('--color-brand', brandHex);
+  else root.removeProperty('--color-brand');
+
   if (accentHex) {
     const ramp = generateRamp(accentHex);
-    for (const step in ramp) {
+    for (const step of RAMP_STEPS) {
       root.setProperty(`--color-mango-${step}`, ramp[step]);
       root.setProperty(`--color-hibiscus-${step}`, ramp[step]);
+    }
+  } else {
+    for (const step of RAMP_STEPS) {
+      root.removeProperty(`--color-mango-${step}`);
+      root.removeProperty(`--color-hibiscus-${step}`);
     }
   }
 }
@@ -74,16 +92,16 @@ function setVars(inkHex, accentHex) {
 export function applyCachedTheme() {
   try {
     const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-    if (cached) setVars(cached.ink, cached.accent);
+    if (cached) setVars(cached.brand, cached.accent);
   } catch {}
 }
 
-// À appeler après avoir chargé la commune de l'usager (theme_ink_hex,
-// theme_accent_hex) — applique le vrai thème et le met en cache pour que les
-// prochaines pages (qui ne rechargent pas toutes la commune) l'aient déjà.
+// À appeler après avoir chargé la commune (theme_ink_hex, theme_accent_hex)
+// — applique le vrai thème et le met en cache pour que les prochaines pages
+// (qui ne rechargent pas toutes la commune) l'aient déjà.
 export function applyCommuneTheme(commune) {
-  const ink = commune?.theme_ink_hex || null;
+  const brand = commune?.theme_ink_hex || null;
   const accent = commune?.theme_accent_hex || null;
-  setVars(ink, accent);
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ink, accent })); } catch {}
+  setVars(brand, accent);
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ brand, accent })); } catch {}
 }

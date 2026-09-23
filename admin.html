@@ -12,7 +12,8 @@
     theme: { extend: {
       fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
       colors: {
-        ink: 'var(--color-ink, #1B4B43)',
+        ink: '#1B4B43',
+        brand: 'var(--color-brand, #1B4B43)',
         mango: { 50:'var(--color-mango-50, #FFF7ED)',100:'var(--color-mango-100, #FFEAD2)',200:'var(--color-mango-200, #FFD4A3)',300:'var(--color-mango-300, #FFB86B)',400:'var(--color-mango-400, #FFA33F)',500:'var(--color-mango-500, #FF9B2E)',600:'var(--color-mango-600, #F07F14)',700:'var(--color-mango-700, #C7630F)',800:'var(--color-mango-800, #9E4E12)',900:'var(--color-mango-900, #7C3F12)' },
         hibiscus: { 50:'var(--color-hibiscus-50, #FFF0F5)',100:'var(--color-hibiscus-100, #FFDCE9)',200:'var(--color-hibiscus-200, #FFB8D3)',300:'var(--color-hibiscus-300, #FF8FB9)',400:'var(--color-hibiscus-400, #F2609A)',500:'var(--color-hibiscus-500, #E8437A)',600:'var(--color-hibiscus-600, #C92C61)',700:'var(--color-hibiscus-700, #A3234E)',800:'var(--color-hibiscus-800, #7E1C3D)',900:'var(--color-hibiscus-900, #5F1730)' }
       }
@@ -99,9 +100,9 @@
             <h2 class="text-lg font-bold text-ink mb-1">Catalogage</h2>
           </div>
           <div class="flex flex-wrap items-center gap-2 shrink-0">
-            <button id="export-catalogue-btn" onclick="openExportModal()" style="touch-action: manipulation;" class="hidden border border-ink/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Exporter le catalogue</button>
+            <button id="export-catalogue-btn" onclick="openExportModal()" style="touch-action: manipulation;" class="hidden border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Exporter le catalogue</button>
             <button onclick="openInscritScanModal()" style="touch-action: manipulation;" class="border border-hibiscus-200 text-hibiscus-700 bg-hibiscus-50 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Scanner la carte de l'inscrit</button>
-            <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter un nouveau document</button>
+            <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter un nouveau document</button>
           </div>
         </div>
 
@@ -145,7 +146,7 @@
                 style="font-size: 16px;"
                 class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300">
               <button id="scan-btn" onclick="searchBook()"
-                class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition mb-1.5">
+                class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition mb-1.5">
                 Rechercher
               </button>
               <details class="mt-3">
@@ -167,7 +168,7 @@
               <div id="draft-books-empty" class="text-sm text-ink/40 text-center py-8">Les documents scannés apparaîtront ici, en brouillon, pour vérification avant mise en ligne.</div>
               <div id="draft-books-actions" class="hidden items-center justify-between mb-2">
                 <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">Brouillons (<span id="draft-books-count">0</span>)</p>
-                <button onclick="validateAllDrafts()" class="text-xs font-semibold bg-ink text-white rounded-full px-3.5 py-1.5">✓ Tout valider</button>
+                <button onclick="validateAllDrafts()" class="text-xs font-semibold bg-brand text-white rounded-full px-3.5 py-1.5">✓ Tout valider</button>
               </div>
               <div id="draft-books-list" class="grid grid-cols-1 2xl:grid-cols-2 gap-3 items-start"></div>
             </div>
@@ -190,7 +191,7 @@
         </h3>
         <p id="duplicates-banner" class="hidden text-xs text-hibiscus-700 font-semibold mb-2"></p>
 
-        <div id="bulk-edit-bar" class="hidden bg-ink text-white rounded-xl p-3 mb-3 flex flex-wrap items-center gap-2 text-sm">
+        <div id="bulk-edit-bar" class="hidden bg-brand text-white rounded-xl p-3 mb-3 flex flex-wrap items-center gap-2 text-sm">
           <span class="font-semibold"><span id="bulk-edit-count">0</span> livre(s) sélectionné(s)</span>
           <select id="bulk-loan-duration" class="border border-white/30 bg-white/10 rounded-lg px-2 py-1.5 text-sm w-44">
             <option value="" selected>Délai de prêt…</option>
@@ -218,7 +219,7 @@
         </div>
 
         <!-- Scanner la carte de l'inscrit (session de don) -->
-        <div id="inscrit-scan-backdrop" onclick="closeInscritScanModal(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm items-center justify-center p-4">
+        <div id="inscrit-scan-backdrop" onclick="closeInscritScanModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
           <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
             <button onclick="closeInscritScanModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
             <p class="text-base font-bold text-ink mb-1">Scanner la carte de l'inscrit</p>
@@ -261,7 +262,7 @@
               Préinscriptions
               <span class="bg-hibiscus-600 text-white text-[10px] px-1.5 py-0.5 rounded-full" id="preregistrations-count">0</span>
             </button>
-            <button onclick="openAddInscritForm()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un inscrit</button>
+            <button onclick="openAddInscritForm()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un inscrit</button>
           </div>
         </div>
 
@@ -303,7 +304,7 @@
         </div>
 
         <!-- Ajouter un inscrit -->
-        <div id="add-inscrit-backdrop" onclick="closeAddInscritForm(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm items-center justify-center p-4">
+        <div id="add-inscrit-backdrop" onclick="closeAddInscritForm(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
           <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
             <button onclick="closeAddInscritForm()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
             <p class="text-base font-bold text-ink mb-1">Ajouter un inscrit</p>
@@ -321,7 +322,7 @@
               <option value="majeur">Majeur</option>
               <option value="gratuit">Gratuité (sans emploi)</option>
             </select>
-            <button onclick="submitAddInscrit()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer le compte</button>
+            <button onclick="submitAddInscrit()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer le compte</button>
           </div>
         </div>
       </section>
@@ -331,7 +332,7 @@
         <h2 class="text-lg font-bold text-ink mb-1">Prêts &amp; réservations</h2>
 
         <div class="flex items-center gap-6 border-b border-mango-100 mb-5 flex-wrap">
-          <button id="pr-tab-reservations-btn" type="button" onclick="switchPrTab('reservations')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-ink text-ink">
+          <button id="pr-tab-reservations-btn" type="button" onclick="switchPrTab('reservations')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-brand text-ink">
             Réservations (<span id="reservations-open-count">0</span>)
           </button>
           <button id="pr-tab-active-btn" type="button" onclick="switchPrTab('active')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
@@ -345,7 +346,7 @@
         <div id="pr-panel-reservations">
           <div class="flex items-center gap-2 mb-5 flex-wrap">
             <span class="text-[10px] font-bold text-ink/35 uppercase tracking-wide mr-0.5">Filtrer</span>
-            <button id="resa-tab-preparation-btn" type="button" onclick="switchReservationTab('preparation')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-ink text-white border-ink">
+            <button id="resa-tab-preparation-btn" type="button" onclick="switchReservationTab('preparation')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-brand text-white border-brand">
               À préparer (<span id="resa-count-preparation">0</span>)
             </button>
             <button id="resa-tab-pret-btn" type="button" onclick="switchReservationTab('pret')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-ink/55 border-mango-100">
@@ -360,7 +361,7 @@
             <p class="text-sm font-bold text-ink mb-1">Remettre une commande à un usager</p>
             <p class="text-xs text-ink/55 mb-3">Scanne la carte (QR code) de l'usager : ses réservations prêtes à récupérer s'affichent, à confirmer en un clic — le prêt est enregistré automatiquement.</p>
             <div id="pickup-camera-slot" class="mb-2"></div>
-            <button type="button" id="pickup-camera-btn" onclick="toggleCamera('pickup'); document.getElementById('pickup-subscriber-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner la carte de l'usager</button>
+            <button type="button" id="pickup-camera-btn" onclick="toggleCamera('pickup'); document.getElementById('pickup-subscriber-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner la carte de l'usager</button>
             <p id="pickup-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
             <label for="pickup-subscriber-input" class="text-xs font-semibold text-ink/60 block mb-1">Ou taper le numéro d'abonné</label>
             <input id="pickup-subscriber-input" type="text" autocomplete="off" placeholder="Numéro d'abonné"
@@ -380,7 +381,7 @@
 
         <div id="pr-panel-retours" class="hidden">
           <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
-            <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan'); document.getElementById('loan-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">Faire un retour</button>
+            <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan'); document.getElementById('loan-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">Faire un retour</button>
             <p id="loan-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
             <div id="loan-camera-slot" class="mb-2"></div>
             <label for="loan-barcode-input" class="text-xs font-semibold text-ink/60 block mb-1">Taper le code-barres de la bibliothèque</label>
@@ -417,7 +418,7 @@
             <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm">
               <p class="text-sm font-bold text-ink mb-3">Confirmer un envoi</p>
               <div id="transfer-send-camera-slot" class="mb-2"></div>
-              <button type="button" id="transfer-send-camera-btn" onclick="toggleCamera('transferSend'); document.getElementById('transfer-send-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner le livre qui part</button>
+              <button type="button" id="transfer-send-camera-btn" onclick="toggleCamera('transferSend'); document.getElementById('transfer-send-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner le livre qui part</button>
               <p id="transfer-send-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
               <input id="transfer-send-barcode-input" type="text" autocomplete="off" placeholder="Code-barres de la bibliothèque"
                 onkeydown="if(event.key==='Enter'){event.preventDefault(); doTransferSend();}"
@@ -428,7 +429,7 @@
             <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm">
               <p class="text-sm font-bold text-ink mb-3">Confirmer une réception</p>
               <div id="transfer-receive-camera-slot" class="mb-2"></div>
-              <button type="button" id="transfer-receive-camera-btn" onclick="toggleCamera('transferReceive'); document.getElementById('transfer-receive-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner le livre qui arrive</button>
+              <button type="button" id="transfer-receive-camera-btn" onclick="toggleCamera('transferReceive'); document.getElementById('transfer-receive-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner le livre qui arrive</button>
               <p id="transfer-receive-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
               <input id="transfer-receive-barcode-input" type="text" autocomplete="off" placeholder="Code-barres de la bibliothèque"
                 onkeydown="if(event.key==='Enter'){event.preventDefault(); doTransferReceive();}"
@@ -449,7 +450,7 @@
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <button onclick="openPastEventsView()" style="touch-action: manipulation;" class="bg-hibiscus-50 text-hibiscus-700 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Événements passés</button>
-            <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un événement</button>
+            <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un événement</button>
           </div>
         </div>
 
@@ -534,7 +535,7 @@
               </label>
             </div>
             <div class="flex gap-2">
-              <button onclick="saveEvent()" class="flex-1 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+              <button onclick="saveEvent()" class="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
               <button onclick="resetEventForm(); closeEventForm()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Annuler</button>
             </div>
 
@@ -563,7 +564,7 @@
         <div id="agenda-list-view" class="mt-4">
           <div id="agenda-empty-state" class="hidden text-center py-14">
             <p class="text-sm text-ink/50 mb-4">Aucun événement pour l'instant dans l'agenda.</p>
-            <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-ink text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer votre 1er évènement</button>
+            <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer votre 1er évènement</button>
           </div>
           <div id="agenda-list-content">
             <div class="relative max-w-xl mb-4">
@@ -650,14 +651,14 @@
             </div>
           </div>
           <p id="tariff-updated-label" class="text-[11px] text-ink/40 mb-3"></p>
-          <button onclick="saveTariffs()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les tarifs</button>
+          <button onclick="saveTariffs()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les tarifs</button>
         </div>
 
         <h2 class="text-lg font-bold text-ink mb-1">Horaires d'ouverture</h2>
         <p class="text-sm text-ink/55 mb-4">Affichés aux usagers depuis l'accueil de l'appli. Laisse vide ou écris « Fermé » pour un jour de fermeture.</p>
         <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-md">
           <div id="opening-hours-fields" class="flex flex-col gap-2 mb-3"></div>
-          <button onclick="saveOpeningHours()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les horaires</button>
+          <button onclick="saveOpeningHours()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les horaires</button>
         </div>
       </section>
 
@@ -677,14 +678,17 @@
         </div>
 
         <h3 class="text-base font-bold text-ink mb-2">Couleur principale</h3>
-        <p class="text-xs text-ink/55 mb-3">Remplace le vert BliGO utilisé pour les titres et les boutons. Clique à nouveau sur la couleur choisie pour revenir au vert par défaut.</p>
+        <p class="text-xs text-ink/55 mb-3">Remplace le vert des boutons et encadrés colorés (jamais le texte, qui reste toujours lisible). Clique à nouveau sur la couleur choisie pour revenir au vert par défaut.</p>
         <div id="settings-ink-palette" class="grid grid-cols-6 gap-2 max-w-md mb-8"></div>
 
         <h3 class="text-base font-bold text-ink mb-2">Couleur dégradé</h3>
         <p class="text-xs text-ink/55 mb-3">Remplace le dégradé orange/hibiscus par un dégradé dans cette seule couleur. Clique à nouveau sur la couleur choisie pour revenir au dégradé par défaut.</p>
         <div id="settings-accent-palette" class="grid grid-cols-6 gap-2 max-w-md mb-6"></div>
 
-        <button onclick="saveCommuneTheme()" class="max-w-md w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer l'apparence</button>
+        <div class="max-w-md flex gap-2">
+          <button onclick="saveCommuneTheme()" class="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer l'apparence</button>
+          <button onclick="resetCommuneTheme()" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-lg px-3 shrink-0">Réinitialiser les couleurs d'origine</button>
+        </div>
         <p id="settings-save-status" class="text-[11px] text-ink/45 mt-2 h-4"></p>
       </section>
 
@@ -704,7 +708,7 @@
 </main>
 
 <!-- Fiche livre complète -->
-<div id="book-modal-backdrop" onclick="closeBookModal(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="book-modal-backdrop" onclick="closeBookModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto relative">
     <button onclick="closeBookModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold z-10">✕</button>
     <div id="book-modal-content" class="p-6"></div>
@@ -712,7 +716,7 @@
 </div>
 
 <!-- Export du catalogue (direction) -->
-<div id="export-modal-backdrop" onclick="closeExportModal(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm items-center justify-center p-4">
+<div id="export-modal-backdrop" onclick="closeExportModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative p-6">
     <button onclick="closeExportModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
     <h3 class="text-lg font-bold text-ink mb-1">Exporter le catalogue</h3>
@@ -732,7 +736,7 @@
 </div>
 
 <!-- Fiche événement -->
-<div id="event-detail-backdrop" onclick="closeEventDetail(event)" class="hidden fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm items-center justify-center p-4">
+<div id="event-detail-backdrop" onclick="closeEventDetail(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative">
     <button onclick="closeEventDetail()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold z-10">✕</button>
     <div id="event-detail-content" class="p-6"></div>
@@ -740,7 +744,7 @@
 </div>
 
 <!-- Zoom couverture (réservations) -->
-<div id="cover-zoom-backdrop" onclick="closeCoverZoom(event)" class="hidden fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm items-center justify-center p-4">
+<div id="cover-zoom-backdrop" onclick="closeCoverZoom(event)" class="hidden fixed inset-0 z-50 bg-brand/60 backdrop-blur-sm items-center justify-center p-4">
   <div class="relative max-w-xs w-full">
     <button onclick="closeCoverZoom()" class="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
     <img id="cover-zoom-img" src="" alt="" class="w-full rounded-xl shadow-2xl">
@@ -2375,10 +2379,10 @@
     available: { label: '● Disponible', classes: 'bg-mango-50 text-mango-700' },
     reserved: { label: '● Mis de côté', classes: 'bg-amber-50 text-amber-700' },
     borrowed: { label: '● Emprunté', classes: 'bg-hibiscus-50 text-hibiscus-700' },
-    in_transit: { label: '● En transit', classes: 'bg-ink/10 text-ink/60' },
-    processing: { label: "● En cours d'équipement", classes: 'bg-ink/10 text-ink/60' },
+    in_transit: { label: '● En transit', classes: 'bg-brand/10 text-ink/60' },
+    processing: { label: "● En cours d'équipement", classes: 'bg-brand/10 text-ink/60' },
     lost: { label: '● Perdu', classes: 'bg-red-50 text-red-600' },
-    withdrawn: { label: '● Retiré du fonds', classes: 'bg-ink/10 text-ink/60' },
+    withdrawn: { label: '● Retiré du fonds', classes: 'bg-brand/10 text-ink/60' },
   };
 
   window.lookupLoanBarcode = async function () {
@@ -2420,12 +2424,12 @@
           <option value="bon" selected>Bon état</option>
           <option value="mauvais">Mauvais état</option>
         </select>
-        <button onclick="doLoanReturn('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="w-full mt-1 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer le retour</button>`;
+        <button onclick="doLoanReturn('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="w-full mt-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer le retour</button>`;
     } else if (info.status === 'available' || info.status === 'reserved') {
       actionHtml = `
         <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Numéro d'abonné de l'usager</label>
         <input id="loan-subscriber-input" type="text" style="font-size: 16px;" placeholder="Numéro d'abonné" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
-        <button onclick="doLoanCheckout('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="w-full mt-2 bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer l'emprunt</button>`;
+        <button onclick="doLoanCheckout('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="w-full mt-2 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer l'emprunt</button>`;
     } else {
       actionHtml = `<p class="text-xs text-ink/45 mt-3">Aucune action possible pour ce statut depuis cet écran.</p>`;
     }
@@ -2580,7 +2584,7 @@
       document.getElementById(`pr-panel-${t}`).classList.toggle('hidden', t !== tab);
       const btn = document.getElementById(`pr-tab-${t}-btn`);
       const active = tab === t;
-      btn.classList.toggle('border-ink', active);
+      btn.classList.toggle('border-brand', active);
       btn.classList.toggle('text-ink', active);
       btn.classList.toggle('border-transparent', !active);
       btn.classList.toggle('text-ink/40', !active);
@@ -2859,7 +2863,7 @@
     retard: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">En retard</span>',
     en_cours: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-mango-50 text-mango-700">En cours</span>',
     en_attente: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Réservation en attente</span>',
-    rendu: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-ink/5 text-ink/45">Rendu</span>',
+    rendu: '<span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-brand/5 text-ink/45">Rendu</span>',
   };
 
   // Réutilisée pour l'affichage initial et pour le filtrage par la barre de
@@ -3425,7 +3429,7 @@
   function renderThemePalette(containerId, selected, onPick) {
     document.getElementById(containerId).innerHTML = THEME_PALETTE.map(c => `
       <button type="button" onclick="${onPick}('${c.hex}')" title="${c.name}"
-        class="w-full aspect-square rounded-lg border-2 ${selected === c.hex ? 'border-ink' : 'border-transparent'}"
+        class="w-full aspect-square rounded-lg border-2 ${selected === c.hex ? 'border-brand' : 'border-transparent'}"
         style="background:${c.hex}"></button>`).join('');
   }
 
@@ -3495,7 +3499,20 @@
     if (error) { status.textContent = ''; alert('Erreur : ' + error.message); return; }
     pendingLogoFile = null;
     status.textContent = '✓ Apparence enregistrée.';
+    // Applique tout de suite dans cette fenêtre, sans attendre un rechargement.
+    applyCommuneTheme({ theme_ink_hex: selectedInkHex, theme_accent_hex: selectedAccentHex });
     await loadCommuneSettings();
+  };
+
+  // Retour immédiat aux couleurs BliGO d'origine (logo non touché), sans
+  // repasser par "Enregistrer" — demandé le 23/09/2026 après un premier essai
+  // de couleurs jugé illisible.
+  window.resetCommuneTheme = async function () {
+    selectedInkHex = null;
+    selectedAccentHex = null;
+    renderThemePalette('settings-ink-palette', null, 'pickInkColor');
+    renderThemePalette('settings-accent-palette', null, 'pickAccentColor');
+    await saveCommuneTheme();
   };
 
   let duplicatesFilterActive = false;
@@ -3656,7 +3673,7 @@
               ⏳ À équiper
             </button>
           ` : `
-            <span class="inline-block w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full ${b.available_count > 0 ? 'bg-mango-50 text-mango-700' : 'bg-ink/5 text-ink/40'}">
+            <span class="inline-block w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full ${b.available_count > 0 ? 'bg-mango-50 text-mango-700' : 'bg-brand/5 text-ink/40'}">
               ● ${b.available_count}/${b.total_copies} dispo${b.total_copies > 1 ? 'nibles' : 'nible'}
             </span>
           `}
@@ -3747,7 +3764,7 @@
   function copiesManagementHtml(b) {
     const copies = b.copies || [];
     const rows = copies.map(c => {
-      const badge = COPY_STATUS_BADGE[c.status] || { label: c.status, classes: 'bg-ink/5 text-ink/50' };
+      const badge = COPY_STATUS_BADGE[c.status] || { label: c.status, classes: 'bg-brand/5 text-ink/50' };
       const canWithdraw = c.status === 'available' || c.status === 'processing';
       return `
         <div class="flex items-center justify-between gap-2 border-t border-mango-50 py-2 first:border-t-0 first:pt-0">
@@ -3836,7 +3853,7 @@
       </div>
       ${bookFieldRow('Résumé', 'bd-summary', b.summary, { textarea: true })}
 
-      <button onclick="saveBookDetail(${b.id})" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+      <button onclick="saveBookDetail(${b.id})" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
     `;
     document.getElementById('book-modal-backdrop').classList.remove('hidden');
     document.getElementById('book-modal-backdrop').classList.add('flex');
@@ -3992,7 +4009,7 @@
           <option value="gratuit">Gratuité (sans emploi)</option>
         </select>
         <span class="sm:text-right">
-          <button onclick="validateRegistration('${p.id}', '${escapeJsAttr(p.full_name)}')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-ink text-white rounded-full px-4 py-2.5 sm:py-1.5">Valider l'inscription</button>
+          <button onclick="validateRegistration('${p.id}', '${escapeJsAttr(p.full_name)}')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">Valider l'inscription</button>
         </span>
       </div>`).join('');
   };
@@ -4020,9 +4037,9 @@
     ['preparation', 'pret'].forEach(t => {
       const btn = document.getElementById(`resa-tab-${t}-btn`);
       const active = tab === t;
-      btn.classList.toggle('bg-ink', active);
+      btn.classList.toggle('bg-brand', active);
       btn.classList.toggle('text-white', active);
-      btn.classList.toggle('border-ink', active);
+      btn.classList.toggle('border-brand', active);
       btn.classList.toggle('bg-white', !active);
       btn.classList.toggle('text-ink/55', !active);
       btn.classList.toggle('border-mango-100', !active);
@@ -4082,7 +4099,7 @@
   const statusMap = {
     preparation: { label: 'En préparation', classes: 'bg-amber-50 text-amber-700' },
     pret: { label: 'Prêt à récupérer', classes: 'bg-mango-50 text-mango-700' },
-    recupere: { label: 'Récupéré', classes: 'bg-ink/5 text-ink/45' },
+    recupere: { label: 'Récupéré', classes: 'bg-brand/5 text-ink/45' },
     expiree: { label: 'Expirée — remise en circulation', classes: 'bg-red-50 text-red-600' },
   };
 
@@ -4152,7 +4169,7 @@
               <p class="text-[11px] mt-0.5 flex flex-wrap gap-x-2">${shelfHtml}${codeHtml}${isbnHtml}</p>
             </div>
           </div>
-          <button onclick="markReshelved(${r.id})" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-ink text-white rounded-full px-4 py-2.5 sm:py-1.5">✓ Remis en rayon</button>
+          <button onclick="markReshelved(${r.id})" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">✓ Remis en rayon</button>
         </div>`;
       }).join('');
       return;
@@ -4176,7 +4193,7 @@
       const itemsHtml = group.items.map(r => {
         let actionHtml = '';
         if (r.status === 'preparation') {
-          actionHtml = `<button onclick="setStatus(${r.id}, 'pret')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-ink text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer prêt</button>`;
+          actionHtml = `<button onclick="setStatus(${r.id}, 'pret')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer prêt</button>`;
         } else if (r.status === 'pret') {
           actionHtml = `<button onclick="setStatus(${r.id}, 'recupere')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-mango-600 text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer récupéré</button>`;
         }
@@ -4582,7 +4599,7 @@
       <div class="mt-4 pt-4 border-t border-mango-100">
         <p class="text-sm font-bold text-ink mb-2">Enregistrer une présence</p>
         <div id="checkin-camera-slot" class="mb-2"></div>
-        <button type="button" id="checkin-camera-btn" onclick="toggleCamera('checkin'); document.getElementById('checkin-subscriber-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition mb-2">Scanner la carte de l'usager</button>
+        <button type="button" id="checkin-camera-btn" onclick="toggleCamera('checkin'); document.getElementById('checkin-subscriber-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition mb-2">Scanner la carte de l'usager</button>
         <p id="checkin-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
         <input id="checkin-subscriber-input" type="text" autocomplete="off" data-event-id="${e.id}" placeholder="Ou taper le numéro d'abonné"
           onkeydown="if(event.key==='Enter'){event.preventDefault(); confirmEventCheckin(this.value, ${e.id});}"
