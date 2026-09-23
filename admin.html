@@ -3493,10 +3493,15 @@
   let pendingLogoFile = null;
 
   function renderThemePalette(containerId, selected, onPick) {
+    // La sélection ne peut pas s'indiquer avec une couleur du thème (elle se
+    // fond dans la pastille choisie) — une coche blanche à ombre portée reste
+    // lisible quelle que soit la couleur (23/09/2026).
     document.getElementById(containerId).innerHTML = THEME_PALETTE.map(c => `
       <button type="button" onclick="${onPick}('${c.hex}')" title="${c.name}"
-        class="w-full aspect-square rounded-lg border-2 ${selected === c.hex ? 'border-brand' : 'border-transparent'}"
-        style="background:${c.hex}"></button>`).join('');
+        class="relative w-full aspect-square rounded-lg border-2 transition active:scale-90 hover:scale-105 hover:shadow-md ${selected === c.hex ? 'border-ink scale-105 shadow-md' : 'border-transparent'}"
+        style="background:${c.hex};touch-action:manipulation;">
+        ${selected === c.hex ? '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;text-shadow:0 1px 3px rgba(0,0,0,.7);">✓</span>' : ''}
+      </button>`).join('');
   }
 
   // Recliquer sur la couleur déjà choisie la désélectionne (retour aux
