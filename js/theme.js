@@ -56,8 +56,19 @@ const RAMP_STEPS = Object.keys(RAMP_LIGHTNESS);
 export function generateRamp(baseHex) {
   const [h, s] = hexToHsl(baseHex);
   const sat = Math.max(s, 55); // évite une palette trop grisée si la couleur choisie est pâle
+  // Le jaune (et le jaune-orange/jaune-vert voisins) paraît toujours plus
+  // clair qu'une autre teinte à la même luminosité HSL — l'œil humain le
+  // perçoit comme plus lumineux. Sans correction, un petit texte en
+  // mango-600/700/800 (badges, liens) resterait peu lisible sur fond blanc
+  // pour une médiathèque ayant choisi une couleur de cette famille
+  // (23/09/2026, demande explicite de Mégane après un premier essai).
+  const isYellowish = h >= 40 && h <= 100;
   const ramp = {};
-  for (const step of RAMP_STEPS) ramp[step] = hslToHex(h, sat, RAMP_LIGHTNESS[step]);
+  for (const step of RAMP_STEPS) {
+    let lightness = RAMP_LIGHTNESS[step];
+    if (isYellowish && Number(step) >= 500) lightness = Math.max(12, lightness - 14);
+    ramp[step] = hslToHex(h, sat, lightness);
+  }
   return ramp;
 }
 
