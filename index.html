@@ -24,9 +24,11 @@
   body { font-family: 'Inter', sans-serif; }
   .font-logo { font-family: 'Poppins', sans-serif; }
   /* En dessous de 16px, Safari iOS zoome automatiquement sur un champ au clic
-     (la page semble "bouger") — on force 16px sur mobile pour l'empêcher. */
+     (la page semble "bouger") — on force 16px sur mobile pour l'empêcher.
+     !important nécessaire : les classes Tailwind (text-sm, text-xs...) sur
+     les champs sont plus spécifiques qu'un simple sélecteur de balise. */
   @media (max-width: 640px) {
-    input, select, textarea { font-size: 16px; }
+    input, select, textarea { font-size: 16px !important; }
   }
 </style>
 </head>
