@@ -108,9 +108,25 @@
       </form>
 
       <p id="auth-message" class="text-xs text-center mt-3"></p>
+
+      <div id="post-signup-actions" class="hidden flex-col gap-2 mt-3">
+        <button type="button" onclick="resendConfirmationEmail()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Valider mon adresse mail</button>
+        <button type="button" onclick="openPreregInfo()" class="w-full bg-white border border-mango-200 text-mango-700 rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Préinscription — documents et tarif</button>
+      </div>
     </div>
 
     <p class="text-[11px] text-ink/35 text-center mt-6">BliGO — l'appli pour réserver vos livres en un clic</p>
+  </div>
+
+  <!-- Détail préinscription : documents à apporter + tarif + paiement -->
+  <div id="prereg-info-backdrop" onclick="closePreregInfo(event)" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+      <button onclick="closePreregInfo()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+      <svg class="w-8 h-8 text-mango-600 mb-3" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
+      <p class="text-base font-bold text-ink mb-2">Préinscription</p>
+      <p id="prereg-info-text" class="text-sm text-ink/60 leading-relaxed"></p>
+      <button onclick="closePreregInfo()" class="w-full mt-5 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">J'ai compris</button>
+    </div>
   </div>
 
 <script type="module">
@@ -210,9 +226,66 @@
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }
-    messageEl.textContent = 'Compte créé. Vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi. Un agent validera ton compte lors de ton prochain passage.';
+    messageEl.textContent = 'Compte créé ! Vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi.';
     messageEl.className = 'text-xs text-center mt-3 text-mango-700';
+
+    lastSignup = { email, commune_id, self_declared_category };
+    const actions = document.getElementById('post-signup-actions');
+    actions.classList.remove('hidden');
+    actions.classList.add('flex');
   });
+
+  let lastSignup = null;
+
+  window.resendConfirmationEmail = async function () {
+    if (!lastSignup) return;
+    messageEl.textContent = 'Envoi en cours…';
+    messageEl.className = 'text-xs text-center mt-3 text-ink/50';
+    const { error } = await supabase.auth.resend({ type: 'signup', email: lastSignup.email });
+    if (error) {
+      messageEl.textContent = error.message;
+      messageEl.className = 'text-xs text-center mt-3 text-red-600';
+      return;
+    }
+    messageEl.textContent = 'E-mail de confirmation envoyé ! Clique sur le lien reçu pour activer ton compte.';
+    messageEl.className = 'text-xs text-center mt-3 text-mango-700';
+  };
+
+  window.openPreregInfo = async function () {
+    const backdrop = document.getElementById('prereg-info-backdrop');
+    const textEl = document.getElementById('prereg-info-text');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
+    textEl.textContent = 'Chargement…';
+
+    let tariffLine = '';
+    if (lastSignup?.commune_id) {
+      const { data: commune } = await supabase
+        .from('communes')
+        .select('tariff_mineur_cents, tariff_majeur_cents, accepts_card, accepts_cash')
+        .eq('id', lastSignup.commune_id)
+        .single();
+      if (commune) {
+        const cents = lastSignup.self_declared_category === 'mineur' ? commune.tariff_mineur_cents : commune.tariff_majeur_cents;
+        const amount = (cents / 100).toFixed(2).replace('.00', '');
+        const payment = commune.accepts_card && commune.accepts_cash ? 'par carte bancaire ou en espèces'
+          : commune.accepts_card ? 'par carte bancaire uniquement'
+          : commune.accepts_cash ? 'en espèces uniquement' : '';
+        tariffLine = cents > 0
+          ? ` L'abonnement annuel est de <strong>${amount} €</strong>, à régler ce jour-là${payment ? ' ' + payment : ''}.`
+          : ' L\'inscription est gratuite dans ta médiathèque.';
+      }
+    }
+
+    textEl.innerHTML = `Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là.${tariffLine} Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.`;
+  };
+
+  window.closePreregInfo = function (event) {
+    if (event && event.target.id !== 'prereg-info-backdrop') return;
+    const backdrop = document.getElementById('prereg-info-backdrop');
+    backdrop.classList.add('hidden');
+    backdrop.classList.remove('flex');
+  };
 
   async function loadSignupCommunes() {
     const { data } = await supabase.from('communes').select('id, name').order('name');
