@@ -1,4 +1,4 @@
- -- Moyens de paiement acceptés par médiathèque, affichés à l'usager en
+-- Moyens de paiement acceptés par médiathèque, affichés à l'usager en
 -- préinscription (montant de l'abonnement + comment le régler au retrait de
 -- sa première commande). Les deux à true par défaut (carte + espèces),
 -- ajustable par la direction dans "Tarifs médiathèque".

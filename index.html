@@ -43,6 +43,16 @@
       <img src="img/bligo-logo.png" alt="BliGO" class="w-40 h-auto">
     </div>
 
+    <!-- Après clic sur le lien de confirmation reçu par mail, si on est sur
+         le site (pas dans l'app elle-même) : proposer de rouvrir l'app
+         plutôt que de continuer sur le navigateur du téléphone. -->
+    <div id="reopen-app-banner" class="hidden bg-white border border-mango-100 rounded-2xl shadow-sm p-6 text-center">
+      <p class="text-sm font-bold text-ink mb-1">Adresse confirmée ! ✓</p>
+      <p class="text-xs text-ink/55 mb-4">Ton compte BliGO est prêt.</p>
+      <a href="bligo://open" class="block w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Retourner sur l'application</a>
+      <button type="button" onclick="document.getElementById('reopen-app-banner').classList.add('hidden'); window.location.href = 'accueil.html';" class="w-full mt-3 text-xs font-semibold text-ink/50 hover:text-ink/80">Continuer sur le site</button>
+    </div>
+
     <!-- Choix de la médiathèque : premier écran vu sans compte connecté,
          pour parcourir le catalogue avant même de s'inscrire. -->
     <div id="landing-choice" class="bg-white border border-mango-100 rounded-2xl shadow-sm p-6">
@@ -367,9 +377,22 @@
     switchTab('login');
   }
 
-  // Déjà connecté ? on saute directement au catalogue.
+  // Arrivée juste après avoir confirmé son adresse mail (lien reçu par
+  // mail) et pas déjà dans l'app elle-même : proposer de rouvrir l'app
+  // plutôt que d'enchaîner directement sur le catalogue dans le navigateur.
+  const justConfirmedEmail = window.location.hash.includes('type=signup') && !window.Capacitor?.isNativePlatform?.();
+
+  // Déjà connecté ? on saute directement au catalogue — sauf juste après une
+  // confirmation d'e-mail sur le site, où on affiche d'abord le bouton
+  // ci-dessus.
   supabase.auth.getSession().then(({ data }) => {
-    if (data.session) window.location.href = 'accueil.html';
+    if (!data.session) return;
+    if (justConfirmedEmail) {
+      document.getElementById('landing-choice').classList.add('hidden');
+      document.getElementById('reopen-app-banner').classList.remove('hidden');
+      return;
+    }
+    window.location.href = 'accueil.html';
   });
 </script>
 </body>
