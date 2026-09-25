@@ -49,6 +49,14 @@
 
 <main class="max-w-4xl mx-auto px-5 py-8 max-w-sm">
 
+  <!-- Vu sans compte : pas de fiche à afficher, juste une invitation claire
+       à en créer un pour accéder au reste. -->
+  <div id="guest-profile-view" class="hidden text-center py-10">
+    <p class="text-sm font-bold text-ink/50 mb-8">Mes informations personnelles</p>
+    <button onclick="window.location.href = 'index.html?gate=reserve'" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer mon compte</button>
+  </div>
+
+  <div id="profile-content">
   <div class="flex items-center justify-center gap-2 mb-6">
     <button id="registration-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full"></button>
   </div>
@@ -91,7 +99,10 @@
 
   <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
     <p class="text-xs font-semibold text-ink/50 mb-1">Nom</p>
-    <p id="profile-name" class="text-sm font-bold text-ink mb-3">—</p>
+    <p class="text-sm font-bold text-ink mb-3 flex items-center gap-1.5">
+      <span id="profile-name">—</span>
+      <button type="button" onclick="editMyName()" aria-label="Modifier mon nom" class="text-ink/30 hover:text-ink/60">✎</button>
+    </p>
     <p class="text-xs font-semibold text-ink/50 mb-1">E-mail</p>
     <p id="profile-email" class="text-sm font-bold text-ink">—</p>
   </div>
@@ -113,6 +124,7 @@
   </div>
 
   <button onclick="logout()" class="w-full text-sm font-semibold text-red-600 hover:text-red-700 border border-red-100 bg-red-50 rounded-lg py-2.5">Déconnexion</button>
+  </div>
 
 </main>
 
@@ -172,14 +184,17 @@
   import { updateReservationBadge } from './js/navBadge.js';
 
   let currentSubscriberNumber = null;
+  let currentUserId = null;
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      window.location.href = 'index.html?gate=reserve';
+      document.getElementById('profile-content').classList.add('hidden');
+      document.getElementById('guest-profile-view').classList.remove('hidden');
       return;
     }
     const currentUser = session.user;
+    currentUserId = currentUser.id;
     updateReservationBadge(currentUser.id);
 
     const { data: profile } = await supabase
@@ -332,6 +347,18 @@
       setTimeout(() => window.location.reload(), 2500);
     }, { once: true });
   }
+
+  // Complète/corrige son propre nom — utile car l'inscription ne demande
+  // plus que l'e-mail et le mot de passe, le nom se renseigne ici ensuite.
+  window.editMyName = async function () {
+    const current = document.getElementById('profile-name').textContent.trim();
+    const newName = prompt('Ton prénom et nom :', current === '—' || current === 'Nouvel usager' ? '' : current);
+    if (!newName || !newName.trim()) return;
+    const { error } = await supabase.from('profiles').update({ full_name: newName.trim() }).eq('id', currentUserId);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    document.getElementById('profile-name').textContent = newName.trim();
+    document.getElementById('card-name').textContent = newName.trim();
+  };
 
   window.openPendingPopup = function () {
     const backdrop = document.getElementById('pending-popup-backdrop');
