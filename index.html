@@ -39,8 +39,10 @@
 <body class="bg-white text-ink min-h-screen flex items-center justify-center px-4">
 
   <div class="w-full max-w-sm">
-    <div class="flex flex-col items-center gap-1.5 mb-8">
-      <img src="img/bligo-logo.png" alt="BliGO" class="w-40 h-auto">
+    <div class="flex flex-col items-center gap-2 mb-8">
+      <img id="header-bligo-logo" src="img/bligo-logo.png" alt="BliGO" class="w-40 h-auto">
+      <img id="header-commune-logo" alt="" class="hidden w-20 h-20 rounded-full object-contain bg-white shadow-md">
+      <p id="header-commune-name" class="hidden text-sm font-bold text-ink text-center"></p>
     </div>
 
     <!-- Après clic sur le lien de confirmation reçu par mail, si on est sur
@@ -326,6 +328,31 @@
     document.getElementById('signup-commune').innerHTML = optionsHtml;
     document.getElementById('landing-commune').innerHTML = optionsHtml;
   }
+
+  // Dès qu'on sait pour quelle médiathèque on est là (choisie en invité,
+  // lien de parrainage…), on affiche son logo plutôt que celui de BliGO —
+  // c'est elle qu'on rejoint, pas juste une appli générique.
+  async function applyCommuneHeader(communeId) {
+    if (!communeId) return;
+    const { data: commune } = await supabase.from('communes').select('name, logo_url').eq('id', communeId).single();
+    if (!commune) return;
+
+    document.getElementById('header-bligo-logo').classList.add('hidden');
+    document.getElementById('header-commune-name').textContent = `Médiathèque de ${commune.name}`;
+    document.getElementById('header-commune-name').classList.remove('hidden');
+
+    const logoEl = document.getElementById('header-commune-logo');
+    logoEl.onload = () => logoEl.classList.remove('hidden');
+    if (commune.logo_url) {
+      logoEl.onerror = () => logoEl.classList.add('hidden');
+      logoEl.src = commune.logo_url;
+    } else {
+      const slug = commune.name.normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      logoEl.onerror = () => logoEl.classList.add('hidden');
+      logoEl.src = `img/commune-logos/${slug}.png`;
+    }
+  }
   // Choix de la médiathèque sans compte : on mémorise juste le temps de la
   // redirection (accueil.html lit cette valeur une fois puis la consomme),
   // pas un vrai "souvenir" durable — on repasse par ce choix à chaque
@@ -355,6 +382,16 @@
   const refCode = urlParams.get('ref');
   const gateReason = urlParams.get('gate');
   await loadCommuneOptions();
+
+  const guestCommuneIdOnLoad = localStorage.getItem('bligo_guest_commune_id');
+  if (guestCommuneIdOnLoad) {
+    document.getElementById('landing-commune').value = guestCommuneIdOnLoad;
+    document.getElementById('signup-commune').value = guestCommuneIdOnLoad;
+    applyCommuneHeader(guestCommuneIdOnLoad);
+  }
+  document.getElementById('landing-commune').addEventListener('change', (e) => applyCommuneHeader(e.target.value));
+  document.getElementById('signup-commune').addEventListener('change', (e) => applyCommuneHeader(e.target.value));
+
   if (refCode || gateReason) {
     showAuthCard();
     if (refCode) {
