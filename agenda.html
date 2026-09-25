@@ -307,14 +307,12 @@
 
     // Dans l'app (iOS/Android), un simple lien de téléchargement ne fait rien
     // — pas de gestionnaire de téléchargements dans une WKWebView/WebView
-    // packagée. On écrit le fichier puis on ouvre le partage natif, qui
-    // propose Calendrier/Google Agenda comme sur le reste du téléphone.
+    // packagée. On ouvre le fichier dans le navigateur système ('_system'),
+    // qui sait nativement proposer Calendrier/Google Agenda pour un .ics,
+    // exactement comme sur le site web.
     if (window.Capacitor?.isNativePlatform?.()) {
-      const { Filesystem, Share } = window.Capacitor.Plugins;
-      Filesystem.writeFile({ path: filename, data: ics, directory: 'CACHE', encoding: 'utf8' })
-        .then(() => Filesystem.getUri({ path: filename, directory: 'CACHE' }))
-        .then(({ uri }) => Share.share({ files: [uri], dialogTitle: 'Ajouter à mon calendrier' }))
-        .catch((err) => alert('Impossible de partager l\'événement : ' + err.message));
+      const base64 = btoa(unescape(encodeURIComponent(ics)));
+      window.open(`data:text/calendar;charset=utf-8;base64,${base64}`, '_system');
       return;
     }
 
