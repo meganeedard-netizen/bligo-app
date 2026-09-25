@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO — Connexion</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,6 +22,10 @@
 </script>
 <style>
   body { font-family: 'Inter', sans-serif; }
+  /* Sur un vrai iPhone (encoche/île dynamique), le logo touchait sinon la
+     barre de statut — cette page n'avait pas encore reçu ce correctif,
+     contrairement aux autres pages de l'app. */
+  body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
   .font-logo { font-family: 'Poppins', sans-serif; }
   /* En dessous de 16px, Safari iOS zoome automatiquement sur un champ au clic
      (la page semble "bouger") — on force 16px sur mobile pour l'empêcher.
