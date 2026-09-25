@@ -49,7 +49,7 @@
         <button id="opening-hours-link" onclick="openOpeningHoursModal()" class="hidden text-[11px] font-semibold text-mango-700 underline mt-0.5">Horaires</button>
       </div>
     </div>
-    <a href="points.html" class="shrink-0 flex items-center gap-2 bg-white border border-mango-100 rounded-full pl-4 pr-1 py-1 shadow-sm">
+    <a id="points-link" href="points.html" class="shrink-0 flex items-center gap-2 bg-white border border-mango-100 rounded-full pl-4 pr-1 py-1 shadow-sm">
       <span id="points-display" class="text-sm font-bold bg-gradient-to-r from-mango-500 to-hibiscus-600 bg-clip-text text-transparent">0</span>
       <span class="w-7 h-7 rounded-full bg-mango-50 flex items-center justify-center overflow-hidden shrink-0 text-mango-700">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
@@ -57,7 +57,7 @@
     </a>
   </div>
 
-  <div onclick="if (event.target.id !== 'edit-goal-btn') window.location.href = 'reservations.html#history-section';" class="cursor-pointer rounded-2xl p-5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden mb-6">
+  <div id="challenge-card" onclick="if (event.target.id !== 'edit-goal-btn') window.location.href = 'reservations.html#history-section';" class="cursor-pointer rounded-2xl p-5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden mb-6">
     <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
     <div class="absolute -right-2 bottom-4 w-16 h-16 rounded-full bg-white/10"></div>
     <div class="relative flex items-center justify-between mb-1.5">
@@ -311,6 +311,7 @@
   }
 
   async function toggleWishlist(bookId) {
+    if (!requireAccount('reserve')) return;
     let error;
     if (wishlist.includes(bookId)) {
       ({ error } = await supabase.from('wishlist').delete().eq('user_id', currentUser.id).eq('book_id', bookId));
@@ -459,6 +460,7 @@
   }
 
   async function reserveBook(bookId, btn) {
+    if (!requireAccount('reserve')) return;
     const alreadyRead = reservations.some(r => r.status === 'recupere' && r.books?.id === bookId);
     if (alreadyRead) {
       const confirmed = confirm('Tu as déjà lu ce livre. Es-tu sûr(e) de vouloir l\'ajouter à tes réservations ?');
@@ -793,11 +795,60 @@
 
   // ==================== INIT ====================
 
+  // Bloque une action réservée aux comptes (réserver, liste d'envie…) et
+  // renvoie vers l'inscription avec un message adapté plutôt qu'une page de
+  // connexion nue — appelé au moment de l'action, pas à l'arrivée sur la
+  // page, pour laisser un invité parcourir librement le catalogue.
+  function requireAccount(reason) {
+    if (currentUser) return true;
+    window.location.href = `index.html?gate=${reason}`;
+    return false;
+  }
+
+  // Un visiteur sans compte peut choisir sa médiathèque et parcourir son
+  // catalogue (voir index.html) — pas de session, donc pas de points/défi de
+  // lecture/réservations, juste la vitrine, avec un renvoi vers l'inscription
+  // dès qu'il tente de réserver ou d'ajouter à sa liste d'envie.
+  async function initGuest(communeId) {
+    const { data: commune } = await supabase
+      .from('communes')
+      .select('name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url')
+      .eq('id', communeId)
+      .single();
+
+    myCommuneId = Number(communeId);
+    myCommuneName = commune?.name || '';
+    myOpeningHours = commune?.opening_hours || null;
+    applyCommuneTheme(commune);
+
+    document.getElementById('greeting').textContent = 'Bienvenue !';
+    document.getElementById('commune-display').textContent = myCommuneName ? `Médiathèque de ${myCommuneName}` : '';
+    document.getElementById('opening-hours-link').classList.toggle('hidden', !myOpeningHours || !Object.values(myOpeningHours).some(Boolean));
+    document.getElementById('challenge-card').classList.add('hidden');
+
+    const pointsLink = document.getElementById('points-link');
+    pointsLink.removeAttribute('href');
+    pointsLink.classList.add('cursor-pointer');
+    pointsLink.addEventListener('click', () => requireAccount('reserve'));
+    document.getElementById('points-display').textContent = 'Créer mon compte';
+
+    const logoEl = document.getElementById('commune-logo');
+    if (commune?.logo_url) {
+      logoEl.onerror = () => logoEl.classList.add('hidden');
+      logoEl.onload = () => logoEl.classList.remove('hidden');
+      logoEl.src = commune.logo_url;
+    }
+
+    renderCategoryFilters();
+    await loadBooks();
+  }
+
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      window.location.href = 'index.html';
-      return;
+      const guestCommuneId = localStorage.getItem('bligo_guest_commune_id');
+      if (!guestCommuneId) { window.location.href = 'index.html'; return; }
+      return initGuest(guestCommuneId);
     }
     currentUser = session.user;
     updateReservationBadge(currentUser.id);
