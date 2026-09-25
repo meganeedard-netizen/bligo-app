@@ -653,6 +653,11 @@
               <input id="tariff-gratuit" type="number" min="0" step="0.5" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
             </div>
           </div>
+          <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Moyens de paiement acceptés</label>
+          <div class="flex gap-4 mb-3">
+            <label class="flex items-center gap-1.5 text-sm text-ink"><input id="tariff-accepts-card" type="checkbox" class="accent-mango-600 w-4 h-4">Carte bancaire</label>
+            <label class="flex items-center gap-1.5 text-sm text-ink"><input id="tariff-accepts-cash" type="checkbox" class="accent-mango-600 w-4 h-4">Espèces</label>
+          </div>
           <p id="tariff-updated-label" class="text-[11px] text-ink/40 mb-3"></p>
           <button onclick="saveTariffs()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les tarifs</button>
         </div>
@@ -3425,7 +3430,7 @@
 
     const { data: commune, error: communeError } = await supabase
       .from('communes')
-      .select('tariff_mineur_cents, tariff_majeur_cents, tariff_gratuit_cents, tariff_updated_at, opening_hours')
+      .select('tariff_mineur_cents, tariff_majeur_cents, tariff_gratuit_cents, tariff_updated_at, opening_hours, accepts_card, accepts_cash')
       .eq('id', myCommuneId)
       .single();
 
@@ -3433,6 +3438,8 @@
       document.getElementById('tariff-mineur').value = (commune.tariff_mineur_cents / 100).toFixed(2);
       document.getElementById('tariff-majeur').value = (commune.tariff_majeur_cents / 100).toFixed(2);
       document.getElementById('tariff-gratuit').value = (commune.tariff_gratuit_cents / 100).toFixed(2);
+      document.getElementById('tariff-accepts-card').checked = commune.accepts_card;
+      document.getElementById('tariff-accepts-cash').checked = commune.accepts_cash;
       document.getElementById('tariff-updated-label').textContent = commune.tariff_updated_at
         ? `Dernière modification le ${formatDateShortAdmin(commune.tariff_updated_at)}`
         : 'Jamais modifiés.';
@@ -3451,8 +3458,12 @@
     const majeur = Math.round(Number(document.getElementById('tariff-majeur').value || 0) * 100);
     const gratuit = Math.round(Number(document.getElementById('tariff-gratuit').value || 0) * 100);
 
+    const acceptsCard = document.getElementById('tariff-accepts-card').checked;
+    const acceptsCash = document.getElementById('tariff-accepts-cash').checked;
+
     const { error } = await supabase.rpc('update_commune_tariffs', {
       p_commune_id: myCommuneId, p_mineur_cents: mineur, p_majeur_cents: majeur, p_gratuit_cents: gratuit,
+      p_accepts_card: acceptsCard, p_accepts_cash: acceptsCash,
     });
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadTeamAndTariffs();
