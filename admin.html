@@ -3040,7 +3040,10 @@
       <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
         <div class="px-4 py-3.5 bg-mango-50 border-b border-mango-100 flex items-center justify-between">
           <div>
-            <p class="text-sm font-bold text-ink">${escapeHtml(profile.full_name)}</p>
+            <p class="text-sm font-bold text-ink flex items-center gap-1.5">
+              <span id="fiche-usager-name">${escapeHtml(profile.full_name)}</span>
+              <button type="button" onclick="editUsagerName('${profile.id}', '${escapeJsAttr(profile.full_name)}')" style="touch-action: manipulation;" aria-label="Corriger le nom" class="text-ink/30 hover:text-ink/60">✎</button>
+            </p>
             <p class="text-xs text-ink/55">${escapeHtml(profile.subscriber_number)} · ${profile.account_type === 'officiel' ? 'Compte officiel' : 'Compte flash'}</p>
           </div>
           <div class="flex items-center gap-3">
@@ -3074,6 +3077,21 @@
   window.correctTariffCategory = async function (userId, category) {
     const { error } = await supabase.rpc('set_tariff_category', { p_user_id: userId, p_category: category });
     if (error) alert('Erreur : ' + error.message);
+  };
+
+  // Correction du nom/prénom depuis la fiche usager — utile si l'usager a
+  // fait une erreur de saisie à l'inscription, ou si l'agent constate un
+  // écart avec la pièce d'identité présentée au retrait de sa commande.
+  window.editUsagerName = async function (userId, currentName) {
+    const newName = prompt('Corriger le nom et prénom :', currentName);
+    if (!newName || !newName.trim() || newName.trim() === currentName) return;
+    const { error } = await supabase.rpc('update_usager_name', { p_user_id: userId, p_full_name: newName.trim() });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    const nameEl = document.getElementById('fiche-usager-name');
+    if (nameEl) {
+      nameEl.textContent = newName.trim();
+      nameEl.nextElementSibling?.setAttribute('onclick', `editUsagerName('${userId}', '${escapeJsAttr(newName.trim())}')`);
+    }
   };
 
   // Achat ou don, un document validé reste en statut « À équiper » tant

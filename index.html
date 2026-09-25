@@ -79,9 +79,15 @@
 
       <!-- SIGNUP -->
       <form id="form-signup" class="hidden flex-col gap-3">
-        <div>
-          <label class="text-xs font-semibold text-ink/60 block mb-1">Nom complet</label>
-          <input required type="text" id="signup-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Prénom</label>
+            <input required type="text" id="signup-first-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Nom</label>
+            <input required type="text" id="signup-last-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+          </div>
         </div>
         <div>
           <label class="text-xs font-semibold text-ink/60 block mb-1">E-mail</label>
@@ -215,7 +221,9 @@
     e.preventDefault();
     messageEl.textContent = 'Création du compte…';
     messageEl.className = 'text-xs text-center mt-3 text-ink/50';
-    const full_name = document.getElementById('signup-name').value;
+    const first_name = document.getElementById('signup-first-name').value.trim();
+    const last_name = document.getElementById('signup-last-name').value.trim();
+    const full_name = `${first_name} ${last_name}`.trim();
     const email = document.getElementById('signup-email').value;
     const commune_id = document.getElementById('signup-commune').value;
     const referral_code = document.getElementById('signup-referral').value.trim();
