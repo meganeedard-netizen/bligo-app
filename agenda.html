@@ -257,7 +257,7 @@
             ${e.description ? `<p class="text-xs text-ink/60 leading-relaxed mt-2">${e.description}</p>` : ''}
             <div class="flex items-center gap-2 mt-3 flex-wrap">
               <button data-event-id="${e.id}" ${full ? 'disabled' : ''} class="rsvp-btn text-xs font-semibold rounded-lg px-3 py-1.5 ${attending ? 'bg-mango-50 text-mango-700 border border-mango-200' : full ? 'bg-brand/10 text-ink/35' : 'bg-brand text-white'}">
-                ${attending ? 'Tu participes ✓' : full ? 'Complet' : 'Je participe'}
+                ${attending ? 'Je participe — inscription validée ✓' : full ? 'Complet' : "Je souhaite m'inscrire"}
               </button>
               ${attending ? `<button data-event-id="${e.id}" class="ics-btn text-xs font-semibold rounded-lg px-3 py-1.5 border border-hibiscus-200 text-hibiscus-700 bg-white">＋ Ajouter à mon calendrier</button>` : ''}
               <span class="text-[10.5px] text-ink/40">${seatsLabel}</span>
