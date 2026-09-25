@@ -202,7 +202,11 @@
     document.getElementById('profile-email').textContent = currentUser.email;
 
     document.getElementById('share-app-btn').addEventListener('click', async () => {
-      const shareUrl = `${window.location.origin}${window.location.pathname.replace('profil.html', 'index.html')}?ref=${encodeURIComponent(profile?.subscriber_number || '')}`;
+      // En dur plutôt que window.location.origin : dans l'app (iOS/Android),
+      // l'origine réelle est une adresse interne (capacitor://localhost),
+      // pas https://bligo.app — le lien partagé serait invalide pour qui le
+      // reçoit.
+      const shareUrl = `https://bligo.app/index.html?ref=${encodeURIComponent(profile?.subscriber_number || '')}`;
       const shareText = 'Rejoins-moi sur BliGO, la médiathèque numérique gratuite !';
       const msg = document.getElementById('share-message');
       if (navigator.share) {
