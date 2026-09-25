@@ -76,10 +76,10 @@
     <p id="card-number" class="text-xs text-white/70 relative mb-4"></p>
 
     <div id="card-qr-block" class="hidden">
-      <div class="bg-white rounded-xl p-3 w-fit relative">
+      <button type="button" onclick="openQrModal()" class="bg-white rounded-xl p-3 w-fit relative active:scale-95 transition" aria-label="Agrandir le QR code">
         <canvas id="card-qr-canvas" width="160" height="160"></canvas>
-      </div>
-      <p class="text-[10px] text-white/60 mt-2 relative">Présente ce code à l'accueil pour récupérer tes réservations.</p>
+      </button>
+      <p class="text-[10px] text-white/60 mt-2 relative">Présente ce code à l'accueil pour récupérer tes réservations — appuie dessus pour l'agrandir.</p>
     </div>
 
     <div id="card-pending-block" class="hidden bg-white/15 border border-white/25 rounded-xl px-4 py-6 relative flex flex-col items-center text-center gap-2">
@@ -127,6 +127,16 @@
   </div>
 </div>
 
+<!-- QR code agrandi, pour un scan plus facile par l'agent -->
+<div id="qr-modal-backdrop" onclick="closeQrModal(event)" class="hidden fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+  <div class="relative flex flex-col items-center">
+    <button onclick="closeQrModal()" aria-label="Fermer" class="absolute -top-12 right-0 w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-lg font-bold">✕</button>
+    <div class="bg-white rounded-2xl p-5">
+      <canvas id="qr-modal-canvas" width="280" height="280"></canvas>
+    </div>
+  </div>
+</div>
+
 <nav class="fixed bottom-0 inset-x-0 z-30 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)]" style="transform: translateZ(0); padding-bottom: env(safe-area-inset-bottom);">
   <div class="max-w-4xl mx-auto w-full flex items-center py-2 px-5">
   <a href="accueil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
@@ -161,7 +171,7 @@
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js';
 
-
+  let currentSubscriberNumber = null;
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -263,6 +273,7 @@
     if (isLibre) await setupAttachCommune();
 
     if (isValidated && profile?.subscriber_number) {
+      currentSubscriberNumber = profile.subscriber_number;
       document.getElementById('card-qr-block').classList.remove('hidden');
       const { default: QRCode } = await import('https://esm.sh/qrcode@1');
       const canvas = document.getElementById('card-qr-canvas');
@@ -272,6 +283,23 @@
     }
 
   }
+
+  window.openQrModal = async function () {
+    if (!currentSubscriberNumber) return;
+    const backdrop = document.getElementById('qr-modal-backdrop');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
+    const { default: QRCode } = await import('https://esm.sh/qrcode@1');
+    const canvas = document.getElementById('qr-modal-canvas');
+    await QRCode.toCanvas(canvas, currentSubscriberNumber, { width: 280, margin: 1, color: { dark: '#1B4B43' } });
+  };
+
+  window.closeQrModal = function (event) {
+    if (event && event.target.id !== 'qr-modal-backdrop') return;
+    const backdrop = document.getElementById('qr-modal-backdrop');
+    backdrop.classList.add('hidden');
+    backdrop.classList.remove('flex');
+  };
 
   async function setupAttachCommune() {
     const { data: communes } = await supabase.from('communes').select('id, name').order('name');
