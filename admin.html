@@ -341,6 +341,9 @@
           <button id="pr-tab-retours-btn" type="button" onclick="switchPrTab('retours')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
             Retours
           </button>
+          <button id="pr-tab-rayon-btn" type="button" onclick="switchPrTab('rayon')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
+            À remettre en rayon (<span id="reshelve-count">0</span>)
+          </button>
         </div>
 
         <div id="pr-panel-reservations">
@@ -351,9 +354,6 @@
             </button>
             <button id="resa-tab-pret-btn" type="button" onclick="switchReservationTab('pret')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-ink/55 border-mango-100">
               Prêtes à récupérer (<span id="resa-count-pret">0</span>)
-            </button>
-            <button id="resa-tab-expiree-btn" type="button" onclick="switchReservationTab('expiree')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-red-600 border-red-100">
-              À remettre en rayon (<span id="resa-count-expiree">0</span>)
             </button>
           </div>
 
@@ -393,6 +393,11 @@
           </div>
 
           <div id="loan-result" class="mt-5 max-w-xl"></div>
+        </div>
+
+        <div id="pr-panel-rayon" class="hidden">
+          <p class="text-xs text-ink/50 mb-3">Livres rendus et réservations non récupérées à temps. Valide chaque livre une fois rangé sur son étagère.</p>
+          <div id="reshelve-list" class="flex flex-col gap-3"></div>
         </div>
       </section>
 
@@ -981,7 +986,7 @@
     switchReservationTab('preparation');
     document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
     await loadCommunesForAgenda();
-    await Promise.all([loadBooks(), loadReservations(), loadActiveLoans(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents(), loadTransfers()]);
+    await Promise.all([loadBooks(), loadReservations(), loadActiveLoans(), loadReshelveLoans(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents(), loadTransfers()]);
     if (myIsDirection) await loadTeamAndTariffs();
   }
 
@@ -2492,7 +2497,7 @@
     const input = document.getElementById('loan-barcode-input');
     input.value = '';
     input.focus();
-    await loadActiveLoans();
+    await Promise.all([loadActiveLoans(), loadReservations(), loadReshelveLoans()]);
   };
 
   // ---------- Transferts (21/09/2026) ----------
@@ -2651,7 +2656,7 @@
   // « Prêts & réservations » (17/09/2026) : 3 onglets de haut niveau au lieu
   // de deux écrans de menu séparés.
   window.switchPrTab = function (tab) {
-    ['reservations', 'active', 'retours'].forEach(t => {
+    ['reservations', 'active', 'retours', 'rayon'].forEach(t => {
       document.getElementById(`pr-panel-${t}`).classList.toggle('hidden', t !== tab);
       const btn = document.getElementById(`pr-tab-${t}-btn`);
       const active = tab === t;
@@ -2661,6 +2666,7 @@
       btn.classList.toggle('text-ink/40', !active);
     });
     if (tab === 'active') loadActiveLoans();
+    if (tab === 'rayon') loadReshelveLoans();
     if (tab === 'retours') document.getElementById('loan-barcode-input')?.focus();
   };
 
@@ -2731,7 +2737,7 @@
     if (error) { alert('Erreur : ' + error.message); return; }
     if (!data.ok) { alert(data.message); return; }
     playBeep();
-    await loadActiveLoans();
+    await Promise.all([loadActiveLoans(), loadReservations(), loadReshelveLoans()]);
   };
 
   // ---------- Inscrits (liste + fiche de l'inscrit) ----------
@@ -4144,16 +4150,8 @@
       btn.classList.toggle('text-ink/55', !active);
       btn.classList.toggle('border-mango-100', !active);
     });
-    const expireeBtn = document.getElementById('resa-tab-expiree-btn');
-    const expireeActive = tab === 'expiree';
-    expireeBtn.classList.toggle('bg-red-600', expireeActive);
-    expireeBtn.classList.toggle('text-white', expireeActive);
-    expireeBtn.classList.toggle('border-red-600', expireeActive);
-    expireeBtn.classList.toggle('bg-white', !expireeActive);
-    expireeBtn.classList.toggle('text-red-600', !expireeActive);
-    expireeBtn.classList.toggle('border-red-100', !expireeActive);
     // Le scan carte usager ne sert à confirmer une remise que pour les
-    // réservations déjà prêtes — pas de sens dans les deux autres filtres.
+    // réservations déjà prêtes — pas de sens dans l'autre filtre.
     document.getElementById('pickup-scan-block').classList.toggle('hidden', tab !== 'pret');
     renderReservations();
   };
@@ -4228,52 +4226,14 @@
   function renderReservations() {
     const preparationCount = reservations.filter(r => r.status === 'preparation' && isVisibleToStaff(r)).length;
     const pretCount = reservations.filter(r => r.status === 'pret').length;
-    const expireeCount = reservations.filter(r => r.status === 'expiree' && !r.reshelved).length;
     document.getElementById('resa-count-preparation').textContent = preparationCount;
     document.getElementById('resa-count-pret').textContent = pretCount;
-    document.getElementById('resa-count-expiree').textContent = expireeCount;
     document.getElementById('reservations-count').textContent = preparationCount + pretCount;
     document.getElementById('reservations-open-count').textContent = preparationCount + pretCount;
 
     const list = document.getElementById('reservations-list');
 
-    // Onglet à part : une checklist qui reste tant que le livre n'a pas été
-    // physiquement remis en rayon, pour ne pas le perdre de vue une fois que la
-    // réservation a disparu des « prêtes ».
-    if (reservationTab === 'expiree') {
-      const toReshelve = reservations.filter(r => r.status === 'expiree' && !r.reshelved);
-      if (!toReshelve.length) {
-        list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Rien à remettre en rayon pour l'instant.</p>`;
-        return;
-      }
-      list.innerHTML = toReshelve.map(r => {
-        const coverHtml = r.books?.cover_url
-          ? `<img src="${escapeHtml(r.books.cover_url)}" alt="" onclick="zoomCover('${escapeJsAttr(r.books.cover_url)}')" class="w-10 h-14 object-cover rounded shrink-0 bg-mango-50 cursor-pointer hover:opacity-80">`
-          : `<div class="w-10 h-14 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${escapeHtml((r.books?.cover_initial || r.books?.title?.[0] || '?'))}</div>`;
-        const shelfHtml = r.books?.shelf_location
-          ? `<span class="text-red-700 font-semibold">📍 ${escapeHtml(r.books.shelf_location)}</span>`
-          : `<span class="text-ink/35 italic">📍 Ex. R AGA (rayon à définir)</span>`;
-        const barcode = r.books?.book_copies?.[0]?.barcode;
-        const codeHtml = barcode
-          ? `<span class="text-ink/45">Code ${escapeHtml(barcode)}</span>`
-          : `<span class="text-ink/35 italic">Ex. code BLIGO-000123</span>`;
-        const isbnHtml = r.books?.isbn ? `<span class="text-ink/45">ISBN ${escapeHtml(r.books.isbn)}</span>` : '';
-
-        return `
-        <div class="bg-white border border-red-100 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div class="flex gap-2.5 min-w-0">
-            ${coverHtml}
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.books?.title || 'Livre supprimé')}</p>
-              <p class="text-[11px] text-ink/45">${escapeHtml(r.books?.author || '')} · réservé par ${escapeHtml(r.profile?.full_name || 'usager inconnu')}</p>
-              <p class="text-[11px] mt-0.5 flex flex-wrap gap-x-2">${shelfHtml}${codeHtml}${isbnHtml}</p>
-            </div>
-          </div>
-          <button onclick="markReshelved(${r.id})" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">✓ Remis en rayon</button>
-        </div>`;
-      }).join('');
-      return;
-    }
+    renderReshelveList();
 
     const filtered = reservations.filter(r => r.status === reservationTab && isVisibleToStaff(r));
 
@@ -4458,6 +4418,99 @@
     const { error } = await supabase.from('reservations').update({ reshelved: true }).eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadReservations();
+  };
+
+  // ---------- À remettre en rayon (onglet Retours, 07/10/2026) ----------
+  // Sortie de l'onglet Réservations pour devenir un onglet à part, à droite
+  // de Retours : c'est là que le livre revient physiquement. Deux sources dans une seule checklist :
+  //   - les prêts rendus pas encore rangés (loans.reshelved, voir
+  //     sql/add_loans_reshelved.sql), emprunts comptoir compris ;
+  //   - les réservations prêtes non récupérées sous 48h (reservations.reshelved).
+
+  let reshelveLoans = [];
+
+  async function loadReshelveLoans() {
+    let query = supabase
+      .from('loans')
+      .select('id, returned_at, user_id, book_copies ( barcode, shelf_location, books ( title, author, shelf_location, isbn, cover_url, cover_initial ) )')
+      .not('returned_at', 'is', null)
+      .eq('reshelved', false)
+      .order('returned_at', { ascending: true });
+    if (myCommuneId) query = query.eq('returned_at_commune_id', myCommuneId);
+
+    const { data, error } = await query;
+    if (error) { console.error(error); reshelveLoans = []; renderReshelveList(); return; }
+
+    const userIds = [...new Set((data || []).map(l => l.user_id))];
+    let profilesById = {};
+    if (userIds.length) {
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
+      profilesById = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    }
+    reshelveLoans = (data || []).map(l => ({ ...l, profile: profilesById[l.user_id] }));
+    renderReshelveList();
+  }
+
+  function reshelveRowHtml({ book, barcode, shelf, subtitle, onclick }) {
+    const coverHtml = book?.cover_url
+      ? `<img src="${escapeHtml(book.cover_url)}" alt="" onclick="zoomCover('${escapeJsAttr(book.cover_url)}')" class="w-10 h-14 object-cover rounded shrink-0 bg-mango-50 cursor-pointer hover:opacity-80">`
+      : `<div class="w-10 h-14 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${escapeHtml((book?.cover_initial || book?.title?.[0] || '?'))}</div>`;
+    const shelfHtml = shelf
+      ? `<span class="text-red-700 font-semibold">📍 ${escapeHtml(shelf)}</span>`
+      : `<span class="text-ink/35 italic">📍 Rayon à définir</span>`;
+    const codeHtml = barcode ? `<span class="text-ink/45">Code ${escapeHtml(barcode)}</span>` : '';
+    const isbnHtml = book?.isbn ? `<span class="text-ink/45">ISBN ${escapeHtml(book.isbn)}</span>` : '';
+    return `
+      <div class="bg-white border border-red-100 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex gap-2.5 min-w-0">
+          ${coverHtml}
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-ink truncate">${escapeHtml(book?.title || 'Livre supprimé')}</p>
+            <p class="text-[11px] text-ink/45">${escapeHtml(book?.author || '')} · ${subtitle}</p>
+            <p class="text-[11px] mt-0.5 flex flex-wrap gap-x-2">${shelfHtml}${codeHtml}${isbnHtml}</p>
+          </div>
+        </div>
+        <button onclick="${onclick}" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">✓ Remis en rayon</button>
+      </div>`;
+  }
+
+  function renderReshelveList() {
+    const list = document.getElementById('reshelve-list');
+    if (!list) return;
+    const unclaimed = reservations.filter(r => r.status === 'expiree' && !r.reshelved);
+    const total = reshelveLoans.length + unclaimed.length;
+
+    document.getElementById('reshelve-count').textContent = total;
+
+    if (!total) {
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Rien à remettre en rayon pour l'instant.</p>`;
+      return;
+    }
+
+    const loanRows = reshelveLoans.map(l => {
+      const book = l.book_copies?.books;
+      return reshelveRowHtml({
+        book,
+        barcode: l.book_copies?.barcode,
+        shelf: l.book_copies?.shelf_location || book?.shelf_location,
+        subtitle: `rendu par ${escapeHtml(l.profile?.full_name || 'usager inconnu')} le ${formatDateShortAdmin(l.returned_at)}`,
+        onclick: `markLoanReshelved(${l.id})`,
+      });
+    });
+    const resaRows = unclaimed.map(r => reshelveRowHtml({
+      book: r.books,
+      barcode: r.books?.book_copies?.[0]?.barcode,
+      shelf: r.books?.shelf_location,
+      subtitle: `réservation non récupérée par ${escapeHtml(r.profile?.full_name || 'usager inconnu')}`,
+      onclick: `markReshelved(${r.id})`,
+    }));
+    list.innerHTML = [...loanRows, ...resaRows].join('');
+  }
+
+  window.markLoanReshelved = async function (id) {
+    const { error } = await supabase.from('loans').update({ reshelved: true }).eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadReshelveLoans();
   };
 
   // Accueil visiteurs et Agenda culturel retirés du back-office pour
