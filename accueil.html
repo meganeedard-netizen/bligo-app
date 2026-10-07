@@ -81,6 +81,7 @@
 
   <section class="mb-10">
     <span id="catalogue-status" class="text-xs text-ink/40"></span>
+    <div id="type-filters" class="hidden flex gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-1"></div>
     <div id="category-filters" class="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-1"></div>
     <p id="staff-pick-caption" class="hidden text-xs text-stone-400 mb-3">La sélection coup de cœur de votre médiathèque</p>
     <div id="book-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
@@ -197,8 +198,9 @@
   let searchQuery = '';
 
   const CATEGORIES = [
-    'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Jeunesse', 'BD',
-    'Bien-être', 'Maison', 'Histoire', 'Culture', 'Autres'
+    'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
+    'Documentaire', 'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
+    'Bien-être', 'Maison', 'Autres'
   ];
 
   // Sentinelle distincte des vraies catégories : sélection faite par la
@@ -218,8 +220,51 @@
     'Maison': '<img src="img/categories/maison.png?v=3" alt="" class="w-full h-full object-contain">',
     'Histoire': '<img src="img/categories/histoire.png?v=3" alt="" class="w-full h-full object-contain">',
     'Culture': '<img src="img/categories/culture.png?v=3" alt="" class="w-full h-full object-contain">',
-    'Autres': '<img src="img/categories/autres.png?v=3" alt="" class="w-full h-full object-contain">'
+    'Autres': '<img src="img/categories/autres.png?v=3" alt="" class="w-full h-full object-contain">',
+    // Icônes provisoires (07/10/2026), en attendant les visuels de Mégane.
+    'Documentaire': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full p-1.5"><path d="M4 4h10l4 4v12H4z"/><path d="M14 4v4h4"/><path d="M7 12h8M7 15h8M7 18h5"/></svg>',
+    'Sciences & nature': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full p-1.5"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l8-8"/></svg>',
+    'Voyages': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full p-1.5"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/></svg>',
+    'Sports & loisirs': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full p-1.5"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4.5 9.5c5 1 10 1 15 0M4.5 14.5c5-1 10-1 15 0"/></svg>',
+    'Poésie & théâtre': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full p-1.5"><path d="M6 4h12v7a6 6 0 0 1-12 0z"/><path d="M9 9h.01M15 9h.01M9.5 13c1.5 1.2 3.5 1.2 5 0"/></svg>'
   };
+
+  // Filtre par type de document (07/10/2026) : regroupe books.format selon
+  // le « kind » de la table document_types. Affiché seulement si la
+  // médiathèque a au moins deux types différents au catalogue.
+  const TYPE_GROUPS = [
+    ['livre', 'Livres'], ['livre_audio', 'Livres audio'], ['cd', 'CD'],
+    ['dvd', 'DVD'], ['periodique', 'Revues'], ['autre', 'Autres supports'],
+  ];
+  let activeType = null;
+  let documentTypeKinds = {};
+
+  function bookKind(b) {
+    return documentTypeKinds[b.format] || 'livre';
+  }
+
+  function renderTypeFilters() {
+    const el = document.getElementById('type-filters');
+    const present = new Set(books.map(bookKind));
+    const groups = TYPE_GROUPS.filter(([kind]) => present.has(kind));
+    if (groups.length < 2) {
+      el.classList.add('hidden');
+      activeType = null;
+      return;
+    }
+    el.classList.remove('hidden');
+    el.innerHTML = [[null, 'Tout'], ...groups].map(([kind, label]) => `
+      <button data-kind="${kind ?? ''}" class="type-chip shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition ${
+        activeType === kind ? 'bg-brand text-white border-brand' : 'bg-white text-ink/60 border-mango-100'
+      }">${label}</button>`).join('');
+    el.querySelectorAll('.type-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeType = btn.dataset.kind || null;
+        renderTypeFilters();
+        renderBooks();
+      });
+    });
+  }
 
   const PACE_OPTIONS = [
     { value: 1, label: '1' },
@@ -273,13 +318,18 @@
       return;
     }
 
-    const { data, error } = await supabase.from('books').select('*').eq('commune_id', myCommuneId).eq('equipped', true).order('id');
+    const [{ data, error }, { data: types }] = await Promise.all([
+      supabase.from('books').select('*').eq('commune_id', myCommuneId).eq('equipped', true).order('id'),
+      supabase.from('document_types').select('label, kind'),
+    ]);
     if (error) {
       statusEl.textContent = 'Erreur de chargement : ' + error.message;
       return;
     }
     books = data;
+    documentTypeKinds = Object.fromEntries((types || []).map(t => [t.label, t.kind]));
     statusEl.textContent = '';
+    renderTypeFilters();
     renderBooks();
   }
 
@@ -384,6 +434,9 @@
     if (isMinorAccount) {
       filtered = filtered.filter(b => !b.adult_only);
     }
+    if (activeType) {
+      filtered = filtered.filter(b => bookKind(b) === activeType);
+    }
     if (q) {
       // Le résumé et la catégorie sont aussi regardés : sans ça, chercher
       // "développement personnel" ne trouvait rien tant que ces mots
@@ -393,7 +446,8 @@
         searchNormalize(b.title).includes(q) ||
         searchNormalize(b.author).includes(q) ||
         searchNormalize(b.summary).includes(q) ||
-        searchNormalize(b.category).includes(q)
+        searchNormalize(b.category).includes(q) ||
+        searchNormalize(b.subjects).includes(q)
       );
     }
     filtered = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

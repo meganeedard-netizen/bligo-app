@@ -703,6 +703,21 @@
           <button onclick="resetCommuneTheme()" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-lg px-3 shrink-0">Réinitialiser les couleurs d'origine</button>
         </div>
         <p id="settings-save-status" class="text-[11px] text-ink/45 mt-2 h-4"></p>
+
+        <h3 class="text-base font-bold text-ink mb-2 mt-10">Types de documents</h3>
+        <p class="text-xs text-ink/55 mb-3 max-w-md">La liste proposée au catalogage. Les types BliGO sont communs à toutes les médiathèques ; ajoute ceux propres à la tienne (ex. « Partition », « Liseuse », « Vinyle »).</p>
+        <div id="settings-doctypes-list" class="max-w-md flex flex-col gap-1.5 mb-3"></div>
+        <div class="max-w-md flex flex-wrap gap-2">
+          <input id="settings-doctype-label" type="text" placeholder="Nouveau type de document" style="font-size: 16px;" class="flex-1 min-w-[180px] border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+          <select id="settings-doctype-kind" class="border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white">
+            <option value="livre">Livre</option>
+            <option value="periodique">Périodique</option>
+            <option value="cd">CD / musique</option>
+            <option value="dvd">DVD / vidéo</option>
+            <option value="autre">Autre</option>
+          </select>
+          <button onclick="addDocumentType()" class="bg-brand text-white rounded-lg px-4 py-2 text-sm font-semibold active:scale-[0.98] transition">Ajouter</button>
+        </div>
       </section>
 
       <!-- STATISTIQUES SIGB (direction uniquement) -->
@@ -787,9 +802,13 @@
   let pendingEventImageFile = null;
   let currentEventImageUrl = null;
 
+  // Documentaire, Sciences & nature, Voyages, Sports & loisirs et Poésie &
+  // théâtre ajoutées le 07/10/2026, alignées sur les classes Dewey (voir
+  // deweyCategory) — voir sql/add_categories_documentaire.sql.
   const CATEGORIES = [
-    'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Jeunesse', 'BD',
-    'Bien-être', 'Maison', 'Histoire', 'Culture', 'Autres',
+    'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
+    'Documentaire', 'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
+    'Bien-être', 'Maison', 'Autres',
   ];
 
   const CATEGORY_KEYWORDS = [
@@ -800,6 +819,10 @@
     // Auteurs et documents antillais/caribéens : vérifié avant "Roman" pour
     // qu'un roman antillais parte bien en Fonds local, pas en Roman générique.
     ['Fonds local', ['antill', 'caribb', 'creole', 'créole', 'martinique', 'guadeloupe', 'haïti', 'haiti', 'guyane']],
+    ['Poésie & théâtre', ['poésie', 'poesie', 'poetry', 'poèmes', 'poemes', 'théâtre', 'theatre', 'drama']],
+    ['Sports & loisirs', ['sport', 'football', 'voile', 'course de bateaux', 'randonnée', 'recreation', 'loisirs']],
+    ['Voyages', ['travel', 'voyage', 'guide touristique', 'tourisme', 'description and travel']],
+    ['Sciences & nature', ['science', 'nature', 'animaux', 'animals', 'biologie', 'biology', 'astronom', 'physique', 'chimie', 'mathémat', 'mathemat', 'écologie', 'ecology', 'environnement']],
     ['Bien-être', ['self-help', 'self help', 'developpement personnel', 'développement personnel', 'personal growth', 'health', 'fitness', 'medical', 'santé', 'médecine', 'sport', 'bien-être', 'bien être', 'wellness']],
     ['Maison', ['cooking', 'cuisine', 'garden', 'jardin', 'diy', 'bricolage', 'nature', 'home & garden', 'maison']],
     ['Histoire', ['history', 'histoire', 'patrimoine', 'heritage']],
@@ -837,24 +860,162 @@
   // et loisirs. Volontairement approximatif, l'agent garde la main dessus.
   const COTE_DEWEY_DEFAULT = {
     'Bien-être': '150', 'Maison': '640', 'Histoire': '900', 'Culture': '700',
+    'Sciences & nature': '500', 'Voyages': '910', 'Sports & loisirs': '796',
   };
 
   // Le dernier mot du nom du premier auteur listé est pris comme nom de
   // famille — imparfait pour certains noms composés ou une fiche au format
   // "Nom, Prénom", mais couvre l'immense majorité des fiches Google Books /
   // Open Library (généralement "Prénom Nom").
-  function authorCotePrefix(author) {
-    const first = (author || '').split(',')[0].trim();
-    const words = first.split(/\s+/).filter(Boolean);
-    return (words[words.length - 1] || '').replace(/[^\p{L}]/gu, '').slice(0, 3).toUpperCase();
+  // Lettres de cote sans accents ni espaces (« El Bèze » → « ELB »), comme
+  // sur les étiquettes de médiathèque.
+  function coteLetters(text) {
+    return (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
   }
 
-  function suggestCote(category, author, dewey) {
-    const suffix = authorCotePrefix(author);
+  function authorCotePrefix(author) {
+    if (!author || /^(auteur|artiste) inconnu/i.test(author.trim())) return '';
+    const first = author.split(',')[0].trim();
+    const words = first.split(/\s+/).filter(Boolean);
+    return coteLetters(words[words.length - 1] || '');
+  }
+
+  // Sans auteur (périodique, ouvrage collectif) : 3 lettres du titre, article
+  // initial ignoré (« Le Monde diplomatique » → « MON »).
+  function titleCotePrefix(title) {
+    const t = (title || '').trim().replace(/^(le|la|les|l'|l’|un|une|des|du|the|a|an)\s*/i, '');
+    return coteLetters(t);
+  }
+
+  // opts.authorKey : nom de famille tel que catalogué par la BnF (tag 700 $a),
+  // bien plus fiable que le dernier mot de l'auteur pour un nom composé.
+  // Les documentaires, périodiques et partitions prennent l'indice Dewey +
+  // 3 lettres ; la fiction garde ses lettres de section (R, T, SF, BD…).
+  // Jeunesse et Fonds local documentaires : lettre de section + indice
+  // (ex. « J 797.1 ELB »). CD et DVD : « CD ABC », « DVD ABC » (07/10/2026).
+  function suggestCote(category, author, dewey, opts = {}) {
+    const suffix = coteLetters(opts.authorKey) || authorCotePrefix(author) || titleCotePrefix(opts.title);
+    const kind = opts.format ? documentTypeKind(opts.format) : null;
+    if (kind === 'cd') return suffix ? `CD ${suffix}` : 'CD';
+    if (kind === 'dvd') return suffix ? `DVD ${suffix}` : 'DVD';
+    const deweyCote = deweyForCote(dewey);
+    const isFictionDewey = !deweyCote || deweyCote.startsWith('8');
+    // Poésie « P », théâtre « TH » (indice en 8x2), comme sur les étiquettes.
+    if (category === 'Poésie & théâtre') {
+      const prefix = normalizeDewey(dewey)?.[2] === '2' ? 'TH' : 'P';
+      return suffix ? `${prefix} ${suffix}` : prefix;
+    }
     const letters = COTE_LETTER_PREFIX[category];
-    if (letters) return suffix ? `${letters} ${suffix}` : letters;
-    const numeric = dewey || COTE_DEWEY_DEFAULT[category] || 'DOC';
+    if (letters) {
+      if (['Jeunesse', 'Fonds local'].includes(category) && !isFictionDewey) {
+        return [letters, deweyCote, suffix].filter(Boolean).join(' ');
+      }
+      return suffix ? `${letters} ${suffix}` : letters;
+    }
+    const numeric = deweyCote || COTE_DEWEY_DEFAULT[category] || 'DOC';
     return suffix ? `${numeric} ${suffix}` : numeric;
+  }
+
+  // ---------- Indice Dewey (07/10/2026) ----------
+  // Fourni par la BnF (tag UNIMARC 676, la source la plus fiable pour un
+  // livre français) ou Open Library. Gardé tel quel en base (ex.
+  // « 797.140 90511 »), abrégé seulement pour la cote (« 797.1 »).
+  const DEWEY_DIVISIONS = {
+    '00': 'Généralités, informatique', '01': 'Bibliographies', '02': 'Bibliothéconomie', '03': 'Encyclopédies générales',
+    '04': 'Généralités', '05': 'Périodiques généraux', '06': 'Organisations, muséologie', '07': 'Journalisme, édition',
+    '08': 'Recueils généraux', '09': 'Manuscrits, livres rares',
+    '10': 'Philosophie', '11': 'Métaphysique', '12': 'Connaissance, épistémologie', '13': 'Parapsychologie, ésotérisme',
+    '14': 'Écoles philosophiques', '15': 'Psychologie', '16': 'Logique', '17': 'Morale, éthique',
+    '18': 'Philosophie antique, médiévale, orientale', '19': 'Philosophie moderne occidentale',
+    '20': 'Religion', '21': 'Philosophie de la religion', '22': 'Bible', '23': 'Théologie chrétienne',
+    '24': 'Pratique chrétienne', '25': 'Église locale, ordres religieux', '26': 'Théologie sociale chrétienne',
+    '27': 'Histoire de l\'Église', '28': 'Confessions chrétiennes', '29': 'Autres religions',
+    '30': 'Sciences sociales', '31': 'Statistiques', '32': 'Science politique', '33': 'Économie', '34': 'Droit',
+    '35': 'Administration publique, art militaire', '36': 'Problèmes et services sociaux', '37': 'Éducation',
+    '38': 'Commerce, communications, transports', '39': 'Coutumes, folklore',
+    '40': 'Langues', '41': 'Linguistique', '42': 'Langue anglaise', '43': 'Langue allemande', '44': 'Langue française',
+    '45': 'Langue italienne', '46': 'Langues espagnole et portugaise', '47': 'Latin', '48': 'Grec', '49': 'Autres langues',
+    '50': 'Sciences', '51': 'Mathématiques', '52': 'Astronomie', '53': 'Physique', '54': 'Chimie',
+    '55': 'Sciences de la Terre', '56': 'Paléontologie', '57': 'Sciences de la vie, biologie', '58': 'Botanique', '59': 'Zoologie',
+    '60': 'Techniques, sciences appliquées', '61': 'Médecine, santé', '62': 'Sciences de l\'ingénieur',
+    '63': 'Agriculture, jardinage', '64': 'Vie domestique, cuisine', '65': 'Gestion, entreprise', '66': 'Génie chimique',
+    '67': 'Fabrication industrielle', '68': 'Fabrications artisanales, bricolage', '69': 'Bâtiment',
+    '70': 'Arts', '71': 'Urbanisme, paysage', '72': 'Architecture', '73': 'Sculpture', '74': 'Dessin, arts décoratifs',
+    '75': 'Peinture', '76': 'Arts graphiques, gravure', '77': 'Photographie', '78': 'Musique', '79': 'Loisirs, spectacles, sports',
+    '80': 'Littérature', '81': 'Littérature américaine', '82': 'Littérature anglaise', '83': 'Littérature allemande',
+    '84': 'Littérature française', '85': 'Littérature italienne', '86': 'Littératures espagnole et portugaise',
+    '87': 'Littérature latine', '88': 'Littérature grecque', '89': 'Autres littératures',
+    '90': 'Histoire, géographie', '91': 'Géographie, voyages', '92': 'Biographies, généalogie', '93': 'Histoire ancienne',
+    '94': 'Histoire de l\'Europe', '95': 'Histoire de l\'Asie', '96': 'Histoire de l\'Afrique',
+    '97': 'Histoire de l\'Amérique du Nord, centrale et des Antilles', '98': 'Histoire de l\'Amérique du Sud',
+    '99': 'Histoire de l\'Océanie et des autres régions',
+  };
+  // Quelques sections précises, plus parlantes que la division seule.
+  const DEWEY_SECTIONS = {
+    '150': 'Psychologie', '158': 'Développement personnel', '613': 'Santé, hygiène de vie', '641': 'Cuisine',
+    '635': 'Jardinage', '780': 'Musique', '781': 'Musique (théorie, formes)', '782': 'Musique vocale',
+    '791': 'Spectacles, cinéma', '792': 'Théâtre, danse', '793': 'Jeux et divertissements', '794': 'Jeux d\'adresse, échecs',
+    '796': 'Sports', '797': 'Sports nautiques et aériens', '798': 'Sports équestres', '799': 'Pêche, chasse, tir',
+    '841': 'Poésie française', '842': 'Théâtre français', '843': 'Roman français', '844': 'Essais français',
+    '910': 'Géographie, voyages', '914': 'Géographie de l\'Europe', '917': 'Géographie de l\'Amérique du Nord et des Antilles',
+    '944': 'Histoire de France', '972': 'Histoire de l\'Amérique centrale et des Antilles',
+  };
+
+  // « 843/.914 » (Open Library), « 797.140 90511 » (BnF) → « 843.914 », « 797.14090511 ».
+  function normalizeDewey(raw) {
+    if (!raw) return null;
+    const m = String(raw).replace(/[\s\/]/g, '').match(/^(\d{3})(\.\d+)?/);
+    return m ? m[1] + (m[2] || '') : null;
+  }
+
+  function deweyLabel(dewey) {
+    const n = normalizeDewey(dewey);
+    if (!n) return '';
+    return DEWEY_SECTIONS[n.slice(0, 3)] || DEWEY_DIVISIONS[n.slice(0, 2)] || '';
+  }
+
+  // 3 chiffres + 1 décimale significative pour l'étiquette (« 797.1 »),
+  // l'agent peut l'affiner dans le champ Cote.
+  function deweyForCote(dewey) {
+    const n = normalizeDewey(dewey);
+    if (!n) return null;
+    const [whole, dec] = n.split('.');
+    const first = (dec || '').slice(0, 1);
+    return first && first !== '0' ? `${whole}.${first}` : whole;
+  }
+
+  // Catégorie BliGO déduite de la classe Dewey pour les documentaires, qui
+  // tombaient tous en « Autres » faute de mot-clé reconnu. La littérature
+  // (800) garde la catégorie devinée par les mots-clés (Roman, Thriller…),
+  // sauf poésie (8x1) et théâtre (8x2).
+  function deweyCategory(dewey) {
+    const n = normalizeDewey(dewey);
+    if (!n) return null;
+    const x = parseInt(n.slice(0, 3), 10);
+    if (x >= 800 && x < 900) return (x % 10 === 1 || x % 10 === 2) ? 'Poésie & théâtre' : null;
+    if ((x >= 150 && x < 160) || (x >= 610 && x < 620)) return 'Bien-être';
+    if ((x >= 630 && x < 650) || (x >= 680 && x < 690)) return 'Maison';
+    if (x >= 500 && x < 600) return 'Sciences & nature';
+    if (x >= 910 && x < 920) return 'Voyages';
+    if (x >= 900) return 'Histoire';
+    if (x === 791 || x === 792) return 'Culture';
+    if (x >= 790 && x < 800) return 'Sports & loisirs';
+    if (x >= 700 && x < 790) return 'Culture';
+    return 'Documentaire';
+  }
+
+  function categorizeDocument(rawText, title, dewey) {
+    const byKeywords = guessCategory(rawText, title);
+    if (['Fonds local', 'BD', 'Jeunesse'].includes(byKeywords)) return byKeywords;
+    const byDewey = deweyCategory(dewey);
+    if (byDewey) return byDewey;
+    if (normalizeDewey(dewey)?.startsWith('8') && byKeywords === 'Autres') return 'Roman';
+    return byKeywords;
+  }
+
+  function deweyHintHtml(dewey, id) {
+    const label = deweyLabel(dewey);
+    return `<p id="${id}" class="text-[10.5px] text-mango-700 -mt-1.5 mb-2 min-h-[14px]">${label ? escapeHtml(label) : ''}</p>`;
   }
 
   // Repère les livres dont la cote ne correspond plus à leur catégorie
@@ -986,6 +1147,7 @@
     switchReservationTab('preparation');
     document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
     await loadCommunesForAgenda();
+    await loadDocumentTypes();
     await Promise.all([loadBooks(), loadReservations(), loadActiveLoans(), loadReshelveLoans(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents(), loadTransfers()]);
     if (myIsDirection) await loadTeamAndTariffs();
   }
@@ -1006,7 +1168,7 @@
     if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
     if (screen === 'catalogue') { closeScanView(); }
     if (screen === 'logistics') loadTransfers();
-    if (screen === 'settings') loadCommuneSettings();
+    if (screen === 'settings') { loadCommuneSettings(); loadDocumentTypes().then(renderDocumentTypesSettings); }
   };
 
   // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
@@ -1541,7 +1703,15 @@
   // fois) avant d'entrer réellement au catalogue — même chemin qu'on scanne
   // un seul document ou plusieurs à la suite.
 
+  // Vrai ISBN (livre) : 10 caractères, ou 13 chiffres en 978/979. Tout autre
+  // code EAN/UPC scanné est un CD, un DVD ou un périodique (977 = ISSN).
+  function isBookIsbn(code) {
+    return /^\d{9}[\dX]$/i.test(code) || /^97[89]\d{10}$/.test(code);
+  }
+
   async function fetchBookMetaByIsbn(isbn, forcedGenre) {
+    if (!isBookIsbn(isbn)) return await fetchMultimediaMetaByBarcode(isbn, forcedGenre);
+
     let meta = await fetchFromGoogleBooks(`isbn:${isbn}`);
     if (!meta) meta = await fetchFromOpenLibrary(isbn);
 
@@ -1558,9 +1728,27 @@
         if (!meta.published_date) meta.published_date = ol.published_date;
         if (!meta.page_count) meta.page_count = ol.page_count;
         if (!meta.language) meta.language = ol.language;
+        if (!meta.dewey) meta.dewey = ol.dewey;
         if (ol.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, ol.rawCategoryText].filter(Boolean).join(' ');
       }
     }
+
+    // BnF interrogée même si Google Books et Open Library n'ont rien : beaucoup
+    // de livres français peu diffusés n'existent que chez elle (07/10/2026).
+    const bnf = await fetchFromBnF(isbn, meta?.title, meta?.author);
+    if (!meta && bnf?.title) {
+      meta = {
+        title: bnf.title,
+        author: bnf.author || 'Auteur inconnu',
+        summary: null,
+        cover_url: await fetchCoverFromOpenLibrary(isbn),
+        published_date: bnf.published_date,
+        publisher: null,
+        page_count: null,
+        language: null,
+      };
+    }
+
     if (meta && !meta.cover_url) {
       meta.cover_url = await lookupCoverBank(meta.title, meta.author);
     }
@@ -1571,33 +1759,180 @@
         if (!meta.summary) meta.summary = details.summary;
       }
     }
-    // Dépôt légal et imprimeur : le métier de la BnF, aucune des deux autres
-    // sources ne les a.
-    if (meta) {
-      const bnf = await fetchFromBnF(isbn, meta.title, meta.author);
-      if (bnf) {
-        meta.legal_deposit = bnf.legal_deposit;
-        meta.printer = bnf.printer;
-        if (!meta.publisher) meta.publisher = bnf.publisher;
-        if (!meta.page_count) meta.page_count = bnf.page_count;
-        if (!meta.language) meta.language = bnf.language;
-        // Dernier recours seulement (18/09/2026) : Google Books et Open Library
-        // n'ont pas toujours de résumé éditeur pour l'édition exacte scannée,
-        // la BnF en a parfois un — jamais utilisé pour écraser les deux autres.
-        if (!meta.summary && bnf.summary) meta.summary = bnf.summary;
-        if (bnf.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, bnf.rawCategoryText].filter(Boolean).join(' ');
-      }
+    // Dépôt légal, imprimeur, Dewey, reliure, collection, sujets : le métier
+    // de la BnF, aucune des deux autres sources ne les a (ou rarement).
+    if (meta && bnf) {
+      meta.legal_deposit = bnf.legal_deposit;
+      meta.printer = bnf.printer;
+      if (!meta.publisher) meta.publisher = bnf.publisher;
+      if (!meta.page_count) meta.page_count = bnf.page_count;
+      if (!meta.language) meta.language = bnf.language;
+      // Dernier recours seulement (18/09/2026) : Google Books et Open Library
+      // n'ont pas toujours de résumé éditeur pour l'édition exacte scannée,
+      // la BnF en a parfois un — jamais utilisé pour écraser les deux autres.
+      if (!meta.summary && bnf.summary) meta.summary = bnf.summary;
+      // Indice BnF prioritaire : c'est celui qu'utilisent les bibliothèques françaises.
+      meta.dewey = bnf.dewey || meta.dewey;
+      meta.binding = bnf.binding;
+      meta.collection = bnf.collection;
+      meta.dimensions = bnf.dimensions;
+      meta.illustrations = bnf.illustrations;
+      meta.subjects = bnf.subjects;
+      meta.authorKey = bnf.authorLastName;
+      if (!meta.translator) meta.translator = bnf.translator;
+      if (!meta.illustrator) meta.illustrator = bnf.illustrator;
+      if (!meta.format) meta.format = formatFromBnF(bnf);
+      if (bnf.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, bnf.rawCategoryText].filter(Boolean).join(' ');
     }
 
+    // ISMN (partitions, 9790…) et autres codes que la BnF indexe hors ISBN.
+    if (!meta && !bnf) return await fetchMultimediaMetaByBarcode(isbn, forcedGenre);
     if (!meta) return null;
 
-    meta.category = forcedGenre || guessCategory(meta.rawCategoryText, meta.title);
+    if (meta.dewey) meta.dewey = String(meta.dewey).replace(/\//g, '').trim();
+    meta.category = forcedGenre || categorizeDocument(meta.rawCategoryText, meta.title, meta.dewey);
     delete meta.rawCategoryText;
-    if (!meta.dewey && !COTE_LETTER_PREFIX[meta.category]) {
-      meta.dewey = await fetchDeweyFromOpenLibrary(isbn);
-    }
     meta.isbn = isbn;
     return meta;
+  }
+
+  // ---------- CD, DVD, partitions (BnF + MusicBrainz) ----------
+  // Un code-barres de CD ou de DVD n'est jamais un ISBN. La BnF les catalogue
+  // au titre du dépôt légal et les retrouve par EAN (index bib.ean, vérifié
+  // le 07/10/2026 sur des CD et des DVD) : titre, artiste ou réalisateur,
+  // éditeur, date, durée, Dewey, sujets. MusicBrainz complète les CD avec la
+  // liste des titres et la pochette (la BnF n'a ni l'un ni l'autre), et sert
+  // de repli pour les CD étrangers absents de la BnF.
+  async function fetchFromBnFByEan(barcode) {
+    const queries = [`bib.ean all "${barcode}"`];
+    if (barcode.length === 12) queries.push(`bib.ean all "0${barcode}"`);
+    if (barcode.length === 13 && barcode.startsWith('0')) queries.push(`bib.ean all "${barcode.slice(1)}"`);
+    queries.push(`bib.anywhere all "${barcode}"`);
+    for (const q of queries) {
+      const bnf = await bnfSruQuery(q);
+      if (bnf?.title) return bnf;
+    }
+    return null;
+  }
+
+  async function fetchMultimediaMetaByBarcode(barcode, forcedGenre) {
+    const bnf = await fetchFromBnFByEan(barcode);
+    let meta = null;
+    if (bnf) {
+      const isVideo = /images anim/i.test(bnf.docType || '') || /dvd|bd vid|blu/i.test(bnf.extent || '');
+      const isSound = /enregistrement sonore/i.test(bnf.docType || '');
+      const isScore = /musique imprim/i.test(bnf.docType || '');
+      const format = isVideo ? firstTypeOfKind('dvd')
+        : isSound ? firstTypeOfKind('cd')
+        : barcode.startsWith('977') ? firstTypeOfKind('periodique')
+        : isScore ? (FORMAT_OPTIONS.find(f => /partition/i.test(f)) || null)
+        : formatFromBnF(bnf);
+      meta = {
+        title: bnf.title,
+        author: bnf.author || (isSound ? 'Artiste inconnu' : 'Auteur inconnu'),
+        summary: bnf.summary,
+        cover_url: null,
+        publisher: bnf.publisher,
+        published_date: bnf.published_date,
+        page_count: (isVideo || isSound) ? null : bnf.page_count,
+        language: bnf.language,
+        legal_deposit: bnf.legal_deposit,
+        printer: bnf.printer,
+        dewey: bnf.dewey,
+        collection: bnf.collection,
+        subjects: bnf.subjects,
+        // Pour un CD ou un DVD : support et durée (« 1 DVD vidéo monoface zone 2 (1 h 52 min) »).
+        dimensions: (isVideo || isSound) ? (bnf.extent || bnf.dimensions) : bnf.dimensions,
+        illustrations: bnf.illustrations,
+        binding: (isVideo || isSound) ? null : bnf.binding,
+        translator: bnf.translator,
+        illustrator: bnf.illustrator,
+        authorKey: bnf.authorLastName,
+        format,
+        category: forcedGenre || ((isVideo || isSound || isScore) ? 'Culture' : categorizeDocument(bnf.rawCategoryText, bnf.title, bnf.dewey)),
+        isbn: barcode,
+      };
+    }
+    if (!meta || documentTypeKind(meta.format) === 'cd') {
+      const mb = await fetchDiscMetaByBarcode(barcode, forcedGenre);
+      if (mb && !meta) meta = mb;
+      else if (mb) {
+        if (!meta.summary) meta.summary = mb.summary;
+        meta.cover_url = mb.cover_url;
+        meta.authorKey = mb.authorKey || meta.authorKey;
+      }
+    }
+    return meta;
+  }
+
+  async function fetchDiscMetaByBarcode(barcode, forcedGenre) {
+    if (barcode.startsWith('977')) return null; // ISSN : périodique, saisie manuelle
+    const candidates = [barcode];
+    if (barcode.length === 13 && barcode.startsWith('0')) candidates.push(barcode.slice(1));
+    if (barcode.length === 12) candidates.push('0' + barcode);
+
+    for (const code of candidates) {
+      try {
+        const res = await fetch(`https://musicbrainz.org/ws/2/release/?query=barcode:${code}&fmt=json&limit=1`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const r = data.releases?.[0];
+        if (!r || (r.barcode && r.barcode.replace(/^0+/, '') !== code.replace(/^0+/, ''))) continue;
+
+        const artist = (r['artist-credit'] || []).map(a => a.name + (a.joinphrase || '')).join('').trim() || 'Artiste inconnu';
+        const mediaFormat = (r.media || []).map(m => m.format || '').join(' ');
+        const format = /dvd|blu-ray/i.test(mediaFormat) ? firstTypeOfKind('dvd') : firstTypeOfKind('cd');
+        return {
+          title: r.title,
+          author: artist,
+          summary: await fetchDiscTracklist(r.id),
+          cover_url: await fetchDiscCover(r['release-group']?.id),
+          publisher: r['label-info']?.[0]?.label?.name || null,
+          published_date: r.date || null,
+          page_count: null,
+          language: null,
+          format,
+          dewey: null,
+          // Nom de classement (« Goldman, Jean-Jacques », « Daft Punk ») : les
+          // bonnes 3 lettres de cote pour un artiste solo comme pour un groupe.
+          authorKey: r['artist-credit']?.[0]?.artist?.['sort-name'] || null,
+          category: forcedGenre || 'Culture',
+          isbn: barcode,
+        };
+      } catch {
+        // essai suivant
+      }
+    }
+    return null;
+  }
+
+  async function fetchDiscTracklist(releaseId) {
+    // MusicBrainz limite à une requête par seconde.
+    await new Promise(r => setTimeout(r, 1100));
+    try {
+      const res = await fetch(`https://musicbrainz.org/ws/2/release/${releaseId}?inc=recordings&fmt=json`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const tracks = (data.media || []).flatMap(m => m.tracks || []);
+      if (!tracks.length) return null;
+      return 'Titres : ' + tracks.map((t, i) => `${i + 1}. ${t.title}`).join(' ; ');
+    } catch {
+      return null;
+    }
+  }
+
+  // Vérifiée par chargement d'image (pas de requête fetch) : le Cover Art
+  // Archive redirige vers archive.org, qui n'autorise pas toujours le CORS.
+  function fetchDiscCover(releaseGroupId) {
+    if (!releaseGroupId) return Promise.resolve(null);
+    const url = `https://coverartarchive.org/release-group/${releaseGroupId}/front-250`;
+    return new Promise(resolve => {
+      const img = new Image();
+      const timer = setTimeout(() => resolve(null), 8000);
+      img.onload = () => { clearTimeout(timer); resolve(url); };
+      img.onerror = () => { clearTimeout(timer); resolve(null); };
+      img.src = url;
+    });
   }
 
   function addDraftFromIsbn(rawCode) {
@@ -1631,6 +1966,8 @@
       draft.author = draft.author || '';
       draft.category = draft.category || 'Autres';
       draft.summary = draft.summary || '';
+      // Code-barres en 977 = ISSN : c'est un périodique.
+      if (!draft.format && draft.isbn?.startsWith('977')) draft.format = firstTypeOfKind('periodique') || '';
       renderDraftBooks();
       return;
     }
@@ -1654,6 +1991,17 @@
     draft.language = meta.language || '';
     draft.legal_deposit = meta.legal_deposit || '';
     draft.format = meta.format || '';
+    draft.dewey = meta.dewey || '';
+    draft.binding = meta.binding || '';
+    draft.dimensions = meta.dimensions || '';
+    draft.illustrations = meta.illustrations || '';
+    draft.collection = meta.collection || '';
+    draft.subjects = meta.subjects || '';
+    draft.translator = meta.translator || '';
+    draft.illustrator = meta.illustrator || '';
+    draft.authorKey = meta.authorKey || null;
+    draft.coteEdited = false;
+    draft.cote = draftSuggestedCote(draft);
     if (existingBook) {
       draft.status = 'existing';
       draft.existingBookId = existingBook.id;
@@ -1671,7 +2019,30 @@
     const draft = draftBooks.find(d => d.localId === localId);
     if (!draft) return;
     draft[field] = value;
+    // La cote suit la catégorie, l'indice Dewey, le type et l'auteur tant que
+    // l'agent ne l'a pas retouchée lui-même.
+    if (field === 'cote') {
+      draft.coteEdited = true;
+    } else if (['category', 'dewey', 'format', 'author', 'title'].includes(field) && !draft.coteEdited) {
+      if (field === 'author') draft.authorKey = null;
+      draft.cote = draftSuggestedCote(draft);
+      const coteInput = document.getElementById(`draft-cote-${localId}`);
+      if (coteInput) coteInput.value = draft.cote;
+      const cotePreview = document.getElementById(`draft-cote-preview-${localId}`);
+      if (cotePreview) cotePreview.textContent = draft.cote;
+    }
+    if (field === 'dewey') {
+      const hint = document.getElementById(`draft-dewey-label-${localId}`);
+      if (hint) hint.textContent = deweyLabel(value);
+    }
   };
+
+  // Le rayon saisi pour tout un lot (« Ce lot est déjà d'un rayon connu ? »)
+  // reste prioritaire sur la cote calculée.
+  function draftSuggestedCote(d) {
+    return document.getElementById('batch-shelf')?.value.trim()
+      || suggestCote(d.category, d.author, d.dewey, { format: d.format, authorKey: d.authorKey, title: d.title });
+  }
 
   window.forceDraftAsNew = function (localId) {
     const draft = draftBooks.find(d => d.localId === localId);
@@ -1729,9 +2100,17 @@
     draft.meta.language = (draft.language || '').trim() || null;
     draft.meta.legal_deposit = (draft.legal_deposit || '').trim() || null;
     draft.meta.format = (draft.format || '').trim() || null;
+    draft.meta.dewey = (draft.dewey || '').trim() || null;
+    draft.meta.binding = (draft.binding || '').trim() || null;
+    draft.meta.dimensions = (draft.dimensions || '').trim() || null;
+    draft.meta.illustrations = (draft.illustrations || '').trim() || null;
+    draft.meta.collection = (draft.collection || '').trim() || null;
+    draft.meta.subjects = (draft.subjects || '').trim() || null;
+    draft.meta.translator = (draft.translator || '').trim() || null;
+    draft.meta.illustrator = (draft.illustrator || '').trim() || null;
     draft.meta.category = draft.category;
     draft.meta.copyCount = Math.max(1, parseInt(draft.copyCount, 10) || 1);
-    draft.meta.shelfOverride = document.getElementById('batch-shelf')?.value.trim() || null;
+    draft.meta.shelfOverride = (draft.cote || '').trim() || document.getElementById('batch-shelf')?.value.trim() || null;
     draft.meta.onSiteOnly = document.getElementById('batch-onsite-only')?.checked || false;
 
     const inserted = await insertBook(draft.meta);
@@ -1758,7 +2137,9 @@
     const onSiteOnly = document.getElementById('batch-onsite-only')?.checked || false;
     const cover_url = await lookupCoverBank(title, author);
 
-    const inserted = await insertBook({ title, author, category, summary, cover_url, shelfOverride, onSiteOnly });
+    const format = (draft.format || '').trim() || null;
+    const isbn = (draft.isbn || '').trim() || null;
+    const inserted = await insertBook({ title, author, category, summary, cover_url, isbn, format, shelfOverride, onSiteOnly });
     if (inserted) await maybeRecordDonation(inserted.id, null);
     window.removeDraft(localId);
   };
@@ -1800,6 +2181,10 @@
           <label class="text-xs font-semibold text-ink/60 block mb-1">Catégorie</label>
           <select id="draft-category-${d.localId}" onchange="updateDraftField('${d.localId}', 'category', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
             ${categoryOptionsHtml(d.category)}
+          </select>
+          <label class="text-xs font-semibold text-ink/60 block mb-1">Type de document</label>
+          <select id="draft-format-${d.localId}" onchange="updateDraftField('${d.localId}', 'format', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
+            ${formatOptionsHtml(d.format)}
           </select>
           <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé (optionnel)</label>
           <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Résumé du 4e de couverture">${escapeHtml(d.summary || '')}</textarea>
@@ -1857,6 +2242,9 @@
               <select id="draft-category-${d.localId}" onchange="updateDraftField('${d.localId}', 'category', this.value)" class="mt-1.5 border border-mango-100 rounded-full pl-2.5 pr-6 py-1 text-[11px] font-semibold text-mango-700 bg-mango-50">
                 ${categoryOptionsHtml(d.category)}
               </select>
+              <p class="text-[11px] text-ink/55 mt-1.5">Cote : <span id="draft-cote-preview-${d.localId}" class="font-bold text-ink">${escapeHtml(d.cote || '')}</span></p>
+              ${d.dewey ? `<p class="text-[11px] text-ink/55">Dewey ${escapeHtml(d.dewey)}${deweyLabel(d.dewey) ? ` · ${escapeHtml(deweyLabel(d.dewey))}` : ''}</p>` : ''}
+              ${d.format ? `<p class="text-[11px] text-ink/55">${escapeHtml(d.format)}${d.binding ? ` · ${escapeHtml(d.binding)}` : ''}${d.dimensions ? ` · ${escapeHtml(d.dimensions)}` : ''}</p>` : ''}
             </div>
           </div>
           ${d.meta.summary ? `<p class="text-xs text-ink/60 leading-relaxed mt-3 line-clamp-4">${escapeHtml(d.meta.summary)}</p>` : ''}
@@ -1908,16 +2296,53 @@
             <input id="draft-language-${d.localId}" value="${escapeHtml(d.language || '')}" oninput="updateDraftField('${d.localId}', 'language', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
           </div>
         </div>
-        <label class="text-xs font-semibold text-ink/60 block mb-1">Format</label>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Type de document</label>
         <select id="draft-format-${d.localId}" onchange="updateDraftField('${d.localId}', 'format', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
           ${formatOptionsHtml(d.format)}
         </select>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Reliure</label>
+            <input id="draft-binding-${d.localId}" value="${escapeHtml(d.binding || '')}" oninput="updateDraftField('${d.localId}', 'binding', this.value)" placeholder="Broché, relié…" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Format (dimensions)</label>
+            <input id="draft-dimensions-${d.localId}" value="${escapeHtml(d.dimensions || '')}" oninput="updateDraftField('${d.localId}', 'dimensions', this.value)" placeholder="Ex. 24 cm" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          </div>
+        </div>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Illustrations</label>
+        <input id="draft-illustrations-${d.localId}" value="${escapeHtml(d.illustrations || '')}" oninput="updateDraftField('${d.localId}', 'illustrations', this.value)" placeholder="Ex. ill. en coul." class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Illustrateur</label>
+            <input id="draft-illustrator-${d.localId}" value="${escapeHtml(d.illustrator || '')}" oninput="updateDraftField('${d.localId}', 'illustrator', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Traducteur</label>
+            <input id="draft-translator-${d.localId}" value="${escapeHtml(d.translator || '')}" oninput="updateDraftField('${d.localId}', 'translator', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          </div>
+        </div>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Collection</label>
+        <input id="draft-collection-${d.localId}" value="${escapeHtml(d.collection || '')}" oninput="updateDraftField('${d.localId}', 'collection', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Dépôt légal</label>
         <input id="draft-legal-deposit-${d.localId}" value="${escapeHtml(d.legal_deposit || '')}" oninput="updateDraftField('${d.localId}', 'legal_deposit', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Sujets (Rameau)</label>
+        <textarea id="draft-subjects-${d.localId}" oninput="updateDraftField('${d.localId}', 'subjects', this.value)" rows="2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">${escapeHtml(d.subjects || '')}</textarea>
         <label class="text-xs font-semibold text-ink/60 block mb-1">Catégorie</label>
         <select id="draft-category-${d.localId}" onchange="updateDraftField('${d.localId}', 'category', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
           ${categoryOptionsHtml(d.category)}
         </select>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Indice Dewey</label>
+            <input id="draft-dewey-${d.localId}" value="${escapeHtml(d.dewey || '')}" oninput="updateDraftField('${d.localId}', 'dewey', this.value)" placeholder="Ex. 797.14" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Cote</label>
+            <input id="draft-cote-${d.localId}" value="${escapeHtml(d.cote || '')}" oninput="updateDraftField('${d.localId}', 'cote', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm font-semibold mb-2">
+          </div>
+        </div>
+        ${deweyHintHtml(d.dewey, `draft-dewey-label-${d.localId}`)}
         <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé</label>
         <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">${escapeHtml(d.summary || '')}</textarea>
         <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre d'exemplaires</label>
@@ -2017,9 +2442,9 @@
   }
 
   // Google Books ne renvoie jamais d'indice Dewey, seule Open Library l'a,
-  // et seulement pour une partie de ses fiches. Appelé uniquement pour les
-  // documentaires (la fiction n'en a pas besoin, voir suggestCote), même si
-  // Google Books a déjà répondu pour le titre/auteur/couverture.
+  // et seulement pour une partie de ses fiches. Plus appelée au catalogage
+  // depuis le 07/10/2026 (l'indice vient de fetchFromOpenLibrary et de la
+  // BnF), gardée pour les rattrapages ponctuels.
   async function fetchDeweyFromOpenLibrary(isbn) {
     try {
       const res = await fetch(`https://openlibrary.org/api/books.json?bibkeys=ISBN:${isbn}&jscmd=data`);
@@ -2034,7 +2459,12 @@
   // Typologie de document utilisée en médiathèque (21/09/2026) — remplace
   // l'ancien format éditeur brut (poche/broché/relié seuls) par les grandes
   // familles de documents que l'agent doit distinguer au catalogage.
-  const FORMAT_OPTIONS = [
+  //
+  // Depuis le 07/10/2026, la liste vient de la table document_types (liste
+  // commune BliGO + types ajoutés par la direction dans Réglages). Les
+  // valeurs ci-dessous ne servent que tant que la migration
+  // add_document_types_and_dewey.sql n'a pas été exécutée.
+  let FORMAT_OPTIONS = [
     'Livre broché',
     'Livre relié',
     'Livre de poche',
@@ -2042,10 +2472,49 @@
     'Beaux livres et usuels (encyclopédies, dictionnaires, atlas, livres d\'art)',
     'Documents graphiques et cartographiques (cartes, plans, estampes, partitions)',
   ];
+  let documentTypes = FORMAT_OPTIONS.map(label => ({ id: null, commune_id: null, label, kind: 'livre' }));
+
+  async function loadDocumentTypes() {
+    const { data, error } = await supabase.from('document_types').select('id, commune_id, label, kind, sort_order')
+      .order('sort_order', { ascending: true }).order('id', { ascending: true });
+    if (error || !data?.length) return;
+    documentTypes = data.filter(t => t.commune_id === null || t.commune_id === myCommuneId);
+    FORMAT_OPTIONS = documentTypes.map(t => t.label);
+  }
+
+  function documentTypeKind(label) {
+    return documentTypes.find(t => t.label === label)?.kind || null;
+  }
+
+  function firstTypeOfKind(kind) {
+    return documentTypes.find(t => t.kind === kind)?.label || null;
+  }
+
+  // Une fiche peut porter un type retiré de la liste depuis : on le garde
+  // affiché plutôt que de le perdre à l'enregistrement.
+  function withCurrentValue(options, value) {
+    return value && !options.includes(value) ? [value, ...options] : options;
+  }
 
   function formatOptionsHtml(selected) {
-    const options = FORMAT_OPTIONS.map(f => `<option value="${escapeHtml(f)}" ${f === selected ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('');
+    const options = withCurrentValue(FORMAT_OPTIONS, selected).map(f => `<option value="${escapeHtml(f)}" ${f === selected ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('');
     return `<option value="" ${!selected ? 'selected' : ''}>Non précisé</option>${options}`;
+  }
+
+  // Reliure et collection BnF → type de document, quand Open Library n'a rien
+  // donné. Seulement vers un type présent dans la liste.
+  const POCKET_COLLECTIONS = /(livre de poche|folio|pocket|j'ai lu|j’ai lu|points|10\/18|babel|presses pocket|librio|poche)/i;
+  function formatFromBnF(bnf) {
+    let label = null;
+    const heightCm = parseInt((bnf?.dimensions || '').match(/(\d+)\s*cm/)?.[1] || '0', 10);
+    if (bnf?.collection && POCKET_COLLECTIONS.test(bnf.collection)) label = 'Livre de poche';
+    // Grand format très illustré (≥ 28 cm) : beau livre.
+    else if (heightCm >= 28 && /ill/i.test(bnf?.illustrations || '')) {
+      return FORMAT_OPTIONS.find(f => f.startsWith('Beaux livres')) || null;
+    }
+    else if (bnf?.binding === 'Relié' || bnf?.binding === 'Cartonné') label = 'Livre relié';
+    else if (bnf?.binding === 'Broché') label = 'Livre broché';
+    return label && FORMAT_OPTIONS.includes(label) ? label : null;
   }
 
   // Traduit le format physique brut d'Open Library (en anglais, valable
@@ -2138,6 +2607,14 @@
       const f214printer = f214s.find(f => f.getAttribute('ind2') === '3') || null;
       const f215 = getField('215');
       const f101 = getField('101');
+      const f200 = getField('200');
+      const f225 = getField('225');
+      const getSubs = (field, codes) => {
+        if (!field) return [];
+        return Array.from(field.getElementsByTagNameNS('*', 'subfield'))
+          .filter(s => codes.includes(s.getAttribute('code')))
+          .map(s => s.textContent.trim()).filter(Boolean);
+      };
 
       // Uniquement l'année (ex. "DL 2017") : le numéro de référence interne
       // de la BnF (tag 020, ex. "FR 09619805") n'est pas une date, on ne le
@@ -2145,7 +2622,7 @@
       const legal_deposit = getSub(f210, 'd') || getSub(f214main, 'd') || null;
 
       const printer = getSub(f210, 'g') || getSub(f214printer, 'a') || null;
-      const publisher = getSub(f210, 'c') || getSub(f214main, 'c') || null;
+      const publisher = (getSub(f210, 'c') || getSub(f214main, 'c') || '').replace(/^\[|\]$/g, '').trim() || null;
       const pagesRaw = getSub(f215, 'a'); // ex. "1 volume 566 p"
       const pagesMatch = pagesRaw?.match(/(\d+)\s*p/);
       const language = getSub(f101, 'a');
@@ -2161,16 +2638,64 @@
       // Library), voir fetchBookMetaByIsbn (18/09/2026).
       const summary = getSub(getField('330'), 'a');
 
-      if (!legal_deposit && !printer && !publisher && !pagesMatch && !language && !genreTerms && !summary) return null;
+      // Exploitation complète de la notice (07/10/2026) : indice Dewey (676),
+      // reliure (010 $b, ex. « rel. »), collection (225), dimensions et
+      // illustrations (215 $d/$c), sujets Rameau (606/607, avec leurs
+      // subdivisions), nom de famille de l'auteur pour la cote (700 $a),
+      // mentions de responsabilité secondaires (200 $g : trad., ill., photogr.).
+      const dewey = getSub(getField('676'), 'a');
+      const bindingRaw = getSub(getField('010'), 'b') || '';
+      const binding = /rel/i.test(bindingRaw) ? 'Relié'
+        : /cart/i.test(bindingRaw) ? 'Cartonné'
+        : /br/i.test(bindingRaw) ? 'Broché'
+        : (bindingRaw || null);
+      const collection = f225 ? [getSub(f225, 'a'), getSub(f225, 'v')].filter(Boolean).join(', ') || null : null;
+      const dimensions = getSub(f215, 'd');
+      const illustrations = getSub(f215, 'c');
+      const subjects = [...getFields('606'), ...getFields('607')]
+        .map(f => getSubs(f, ['a', 'x', 'y', 'z']).join(' -- ')).filter(Boolean).join(' ; ') || null;
+      const f700 = getField('700');
+      const authorLastName = getSub(f700, 'a');
+      const authorFirstName = getSub(f700, 'b');
+      const secondary = getSubs(f200, ['g']);
+      const translator = secondary.find(t => /trad/i.test(t))?.replace(/^.*?trad[^\s]*\s*(de l'[^\s]+ par|par|de)?\s*/i, '') || null;
+      const illustrator = secondary.find(t => /(ill|photo|dessin)/i.test(t)) || null;
+      const title = getSub(f200, 'a');
+      // « [1997 (DL)] » → « 1997 » ; « [Virgin records international] » → sans crochets.
+      const rawDate = getSub(f210, 'd') || getSub(f214main, 'd') || '';
+      const published_date = rawDate.match(/\d{4}/)?.[0] || rawDate || null;
+      // Sans fiche auteur (fréquent pour un CD ou un DVD), la mention de
+      // responsabilité 200 $f porte les rôles : « Daft Punk, duo instr. »,
+      // « Éric Toledano, Olivier Nakache, réal., aut. » → on ne garde que les noms.
+      const responsibility = (getSub(f200, 'f') || '').split(/,\s*/)
+        .filter(part => part && !/^\p{Ll}/u.test(part)).join(', ') || null;
+
+      if (!legal_deposit && !printer && !publisher && !pagesMatch && !language && !genreTerms && !summary && !dewey && !title) return null;
 
       return {
+        // 200 $b : « Texte imprimé », « Enregistrement sonore », « Images
+        // animées » (DVD), « Musique imprimée » (partition)…
+        docType: getSub(f200, 'b'),
+        extent: getSub(f215, 'a'),
+        title,
+        author: authorLastName ? [authorFirstName, authorLastName].filter(Boolean).join(' ') : responsibility,
+        published_date,
         legal_deposit,
         printer,
         publisher,
         page_count: pagesMatch ? Number(pagesMatch[1]) : null,
         language,
         summary,
-        rawCategoryText: genreTerms || null,
+        dewey,
+        binding,
+        collection,
+        dimensions,
+        illustrations,
+        subjects,
+        authorLastName,
+        translator,
+        illustrator,
+        rawCategoryText: [genreTerms, subjects].filter(Boolean).join(' ') || null,
       };
     } catch {
       return null;
@@ -3103,9 +3628,14 @@
   // Achat ou don, un document validé reste en statut « À équiper » tant
   // qu'un agent n'a pas cliqué dessus (voir markEquipped) — la fiche est
   // complète mais le livre n'a pas encore été plastifié/étiqueté.
-  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
+  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
     const fromDonation = !!donorSession;
-    const cote = shelfOverride || suggestCote(category, author, dewey);
+    const cote = shelfOverride || suggestCote(category, author, dewey, { format, authorKey, title });
+    // Champs de fiche ajoutés le 07/10/2026 : envoyés seulement s'ils sont
+    // remplis, pour que le catalogage continue de marcher même si la
+    // migration add_document_types_and_dewey.sql n'est pas encore passée.
+    const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects })
+      .filter(([, v]) => v != null && v !== ''));
     // Détection couleur/N&B automatique dès le catalogage si une couverture a
     // été trouvée (18/09/2026) — l'agent n'a plus besoin d'ouvrir la fiche
     // après coup pour le savoir.
@@ -3114,6 +3644,8 @@
       title, author, category, summary, cover_url, isbn,
       publisher, published_date, page_count, language, format, legal_deposit, printer,
       cover_color,
+      translator, illustrator,
+      ...extraFields,
       shelf_location: cote,
       cover_initial: title[0].toUpperCase(),
       available: false,
@@ -3246,7 +3778,8 @@
 
   function buildCatalogueCsv({ exportBooks, copiesByBook, communeName }) {
     const headers = ['ISBN', 'Titre', 'Auteur', 'Catégorie', 'Cote', 'Code-barres', 'Statut exemplaire', 'Médiathèque',
-      'Éditeur', 'Date de publication', 'Pages', 'Langue', 'Format', 'Dépôt légal', 'Traducteur', 'Illustrateur',
+      'Éditeur', 'Date de publication', 'Pages', 'Langue', 'Type de document', 'Indice Dewey', 'Reliure', 'Dimensions',
+      'Illustrations', 'Collection', 'Sujets', 'Dépôt légal', 'Traducteur', 'Illustrateur',
       'Imprimeur', 'Tranche d\'âge', 'Consultation sur place', 'Nouveauté', 'Délai de prêt (jours)', 'Résumé', 'Couverture', 'Date de catalogage'];
     const cell = v => {
       const s = v == null ? '' : String(v);
@@ -3258,7 +3791,8 @@
       copies.forEach(c => rows.push([
         b.isbn, b.title, b.author, b.category, c?.shelf_location || b.shelf_location, c?.barcode,
         c ? (COPY_STATUS_LABEL[c.status] || c.status) : '', communeName[c?.owner_commune_id ?? b.commune_id] || '',
-        b.publisher, b.published_date, b.page_count, b.language, b.format, b.legal_deposit, b.translator, b.illustrator,
+        b.publisher, b.published_date, b.page_count, b.language, b.format, b.dewey, b.binding, b.dimensions,
+        b.illustrations, b.collection, b.subjects, b.legal_deposit, b.translator, b.illustrator,
         b.printer, b.age_range, b.on_site_only ? 'Oui' : 'Non', b.is_new_release ? 'Oui' : 'Non',
         b.loan_duration_days_override, b.summary, b.cover_url, b.created_at?.slice(0, 10),
       ]));
@@ -3297,14 +3831,18 @@
     const lang = marcLang(b.language);
 
     add('001', `BLIGO${b.id}`);
-    add('010', marcField('  ', [['a', b.isbn]]));
+    add('010', marcField('  ', [['a', b.isbn], ['b', b.binding]]));
     add('100', marcField('  ', [['a', `${created}d${year}    u  y0frey50      ba`]]));
     add('101', lang ? marcField('0 ', [['a', lang]]) : null);
     add('200', marcField('1 ', [['a', b.title], ['f', b.author], ['g', b.translator ? `trad. ${b.translator}` : null]]));
     add('210', marcField('  ', [['c', b.publisher], ['d', b.published_date], ['g', b.printer]]));
-    add('215', marcField('  ', [['a', b.page_count ? `${b.page_count} p.` : null], ['d', b.format]]));
+    add('215', marcField('  ', [['a', b.page_count ? `${b.page_count} p.` : null], ['c', b.illustrations], ['d', b.dimensions || b.format]]));
+    add('225', marcField('2 ', [['a', b.collection]]));
     add('330', marcField('  ', [['a', b.summary]]));
+    (b.subjects || '').split(';').map(t => t.trim()).filter(Boolean)
+      .forEach(t => add('606', marcField('  ', [['a', t], ['2', 'rameau']])));
     add('610', marcField('0 ', [['a', b.category]]));
+    add('676', marcField('  ', [['a', b.dewey]]));
     add('700', marcField(' 0', [['a', b.author], ['4', '070']]));
     add('702', b.translator ? marcField(' 0', [['a', b.translator], ['4', '730']]) : null);
     add('702', b.illustrator ? marcField(' 0', [['a', b.illustrator], ['4', '440']]) : null);
@@ -3549,6 +4087,46 @@
   window.pickAccentColor = function (hex) {
     selectedAccentHex = selectedAccentHex === hex ? null : hex;
     renderThemePalette('settings-accent-palette', selectedAccentHex, 'pickAccentColor');
+  };
+
+  const DOCUMENT_KIND_LABEL = { livre: 'Livre', periodique: 'Périodique', cd: 'CD / musique', dvd: 'DVD / vidéo', autre: 'Autre' };
+
+  function renderDocumentTypesSettings() {
+    const list = document.getElementById('settings-doctypes-list');
+    if (!list) return;
+    list.innerHTML = documentTypes.map(t => {
+      const own = t.id && t.commune_id !== null && t.commune_id === myCommuneId;
+      return `
+        <div class="bg-white border border-mango-100 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-sm text-ink truncate">${escapeHtml(t.label)}</p>
+            <p class="text-[10.5px] text-ink/45">${DOCUMENT_KIND_LABEL[t.kind] || ''}${own ? ' · propre à ta médiathèque' : ' · BliGO'}</p>
+          </div>
+          ${own ? `<button onclick="removeDocumentType(${t.id})" class="text-xs text-ink/40 hover:text-red-600 underline shrink-0">Retirer</button>` : ''}
+        </div>`;
+    }).join('');
+  }
+
+  window.addDocumentType = async function () {
+    const input = document.getElementById('settings-doctype-label');
+    const label = input.value.trim();
+    if (!label) return;
+    if (!myCommuneId) { alert('Ton compte n\'est rattaché à aucune médiathèque.'); return; }
+    const kind = document.getElementById('settings-doctype-kind').value;
+    const { error } = await supabase.from('document_types').insert({ commune_id: myCommuneId, label, kind, sort_order: 200 });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    input.value = '';
+    await loadDocumentTypes();
+    renderDocumentTypesSettings();
+  };
+
+  window.removeDocumentType = async function (id) {
+    const t = documentTypes.find(x => x.id === id);
+    if (!t || !confirm(`Retirer « ${t.label} » de la liste ? Les documents déjà catalogués avec ce type le gardent.`)) return;
+    const { error } = await supabase.from('document_types').delete().eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadDocumentTypes();
+    renderDocumentTypesSettings();
   };
 
   async function loadCommuneSettings() {
@@ -3846,7 +4424,7 @@
       return `<label class="text-xs font-semibold text-ink/60 block mb-1">${label}</label>
         <select id="${id}" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-3 bg-white">
           <option value="" ${!value ? 'selected' : ''}>Non précisé</option>
-          ${opts.select.map(o => `<option value="${o}" ${value === o ? 'selected' : ''}>${o}</option>`).join('')}
+          ${withCurrentValue(opts.select, value).map(o => `<option value="${escapeHtml(o)}" ${value === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}
         </select>`;
     }
     return `<label class="text-xs font-semibold text-ink/60 block mb-1">${label}</label>
@@ -3933,7 +4511,15 @@
         ${bookFieldRow('Date de publication', 'bd-published-date', b.published_date)}
         ${bookFieldRow('Nombre de pages', 'bd-page-count', b.page_count, { type: 'number' })}
         ${bookFieldRow('Langue d\'origine', 'bd-language', b.language)}
-        ${bookFieldRow('Format', 'bd-format', b.format, { select: FORMAT_OPTIONS })}
+        ${bookFieldRow('Type de document', 'bd-format', b.format, { select: FORMAT_OPTIONS })}
+        ${bookFieldRow('Reliure', 'bd-binding', b.binding)}
+        ${bookFieldRow('Format (dimensions)', 'bd-dimensions', b.dimensions)}
+        ${bookFieldRow('Illustrations', 'bd-illustrations', b.illustrations)}
+        ${bookFieldRow('Collection', 'bd-collection', b.collection)}
+        <div>
+          ${bookFieldRow('Indice Dewey', 'bd-dewey', b.dewey)}
+          ${deweyHintHtml(b.dewey, 'bd-dewey-label')}
+        </div>
         ${bookFieldRow('Dépôt légal', 'bd-legal-deposit', b.legal_deposit)}
         ${bookFieldRow('Traducteur', 'bd-translator', b.translator)}
         ${bookFieldRow('Illustrateur (nom et date)', 'bd-illustrator', b.illustrator)}
@@ -3957,12 +4543,16 @@
         ${bookFieldRow('Âge conseillé', 'bd-age-range', b.age_range, { type: 'text' })}
         ${bookFieldRow('Réservé aux adultes', 'bd-adult-only', b.adult_only ? 'Oui' : 'Non', { select: ['Non', 'Oui'] })}
       </div>
+      ${bookFieldRow('Sujets (Rameau)', 'bd-subjects', b.subjects, { textarea: true })}
       ${bookFieldRow('Résumé', 'bd-summary', b.summary, { textarea: true })}
 
       <button onclick="saveBookDetail(${b.id})" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
     `;
     document.getElementById('book-modal-backdrop').classList.remove('hidden');
     document.getElementById('book-modal-backdrop').classList.add('flex');
+    document.getElementById('bd-dewey').addEventListener('input', e => {
+      document.getElementById('bd-dewey-label').textContent = deweyLabel(e.target.value);
+    });
 
     // Fiche déjà cataloguée avant la détection auto (18/09/2026), ou dont la
     // détection au catalogage avait échoué : on la tente à la consultation,
@@ -4055,6 +4645,12 @@
       page_count: document.getElementById('bd-page-count').value.trim() ? Number(document.getElementById('bd-page-count').value) : null,
       language: val('bd-language'),
       format: val('bd-format'),
+      binding: val('bd-binding'),
+      dimensions: val('bd-dimensions'),
+      illustrations: val('bd-illustrations'),
+      collection: val('bd-collection'),
+      dewey: val('bd-dewey'),
+      subjects: val('bd-subjects'),
       legal_deposit: val('bd-legal-deposit'),
       translator: val('bd-translator'),
       illustrator: val('bd-illustrator'),
