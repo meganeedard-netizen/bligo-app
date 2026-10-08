@@ -1822,6 +1822,7 @@
       const other = await fetchSummaryFromOtherEdition(meta.title, meta.authorKey || meta.author);
       if (other && !(isFrenchBook && looksEnglish(other))) meta.summary = other;
     }
+    if (!meta.summary) meta.summary = await fetchSummaryFromWikipedia(meta.title, meta.authorKey || meta.author);
     if (meta.dewey) meta.dewey = String(meta.dewey).replace(/\//g, '').trim();
     meta.category = forcedGenre || categorizeDocument(meta.rawCategoryText, meta.title, meta.dewey);
     delete meta.rawCategoryText;
@@ -1840,6 +1841,38 @@
     const count = list => list.reduce((n, w) => n + (words.split(` ${w} `).length - 1), 0);
     return count(['the', 'and', 'of', 'is', 'his', 'her', 'with', 'this', 'that', 'novel']) >
       count(['le', 'la', 'les', 'et', 'de', 'des', 'un', 'une', 'est', 'dans']);
+  }
+
+  // Wikipédia en français (08/10/2026), dernier recours gratuit pour les
+  // œuvres connues (classiques, best-sellers, prix littéraires). L'article
+  // n'est retenu que si son titre reprend celui du livre ET qu'il cite le nom
+  // de l'auteur : « La Route du Rhum » (la course) n'est pas pris pour le
+  // livre de Camille El Bèze. On prend la section « Résumé » (ou Intrigue,
+  // Synopsis…) si elle existe, sinon l'introduction. Licence CC BY-SA :
+  // la source est indiquée à la fin du texte.
+  async function fetchSummaryFromWikipedia(title, author) {
+    const lastName = stripAccents((author || '').split(',')[0].trim().split(/\s+/).pop() || '').toLowerCase();
+    if (!title || !lastName || /inconnu/i.test(author)) return null;
+    const api = 'https://fr.wikipedia.org/w/api.php?format=json&origin=*&';
+    try {
+      const search = await (await fetch(api + `action=query&list=search&srlimit=3&srsearch=${encodeURIComponent(`${title} ${lastName}`)}`)).json();
+      const wantedTitle = normalizeKey(stripAccents(title));
+      for (const hit of search.query?.search || []) {
+        if (!normalizeKey(stripAccents(hit.title)).includes(wantedTitle)) continue;
+        const page = await (await fetch(api + `action=query&prop=extracts&explaintext=1&exsectionformat=wiki&redirects=1&titles=${encodeURIComponent(hit.title)}`)).json();
+        const text = Object.values(page.query?.pages || {})[0]?.extract || '';
+        if (!stripAccents(text).toLowerCase().includes(lastName)) continue;
+
+        const sections = text.split(/\n(?===+ )/);
+        const plot = sections.find(sec => /^==+ (résumé|intrigue|synopsis|argument|histoire|contenu)(?=\s|$)/i.test(sec));
+        const body = (plot || sections[0]).replace(/^==+ .*? ==+\s*/, '').replace(/\n+/g, ' ').trim();
+        if (body.length < 80) continue;
+        // Coupé à la fin d'une phrase, sous ~1 200 caractères.
+        const cut = body.length > 1200 ? body.slice(0, 1200).replace(/[^.!?…]*$/, '') : body;
+        return `${cut.trim()} (Source : Wikipédia)`;
+      }
+    } catch { /* Wikipédia indisponible */ }
+    return null;
   }
 
   // Dernier recours pour le résumé (08/10/2026) : une autre édition du même
