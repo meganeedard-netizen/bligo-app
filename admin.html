@@ -1735,7 +1735,14 @@
 
     // BnF interrogée même si Google Books et Open Library n'ont rien : beaucoup
     // de livres français peu diffusés n'existent que chez elle (07/10/2026).
-    const bnf = await fetchFromBnF(isbn, meta?.title, meta?.author);
+    let bnf = await fetchFromBnF(isbn, meta?.title, meta?.author);
+    // Trouvée seulement par titre + auteur, la notice peut être celle d'une
+    // adaptation (ex. Germinal en BD, dessinateur en auteur principal) : on
+    // l'écarte si son auteur principal n'est pas celui du livre scanné.
+    if (bnf && !bnf.matchedByIsbn && meta?.author && !/inconnu/i.test(meta.author) && bnf.authorLastName
+      && !normalizeKey(stripAccents(meta.author)).includes(normalizeKey(stripAccents(bnf.authorLastName)))) {
+      bnf = null;
+    }
     if (!meta && bnf?.title) {
       meta = {
         title: bnf.title,
@@ -1762,10 +1769,12 @@
     // Dépôt légal, imprimeur, Dewey, reliure, collection, sujets : le métier
     // de la BnF, aucune des deux autres sources ne les a (ou rarement).
     if (meta && bnf) {
-      meta.legal_deposit = bnf.legal_deposit;
-      meta.printer = bnf.printer;
-      if (!meta.publisher) meta.publisher = bnf.publisher;
-      if (!meta.page_count) meta.page_count = bnf.page_count;
+      if (bnf.matchedByIsbn) {
+        meta.legal_deposit = bnf.legal_deposit;
+        meta.printer = bnf.printer;
+        if (!meta.page_count) meta.page_count = bnf.page_count;
+      }
+      if (!meta.publisher && bnf.matchedByIsbn) meta.publisher = bnf.publisher;
       if (!meta.language) meta.language = bnf.language;
       // Dernier recours seulement (18/09/2026) : Google Books et Open Library
       // n'ont pas toujours de résumé éditeur pour l'édition exacte scannée,
@@ -1773,15 +1782,24 @@
       if (!meta.summary && bnf.summary) meta.summary = bnf.summary;
       // Indice BnF prioritaire : c'est celui qu'utilisent les bibliothèques françaises.
       meta.dewey = bnf.dewey || meta.dewey;
-      meta.binding = bnf.binding;
-      meta.collection = bnf.collection;
-      meta.dimensions = bnf.dimensions;
-      meta.illustrations = bnf.illustrations;
       meta.subjects = bnf.subjects;
       meta.authorKey = bnf.authorLastName;
       if (!meta.translator) meta.translator = bnf.translator;
       if (!meta.illustrator) meta.illustrator = bnf.illustrator;
-      if (!meta.format) meta.format = formatFromBnF(bnf);
+      if (bnf.author && (!meta.author || /^auteur inconnu$/i.test(meta.author.trim()))) meta.author = bnf.author;
+      // Notice de l'édition exacte (même ISBN) : elle fait autorité pour
+      // l'éditeur, l'année et tout ce qui dépend de l'édition (reliure,
+      // dimensions, collection…). Trouvée seulement par titre + auteur, elle
+      // peut décrire une autre édition : on n'en reprend alors rien de tout ça.
+      if (bnf.matchedByIsbn) {
+        if (bnf.publisher) meta.publisher = bnf.publisher;
+        if (bnf.published_date) meta.published_date = bnf.published_date;
+        meta.binding = bnf.binding;
+        meta.collection = bnf.collection;
+        meta.dimensions = bnf.dimensions;
+        meta.illustrations = bnf.illustrations;
+        meta.format = formatFromBnF(bnf) || meta.format;
+      }
       if (bnf.rawCategoryText) meta.rawCategoryText = [meta.rawCategoryText, bnf.rawCategoryText].filter(Boolean).join(' ');
     }
 
@@ -1789,11 +1807,52 @@
     if (!meta && !bnf) return await fetchMultimediaMetaByBarcode(isbn, forcedGenre);
     if (!meta) return null;
 
+    meta.title = (meta.title || '').trim();
+    // « December 13, 2002 » (Open Library) → « 2002 ».
+    if (meta.published_date && /[a-z]/i.test(meta.published_date)) {
+      meta.published_date = meta.published_date.match(/\d{4}/)?.[0] || meta.published_date;
+    }
+    // Livre français dont la seule description trouvée est en anglais (souvent
+    // Open Library) : on cherche un résumé français, sinon on laisse vide
+    // (bouton photo du verso sur le brouillon) plutôt que de publier un
+    // résumé anglais aux usagers.
+    const isFrenchBook = /^fr/i.test(meta.language || '') || isbnVariants(isbn)[0].startsWith('9782') || /^2/.test(isbn);
+    if (meta.summary && isFrenchBook && looksEnglish(meta.summary)) meta.summary = null;
+    if (!meta.summary) {
+      const other = await fetchSummaryFromOtherEdition(meta.title, meta.authorKey || meta.author);
+      if (other && !(isFrenchBook && looksEnglish(other))) meta.summary = other;
+    }
     if (meta.dewey) meta.dewey = String(meta.dewey).replace(/\//g, '').trim();
     meta.category = forcedGenre || categorizeDocument(meta.rawCategoryText, meta.title, meta.dewey);
     delete meta.rawCategoryText;
     meta.isbn = isbn;
     return meta;
+  }
+
+  function stripAccents(text) {
+    return (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  // Détection simple de la langue d'un résumé : mots-outils anglais plus
+  // nombreux que les français.
+  function looksEnglish(text) {
+    const words = ` ${(text || '').toLowerCase().replace(/[^a-zà-ÿ' ]/g, ' ')} `;
+    const count = list => list.reduce((n, w) => n + (words.split(` ${w} `).length - 1), 0);
+    return count(['the', 'and', 'of', 'is', 'his', 'her', 'with', 'this', 'that', 'novel']) >
+      count(['le', 'la', 'les', 'et', 'de', 'des', 'un', 'une', 'est', 'dans']);
+  }
+
+  // Dernier recours pour le résumé (08/10/2026) : une autre édition du même
+  // livre sur Google Books (recherche titre + auteur), retenue seulement si
+  // le titre correspond vraiment.
+  async function fetchSummaryFromOtherEdition(title, author) {
+    if (!title) return null;
+    const lastName = (author || '').split(',')[0].trim().split(/\s+/).pop();
+    const q = `intitle:"${title}"` + (lastName && !/inconnu/i.test(author) ? ` inauthor:"${lastName}"` : '');
+    const other = await fetchFromGoogleBooks(q);
+    if (!other?.summary) return null;
+    const a = normalizeKey(title), b = normalizeKey(other.title);
+    return (a.includes(b) || b.includes(a)) ? other.summary : null;
   }
 
   // ---------- CD, DVD, partitions (BnF + MusicBrainz) ----------
@@ -1972,9 +2031,9 @@
       return;
     }
 
-    const existingBook = books.find(b =>
-      normalizeKey(b.title) === normalizeKey(meta.title) && normalizeKey(b.author) === normalizeKey(meta.author)
-    );
+    const digits = v => String(v || '').replace(/[^\dX]/gi, '');
+    const existingBook = (meta.isbn && books.find(b => digits(b.isbn) && digits(b.isbn) === digits(meta.isbn)))
+      || books.find(b => normalizeKey(b.title) === normalizeKey(meta.title) && normalizeKey(b.author) === normalizeKey(meta.author));
     draft.meta = meta;
     draft.category = meta.category;
     draft.copyCount = 1;
@@ -2005,10 +2064,52 @@
     if (existingBook) {
       draft.status = 'existing';
       draft.existingBookId = existingBook.id;
+      enrichExistingBook(existingBook, meta).then(filled => {
+        draft.enrichedFields = filled;
+        renderDraftBooks();
+      });
     } else {
       draft.status = 'found';
     }
     renderDraftBooks();
+  }
+
+  // Un livre rescanné alors qu'il est déjà au catalogue : sa fiche est
+  // complétée avec ce que les API viennent de trouver, sans jamais écraser
+  // une valeur déjà saisie (08/10/2026). La catégorie n'est remplacée que si
+  // elle était vide ou « Autres », et la cote seulement si c'était la cote
+  // provisoire « DOC … » (pas encore une vraie étiquette).
+  const ENRICH_FIELD_LABELS = {
+    author: 'auteur', category: 'catégorie', format: 'type de document', dewey: 'indice Dewey', shelf_location: 'cote',
+    binding: 'reliure', dimensions: 'dimensions', illustrations: 'illustrations', collection: 'collection',
+    subjects: 'sujets', publisher: 'éditeur', published_date: 'date', page_count: 'pages', language: 'langue',
+    legal_deposit: 'dépôt légal', printer: 'imprimeur', translator: 'traducteur', illustrator: 'illustrateur',
+    summary: 'résumé', isbn: 'ISBN', cover_url: 'couverture',
+  };
+
+  async function enrichExistingBook(book, meta) {
+    const patch = {};
+    ['dewey', 'binding', 'dimensions', 'illustrations', 'collection', 'subjects', 'format', 'publisher', 'published_date',
+      'page_count', 'language', 'legal_deposit', 'printer', 'translator', 'illustrator', 'summary', 'isbn', 'cover_url']
+      .forEach(f => { if ((book[f] == null || book[f] === '') && meta[f]) patch[f] = meta[f]; });
+    if (/^auteur inconnu$/i.test((book.author || '').trim()) && meta.author && !/inconnu/i.test(meta.author)) patch.author = meta.author;
+    if ((!book.category || book.category === 'Autres') && meta.category && meta.category !== 'Autres') patch.category = meta.category;
+    const oldCote = book.shelf_location || '';
+    if (!oldCote || /^DOC\b/.test(oldCote)) {
+      const cote = suggestCote(patch.category || book.category, patch.author || book.author, patch.dewey || book.dewey,
+        { format: patch.format || book.format, authorKey: meta.authorKey, title: book.title });
+      if (cote && cote !== oldCote) patch.shelf_location = cote;
+    }
+    if (!Object.keys(patch).length) return [];
+
+    const { error } = await supabase.from('books').update(patch).eq('id', book.id);
+    if (error) { console.error(error); return []; }
+    if (patch.shelf_location) {
+      await supabase.from('book_copies').update({ shelf_location: patch.shelf_location })
+        .eq('book_id', book.id).or(oldCote ? `shelf_location.eq."${oldCote}",shelf_location.is.null` : 'shelf_location.is.null');
+    }
+    Object.assign(book, patch);
+    return Object.keys(patch).map(f => ENRICH_FIELD_LABELS[f] || f);
   }
 
   // En scan en rafale, une autre fiche peut finir sa recherche (et donc
@@ -2203,6 +2304,7 @@
       return `
         <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
           <p class="text-[11px] font-bold text-mango-700 uppercase tracking-wide mb-2">Déjà au catalogue — ${totalCopies} exemplaire${totalCopies > 1 ? 's' : ''}</p>
+          ${d.enrichedFields?.length ? `<p class="text-[11px] text-ink/60 bg-mango-50 rounded-lg px-2.5 py-1.5 mb-2">✓ Fiche complétée automatiquement : ${escapeHtml(d.enrichedFields.join(', '))}${book?.shelf_location ? ` · cote ${escapeHtml(book.shelf_location)}` : ''}</p>` : ''}
           <div class="flex gap-3">
             ${coverHtml}
             <div class="flex-1 min-w-0">
@@ -2247,7 +2349,10 @@
               ${d.format ? `<p class="text-[11px] text-ink/55">${escapeHtml(d.format)}${d.binding ? ` · ${escapeHtml(d.binding)}` : ''}${d.dimensions ? ` · ${escapeHtml(d.dimensions)}` : ''}</p>` : ''}
             </div>
           </div>
-          ${d.meta.summary ? `<p class="text-xs text-ink/60 leading-relaxed mt-3 line-clamp-4">${escapeHtml(d.meta.summary)}</p>` : ''}
+          ${d.summary ? `<p class="text-xs text-ink/60 leading-relaxed mt-3 line-clamp-4">${escapeHtml(d.summary)}</p>` : `
+          <input id="back-photo-input-${d.localId}" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleBackPhoto(event, '${d.localId}')">
+          <button type="button" onclick="document.getElementById('back-photo-input-${d.localId}').click()" class="w-full mt-3 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">📷 Aucun résumé trouvé : photo du verso pour le remplir</button>
+          <p id="cover-ocr-status-${d.localId}" class="text-[11px] text-ink/45 text-center mt-1 min-h-[16px]"></p>`}
           <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires</label>
           <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
           <button onclick="toggleDraftVerify('${d.localId}')" class="w-full mt-3 border border-mango-200 text-ink rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">🔍 Vérifier la fiche</button>
@@ -2345,6 +2450,9 @@
         ${deweyHintHtml(d.dewey, `draft-dewey-label-${d.localId}`)}
         <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé</label>
         <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">${escapeHtml(d.summary || '')}</textarea>
+        ${d.summary ? '' : `<input id="back-photo-input-${d.localId}" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleBackPhoto(event, '${d.localId}')">
+        <button type="button" onclick="document.getElementById('back-photo-input-${d.localId}').click()" class="w-full -mt-1 mb-1 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">📷 Photo du verso pour remplir le résumé</button>
+        <p id="cover-ocr-status-${d.localId}" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>`}
         <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre d'exemplaires</label>
         <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-3">
 
@@ -2552,7 +2660,14 @@
       if (!res.ok) return null;
       const data = await res.json();
       const raw = (data.physical_format || '').toLowerCase().trim();
-      const descValue = typeof data.description === 'string' ? data.description : data.description?.value;
+      let descValue = typeof data.description === 'string' ? data.description : data.description?.value;
+      // Résumé souvent rangé sur l'œuvre plutôt que sur l'édition.
+      if (!descValue && data.works?.[0]?.key) {
+        try {
+          const work = await (await fetch(`https://openlibrary.org${data.works[0].key}.json`)).json();
+          descValue = typeof work.description === 'string' ? work.description : work.description?.value;
+        } catch { /* pas de résumé d'œuvre */ }
+      }
       return {
         format: PHYSICAL_FORMAT_FR[raw] || null,
         summary: descValue ? cleanOpenLibrarySummary(descValue) : null,
@@ -2702,10 +2817,30 @@
     }
   }
 
+  // La BnF indexe les livres d'avant 2007 sous leur ISBN à 10 chiffres
+  // (« 2-253-00422-7 ») et ne les retrouve pas par l'ISBN à 13 chiffres
+  // imprimé sur les rééditions et lu par la douchette (vérifié le 08/10/2026
+  // sur Germinal, Livre de poche) : on essaie les deux formes.
+  function isbnVariants(isbn) {
+    const code = String(isbn || '').replace(/[^\dX]/gi, '').toUpperCase();
+    const variants = [code];
+    if (/^978\d{10}$/.test(code)) {
+      const core = code.slice(3, 12);
+      const sum = [...core].reduce((acc, d, i) => acc + Number(d) * (10 - i), 0);
+      const check = (11 - (sum % 11)) % 11;
+      variants.push(core + (check === 10 ? 'X' : String(check)));
+    } else if (/^\d{9}[\dX]$/.test(code)) {
+      const core = '978' + code.slice(0, 9);
+      const sum = [...core].reduce((acc, d, i) => acc + Number(d) * (i % 2 ? 3 : 1), 0);
+      variants.push(core + String((10 - (sum % 10)) % 10));
+    }
+    return variants;
+  }
+
   async function fetchFromBnF(isbn, title, author) {
-    if (isbn) {
-      const byIsbn = await bnfSruQuery(`bib.isbn all "${isbn}"`);
-      if (byIsbn) return byIsbn;
+    for (const code of (isbn ? isbnVariants(isbn) : [])) {
+      const byIsbn = await bnfSruQuery(`bib.isbn all "${code}"`);
+      if (byIsbn) return { ...byIsbn, matchedByIsbn: true };
     }
     if (title && author) {
       return await bnfSruQuery(`bib.title all "${title}" and bib.author all "${author}"`);
@@ -2855,15 +2990,25 @@
       }
 
       const summaryValue = summary.slice(0, 2000);
-      document.getElementById(`draft-summary-${localId}`).value = summaryValue;
+      const summaryInput = document.getElementById(`draft-summary-${localId}`);
+      if (summaryInput) summaryInput.value = summaryValue;
       updateDraftField(localId, 'summary', summaryValue);
 
-      const titleValue = document.getElementById(`draft-title-${localId}`).value;
+      // Catégorie déjà déduite de l'indice Dewey : le résumé ne la remplace pas.
+      const draft = draftBooks.find(d => d.localId === localId);
+      if (draft?.dewey) {
+        if (!summaryInput) renderDraftBooks();
+        else status.textContent = 'Résumé rempli (modifiable).';
+        return;
+      }
+      const titleValue = document.getElementById(`draft-title-${localId}`)?.value || draft?.title || '';
       const guessed = guessCategory(summary, titleValue);
-      document.getElementById(`draft-category-${localId}`).value = guessed;
+      const categorySelect = document.getElementById(`draft-category-${localId}`);
+      if (categorySelect) categorySelect.value = guessed;
       updateDraftField(localId, 'category', guessed);
 
-      status.textContent = `Résumé rempli — genre proposé : ${guessed} (modifiable).`;
+      if (!summaryInput) renderDraftBooks();
+      else status.textContent = `Résumé rempli — genre proposé : ${guessed} (modifiable).`;
     } catch (e) {
       status.textContent = 'Erreur de lecture : ' + e.message;
     }
