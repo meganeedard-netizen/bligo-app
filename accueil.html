@@ -284,7 +284,14 @@
 
   // ==================== CATALOGUE (fonds officiel + hors condition) ====================
 
-  const CATEGORY_SHORT_LABELS = {};
+  // Libellés raccourcis sur les pastilles (largeur fixe de 80 px) : le nom
+  // complet reste utilisé partout ailleurs (fiche, recherche, back-office).
+  const CATEGORY_SHORT_LABELS = {
+    'Poésie & théâtre': 'Poésie',
+    'Sports & loisirs': 'Sports',
+    'Sciences & nature': 'Sciences',
+    'Documentaire': 'Documents',
+  };
 
   function renderCategoryFilters() {
     const el = document.getElementById('category-filters');
@@ -294,9 +301,9 @@
       ...CATEGORIES.map(c => ({ label: c, value: c })),
     ];
     el.innerHTML = chips.map(c => `
-      <button data-value="${c.value ?? ''}" class="category-chip shrink-0 flex flex-col items-center justify-center gap-1 w-20 py-2.5 px-1.5 rounded-xl transition ${
+      <button data-value="${c.value ?? ''}" class="category-chip shrink-0 flex flex-col items-center justify-start gap-1 w-20 py-2.5 px-1 rounded-xl transition ${
         activeCategory === c.value ? 'bg-brand text-white' : 'bg-white text-ink/60'
-      }"><span class="w-10 h-10 shrink-0">${CATEGORY_ICONS[c.label] || ''}</span><span class="text-[11.5px] font-semibold leading-tight text-center">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span></button>
+      }"><span class="w-10 h-10 shrink-0">${CATEGORY_ICONS[c.label] || ''}</span><span class="text-[11.5px] font-semibold leading-tight text-center whitespace-nowrap">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span></button>
     `).join('');
     el.querySelectorAll('.category-chip').forEach(btn => {
       btn.addEventListener('click', () => {
