@@ -42,12 +42,8 @@ jobs:
       - name: Dépendances
         run: npm ci
 
-      # Sous Windows, « bash » lancé par npm peut désigner le WSL (absent) :
-      # la copie des pages se fait donc ici, avec le bash de Git, puis la
-      # compilation désactive la commande beforeBuildCommand de tauri.conf.json.
       - name: Préparation des pages du back-office
-        run: bash sync-web.sh
-        shell: bash
+        run: node sync-web.mjs
 
       - name: Compilation (installateurs .exe et .msi)
         run: npx tauri build --bundles nsis,msi --config '{"build":{"beforeBuildCommand":""}}' 2>&1 | tail -80; exit ${PIPESTATUS[0]}
