@@ -2390,7 +2390,7 @@
           <select id="draft-format-${d.localId}" onchange="updateDraftField('${d.localId}', 'format', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
             ${formatOptionsHtml(d.format)}
           </select>
-          ${d.codeLHint ? `<p class="text-[11px] text-ink/60 bg-mango-50 rounded-lg px-2.5 py-1.5 mb-2">Le code L ne permet pas de retrouver le magazine. Scanne plutôt le code-barres de la couverture (il commence par 977) pour remplir la fiche automatiquement, ou tape le titre ci-dessus.</p>` : ''}
+          ${d.codeLHint ? `<p class="text-[11px] text-ink/60 bg-mango-50 rounded-lg px-2.5 py-1.5 mb-2">Le code L ne permet pas de retrouver le magazine. Scanne plutôt le code-barres du magazine, en 1re ou en 4e de couverture (il commence par 977), pour remplir la fiche automatiquement, ou tape le titre ci-dessus.</p>` : ''}
           ${ISSUE_FIELD_MANUAL(d)}
           <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé (optionnel)</label>
           <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Résumé du 4e de couverture">${escapeHtml(d.summary || '')}</textarea>
