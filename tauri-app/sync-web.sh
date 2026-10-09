@@ -22,8 +22,8 @@ cp -R "$ROOT"js "$DEST/"
 # usager) — absente de ce paquet, réservé aux agents. On route plutôt vers
 # admin.html ou superadmin.html selon le rôle, sans toucher au index.html
 # source (utilisé tel quel par le vrai site usager bligo.app).
-perl -0777 -pi -e "s/window\.location\.href = 'accueil\.html';/redirectAfterLogin();/g" "$DEST/index.html"
-perl -0777 -pi -e "s{(</script>\s*</body>)}{
+perl -0777 -pi.bak -e "s/window\.location\.href = 'accueil\.html';/redirectAfterLogin();/g" "$DEST/index.html"
+perl -0777 -pi.bak -e "s{(</script>\s*</body>)}{
   window.redirectAfterLogin = async function () {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
@@ -38,13 +38,13 @@ perl -0777 -pi -e "s{(</script>\s*</body>)}{
 # de vraies boîtes de dialogue HTML, uniquement dans le paquet Tauri (le vrai
 # site fonctionne déjà très bien avec les boîtes natives du navigateur).
 for page in admin.html superadmin.html; do
-  perl -0777 -pi -e "s/confirm\(/await confirmDialog(/g" "$DEST/$page"
+  perl -0777 -pi.bak -e "s/confirm\(/await confirmDialog(/g" "$DEST/$page"
   # addDraftFromIsbn n'était pas async (seul appelant de confirm() en dehors
   # d'une fonction déjà async) — le devient ici pour pouvoir faire le await
   # ci-dessus, sans changer sa signature dans le code source (ses appelants
   # ne l'attendent déjà pas).
-  perl -0777 -pi -e "s/function addDraftFromIsbn\(rawCode\) \{/async function addDraftFromIsbn(rawCode) {/" "$DEST/$page"
-  perl -0777 -pi -e "s{(</head>)}{<script>
+  perl -0777 -pi.bak -e "s/function addDraftFromIsbn\(rawCode\) \{/async function addDraftFromIsbn(rawCode) {/" "$DEST/$page"
+  perl -0777 -pi.bak -e "s{(</head>)}{<script>
     function bligoDialogBackdrop() {
       const backdrop = document.createElement('div');
       backdrop.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(27,75,67,.4);display:flex;align-items:center;justify-content:center;padding:16px;';
@@ -76,5 +76,9 @@ for page in admin.html superadmin.html; do
   </script>
 \$1}" "$DEST/$page"
 done
+
+# Sous Windows, Perl exige une copie de sauvegarde pour modifier un fichier
+# en place (-pi.bak) : on la supprime aussitôt.
+rm -f "$DEST"/*.bak
 
 echo "dist/ synchronisé depuis la racine du dépôt (index.html adapté pour rediriger vers admin/superadmin, alert/confirm remplacés)."
