@@ -665,7 +665,7 @@
             </div>
           </div>
           <!-- Carte famille (09/10/2026) -->
-          <div class="grid grid-cols-3 gap-2 mb-3">
+          <div class="grid grid-cols-2 gap-2 mb-3">
             <div>
               <label class="text-[11px] font-semibold text-ink/60 block mb-1">Famille (€)</label>
               <input id="tariff-famille" type="number" min="0" step="0.5" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
@@ -674,12 +674,8 @@
               <label class="text-[11px] font-semibold text-ink/60 block mb-1">Quota famille</label>
               <input id="family-max-loans" type="number" min="1" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
             </div>
-            <div>
-              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Membres max</label>
-              <input id="family-max-members" type="number" min="2" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
-            </div>
           </div>
-          <p class="text-[10.5px] text-ink/45 -mt-1 mb-3">Quota famille : nombre de documents en cours (prêts + réservations) pour toute la famille.</p>
+          <p class="text-[10.5px] text-ink/45 -mt-1 mb-3">Carte famille : un seul compte partagé par toute la famille. Quota famille = nombre de documents en cours (prêts + réservations) sur ce compte.</p>
           <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Moyens de paiement acceptés</label>
           <div class="flex gap-4 mb-3">
             <label class="flex items-center gap-1.5 text-sm text-ink"><input id="tariff-accepts-card" type="checkbox" class="accent-mango-600 w-4 h-4">Carte bancaire</label>
@@ -4021,7 +4017,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       return;
     }
 
-    const tariffLabels = { mineur: 'Mineur', majeur: 'Majeur', gratuit: 'Gratuité' };
+    const tariffLabels = { mineur: 'Mineur', majeur: 'Majeur', gratuit: 'Gratuité', famille: 'Famille' };
     list.innerHTML = filtered.map(p => `
       <div onclick="openInscritFiche('${p.id}')" class="grid grid-cols-1 sm:grid-cols-[1.6fr_1fr_1fr_1fr_1fr] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm cursor-pointer hover:bg-mango-50/40">
         <span>
@@ -4187,90 +4183,19 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   // ---------- Carte famille (09/10/2026) ----------
-  // Un titulaire adulte porte l'abonnement ; chaque membre garde sa carte,
-  // les quotas sont partagés. Les enfants sans e-mail sont créés par la
-  // fonction create-family-member et gérés par le parent dans l'appli.
+  // Un seul compte partagé par toute la famille (catégorie « famille ») :
+  // on affiche les documents en cours face au quota famille de la médiathèque.
   async function loadFamilySection(profile) {
     const box = document.getElementById('fiche-family');
     if (!box) return;
-    if (!profile.family_id) {
-      if (profile.tariff_category === 'mineur') { box.innerHTML = ''; return; }
-      box.innerHTML = `<div class="px-4 py-2.5 flex items-center justify-between gap-2 text-xs">
-        <span class="text-ink/60">Carte famille : aucune${profile.wants_family ? ' · <span class="font-bold text-hibiscus-700">en a fait la demande</span>' : ''}</span>
-        <button type="button" onclick="createFamily('${profile.id}')" class="text-[11px] font-semibold text-mango-700 border border-mango-200 bg-white rounded-full px-3 py-1 shrink-0">Créer une carte famille</button>
-      </div>`;
-      return;
-    }
-    const [{ data: family }, { data: members }] = await Promise.all([
-      supabase.from('families').select('id, holder_id').eq('id', profile.family_id).single(),
-      supabase.from('profiles').select('id, full_name, subscriber_number, tariff_category, managed_by').eq('family_id', profile.family_id).order('full_name'),
-    ]);
-    const { data: usage } = await supabase.rpc('family_usage', { p_family_id: profile.family_id });
-    const u = usage?.[0] || { used: 0, max_loans: 15 };
-    const holder = (members || []).find(m => m.id === family?.holder_id);
-    box.innerHTML = `<div class="px-4 py-3 text-xs bg-mango-50/40">
-      <p class="font-bold text-ink mb-1">👨‍👩‍👧 Carte famille · titulaire ${escapeHtml(holder?.full_name || '?')}
-        <span class="font-semibold ${u.used >= u.max_loans ? 'text-red-600' : 'text-mango-700'}">· ${u.used}/${u.max_loans} documents en cours</span></p>
-      <div class="flex flex-col gap-1 mb-2">
-        ${(members || []).map(m => `<div class="flex items-center justify-between gap-2">
-          <span><span class="font-semibold text-ink">${escapeHtml(m.full_name)}</span>
-            <span class="text-ink/45">${escapeHtml(m.subscriber_number)} · ${m.tariff_category === 'mineur' ? 'Mineur' : 'Majeur'}${m.id === family?.holder_id ? ' · titulaire' : ''}${m.managed_by ? ' · géré par le parent' : ''}</span></span>
-          <button type="button" onclick="removeFamilyMember('${m.id}', ${m.id === family?.holder_id})" class="text-[11px] text-red-500/70 hover:text-red-600 underline shrink-0">${m.id === family?.holder_id ? 'Dissoudre' : 'Retirer'}</button>
-        </div>`).join('')}
-      </div>
-      <div class="flex flex-wrap gap-1.5 items-center">
-        <input id="family-child-name" placeholder="Prénom et nom de l'enfant" class="flex-1 min-w-[160px] border border-mango-100 rounded-lg px-2 py-1.5 text-xs">
-        <button type="button" onclick="addFamilyChild(${profile.family_id})" class="text-[11px] font-semibold bg-brand text-white rounded-full px-3 py-1.5">+ Enfant (sans e-mail)</button>
-      </div>
-      <div class="flex flex-wrap gap-1.5 items-center mt-1.5">
-        <input id="family-member-number" placeholder="N° d'abonné d'un compte existant" class="flex-1 min-w-[160px] border border-mango-100 rounded-lg px-2 py-1.5 text-xs">
-        <button type="button" onclick="addFamilyMemberByNumber(${profile.family_id})" class="text-[11px] font-semibold text-mango-700 border border-mango-200 bg-white rounded-full px-3 py-1.5">Rattacher</button>
-      </div>
-    </div>`;
+    if (profile.tariff_category !== 'famille') { box.innerHTML = ''; return; }
+    const { data } = await supabase.rpc('family_usage', { p_user_id: profile.id });
+    const u = data?.[0];
+    box.innerHTML = u ? `<div class="px-4 py-2.5 text-xs">
+      <span class="font-bold text-ink">👨‍👩‍👧 Carte famille</span>
+      <span class="${u.used >= u.max_loans ? 'text-red-600 font-bold' : 'text-ink/60'}"> · ${u.used}/${u.max_loans} documents en cours pour toute la famille</span>
+    </div>` : '';
   }
-
-  async function refreshCurrentFiche(userId) {
-    await loadInscritsList();
-    const fresh = inscritsList.find(p => p.id === userId);
-    if (fresh) await loadFicheFor(fresh);
-  }
-
-  window.createFamily = async function (holderId) {
-    if (!confirm('Créer une carte famille avec cet usager comme titulaire ? Encaisse d\'abord le tarif famille s\'il y en a un.')) return;
-    const { data, error } = await supabase.rpc('create_family', { p_holder_id: holderId });
-    if (error) { alert('Erreur : ' + error.message); return; }
-    if (!data.ok) { alert(data.message); return; }
-    await refreshCurrentFiche(holderId);
-  };
-
-  window.addFamilyChild = async function (familyId) {
-    const name = document.getElementById('family-child-name').value.trim();
-    if (!name) { alert('Indique le prénom et le nom de l\'enfant.'); return; }
-    const { data, error } = await supabase.functions.invoke('create-family-member', { body: { family_id: familyId, full_name: name, tariff_category: 'mineur' } });
-    if (error || !data?.ok) { alert('Erreur : ' + (data?.message || error?.message || 'fonction create-family-member non déployée ?')); return; }
-    alert(`${data.member.full_name} ajouté(e) : carte n° ${data.member.subscriber_number}.`);
-    const holder = inscritsList.find(p => p.family_id === familyId);
-    if (holder) await refreshCurrentFiche(holder.id);
-  };
-
-  window.addFamilyMemberByNumber = async function (familyId) {
-    const number = document.getElementById('family-member-number').value.trim();
-    if (!number) return;
-    const { data, error } = await supabase.rpc('add_family_member', { p_family_id: familyId, p_subscriber_number: number });
-    if (error) { alert('Erreur : ' + error.message); return; }
-    alert(data.message);
-    const holder = inscritsList.find(p => p.family_id === familyId);
-    if (holder) await refreshCurrentFiche(holder.id);
-  };
-
-  window.removeFamilyMember = async function (userId, isHolder) {
-    if (!confirm(isHolder ? 'Dissoudre la carte famille ? Chaque membre redevient individuel.' : 'Retirer ce membre de la carte famille ?')) return;
-    const { data, error } = await supabase.rpc('remove_family_member', { p_user_id: userId });
-    if (error) { alert('Erreur : ' + error.message); return; }
-    alert(data.message);
-    const current = inscritsList.find(p => p.id === userId) || inscritsList.find(p => p.family_id);
-    if (current) await refreshCurrentFiche(current.id);
-  };
 
   // Validité de l'adhésion (09/10/2026), réglable par médiathèque dans Réglages.
   function membershipRowHtml(profile) {
@@ -4346,7 +4271,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         </div>`
       : '';
 
-    const tariffLabels = { mineur: 'Mineur', majeur: 'Majeur', gratuit: 'Gratuité' };
+    const tariffLabels = { mineur: 'Mineur', majeur: 'Majeur', gratuit: 'Gratuité', famille: 'Famille' };
 
     resultBox.innerHTML = `
       <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
@@ -4788,7 +4713,6 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       if (commune.family_max_loans != null) {
         document.getElementById('tariff-famille').value = ((commune.tariff_famille_cents || 0) / 100).toFixed(2);
         document.getElementById('family-max-loans').value = commune.family_max_loans;
-        document.getElementById('family-max-members').value = commune.family_max_members;
       }
       if (commune.membership_validity) {
         document.getElementById('membership-validity').value = commune.membership_validity;
@@ -4826,7 +4750,6 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       p_commune_id: myCommuneId,
       p_tariff_cents: Math.round(Number(document.getElementById('tariff-famille').value || 0) * 100),
       p_max_loans: Number(document.getElementById('family-max-loans').value || 15),
-      p_max_members: Number(document.getElementById('family-max-members').value || 6),
     });
     if (familyError && !/update_commune_family_settings/.test(familyError.message)) { alert('Erreur : ' + familyError.message); return; }
     await loadTeamAndTariffs();
@@ -5898,7 +5821,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <span>
           <span class="font-semibold text-ink block">${escapeHtml(p.full_name)}</span>
           <span class="text-[10.5px] text-mango-700 font-semibold">${escapeHtml(p.communes?.name || '')}</span>
-          ${p.wants_family ? '<span class="block text-[10.5px] font-bold text-hibiscus-700">👨‍👩‍👧 Souhaite une carte famille</span>' : ''}
+          ${p.tariff_category === 'famille' ? '<span class="block text-[10.5px] font-bold text-hibiscus-700">👨‍👩‍👧 Demande une carte famille</span>' : ''}
         </span>
         <span class="text-ink/60 text-xs">${escapeHtml(p.subscriber_number)}</span>
         <span class="text-ink/60 text-xs">${formatEventDateShort(p.created_at)}</span>
@@ -5907,6 +5830,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <option value="mineur" ${p.tariff_category === 'mineur' ? 'selected' : ''}>Mineur</option>
           <option value="majeur" ${p.tariff_category === 'majeur' ? 'selected' : ''}>Majeur</option>
           <option value="gratuit" ${p.tariff_category === 'gratuit' ? 'selected' : ''}>Gratuité (sans emploi)</option>
+          <option value="famille" ${p.tariff_category === 'famille' ? 'selected' : ''}>Famille (compte partagé)</option>
         </select>
         <span class="sm:text-right">
           <button onclick="validateRegistration('${p.id}', '${escapeJsAttr(p.full_name)}')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">Valider l'inscription</button>
@@ -5917,7 +5841,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.validateRegistration = async function (id, name) {
     const tariffSelect = document.getElementById('prereg-tariff-' + id);
     const tariff_category = tariffSelect?.value;
-    if (!tariff_category) { alert('Choisis la catégorie tarifaire (mineur / majeur / gratuité) avant de valider.'); return; }
+    if (!tariff_category) { alert('Choisis la catégorie tarifaire (mineur / majeur / gratuité / famille) avant de valider.'); return; }
     if (!confirm(`Confirmer la validation de l'inscription de ${name} ? Vérifie bien sa pièce d'identité et son justificatif de domicile (et son autorisation parentale si mineur) avant de continuer.`)) return;
 
     const { error: tariffError } = await supabase.rpc('set_tariff_category', { p_user_id: id, p_category: tariff_category });

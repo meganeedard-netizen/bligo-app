@@ -160,7 +160,6 @@
     const { data: communesData } = await supabase.from('communes').select('id, name, opening_hours');
     communes = communesData || [];
 
-    await loadFamilyKids();
     await Promise.all([loadReservations(), loadLoans(), loadMyRatings(), loadHolds()]);
     renderAll();
 
@@ -181,20 +180,11 @@
     myComments = Object.fromEntries((data || []).map(r => [r.book_id, r.comment || '']));
   }
 
-  // Carte famille (09/10/2026) : le parent voit aussi les réservations et
-  // les prêts des enfants qu'il gère (profiles.managed_by).
-  let kidNames = {};
-  async function loadFamilyKids() {
-    const { data } = await supabase.from('profiles').select('id, full_name').eq('managed_by', currentUser.id);
-    kidNames = Object.fromEntries((data || []).map(k => [k.id, k.full_name.split(' ')[0]]));
-  }
-  const familyUserIds = () => [currentUser.id, ...Object.keys(kidNames)];
-
   async function loadReservations() {
     const { data, error } = await supabase
       .from('reservations')
-      .select('id, user_id, status, created_at, ready_at, return_due_at, books ( id, title, author, cover_initial, cover_url, commune_id )')
-      .in('user_id', familyUserIds())
+      .select('id, status, created_at, ready_at, return_due_at, books ( id, title, author, cover_initial, cover_url, commune_id )')
+      .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false });
     if (error) { console.error(error); return; }
     reservations = data;
@@ -207,23 +197,23 @@
   async function loadLoans() {
     let { data, error } = await supabase
       .from('loans')
-      .select('id, user_id, borrowed_at, due_at, returned_at, borrowed_at_commune_id, renewal_count, book_copies ( books ( id, title, author, cover_initial, cover_url ) )')
-      .in('user_id', familyUserIds())
+      .select('id, borrowed_at, due_at, returned_at, borrowed_at_commune_id, renewal_count, book_copies ( books ( id, title, author, cover_initial, cover_url ) )')
+      .eq('user_id', currentUser.id)
       .is('reservation_id', null)
       .order('borrowed_at', { ascending: false });
     if (error) {
       // Colonne renewal_count absente tant que add_renewal_holds_membership.sql n'est pas passée.
       ({ data, error } = await supabase
         .from('loans')
-        .select('id, user_id, borrowed_at, due_at, returned_at, borrowed_at_commune_id, book_copies ( books ( id, title, author, cover_initial, cover_url ) )')
-        .in('user_id', familyUserIds())
+        .select('id, borrowed_at, due_at, returned_at, borrowed_at_commune_id, book_copies ( books ( id, title, author, cover_initial, cover_url ) )')
+        .eq('user_id', currentUser.id)
         .is('reservation_id', null)
         .order('borrowed_at', { ascending: false }));
     }
     if (error) { console.error(error); return; }
     loans = data;
     const { data: fromResa } = await supabase.from('loans').select('reservation_id, renewal_count')
-      .in('user_id', familyUserIds()).is('returned_at', null).not('reservation_id', 'is', null);
+      .eq('user_id', currentUser.id).is('returned_at', null).not('reservation_id', 'is', null);
     renewalsByReservation = Object.fromEntries((fromResa || []).map(l => [l.reservation_id, l.renewal_count || 0]));
   }
 
@@ -291,7 +281,6 @@
         readyAt: r.ready_at || null,
         returnDueAt: r.return_due_at || null,
         renewalCount: renewalsByReservation[r.id] || 0,
-        forName: kidNames[r.user_id] || null,
         myRating: book?.id ? (myRatings[book.id] || null) : null,
         myComment: book?.id ? (myComments[book.id] || '') : '',
       };
@@ -318,7 +307,6 @@
         readyAt: null,
         returnDueAt: l.due_at || null,
         renewalCount: l.renewal_count || 0,
-        forName: kidNames[l.user_id] || null,
         myRating: book?.id ? (myRatings[book.id] || null) : null,
         myComment: book?.id ? (myComments[book.id] || '') : '',
       };
@@ -337,7 +325,6 @@
         <div class="flex-1 min-w-0">
           <p class="text-sm font-bold ${light ? 'text-white' : 'text-ink'}">${item.title}</p>
           <p class="text-[11px] ${light ? 'text-white/75' : 'text-ink/50'}">${item.author}</p>
-          ${item.forName ? `<p class="text-[10.5px] font-bold ${light ? 'text-mango-200' : 'text-hibiscus-700'}">Pour ${item.forName}</p>` : ''}
           ${metaHtml}
         </div>
       </div>`;

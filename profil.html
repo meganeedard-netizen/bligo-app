@@ -118,16 +118,11 @@
     <p id="category-message" class="text-[11px] text-ink/55 mt-2 min-h-[16px]"></p>
   </div>
 
-  <!-- Carte famille (09/10/2026) -->
+  <!-- Carte famille (09/10/2026) : un seul compte partagé par toute la famille -->
   <div id="family-block" class="hidden bg-white rounded-xl p-4 shadow-sm mb-6">
-    <p class="text-xs font-semibold text-ink/50 mb-1">Ma famille</p>
-    <p id="family-usage" class="text-[11px] text-ink/55 mb-2"></p>
-    <div id="family-members" class="flex flex-col gap-2 mb-2"></div>
-    <div id="family-add" class="hidden">
-      <input id="family-child-input" placeholder="Prénom et nom de l'enfant" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
-      <button id="family-add-btn" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un enfant</button>
-      <p id="family-message" class="text-xs text-center mt-2"></p>
-    </div>
+    <p class="text-xs font-semibold text-ink/50 mb-1">👨‍👩‍👧 Carte famille</p>
+    <p id="family-usage" class="text-sm font-bold text-ink"></p>
+    <p class="text-[11px] text-ink/50 mt-1">Ce compte est partagé par toute ta famille : chacun peut s'y connecter avec la même adresse e-mail pour réserver.</p>
   </div>
 
   <!-- Ressources numériques de la médiathèque (09/10/2026) -->
@@ -236,11 +231,11 @@
 
   // Catégorie déclarée (non vérifiée) : Adulte / Mineur / Famille.
   async function setupCategoryChoice() {
-    const { data: me, error } = await supabase.from('profiles').select('tariff_category, wants_family').eq('id', currentUserId).single();
-    if (error) return; // migration pas encore passée
+    const { data: me, error } = await supabase.from('profiles').select('tariff_category').eq('id', currentUserId).single();
+    if (error) return;
     const block = document.getElementById('category-block');
     block.classList.remove('hidden');
-    const current = me.wants_family ? 'famille' : me.tariff_category;
+    const current = me.tariff_category;
     const paint = cat => document.querySelectorAll('.category-choice').forEach(b => {
       const on = b.dataset.cat === cat;
       b.className = `category-choice border rounded-lg py-2 text-xs font-semibold ${on ? 'bg-brand text-white border-brand' : 'bg-white text-ink/60 border-mango-100'}`;
@@ -252,45 +247,19 @@
       if (error) { msg.textContent = error.message; return; }
       paint(btn.dataset.cat);
       msg.textContent = btn.dataset.cat === 'famille'
-        ? 'Noté ! La carte famille sera créée à l\'accueil (tarif famille, enfants ajoutés ensuite ici).'
+        ? 'Noté ! Ce compte deviendra ta carte famille, partagée par toute ta famille avec la même adresse e-mail.'
         : 'Noté, merci !';
     });
   }
 
   async function setupFamily() {
-    const { data: me, error } = await supabase.from('profiles').select('family_id').eq('id', currentUserId).single();
-    if (error || !me?.family_id) return;
-    const [{ data: family }, { data: members }, { data: usage }] = await Promise.all([
-      supabase.from('families').select('id, holder_id').eq('id', me.family_id).single(),
-      supabase.from('profiles').select('id, full_name, subscriber_number, managed_by').or(`id.eq.${currentUserId},managed_by.eq.${currentUserId}`),
-      supabase.rpc('family_usage', { p_family_id: me.family_id }),
-    ]);
-    const block = document.getElementById('family-block');
-    block.classList.remove('hidden');
-    const u = usage?.[0];
-    document.getElementById('family-usage').textContent = u ? `${u.used} document${u.used > 1 ? 's' : ''} en cours sur ${u.max_loans} pour toute la famille.` : '';
-    const kids = (members || []).filter(m => m.managed_by === currentUserId);
-    document.getElementById('family-members').innerHTML = kids.length ? kids.map(k => `
-      <div class="flex items-center justify-between gap-2 border border-mango-100 rounded-lg px-3 py-2">
-        <div class="min-w-0">
-          <p class="text-sm font-semibold text-ink truncate">${k.full_name}</p>
-          <p class="text-[11px] text-ink/50">Carte n° ${k.subscriber_number}</p>
-        </div>
-        <button type="button" onclick="openQrModal('${k.subscriber_number}')" class="shrink-0 text-[11px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1.5">Sa carte</button>
-      </div>`).join('') : '<p class="text-xs text-ink/45">Aucun enfant pour l\'instant.</p>';
-
-    if (family?.holder_id === currentUserId) {
-      document.getElementById('family-add').classList.remove('hidden');
-      document.getElementById('family-add-btn').onclick = async () => {
-        const msg = document.getElementById('family-message');
-        const name = document.getElementById('family-child-input').value.trim();
-        if (!name) { msg.textContent = 'Indique le prénom et le nom de l\'enfant.'; return; }
-        const { data, error } = await supabase.functions.invoke('create-family-member', { body: { family_id: me.family_id, full_name: name } });
-        msg.className = 'text-xs text-center mt-2 ' + (error || !data?.ok ? 'text-red-600' : 'text-mango-700');
-        msg.textContent = error || !data?.ok ? (data?.message || 'Ajout impossible pour le moment.') : `${data.member.full_name} est ajouté(e) à ta carte famille.`;
-        if (!error && data?.ok) { document.getElementById('family-child-input').value = ''; setupFamily(); }
-      };
-    }
+    const { data: me, error } = await supabase.from('profiles').select('tariff_category').eq('id', currentUserId).single();
+    if (error || me?.tariff_category !== 'famille') return;
+    const { data } = await supabase.rpc('family_usage', { p_user_id: currentUserId });
+    const u = data?.[0];
+    if (!u) return;
+    document.getElementById('family-block').classList.remove('hidden');
+    document.getElementById('family-usage').textContent = `${u.used} document${u.used > 1 ? 's' : ''} en cours sur ${u.max_loans} pour toute la famille`;
   }
 
   const DIGITAL_ICONS = { livres: '📚', presse: '📰', autoformation: '🎓', musique: '🎵', cinema: '🎬', jeunesse: '🧸', autre: '🌐' };
