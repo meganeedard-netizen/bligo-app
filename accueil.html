@@ -191,6 +191,8 @@
   // Non-résidents : catalogue d'une autre médiathèque où l'usager est inscrit.
   let catalogueCommuneId = null;
   let myMemberships = [];
+  // Carte famille (09/10/2026) : enfants gérés par ce compte.
+  let myKids = [];
   let isMinorAccount = false;
   let myCommuneName = '';
   let myOpeningHours = null;
@@ -357,6 +359,35 @@
     }
     reservations = data;
     renderBooks();
+  }
+
+  async function loadKids() {
+    if (!currentUser) return;
+    const { data } = await supabase.from('profiles').select('id, full_name').eq('managed_by', currentUser.id).order('full_name');
+    myKids = data || [];
+  }
+
+  // « Pour qui ? » : moi ou un des enfants de la carte famille.
+  function chooseBorrower() {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'fixed inset-0 z-50 bg-brand/40 backdrop-blur-sm flex items-center justify-center p-4';
+      overlay.innerHTML = `<div class="bg-white rounded-2xl shadow-xl max-w-xs w-full p-5">
+        <p class="text-sm font-bold text-ink mb-3 text-center">Pour qui est ce livre ?</p>
+        <div class="flex flex-col gap-2">
+          <button data-who="me" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold">Pour moi</button>
+          ${myKids.map(k => `<button data-who="${k.id}" class="w-full border border-mango-200 bg-mango-50 text-mango-700 rounded-lg py-2.5 text-sm font-semibold">Pour ${escapeHtmlU(k.full_name.split(' ')[0])}</button>`).join('')}
+          <button data-who="" class="w-full text-xs text-ink/40 underline mt-1">Annuler</button>
+        </div>
+      </div>`;
+      overlay.addEventListener('click', e => {
+        const btn = e.target.closest('[data-who]');
+        if (!btn && e.target !== overlay) return;
+        overlay.remove();
+        resolve(btn ? (btn.dataset.who || null) : null);
+      });
+      document.body.appendChild(overlay);
+    });
   }
 
   async function loadHolds() {
@@ -597,9 +628,23 @@
       const confirmed = confirm('Tu as déjà lu ce livre. Es-tu sûr(e) de vouloir l\'ajouter à tes réservations ?');
       if (!confirmed) return;
     }
+    let who = 'me';
+    if (myKids.length) {
+      who = await chooseBorrower();
+      if (!who) return;
+    }
     btn.disabled = true;
     btn.textContent = 'Réservation…';
     const otherLibrary = catalogueCommuneId && catalogueCommuneId !== myCommuneId;
+    if (who !== 'me') {
+      const { error } = await supabase.rpc('reserve_for_member', { p_book_id: bookId, p_member_id: who, p_pickup_commune_id: otherLibrary ? catalogueCommuneId : null });
+      if (error) { showAppAlert(error.message); btn.disabled = false; btn.textContent = 'Réserver'; return; }
+      const kid = myKids.find(k => k.id === who);
+      showAppAlert(`Réservé pour ${kid ? kid.full_name.split(' ')[0] : 'ton enfant'} ! Suis-le dans « Mes réservations ».`);
+      btn.disabled = false;
+      btn.textContent = 'Réserver';
+      return;
+    }
     const { error } = await supabase.from('reservations').insert({
       user_id: currentUser.id,
       book_id: bookId,
@@ -1063,7 +1108,7 @@
       await supabase.from('profiles').update({ reading_goal: n }).eq('id', currentUser.id);
     });
 
-    await Promise.all([loadBooks(), loadWishlist(), loadHolds(), loadMemberships()]);
+    await Promise.all([loadBooks(), loadWishlist(), loadHolds(), loadMemberships(), loadKids()]);
     renderBooks();
   }
 
