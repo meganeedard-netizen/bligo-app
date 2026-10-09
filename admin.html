@@ -2687,6 +2687,8 @@
     }
     if (field === 'format' && (documentTypeKind(value) === 'periodique') !== !!document.getElementById(`draft-issue-${localId}`)) {
       renderDraftBooks();
+    } else if ((field === 'format' || field === 'category') && draft.status === 'not_found') {
+      renderDraftBooks();
     }
     if (field === 'dewey') {
       const hint = document.getElementById(`draft-dewey-label-${localId}`);
@@ -2798,13 +2800,106 @@
     const summary = (draft.summary || '').trim() || null;
     const shelfOverride = document.getElementById('batch-shelf')?.value.trim() || null;
     const onSiteOnly = document.getElementById('batch-onsite-only')?.checked || false;
-    const cover_url = await lookupCoverBank(title, author);
+    const cover_url = draft.cover_url || await lookupCoverBank(title, author);
 
     const format = (draft.format || '').trim() || null;
     const isbn = (draft.isbn || '').trim() || null;
-    const inserted = await insertBook({ title, author, category, summary, cover_url, isbn, format, shelfOverride, onSiteOnly });
+    const inserted = await insertBook({ title, author, category, summary, cover_url, isbn, format, shelfOverride, onSiteOnly,
+      publisher: (draft.publisher || '').trim() || null,
+      players: (draft.players || '').trim() || null,
+      play_duration: (draft.play_duration || '').trim() || null,
+      age_range: (draft.age_range || '').trim() || null });
     if (inserted) await maybeRecordDonation(inserted.id, null);
     window.removeDraft(localId);
+  };
+
+  // ---------- Jeux de société : aide Wikidata (09/10/2026) ----------
+  // Aucune base gratuite ne retrouve un jeu par son code-barres. Wikidata,
+  // libre et gratuite, connaît une partie des jeux connus par leur nom
+  // (recherche approchée : « dixit » trouve Dixit) : joueurs, durée, âge,
+  // éditeur, auteur, image. Ce qu'elle ne connaît pas se saisit à la main.
+  function isGameDraft(d) {
+    return /^jeu/i.test(d.format || '') || d.category === 'Jeux';
+  }
+
+  function GAME_FIELDS_MANUAL(d) {
+    if (!isGameDraft(d)) return '';
+    return `<div class="bg-mango-50/60 border border-mango-100 rounded-lg p-2.5 mb-2">
+      <button type="button" onclick="fillGameFromWikidata('${d.localId}')" class="w-full text-xs font-semibold text-mango-700 border border-mango-200 bg-white rounded-lg py-2 mb-1">🎲 Chercher ce jeu par son nom (Wikidata)</button>
+      <p id="game-wikidata-status-${d.localId}" class="text-[10.5px] text-ink/50 text-center mb-2 min-h-[14px]"></p>
+      ${d.cover_url ? `<img src="${escapeHtml(d.cover_url)}" alt="" class="w-20 h-20 object-contain mx-auto mb-2 rounded bg-white">` : ''}
+      <div class="grid grid-cols-3 gap-1.5">
+        <input value="${escapeHtml(d.players || '')}" oninput="updateDraftField('${d.localId}', 'players', this.value)" placeholder="Joueurs (2 à 6)" class="border border-mango-100 rounded-lg px-2 py-1.5 text-xs">
+        <input value="${escapeHtml(d.play_duration || '')}" oninput="updateDraftField('${d.localId}', 'play_duration', this.value)" placeholder="Durée (30 min)" class="border border-mango-100 rounded-lg px-2 py-1.5 text-xs">
+        <input value="${escapeHtml(d.age_range || '')}" oninput="updateDraftField('${d.localId}', 'age_range', this.value)" placeholder="Âge (dès 8 ans)" class="border border-mango-100 rounded-lg px-2 py-1.5 text-xs">
+      </div>
+      <input value="${escapeHtml(d.publisher || '')}" oninput="updateDraftField('${d.localId}', 'publisher', this.value)" placeholder="Éditeur du jeu" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-xs mt-1.5">
+    </div>`;
+  }
+
+  async function fetchGameFromWikidata(name) {
+    // Wikidata limite les requêtes rapprochées (page d'erreur au lieu du JSON) :
+    // une nouvelle tentative après une courte pause.
+    const getJson = async url => {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const res = await fetch(url);
+        if (res.ok && /json/.test(res.headers.get('content-type') || '')) return res.json();
+        await new Promise(r => setTimeout(r, 1500 * attempt));
+      }
+      throw new Error('Wikidata indisponible');
+    };
+    const search = await getJson(`https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&origin=*&type=item&language=fr&uselang=fr&limit=8&search=${encodeURIComponent(name)}`);
+    const ids = (search.search || []).map(r => r.id);
+    const searchLabel = Object.fromEntries((search.search || []).map(r => [r.id, r.label]));
+    if (!ids.length) return null;
+    // Jeu de société (Q131436), jeu de cartes (Q142714) ou jeu (Q11410), et
+    // leurs sous-classes, parmi les résultats de la recherche par nom.
+    const sparql = `SELECT ?g ?gLabel ?min ?max ?time ?age ?img ?pubLabel ?desLabel WHERE {
+      VALUES ?g { ${ids.map(id => 'wd:' + id).join(' ')} }
+      ?g wdt:P31/wdt:P279* ?type . VALUES ?type { wd:Q131436 wd:Q142714 wd:Q11410 }
+      OPTIONAL { ?g wdt:P1872 ?min } OPTIONAL { ?g wdt:P1873 ?max } OPTIONAL { ?g wdt:P2047 ?time }
+      OPTIONAL { ?g wdt:P2899 ?age } OPTIONAL { ?g wdt:P18 ?img } OPTIONAL { ?g wdt:P123 ?pub } OPTIONAL { ?g wdt:P178 ?des }
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en". } }`;
+    const res = await getJson('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql));
+    const rows = res.results?.bindings || [];
+    // On garde l'ordre de pertinence de la recherche.
+    const id = ids.find(i => rows.some(r => r.g.value.endsWith('/' + i)));
+    if (!id) return null;
+    const mine = rows.filter(r => r.g.value.endsWith('/' + id));
+    const pick = key => mine.map(r => r[key]?.value).find(Boolean) || null;
+    const uniq = key => [...new Set(mine.map(r => r[key]?.value).filter(v => v && !/^Q\d+$/.test(v)))].slice(0, 2);
+    const min = pick('min'), max = pick('max'), time = pick('time'), age = pick('age'), img = pick('img');
+    const label = pick('gLabel');
+    return {
+      title: label && !/^Q\d+$/.test(label) ? label : (searchLabel[id] || name),
+      players: min && max ? (min === max ? `${min} joueurs` : `${min} à ${max} joueurs`) : (min ? `dès ${min} joueurs` : null),
+      play_duration: time ? `${Math.round(Number(time))} min` : null,
+      age_range: age ? `Dès ${Math.round(Number(age))} ans` : null,
+      publisher: uniq('pubLabel').join(', ') || null,
+      author: uniq('desLabel').join(', ') || null,
+      cover_url: img ? img.replace(/^http:/, 'https:').replace('/wiki/Special:FilePath/', '/wiki/Special:FilePath/') + '?width=400' : null,
+    };
+  }
+
+  window.fillGameFromWikidata = async function (localId) {
+    const draft = draftBooks.find(d => d.localId === localId);
+    const status = document.getElementById(`game-wikidata-status-${localId}`);
+    const name = (draft?.title || '').trim();
+    if (!name) { status.textContent = 'Tape d\'abord le nom du jeu dans « Titre ».'; return; }
+    status.textContent = 'Recherche dans Wikidata…';
+    let game = null;
+    try { game = await fetchGameFromWikidata(name); } catch { game = null; }
+    if (!game) { status.textContent = 'Jeu introuvable dans Wikidata : complète la fiche à la main.'; return; }
+    const filled = [];
+    for (const f of ['players', 'play_duration', 'age_range', 'publisher', 'author', 'cover_url']) {
+      if (game[f] && !(draft[f] || '').trim()) { draft[f] = game[f]; filled.push(f); }
+    }
+    if (game.title && game.title.toLowerCase() !== name.toLowerCase()) draft.title = game.title;
+    draft.format = FORMAT_OPTIONS.find(f => /^jeu/i.test(f)) || draft.format;
+    draft.category = 'Jeux';
+    renderDraftBooks();
+    const after = document.getElementById(`game-wikidata-status-${localId}`);
+    if (after) after.textContent = filled.length ? `Trouvé : « ${game.title} ». Vérifie et complète ce qui manque.` : `Trouvé : « ${game.title} », mais Wikidata n'a pas d'informations à ajouter.`;
   };
 
   function ISSUE_FIELD_MANUAL(d) {
@@ -2867,6 +2962,7 @@
           ${d.firstIssueHint ? `<p class="text-[11px] text-ink/60 bg-mango-50 rounded-lg px-2.5 py-1.5 mb-2">Premier numéro de ce magazine dans BliGO : scanne son code-barres (1re ou 4e de couverture), ou tape son ISSN dans la recherche (imprimé dans l'ours, la page de la rédaction, ex. « ISSN 0553-2159 631 »). Les numéros suivants se rempliront ensuite avec le titre seul.</p>` : ''}
           ${d.issnHint ? `<p class="text-[11px] text-ink/60 bg-mango-50 rounded-lg px-2.5 py-1.5 mb-2">ISSN ${escapeHtml(d.issnHint)} introuvable à la BnF : vérifie les chiffres, ou remplis la fiche à la main.</p>` : ''}
           ${ISSUE_FIELD_MANUAL(d)}
+          ${GAME_FIELDS_MANUAL(d)}
           <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé (optionnel)</label>
           <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Résumé du 4e de couverture">${escapeHtml(d.summary || '')}</textarea>
           <button onclick="addManualDraftBook('${d.localId}')" class="w-full bg-mango-600 text-white rounded-lg py-2 text-sm font-semibold">Valider la fiche</button>
@@ -4594,13 +4690,13 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     return m ? Number(m[1]) * 100 + Number((m[2] || '').padEnd(2, '0') || 0) : null;
   }
 
-  async function insertBook({ price_cents = null, title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
+  async function insertBook({ players = null, play_duration = null, age_range = null, price_cents = null, title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
     const fromDonation = !!donorSession;
     const cote = shelfOverride || suggestCote(category, author, dewey, { format, authorKey, title });
     // Champs de fiche ajoutés le 07/10/2026 : envoyés seulement s'ils sont
     // remplis, pour que le catalogage continue de marcher même si la
     // migration add_document_types_and_dewey.sql n'est pas encore passée.
-    const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects, price_cents })
+    const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects, price_cents, players, play_duration, age_range })
       .filter(([, v]) => v != null && v !== ''));
     // Détection couleur/N&B automatique dès le catalogage si une couverture a
     // été trouvée (18/09/2026) — l'agent n'a plus besoin d'ouvrir la fiche
