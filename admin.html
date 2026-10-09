@@ -1935,6 +1935,14 @@
   async function fetchPeriodicalByEan(barcode, forcedGenre) {
     const issn = issnFromEan(barcode);
     if (!issn) return null;
+    const meta = await fetchPeriodicalByIssn(issn, forcedGenre);
+    if (!meta) return null;
+    meta.isbn = barcode.slice(0, 13);
+    meta.issue = barcode.length === 15 ? String(Number(barcode.slice(13))) : '';
+    return meta;
+  }
+
+  async function fetchPeriodicalByIssn(issn, forcedGenre) {
     const bnf = await bnfSruQuery(`bib.issn all "${issn}"`);
     if (!bnf?.title) return null;
     return {
@@ -1951,8 +1959,50 @@
       format: firstTypeOfKind('periodique'),
       category: forcedGenre || categorizeDocument(bnf.rawCategoryText, bnf.title, bnf.dewey),
       issn,
-      isbn: barcode.slice(0, 13),
-      issue: barcode.length === 15 ? String(Number(barcode.slice(13))) : '',
+      isbn: issn,
+      issue: '',
+    };
+  }
+
+  // ---------- Numéros d'abonnement sans code-barres (09/10/2026) ----------
+  // Saisie « Parents n° 631 », « Parents octobre 2026 » ou « ISSN 0553-2159 631 ».
+  // Par titre seul, la BnF renvoie des centaines de notices (collections,
+  // éditions étrangères…) : on s'appuie plutôt sur le catalogue BliGO (le
+  // magazine a déjà été catalogué une fois, par code-barres ou ISSN), et sur
+  // l'ISSN imprimé dans l'ours du magazine pour le tout premier numéro.
+  const MONTHS_FR = 'janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre';
+
+  function parsePeriodicalQuery(query) {
+    const q = query.trim();
+    const issnMatch = q.match(/\b(?:issn\s*)?(\d{4})-?(\d{3}[\dX])\b/i);
+    if (issnMatch) {
+      const rest = q.replace(issnMatch[0], '').trim();
+      return { issn: `${issnMatch[1]}-${issnMatch[2].toUpperCase()}`, title: '', issue: parseIssueNumber(rest), explicit: true };
+    }
+    const month = q.match(new RegExp(`^(.+?)\\s+((?:${MONTHS_FR})(?:\\s+\\d{4})?)$`, 'i'));
+    if (month) return { title: month[1].trim(), issue: month[2].trim(), explicit: true };
+    const numbered = q.match(/^(.+?)\s+(n[°o.]?\s*)?(\d{1,4})$/i);
+    if (numbered) return { title: numbered[1].trim(), issue: numbered[3], explicit: !!numbered[2] };
+    return null;
+  }
+
+  function periodicalBaseTitle(title) {
+    return (title || '').replace(new RegExp(`\\s+(n°\\s*\\S+|(?:${MONTHS_FR})(?:\\s+\\d{4})?)$`, 'i'), '').trim();
+  }
+
+  // Dernier numéro déjà catalogué de ce magazine : sa fiche sert de modèle.
+  function findCataloguedPeriodical(title) {
+    const key = normalizeKey(stripAccents(title));
+    return books
+      .filter(b => documentTypeKind(b.format) === 'periodique' && normalizeKey(stripAccents(periodicalBaseTitle(b.title))) === key)
+      .sort((a, b) => b.id - a.id)[0] || null;
+  }
+
+  function metaFromCataloguedPeriodical(b) {
+    return {
+      title: periodicalBaseTitle(b.title), author: '', summary: null, cover_url: null,
+      publisher: b.publisher, published_date: null, page_count: null, language: b.language,
+      dewey: b.dewey, subjects: b.subjects, format: b.format, category: b.category, isbn: b.isbn, issue: '',
     };
   }
 
@@ -2338,14 +2388,15 @@
   function ISSUE_FIELD_MANUAL(d) {
     if (documentTypeKind(d.format) !== 'periodique') return '';
     return `<label class="text-xs font-semibold text-ink/60 block mb-1">Numéro du magazine</label>
-      <input id="draft-issue-${d.localId}" value="${escapeHtml(d.issue || '')}" oninput="updateDraftField('${d.localId}', 'issue', this.value)" placeholder="Ex. 630, ou le code L complet" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">`;
+      <input id="draft-issue-${d.localId}" value="${escapeHtml(d.issue || '')}" oninput="updateDraftField('${d.localId}', 'issue', this.value)" placeholder="Ex. 630, octobre 2026, ou le code L" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">`;
   }
 
   // « Le Monde diplomatique » + numéro 630 → « Le Monde diplomatique n° 630 » :
   // chaque numéro d'un magazine est une fiche à part.
   function titleWithIssue(title, issue) {
     const n = parseIssueNumber(issue);
-    return n ? `${title} n° ${n}` : title;
+    if (!n) return title;
+    return /^\d+$/.test(n) ? `${title} n° ${n}` : `${title} ${n}`;
   }
 
   function draftCardHtml(d) {
@@ -2391,6 +2442,8 @@
             ${formatOptionsHtml(d.format)}
           </select>
           ${d.codeLHint ? `<p class="text-[11px] text-ink/60 bg-mango-50 rounded-lg px-2.5 py-1.5 mb-2">Le code L ne permet pas de retrouver le magazine. Scanne plutôt le code-barres du magazine, en 1re ou en 4e de couverture (il commence par 977), pour remplir la fiche automatiquement, ou tape le titre ci-dessus.</p>` : ''}
+          ${d.firstIssueHint ? `<p class="text-[11px] text-ink/60 bg-mango-50 rounded-lg px-2.5 py-1.5 mb-2">Premier numéro de ce magazine dans BliGO : scanne son code-barres (1re ou 4e de couverture), ou tape son ISSN dans la recherche (imprimé dans l'ours, la page de la rédaction, ex. « ISSN 0553-2159 631 »). Les numéros suivants se rempliront ensuite avec le titre seul.</p>` : ''}
+          ${d.issnHint ? `<p class="text-[11px] text-ink/60 bg-mango-50 rounded-lg px-2.5 py-1.5 mb-2">ISSN ${escapeHtml(d.issnHint)} introuvable à la BnF : vérifie les chiffres, ou remplis la fiche à la main.</p>` : ''}
           ${ISSUE_FIELD_MANUAL(d)}
           <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé (optionnel)</label>
           <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3" placeholder="Résumé du 4e de couverture">${escapeHtml(d.summary || '')}</textarea>
@@ -2460,7 +2513,7 @@
           <p id="cover-ocr-status-${d.localId}" class="text-[11px] text-ink/45 text-center mt-1 min-h-[16px]"></p>`}
 ${documentTypeKind(d.format) === 'periodique' ? `
           <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Numéro du magazine</label>
-          <input id="draft-issue-${d.localId}" value="${escapeHtml(d.issue || '')}" oninput="updateDraftField('${d.localId}', 'issue', this.value)" placeholder="Ex. 630, ou le code L complet" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          <input id="draft-issue-${d.localId}" value="${escapeHtml(d.issue || '')}" oninput="updateDraftField('${d.localId}', 'issue', this.value)" placeholder="Ex. 630, octobre 2026, ou le code L" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
           <p class="text-[10.5px] text-ink/45 mt-1">Tu peux coller le code L de la couverture (« L 13834-630H-F ») : le numéro est extrait tout seul.</p>` : ''}
           <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires</label>
           <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
@@ -2564,7 +2617,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <p id="cover-ocr-status-${d.localId}" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>`}
 ${documentTypeKind(d.format) === 'periodique' ? `
           <label class="text-xs font-semibold text-ink/60 block mb-1">Numéro du magazine</label>
-          <input id="draft-issue-${d.localId}" value="${escapeHtml(d.issue || '')}" oninput="updateDraftField('${d.localId}', 'issue', this.value)" placeholder="Ex. 630, ou le code L complet" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
+          <input id="draft-issue-${d.localId}" value="${escapeHtml(d.issue || '')}" oninput="updateDraftField('${d.localId}', 'issue', this.value)" placeholder="Ex. 630, octobre 2026, ou le code L" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
           <p class="text-[10.5px] text-ink/45 mt-1 mb-2">Tu peux coller le code L de la couverture (« L 13834-630H-F ») : le numéro est extrait tout seul.</p>` : ''}
         <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre d'exemplaires</label>
         <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-3">
@@ -2985,6 +3038,36 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (isIsbn) {
       addDraftFromIsbn(query);
       return;
+    }
+
+    // Magazine sans code-barres (numéro d'abonnement) : ISSN tapé, ou titre
+    // d'un magazine déjà catalogué suivi du numéro ou du mois.
+    const periodical = parsePeriodicalQuery(query);
+    if (periodical) {
+      const known = periodical.title ? findCataloguedPeriodical(periodical.title) : null;
+      if (periodical.issn || known) {
+        const localId = `${Date.now()}-${Math.random()}`;
+        draftBooks.push({ localId, isbn: null, query, status: 'loading' });
+        renderDraftBooks();
+        const meta = known ? metaFromCataloguedPeriodical(known) : await fetchPeriodicalByIssn(periodical.issn, null);
+        if (meta) meta.issue = periodical.issue;
+        applyFetchedMeta(localId, meta);
+        if (!meta) {
+          const draft = draftBooks.find(d => d.localId === localId);
+          Object.assign(draft, { format: firstTypeOfKind('periodique') || '', issue: periodical.issue, issnHint: periodical.issn });
+          renderDraftBooks();
+        }
+        return;
+      }
+      // « Parents n° 631 » ou « Parents octobre 2026 », jamais catalogué :
+      // on demande l'ISSN plutôt que de chercher un livre.
+      if (periodical.explicit) {
+        const localId = `${Date.now()}-${Math.random()}`;
+        draftBooks.push({ localId, isbn: null, status: 'not_found', title: periodical.title, author: '', category: 'Autres', summary: '',
+          format: firstTypeOfKind('periodique') || '', issue: periodical.issue, firstIssueHint: true });
+        renderDraftBooks();
+        return;
+      }
     }
 
     // Code L d'un magazine tapé à la place du code-barres : il n'existe dans
