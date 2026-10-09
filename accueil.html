@@ -81,6 +81,7 @@
 
   <section class="mb-10">
     <span id="catalogue-status" class="text-xs text-ink/40"></span>
+    <div id="catalogue-switch" class="hidden flex items-center mb-2"></div>
     <div id="type-filters" class="hidden flex gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-1"></div>
     <div id="category-filters" class="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-1"></div>
     <p id="staff-pick-caption" class="hidden text-xs text-stone-400 mb-3">La sélection coup de cœur de votre médiathèque</p>
@@ -185,6 +186,11 @@
   let currentUser = null;
   let isLibreAccount = false;
   let myCommuneId = null;
+  // File d'attente (09/10/2026) : livre emprunté → book_id → { hold_id, position }.
+  let myHolds = {};
+  // Non-résidents : catalogue d'une autre médiathèque où l'usager est inscrit.
+  let catalogueCommuneId = null;
+  let myMemberships = [];
   let isMinorAccount = false;
   let myCommuneName = '';
   let myOpeningHours = null;
@@ -325,7 +331,7 @@
     }
 
     const [{ data, error }, { data: types }] = await Promise.all([
-      supabase.from('books').select('*').eq('commune_id', myCommuneId).eq('equipped', true).order('id'),
+      supabase.from('books').select('*').eq('commune_id', catalogueCommuneId || myCommuneId).eq('equipped', true).order('id'),
       supabase.from('document_types').select('label, kind'),
     ]);
     if (error) {
@@ -351,6 +357,64 @@
     }
     reservations = data;
     renderBooks();
+  }
+
+  async function loadHolds() {
+    if (!currentUser) return;
+    const { data, error } = await supabase.rpc('my_holds');
+    if (error) { myHolds = {}; return; }
+    myHolds = Object.fromEntries((data || []).map(h => [h.book_id, { hold_id: h.hold_id, position: h.queue_position }]));
+  }
+
+  window.joinHold = async function (bookId) {
+    if (!requireAccount('reserve')) return;
+    const { data, error } = await supabase.rpc('join_hold', { p_book_id: bookId });
+    if (error) { showAppAlert(error.message); return; }
+    showAppAlert(data.message);
+    await loadHolds();
+    renderBooks();
+  };
+
+  window.leaveHold = async function (bookId) {
+    const hold = myHolds[bookId];
+    if (!hold || !confirm('Quitter la file d\'attente pour ce livre ?')) return;
+    await supabase.rpc('leave_hold', { p_hold_id: hold.hold_id });
+    await loadHolds();
+    renderBooks();
+  };
+
+  function holdButtonHtml(bookId, big) {
+    const hold = myHolds[bookId];
+    const size = big ? 'mt-4 text-sm py-2.5' : 'mt-2 text-[11px] py-1.5';
+    return hold
+      ? `<button data-book-id="${bookId}" class="leave-hold-btn w-full ${size} font-semibold rounded-lg bg-mango-50 text-mango-700 border border-mango-200">⏳ File d'attente · n° ${hold.position}</button>`
+      : `<button data-book-id="${bookId}" class="join-hold-btn w-full ${size} font-semibold rounded-lg bg-brand text-white active:scale-[0.97] transition">Réserver · file d'attente</button>`;
+  }
+
+  // Inscriptions non-résident actives : choix du catalogue affiché.
+  async function loadMemberships() {
+    if (!currentUser || !myCommuneId) return;
+    const { data } = await supabase.from('memberships').select('commune_id, communes ( name )').eq('user_id', currentUser.id).eq('status', 'active');
+    myMemberships = data || [];
+    const box = document.getElementById('catalogue-switch');
+    if (!box) return;
+    if (!myMemberships.length) { box.classList.add('hidden'); return; }
+    const { data: home } = await supabase.from('communes').select('name').eq('id', myCommuneId).maybeSingle();
+    const current = catalogueCommuneId || myCommuneId;
+    box.classList.remove('hidden');
+    box.innerHTML = `<label class="text-[11px] font-semibold text-ink/50 mr-2">Catalogue de</label>
+      <select id="catalogue-switch-select" class="border border-mango-100 rounded-full pl-3 pr-7 py-1.5 text-xs font-semibold text-ink bg-white">
+        <option value="${myCommuneId}" ${current === myCommuneId ? 'selected' : ''}>${escapeHtmlU(home?.name || 'Ma médiathèque')}</option>
+        ${myMemberships.map(m => `<option value="${m.commune_id}" ${current === m.commune_id ? 'selected' : ''}>${escapeHtmlU(m.communes?.name || '')}</option>`).join('')}
+      </select>`;
+    document.getElementById('catalogue-switch-select').addEventListener('change', async e => {
+      catalogueCommuneId = Number(e.target.value);
+      await loadBooks();
+    });
+  }
+
+  function escapeHtmlU(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   async function loadWishlist() {
@@ -471,7 +535,7 @@
       } else if (isLibreAccount) {
         btnHtml = `<a href="profil.html" class="block w-full mt-2 text-center text-[10.5px] font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-1.5">Rattache-toi à une commune</a>`;
       } else if (!b.available) {
-        btnHtml = `<button data-book-id="${b.id}" class="alert-btn w-full mt-2 text-[11px] font-semibold rounded-lg py-1.5 ${inWishlist ? 'bg-mango-50 text-mango-700 border border-mango-200' : 'bg-brand text-white'}">${inWishlist ? '🔔 Alerte activée' : '🔔 Recevoir une alerte'}</button>`;
+        btnHtml = holdButtonHtml(b.id, false);
       } else if (reservedBookIds.has(b.id)) {
         btnHtml = `<button disabled class="w-full mt-2 text-[11px] font-semibold bg-mango-100 text-mango-700 rounded-lg py-1.5">Réservé</button>`;
       } else {
@@ -498,10 +562,16 @@
       });
     });
 
-    list.querySelectorAll('.alert-btn').forEach(btn => {
+    list.querySelectorAll('.join-hold-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        toggleWishlist(Number(btn.dataset.bookId));
+        joinHold(Number(btn.dataset.bookId));
+      });
+    });
+    list.querySelectorAll('.leave-hold-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        leaveHold(Number(btn.dataset.bookId));
       });
     });
 
@@ -528,10 +598,12 @@
     }
     btn.disabled = true;
     btn.textContent = 'Réservation…';
+    const otherLibrary = catalogueCommuneId && catalogueCommuneId !== myCommuneId;
     const { error } = await supabase.from('reservations').insert({
       user_id: currentUser.id,
       book_id: bookId,
       status: 'preparation',
+      ...(otherLibrary ? { pickup_commune_id: catalogueCommuneId } : {}),
     });
     if (error) {
       showAppAlert(error.message);
@@ -556,7 +628,7 @@
     } else if (isLibreAccount) {
       btnHtml = `<a href="profil.html" class="block w-full mt-4 text-center text-sm font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-2.5">Réservé aux usagers d'une commune — rattache ton compte</a>`;
     } else if (!b.available) {
-      btnHtml = `<button id="modal-alert-btn" class="w-full mt-4 text-sm font-semibold rounded-lg py-2.5 ${inWishlist ? 'bg-mango-50 text-mango-700 border border-mango-200' : 'bg-brand text-white'}">${inWishlist ? '🔔 Alerte activée' : '🔔 Recevoir une alerte'}</button>`;
+      btnHtml = holdButtonHtml(b.id, true);
     } else if (reserved) {
       btnHtml = `<button disabled class="w-full mt-4 text-sm font-semibold bg-mango-100 text-mango-700 rounded-lg py-2.5">Déjà réservé</button>`;
     } else {
@@ -592,8 +664,12 @@
       await toggleWishlist(b.id);
       openBookModal(b.id);
     });
-    document.getElementById('modal-alert-btn')?.addEventListener('click', async () => {
-      await toggleWishlist(b.id);
+    document.querySelector('#book-modal-content .join-hold-btn, #book-modal-backdrop .join-hold-btn')?.addEventListener('click', async () => {
+      await joinHold(b.id);
+      openBookModal(b.id);
+    });
+    document.querySelector('#book-modal-content .leave-hold-btn, #book-modal-backdrop .leave-hold-btn')?.addEventListener('click', async () => {
+      await leaveHold(b.id);
       openBookModal(b.id);
     });
     const modalBtn = document.querySelector('.modal-reserve-btn');
@@ -986,7 +1062,8 @@
       await supabase.from('profiles').update({ reading_goal: n }).eq('id', currentUser.id);
     });
 
-    await Promise.all([loadBooks(), loadWishlist()]);
+    await Promise.all([loadBooks(), loadWishlist(), loadHolds(), loadMemberships()]);
+    renderBooks();
   }
 
   window.logout = async function () {

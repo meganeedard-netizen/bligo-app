@@ -286,6 +286,10 @@
             </div>
             <div id="preregistrations-list" class="sm:min-w-[560px]"></div>
           </div>
+
+          <h3 class="text-base font-bold text-ink mt-8 mb-1">Non-résidents</h3>
+          <p class="text-sm text-ink/55 mb-3">Usagers d'une autre commune qui demandent à emprunter ici. Encaisse le supplément non-résident s'il y en a un, puis valide.</p>
+          <div id="nonresidents-list" class="flex flex-col gap-2 max-w-2xl"></div>
         </div>
 
         <div id="inscrits-list-view" class="mt-4">
@@ -665,6 +669,29 @@
           </div>
           <p id="tariff-updated-label" class="text-[11px] text-ink/40 mb-3"></p>
           <button onclick="saveTariffs()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les tarifs</button>
+        </div>
+
+        <h2 class="text-lg font-bold text-ink mb-1">Adhésion et non-résidents</h2>
+        <p class="text-sm text-ink/55 mb-4">Durée de validité des cartes, et accueil des usagers qui habitent une autre commune.</p>
+        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-md mb-8">
+          <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Validité de l'adhésion</label>
+          <select id="membership-validity" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+            <option value="none">Pas d'expiration</option>
+            <option value="rolling_12m">12 mois à partir de l'inscription</option>
+            <option value="calendar_year">Année civile (jusqu'au 31 décembre)</option>
+          </select>
+          <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Usagers d'une autre commune (non-résidents)</label>
+          <select id="non-resident-policy" onchange="document.getElementById('non-resident-fee-wrap').classList.toggle('hidden', this.value !== 'paid')" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+            <option value="free">Acceptés gratuitement</option>
+            <option value="paid">Acceptés avec un supplément</option>
+            <option value="refuse">Non acceptés</option>
+          </select>
+          <div id="non-resident-fee-wrap" class="hidden mb-3">
+            <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Supplément non-résident (€ par an)</label>
+            <input id="non-resident-fee" type="number" min="0" step="0.5" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+          </div>
+          <p class="text-[11px] text-ink/45 mb-3">Une nouvelle durée de validité s'applique aux inscriptions validées ou renouvelées à partir de maintenant.</p>
+          <button onclick="saveMembershipSettings()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
         </div>
 
         <h2 class="text-lg font-bold text-ink mb-1">Horaires d'ouverture</h2>
@@ -3409,7 +3436,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <p class="text-sm font-bold text-mango-700">✓ ${escapeHtml(data.message)}</p>
         ${data.shelf_location ? `<p class="text-xs text-ink/60 mt-1">À ranger en ${escapeHtml(data.shelf_location)}.</p>` : ''}
         ${data.user_flagged ? `<p class="text-xs text-red-600 font-semibold mt-1">Usager passé « fiché » suite à ce retour.</p>` : ''}
+        <p id="loan-hold-alert" class="hidden text-xs font-bold text-hibiscus-700 mt-2"></p>
       </div>`;
+    holdAlertForBarcode(barcode).then(msg => {
+      const el = document.getElementById('loan-hold-alert');
+      if (msg && el) { el.textContent = msg; el.classList.remove('hidden'); }
+    });
     const input = document.getElementById('loan-barcode-input');
     input.value = '';
     input.focus();
@@ -3596,12 +3628,22 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     let query = supabase
       .from('loans')
-      .select('id, due_at, borrowed_at, user_id, book_copies ( barcode, books ( title, author, cover_url, cover_initial ) )')
+      .select('id, due_at, borrowed_at, user_id, renewal_count, book_copies ( barcode, books ( title, author, cover_url, cover_initial ) )')
       .is('returned_at', null)
       .order('due_at', { ascending: true });
     if (myCommuneId) query = query.eq('borrowed_at_commune_id', myCommuneId);
 
-    const { data, error } = await query;
+    let { data, error } = await query;
+    if (error) {
+      // Colonne renewal_count absente tant que add_renewal_holds_membership.sql n'est pas passée.
+      let fallback = supabase
+        .from('loans')
+        .select('id, due_at, borrowed_at, user_id, book_copies ( barcode, books ( title, author, cover_url, cover_initial ) )')
+        .is('returned_at', null)
+        .order('due_at', { ascending: true });
+      if (myCommuneId) fallback = fallback.eq('borrowed_at_commune_id', myCommuneId);
+      ({ data, error } = await fallback);
+    }
     if (error) { list.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
 
     const userIds = [...new Set((data || []).map(l => l.user_id))];
@@ -3644,8 +3686,37 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <p class="text-xs text-ink/55 truncate">${escapeHtml(loan.profile?.full_name || '?')} · ${escapeHtml(loan.profile?.subscriber_number || '?')}</p>
           <div class="mt-1">${dueLabel}</div>
         </div>
-        ${barcode ? `<button onclick="quickReturnFromList('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="shrink-0 text-[12px] font-semibold text-ink border border-mango-100 rounded-full px-3 py-1.5 hover:bg-mango-50">Marquer rendu</button>` : ''}
+        <div class="shrink-0 flex flex-col gap-1.5 items-end">
+          ${barcode ? `<button onclick="quickReturnFromList('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="text-[12px] font-semibold text-ink border border-mango-100 rounded-full px-3 py-1.5 hover:bg-mango-50">Marquer rendu</button>` : ''}
+          ${loan.renewal_count >= 1
+            ? `<span class="text-[10.5px] font-semibold text-ink/40">Déjà prolongé</span>`
+            : (!isLate ? `<button onclick="renewLoanFromList(${loan.id})" style="touch-action: manipulation;" class="text-[12px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1.5">Prolonger +7 j</button>` : '')}
+        </div>
       </div>`;
+  }
+
+  // Prolongation (09/10/2026) : +7 jours, une seule fois, refusée par la base
+  // si le prêt est en retard ou si quelqu'un attend le livre.
+  window.renewLoanFromList = async function (loanId) {
+    const { data, error } = await supabase.rpc('renew_loan', { p_loan_id: loanId });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert(data.message);
+    if (data.ok) await loadActiveLoans();
+  };
+
+  // Après un retour : si le livre était attendu, la base l'a attribué au
+  // premier de la file (réservation prête, 48 h). On prévient l'agent pour
+  // qu'il le mette de côté au lieu de le ranger.
+  async function holdAlertForBarcode(barcode) {
+    const { data: copy } = await supabase.from('book_copies').select('book_id, status').eq('barcode', barcode).maybeSingle();
+    if (!copy || copy.status !== 'reserved') return null;
+    const since = new Date(Date.now() - 5 * 60000).toISOString();
+    const { data: hold } = await supabase.from('holds').select('user_id, promoted_at')
+      .eq('book_id', copy.book_id).eq('status', 'promoted').gte('promoted_at', since)
+      .order('promoted_at', { ascending: false }).limit(1).maybeSingle();
+    if (!hold) return null;
+    const { data: profile } = await supabase.from('profiles').select('full_name, subscriber_number').eq('id', hold.user_id).maybeSingle();
+    return `📌 Ce livre était attendu : mets-le de côté pour ${profile?.full_name || 'l\'usager'}${profile?.subscriber_number ? ` (${profile.subscriber_number})` : ''}. Il est prévenu et a 48 h pour venir le chercher.`;
   }
 
   window.quickReturnFromList = async function (barcode) {
@@ -3653,6 +3724,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) { alert('Erreur : ' + error.message); return; }
     if (!data.ok) { alert(data.message); return; }
     playBeep();
+    const holdAlert = await holdAlertForBarcode(barcode);
+    if (holdAlert) alert(holdAlert);
     await Promise.all([loadActiveLoans(), loadReservations(), loadReshelveLoans()]);
   };
 
@@ -3705,7 +3778,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     const { data: profiles, error } = await supabase
       .from('profiles')
-      .select('id, full_name, subscriber_number, account_type, commune_id, flagged, flagged_reason, tariff_category, created_at')
+      .select('*')
       .eq('commune_id', myCommuneId)
       .eq('registration_status', 'valide')
       .order('full_name');
@@ -3909,6 +3982,32 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('fiche-history-list').innerHTML = renderFicheSections(filtered, currentFicheCommuneSettings);
   };
 
+  // Validité de l'adhésion (09/10/2026), réglable par médiathèque dans Réglages.
+  function membershipRowHtml(profile) {
+    const exp = profile.membership_expires_at ? new Date(profile.membership_expires_at) : null;
+    const expired = exp && exp <= new Date();
+    const soon = exp && !expired && (exp - new Date()) < 30 * 86400000;
+    const label = !exp ? 'sans date d\'expiration'
+      : expired ? `<span class="font-bold text-red-600">expirée depuis le ${formatDateShortAdmin(exp)}</span>`
+      : `valable jusqu'au <span class="font-semibold ${soon ? 'text-mango-700' : 'text-ink'}">${formatDateShortAdmin(exp)}</span>`;
+    return `<div class="px-4 py-2.5 border-b border-mango-50 flex items-center justify-between gap-2 text-xs ${expired ? 'bg-red-50' : ''}">
+      <span class="text-ink/60">Adhésion ${label}</span>
+      <button type="button" onclick="renewMembership('${profile.id}')" style="touch-action: manipulation;" class="text-[11px] font-semibold text-mango-700 border border-mango-200 bg-white rounded-full px-3 py-1 shrink-0">Renouveler</button>
+    </div>`;
+  }
+
+  window.renewMembership = async function (userId, communeId = null) {
+    if (!confirm('Renouveler l\'adhésion de cet usager ? Encaisse d\'abord le tarif correspondant s\'il y en a un.')) return;
+    const { data, error } = await supabase.rpc('renew_membership', { p_user_id: userId, p_commune_id: communeId });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert(data.message);
+    if (!data.ok) return;
+    if (communeId) { await loadNonResidents(); return; }
+    await loadInscritsList();
+    const fresh = inscritsList.find(p => p.id === userId);
+    if (fresh) await loadFicheFor(fresh);
+  };
+
   function renderFiche(profile, loans, resa, communeSettings) {
     const resultBox = document.getElementById('fiche-result');
     const now = new Date();
@@ -3979,6 +4078,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             ${Object.entries(tariffLabels).map(([v, label]) => `<option value="${v}" ${profile.tariff_category === v ? 'selected' : ''}>${label}</option>`).join('')}
           </select>
         </div>
+        ${membershipRowHtml(profile)}
         ${flaggedBannerHtml}
         <div class="px-4 py-2.5 border-b border-mango-50">
           <div class="relative">
@@ -4383,7 +4483,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     const { data: commune, error: communeError } = await supabase
       .from('communes')
-      .select('tariff_mineur_cents, tariff_majeur_cents, tariff_gratuit_cents, tariff_updated_at, opening_hours, accepts_card, accepts_cash')
+      .select('*')
       .eq('id', myCommuneId)
       .single();
 
@@ -4393,6 +4493,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       document.getElementById('tariff-gratuit').value = (commune.tariff_gratuit_cents / 100).toFixed(2);
       document.getElementById('tariff-accepts-card').checked = commune.accepts_card;
       document.getElementById('tariff-accepts-cash').checked = commune.accepts_cash;
+      if (commune.membership_validity) {
+        document.getElementById('membership-validity').value = commune.membership_validity;
+        document.getElementById('non-resident-policy').value = commune.non_resident_policy;
+        document.getElementById('non-resident-fee').value = ((commune.non_resident_fee_cents || 0) / 100).toFixed(2);
+        document.getElementById('non-resident-fee-wrap').classList.toggle('hidden', commune.non_resident_policy !== 'paid');
+      }
       document.getElementById('tariff-updated-label').textContent = commune.tariff_updated_at
         ? `Dernière modification le ${formatDateShortAdmin(commune.tariff_updated_at)}`
         : 'Jamais modifiés.';
@@ -4419,6 +4525,18 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       p_accepts_card: acceptsCard, p_accepts_cash: acceptsCash,
     });
     if (error) { alert('Erreur : ' + error.message); return; }
+    await loadTeamAndTariffs();
+  };
+
+  window.saveMembershipSettings = async function () {
+    const { error } = await supabase.rpc('update_commune_membership_settings', {
+      p_commune_id: myCommuneId,
+      p_validity: document.getElementById('membership-validity').value,
+      p_non_resident_policy: document.getElementById('non-resident-policy').value,
+      p_non_resident_fee_cents: Math.round(Number(document.getElementById('non-resident-fee').value || 0) * 100),
+    });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert('Réglages enregistrés.');
     await loadTeamAndTariffs();
   };
 
@@ -5064,6 +5182,53 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   let preregistrations = [];
 
+  // Non-résidents (09/10/2026) : demandes en attente et inscrits de cette médiathèque.
+  async function loadNonResidents() {
+    const list = document.getElementById('nonresidents-list');
+    if (!list || !myCommuneId) return;
+    const { data, error } = await supabase.from('memberships')
+      .select('id, user_id, status, fee_cents, expires_at, created_at')
+      .eq('commune_id', myCommuneId).in('status', ['pending', 'active'])
+      .order('status', { ascending: false }).order('created_at', { ascending: true });
+    if (error) { list.innerHTML = ''; return; }
+    const ids = [...new Set((data || []).map(m => m.user_id))];
+    let byId = {};
+    if (ids.length) {
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, subscriber_number, communes ( name )').in('id', ids);
+      byId = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    }
+    const pending = (data || []).filter(m => m.status === 'pending').length;
+    const badge = document.getElementById('preregistrations-count');
+    if (badge) badge.textContent = preregistrations.length + pending;
+    if (!data?.length) {
+      list.innerHTML = `<p class="text-sm text-ink/40">Aucun non-résident pour le moment.</p>`;
+      return;
+    }
+    list.innerHTML = data.map(m => {
+      const p = byId[m.user_id] || {};
+      const fee = m.fee_cents > 0 ? `${(m.fee_cents / 100).toFixed(2).replace('.', ',')} € à encaisser` : 'Gratuit';
+      const right = m.status === 'pending'
+        ? `<button onclick="decideMembership(${m.id}, true)" class="text-[12px] font-semibold bg-brand text-white rounded-full px-3 py-1.5">Valider</button>
+           <button onclick="decideMembership(${m.id}, false)" class="text-[12px] font-semibold text-ink/50 underline">Refuser</button>`
+        : `<span class="text-[11px] text-ink/50">${m.expires_at ? `Valable jusqu'au ${formatDateShortAdmin(m.expires_at)}` : 'Sans expiration'}</span>
+           <button onclick="renewMembership('${m.user_id}', ${myCommuneId})" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-full px-3 py-1">Renouveler</button>`;
+      return `<div class="bg-white border ${m.status === 'pending' ? 'border-hibiscus-200' : 'border-mango-100'} rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-ink">${escapeHtml(p.full_name || '?')} <span class="text-[11px] font-normal text-ink/45">${escapeHtml(p.subscriber_number || '')}</span></p>
+          <p class="text-[11px] text-ink/55">Habite ${escapeHtml(p.communes?.name || 'une autre commune')} · ${m.status === 'pending' ? `<span class="font-semibold text-hibiscus-700">Demande en attente · ${fee}</span>` : 'Inscrit'}</p>
+        </div>
+        <div class="flex items-center gap-2">${right}</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.decideMembership = async function (id, accept) {
+    if (accept && !confirm('Valider cette inscription ? Encaisse d\'abord le supplément non-résident s\'il y en a un.')) return;
+    const { error } = await supabase.rpc('decide_membership', { p_membership_id: id, p_accept: accept });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadNonResidents();
+  };
+
   async function loadPreregistrations() {
     const { data, error } = await supabase
       .from('profiles')
@@ -5073,6 +5238,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) { console.error(error); return; }
     preregistrations = data || [];
     renderPreregistrations();
+    await loadNonResidents();
   }
 
   window.renderPreregistrations = function () {
@@ -5174,8 +5340,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!stale.length) return;
 
     for (const r of stale) {
-      await supabase.from('reservations').update({ status: 'expiree', reshelved: false }).eq('id', r.id);
-      if (r.book_id) await supabase.from('books').update({ available: true }).eq('id', r.book_id);
+      // expire_reservation (09/10/2026) remet aussi l'exemplaire mis de côté
+      // au suivant de la file d'attente ; ancien comportement en secours tant
+      // que la migration add_renewal_holds_membership.sql n'est pas passée.
+      const { error } = await supabase.rpc('expire_reservation', { p_reservation_id: r.id });
+      if (error) {
+        await supabase.from('reservations').update({ status: 'expiree', reshelved: false }).eq('id', r.id);
+        if (r.book_id) await supabase.from('books').update({ available: true }).eq('id', r.book_id);
+      }
       r.status = 'expiree';
       r.reshelved = false;
     }

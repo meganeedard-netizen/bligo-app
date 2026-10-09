@@ -54,6 +54,12 @@
     <div id="borrowed-list" class="flex flex-col gap-3"></div>
   </div>
 
+  <div id="holds-section" class="hidden mb-8">
+    <h2 class="text-sm font-bold text-ink mb-1">Mes files d'attente</h2>
+    <p class="text-xs text-ink/50 mb-3">Dès que le livre revient, il est mis de côté pour toi et tu as 48 h pour venir le chercher.</p>
+    <div id="holds-list" class="flex flex-col gap-3"></div>
+  </div>
+
   <div id="ready-section" class="hidden mb-8">
     <h2 class="text-sm font-bold text-ink mb-3">Prêt à récupérer</h2>
     <div id="ready-list" class="flex flex-col gap-3"></div>
@@ -154,7 +160,7 @@
     const { data: communesData } = await supabase.from('communes').select('id, name, opening_hours');
     communes = communesData || [];
 
-    await Promise.all([loadReservations(), loadLoans(), loadMyRatings()]);
+    await Promise.all([loadReservations(), loadLoans(), loadMyRatings(), loadHolds()]);
     renderAll();
 
     if (window.location.hash === '#history-section') {
@@ -189,14 +195,74 @@
   // filtre les emprunts déjà couverts par loadReservations() ci-dessus, pour
   // ne pas les afficher en double.
   async function loadLoans() {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('loans')
-      .select('id, borrowed_at, due_at, returned_at, borrowed_at_commune_id, book_copies ( books ( id, title, author, cover_initial, cover_url ) )')
+      .select('id, borrowed_at, due_at, returned_at, borrowed_at_commune_id, renewal_count, book_copies ( books ( id, title, author, cover_initial, cover_url ) )')
       .eq('user_id', currentUser.id)
       .is('reservation_id', null)
       .order('borrowed_at', { ascending: false });
+    if (error) {
+      // Colonne renewal_count absente tant que add_renewal_holds_membership.sql n'est pas passée.
+      ({ data, error } = await supabase
+        .from('loans')
+        .select('id, borrowed_at, due_at, returned_at, borrowed_at_commune_id, book_copies ( books ( id, title, author, cover_initial, cover_url ) )')
+        .eq('user_id', currentUser.id)
+        .is('reservation_id', null)
+        .order('borrowed_at', { ascending: false }));
+    }
     if (error) { console.error(error); return; }
     loans = data;
+    const { data: fromResa } = await supabase.from('loans').select('reservation_id, renewal_count')
+      .eq('user_id', currentUser.id).is('returned_at', null).not('reservation_id', 'is', null);
+    renewalsByReservation = Object.fromEntries((fromResa || []).map(l => [l.reservation_id, l.renewal_count || 0]));
+  }
+
+  // Prolongation (09/10/2026) : +7 jours, une seule fois, refusée si
+  // quelqu'un attend le livre ou si le prêt est déjà en retard.
+  let renewalsByReservation = {};
+  let myHolds = [];
+
+  function renewButtonHtml(it) {
+    if (it.renewalCount >= 1) return `<p class="text-[11px] text-white/60 mt-1.5">Déjà prolongé une fois</p>`;
+    return `<button onclick="renewMyLoan('${it.id}')" class="mt-2 text-[11px] font-semibold bg-white/15 border border-white/25 text-white rounded-full px-3 py-1.5 active:scale-[0.97] transition">⏩ Prolonger d'1 semaine</button>`;
+  }
+
+  window.renewMyLoan = async function (itemId) {
+    const isLoan = String(itemId).startsWith('loan-');
+    const params = isLoan ? { p_loan_id: Number(String(itemId).slice(5)) } : { p_reservation_id: Number(itemId) };
+    const { data, error } = await supabase.rpc('renew_loan', params);
+    alert(error ? 'Erreur : ' + error.message : data.message);
+    await Promise.all([loadReservations(), loadLoans()]);
+    renderAll();
+  };
+
+  async function loadHolds() {
+    const { data, error } = await supabase.rpc('my_holds');
+    myHolds = error ? [] : (data || []);
+  }
+
+  window.leaveMyHold = async function (holdId) {
+    if (!confirm('Quitter la file d\'attente pour ce livre ?')) return;
+    await supabase.rpc('leave_hold', { p_hold_id: holdId });
+    await loadHolds();
+    renderAll();
+  };
+
+  function renderHoldsList() {
+    const section = document.getElementById('holds-section');
+    section.classList.toggle('hidden', !myHolds.length);
+    document.getElementById('holds-list').innerHTML = myHolds.map(h => `
+      <div class="bg-white border border-mango-100 rounded-xl p-3.5 shadow-sm flex items-center gap-3">
+        ${h.cover_url
+          ? `<img src="${h.cover_url}" alt="" class="w-10 h-14 object-cover rounded shrink-0 bg-mango-50">`
+          : `<div class="w-10 h-14 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${h.cover_initial || (h.title || '?')[0]}</div>`}
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold text-ink truncate">${h.title}</p>
+          <p class="text-xs text-ink/55 truncate">${h.author || ''}</p>
+          <p class="text-[11px] font-semibold text-mango-700 mt-1">⏳ Tu es n° ${h.queue_position} dans la file</p>
+        </div>
+        <button onclick="leaveMyHold(${h.hold_id})" class="shrink-0 text-[11px] text-ink/40 underline">Quitter</button>
+      </div>`).join('');
   }
 
   function normalize(list) {
@@ -214,6 +280,7 @@
         createdAt: r.created_at,
         readyAt: r.ready_at || null,
         returnDueAt: r.return_due_at || null,
+        renewalCount: renewalsByReservation[r.id] || 0,
         myRating: book?.id ? (myRatings[book.id] || null) : null,
         myComment: book?.id ? (myComments[book.id] || '') : '',
       };
@@ -239,6 +306,7 @@
         createdAt: l.borrowed_at,
         readyAt: null,
         returnDueAt: l.due_at || null,
+        renewalCount: l.renewal_count || 0,
         myRating: book?.id ? (myRatings[book.id] || null) : null,
         myComment: book?.id ? (myComments[book.id] || '') : '',
       };
@@ -283,7 +351,7 @@
   function borrowedGroupHtml(items) {
     const communeId = items[0].communeId;
     const nearestDue = items.reduce((min, it) => new Date(it.returnDueAt) < new Date(min) ? it.returnDueAt : min, items[0].returnDueAt);
-    const rowsHtml = items.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { light: true, hideMeta: true })}</div>`).join('');
+    const rowsHtml = items.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { light: true, hideMeta: true })}${renewButtonHtml(it)}</div>`).join('');
     return `
       <div class="rounded-2xl p-3.5 text-white shadow-md bg-gradient-to-br from-brand to-brand/85 relative overflow-hidden">
         <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
@@ -528,7 +596,8 @@
       .filter(x => x.status === 'expiree')
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    document.getElementById('empty-state').classList.toggle('hidden', !!combined.length);
+    document.getElementById('empty-state').classList.toggle('hidden', !!combined.length || !!myHolds.length);
+    renderHoldsList();
     renderOverdueList(overdue);
     renderBorrowedList(borrowed);
     renderReadyList(ready);

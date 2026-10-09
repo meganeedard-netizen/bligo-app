@@ -106,6 +106,20 @@
     <p class="text-xs font-semibold text-ink/50 mb-1">E-mail</p>
     <p id="profile-email" class="text-sm font-bold text-ink">—</p>
   </div>
+  <!-- Adhésion et inscription dans une autre médiathèque (09/10/2026) -->
+  <div id="membership-block" class="hidden bg-white rounded-xl p-4 shadow-sm mb-6">
+    <p class="text-xs font-semibold text-ink/50 mb-1">Mon adhésion</p>
+    <p id="membership-status" class="text-sm font-bold text-ink mb-4"></p>
+    <p class="text-xs font-semibold text-ink/50 mb-1">Emprunter dans une autre médiathèque</p>
+    <p class="text-[11px] text-ink/50 mb-2">Tu habites une commune et tu veux emprunter aussi ailleurs ? Demande ton inscription : chaque médiathèque fixe ses conditions pour les non-résidents.</p>
+    <div id="memberships-list" class="flex flex-col gap-1.5 mb-2"></div>
+    <select id="membership-commune-select" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-1 bg-white">
+      <option value="" disabled selected>Choisis une médiathèque</option>
+    </select>
+    <p id="membership-commune-info" class="text-[11px] text-ink/55 mb-2 min-h-[16px]"></p>
+    <button id="membership-request-btn" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Demander mon inscription</button>
+    <p id="membership-message" class="text-xs text-center mt-2"></p>
+  </div>
 
   <div class="rounded-2xl p-5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden mb-8">
     <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
@@ -186,6 +200,51 @@
   let currentSubscriberNumber = null;
   let currentUserId = null;
 
+  function formatDateFr(iso) {
+    return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  async function setupMemberships(homeCommuneId) {
+    const block = document.getElementById('membership-block');
+    const { data: me, error } = await supabase.from('profiles').select('membership_expires_at').eq('id', currentUserId).single();
+    if (error) return; // migration pas encore passée
+    block.classList.remove('hidden');
+    const exp = me?.membership_expires_at ? new Date(me.membership_expires_at) : null;
+    const status = document.getElementById('membership-status');
+    if (!exp) status.textContent = 'Active';
+    else if (exp <= new Date()) { status.textContent = `Expirée depuis le ${formatDateFr(exp)} : renouvelle-la à l'accueil pour emprunter.`; status.classList.add('text-red-600'); }
+    else status.textContent = `Valable jusqu'au ${formatDateFr(exp)}`;
+
+    const [{ data: communes }, { data: memberships }] = await Promise.all([
+      supabase.from('communes').select('id, name, non_resident_policy, non_resident_fee_cents').order('name'),
+      supabase.from('memberships').select('commune_id, status, expires_at, communes ( name )').eq('user_id', currentUserId),
+    ]);
+    const statusLabel = { pending: 'demande en attente', active: 'inscrit(e)', refused: 'demande refusée' };
+    document.getElementById('memberships-list').innerHTML = (memberships || []).map(m => `
+      <p class="text-xs text-ink"><span class="font-semibold">${m.communes?.name || ''}</span> · <span class="${m.status === 'active' ? 'text-mango-700' : 'text-ink/50'}">${statusLabel[m.status] || m.status}${m.status === 'active' && m.expires_at ? ` jusqu'au ${formatDateFr(m.expires_at)}` : ''}</span></p>`).join('');
+
+    const already = new Set((memberships || []).filter(m => m.status !== 'refused').map(m => m.commune_id));
+    const others = (communes || []).filter(c => c.id !== homeCommuneId && !already.has(c.id));
+    const select = document.getElementById('membership-commune-select');
+    select.innerHTML = `<option value="" disabled selected>Choisis une médiathèque</option>` +
+      others.map(c => `<option value="${c.id}" ${c.non_resident_policy === 'refuse' ? 'disabled' : ''}>${c.name}${c.non_resident_policy === 'refuse' ? ' (non-résidents non acceptés)' : ''}</option>`).join('');
+    select.onchange = () => {
+      const c = others.find(x => x.id === Number(select.value));
+      document.getElementById('membership-commune-info').textContent = !c ? ''
+        : c.non_resident_policy === 'paid' && c.non_resident_fee_cents > 0
+          ? `Supplément non-résident : ${(c.non_resident_fee_cents / 100).toFixed(2).replace('.', ',')} € par an, à régler à l'accueil.`
+          : 'Inscription gratuite pour les non-résidents.';
+    };
+    document.getElementById('membership-request-btn').onclick = async () => {
+      const msg = document.getElementById('membership-message');
+      if (!select.value) { msg.textContent = 'Choisis d\'abord une médiathèque.'; return; }
+      const { data, error } = await supabase.rpc('request_membership', { p_commune_id: Number(select.value) });
+      msg.className = 'text-xs text-center mt-2 ' + (error || !data?.ok ? 'text-red-600' : 'text-mango-700');
+      msg.textContent = error ? error.message : data.message;
+      if (!error && data?.ok) setupMemberships(homeCommuneId);
+    };
+  }
+
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -242,6 +301,7 @@
 
     const isLibre = profile?.account_type === 'libre';
     const isValidated = profile?.registration_status === 'valide';
+    if (!isLibre && isValidated && profile?.commune_id) setupMemberships(profile.commune_id);
 
     document.getElementById('card-subtitle').textContent = isLibre
       ? 'Bibliothèque Libre'
