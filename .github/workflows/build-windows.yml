@@ -1,0 +1,56 @@
+# Fabrication du logiciel agent BliGO pour Windows (09/10/2026)
+# ============================================================
+# GitHub compile le logiciel Tauri sur une machine Windows à chaque mise à
+# jour des pages du back-office (ou à la demande, onglet Actions > « Run
+# workflow »). L'installateur (.exe et .msi) se télécharge dans l'onglet
+# Actions, rubrique « Artifacts » de la dernière exécution.
+name: Logiciel agent Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'admin.html'
+      - 'superadmin.html'
+      - 'index.html'
+      - 'js/**'
+      - 'css/**'
+      - 'img/**'
+      - 'tauri-app/**'
+      - '.github/workflows/build-windows.yml'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: tauri-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tauri-app/src-tauri -> target
+
+      - name: Dépendances
+        run: npm ci
+
+      - name: Compilation (installateurs .exe et .msi)
+        run: npx tauri build --bundles nsis,msi
+        shell: bash
+
+      - name: Mise à disposition de l'installateur
+        uses: actions/upload-artifact@v4
+        with:
+          name: BliGO-Agent-Windows
+          path: |
+            tauri-app/src-tauri/target/release/bundle/nsis/*.exe
+            tauri-app/src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error

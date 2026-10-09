@@ -1,0 +1,3 @@
+# Sources du logiciel agent : présentes dans le dépôt pour la fabrication
+# Windows (GitHub Actions), jamais servies par bligo.app.
+Require all denied
