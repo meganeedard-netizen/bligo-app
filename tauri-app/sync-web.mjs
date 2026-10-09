@@ -17,8 +17,11 @@ fs.mkdirSync(DEST, { recursive: true });
 for (const page of ['index.html', 'admin.html', 'superadmin.html']) {
   fs.copyFileSync(path.join(ROOT, page), path.join(DEST, page));
 }
+// css/ est vide aujourd'hui : git ne garde pas les dossiers vides, il n'existe
+// donc pas sur la machine de GitHub. Un dossier absent est simplement ignoré.
 for (const dir of ['css', 'img', 'js']) {
-  fs.cpSync(path.join(ROOT, dir), path.join(DEST, dir), { recursive: true });
+  const src = path.join(ROOT, dir);
+  if (fs.existsSync(src)) fs.cpSync(src, path.join(DEST, dir), { recursive: true });
 }
 
 const edit = (page, fn) => {
