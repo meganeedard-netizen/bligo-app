@@ -103,6 +103,9 @@
             <button onclick="printToEquipLabels()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">🖨️ Étiquettes à équiper</button>
             <button id="export-catalogue-btn" onclick="openExportModal()" style="touch-action: manipulation;" class="hidden border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Exporter le catalogue</button>
             <button onclick="openInscritScanModal()" style="touch-action: manipulation;" class="border border-hibiscus-200 text-hibiscus-700 bg-hibiscus-50 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Scanner la carte de l'inscrit</button>
+            <button onclick="openCatalogueView('subs')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">📰 Abonnements <span id="subs-late-badge" class="hidden ml-1 text-[10px] font-bold bg-red-600 text-white rounded-full px-1.5 py-0.5"></span></button>
+            <button onclick="openCatalogueView('inv')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Récolement</button>
+            <button onclick="openCatalogueView('weed')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Désherbage</button>
             <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter un nouveau document</button>
           </div>
         </div>
@@ -173,6 +176,106 @@
               </div>
               <div id="draft-books-list" class="grid grid-cols-1 2xl:grid-cols-2 gap-3 items-start"></div>
             </div>
+          </div>
+        </div>
+
+        <!-- Désherbage (09/10/2026) -->
+        <div id="catalogue-weed-view" class="hidden mt-4">
+          <button onclick="closeCatalogueView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
+          <div class="flex flex-col lg:flex-row gap-6 items-start">
+            <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm w-full lg:max-w-sm lg:shrink-0">
+              <p class="text-sm font-bold text-ink mb-1">Retirer des documents du fonds</p>
+              <p class="text-xs text-ink/55 mb-3">Choisis le motif et la destination, puis scanne les exemplaires un par un. Rien n'est retiré avant la validation.</p>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Motif (méthode IOUPI)</label>
+              <select id="weed-reason" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-2">
+                <option value="use">U · Usé, abîmé</option>
+                <option value="perime">P · Périmé (information dépassée)</option>
+                <option value="incorrect">I · Incorrect (informations fausses)</option>
+                <option value="ordinaire">O · Ordinaire (médiocre, sans intérêt)</option>
+                <option value="inadequat">I · Inadéquat (hors du fonds, du public)</option>
+                <option value="autre">Autre</option>
+              </select>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Destination</label>
+              <select id="weed-destination" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+                <option value="don">Don (association, école, boîte à livres…)</option>
+                <option value="pilon">Pilon (recyclage)</option>
+                <option value="vente">Vente (braderie de la médiathèque)</option>
+                <option value="autre_structure">Autre médiathèque ou structure</option>
+                <option value="autre">Autre</option>
+              </select>
+              <div id="weed-camera-slot" class="mb-2"></div>
+              <button type="button" id="weed-camera-btn" onclick="toggleCamera('weed')" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-1">Scanner avec la caméra</button>
+              <p id="weed-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>
+              <input id="weed-barcode-input" type="text" autocomplete="off" placeholder="Ou scanne à la douchette (code-barres de la médiathèque)" style="font-size: 16px;"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); addWeedBarcode(this.value); this.value='';}"
+                class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+              <p id="weed-message" class="text-xs text-red-600 font-semibold mt-2 min-h-[16px]"></p>
+            </div>
+            <div class="flex-1 min-w-0 w-full">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">À retirer (<span id="weed-count">0</span>)</p>
+                <button onclick="validateWeeding()" class="text-xs font-semibold bg-red-600 text-white rounded-full px-3.5 py-1.5">Retirer du fonds</button>
+              </div>
+              <div id="weed-list" class="flex flex-col gap-2 mb-6"></div>
+              <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm mb-4">
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                  <p class="text-sm font-bold text-ink mr-auto">Candidats au désherbage</p>
+                  <select id="weed-years" class="border border-mango-100 rounded-full px-2.5 py-1 text-xs bg-white">
+                    <option value="2">Pas empruntés depuis 2 ans</option>
+                    <option value="3" selected>Pas empruntés depuis 3 ans</option>
+                    <option value="5">Pas empruntés depuis 5 ans</option>
+                  </select>
+                  <button onclick="loadWeedingCandidates()" class="text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1">Afficher</button>
+                </div>
+                <div id="weed-candidates" class="flex flex-col gap-1.5 max-h-80 overflow-y-auto"><p class="text-xs text-ink/40">Exemplaires disponibles en rayon que personne n'a empruntés depuis longtemps.</p></div>
+              </div>
+              <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+                <p class="text-sm font-bold text-ink mb-2">Désherbage de l'année</p>
+                <div id="weed-stats" class="text-xs text-ink/70"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Récolement (09/10/2026) -->
+        <div id="catalogue-inv-view" class="hidden mt-4">
+          <button onclick="closeCatalogueView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
+          <div id="inv-content" class="max-w-3xl"></div>
+          <div id="inv-scan-block" class="hidden max-w-3xl">
+            <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm mb-3">
+              <div id="inv-camera-slot" class="mb-2"></div>
+              <button type="button" id="inv-camera-btn" onclick="toggleCamera('inventory')" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-1">Scanner avec la caméra</button>
+              <p id="inv-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>
+              <input id="inv-barcode-input" type="text" autocomplete="off" placeholder="Ou scanne à la douchette, livre par livre" style="font-size: 16px;"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); addInventoryScan(this.value); this.value='';}"
+                class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+            </div>
+            <div id="inv-last-scans" class="flex flex-col gap-1.5"></div>
+          </div>
+        </div>
+
+        <!-- Abonnements aux magazines / bulletinage (09/10/2026) -->
+        <div id="catalogue-subs-view" class="hidden mt-4">
+          <button onclick="closeCatalogueView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
+          <p class="text-sm text-ink/55 mb-4 max-w-2xl">Les magazines auxquels ta médiathèque est abonnée. Quand un numéro arrive, scanne-le dans « Ajouter un nouveau document » : sa réception est enregistrée toute seule. Sinon, clique sur « Numéro reçu ».</p>
+          <div id="subs-list" class="flex flex-col gap-2 max-w-3xl mb-6"></div>
+          <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm max-w-3xl">
+            <p class="text-sm font-bold text-ink mb-2">Ajouter un abonnement</p>
+            <input id="sub-search" list="sub-catalog-list" oninput="fillSubFromCatalog(this.value)" placeholder="Titre du magazine (ex. Télérama, Astrapi…)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+            <datalist id="sub-catalog-list"></datalist>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+              <input id="sub-issn" placeholder="ISSN" class="border border-mango-100 rounded-lg px-2.5 py-2 text-sm">
+              <input id="sub-publisher" placeholder="Éditeur" class="border border-mango-100 rounded-lg px-2.5 py-2 text-sm">
+              <select id="sub-frequency" class="border border-mango-100 rounded-lg px-2 py-2 text-sm bg-white">
+                <option value="quotidien">Quotidien</option><option value="hebdomadaire">Hebdomadaire</option>
+                <option value="bimensuel">Bimensuel</option><option value="mensuel" selected>Mensuel</option>
+                <option value="bimestriel">Bimestriel</option><option value="trimestriel">Trimestriel</option>
+                <option value="semestriel">Semestriel</option><option value="annuel">Annuel</option><option value="irregulier">Irrégulier</option>
+              </select>
+              <input id="sub-tolerance" type="number" min="0" value="7" title="Jours de marge avant alerte" class="border border-mango-100 rounded-lg px-2.5 py-2 text-sm">
+            </div>
+            <p class="text-[10.5px] text-ink/45 mb-2">Le dernier champ est la marge (en jours) avant de signaler un numéro en retard.</p>
+            <button onclick="addSubscription()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter l'abonnement</button>
           </div>
         </div>
 
@@ -264,6 +367,7 @@
               Préinscriptions
               <span class="bg-hibiscus-600 text-white text-[10px] px-1.5 py-0.5 rounded-full" id="preregistrations-count">0</span>
             </button>
+            <button onclick="exportUnpaidDebts()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Exporter les impayés</button>
             <button onclick="openAddInscritForm()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un inscrit</button>
           </div>
         </div>
@@ -685,6 +789,23 @@
           <button onclick="saveTariffs()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les tarifs</button>
         </div>
 
+        <h2 class="text-lg font-bold text-ink mb-1">Documents perdus ou abîmés</h2>
+        <p class="text-sm text-ink/55 mb-4">Montant demandé à l'usager : le prix du document s'il est connu, sinon ce forfait.</p>
+        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-md mb-8">
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Forfait sans prix connu (€)</label>
+              <input id="lost-default-fee" type="number" min="0" step="0.5" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Présumé perdu après (jours de retard)</label>
+              <input id="presumed-lost-days" type="number" min="0" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+          </div>
+          <p class="text-[10.5px] text-ink/45 mb-3">0 = jamais automatique : seul un agent déclare un document perdu.</p>
+          <button onclick="saveDebtSettings()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+        </div>
+
         <h2 class="text-lg font-bold text-ink mb-1">Adhésion et non-résidents</h2>
         <p class="text-sm text-ink/55 mb-4">Durée de validité des cartes, et accueil des usagers qui habitent une autre commune.</p>
         <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm max-w-md mb-8">
@@ -926,7 +1047,7 @@
   const CATEGORIES = [
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Documentaire', 'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
-    'Bien-être', 'Maison', 'Autres',
+    'Bien-être', 'Maison', 'Jeux', 'Autres',
   ];
 
   const CATEGORY_KEYWORDS = [
@@ -937,6 +1058,7 @@
     // Auteurs et documents antillais/caribéens : vérifié avant "Roman" pour
     // qu'un roman antillais parte bien en Fonds local, pas en Roman générique.
     ['Fonds local', ['antill', 'caribb', 'creole', 'créole', 'martinique', 'guadeloupe', 'haïti', 'haiti', 'guyane']],
+    ['Jeux', ['jeu de société', 'jeux de société', 'board game', 'jeu de cartes', 'jeu de plateau', 'jeu coopératif']],
     ['Poésie & théâtre', ['poésie', 'poesie', 'poetry', 'poèmes', 'poemes', 'théâtre', 'theatre', 'drama']],
     ['Sports & loisirs', ['sport', 'football', 'voile', 'course de bateaux', 'randonnée', 'recreation', 'loisirs']],
     ['Voyages', ['travel', 'voyage', 'guide touristique', 'tourisme', 'description and travel']],
@@ -991,6 +1113,7 @@
       'Poésie & théâtre': { prefix: 'P', mode: 'lettres' },
       'Jeunesse': { prefix: 'J', mode: 'auto' },
       'BD': { prefix: 'BD', mode: 'lettres' },
+      'Jeux': { prefix: 'JEU', mode: 'lettres' },
     },
   };
   let coteRules = DEFAULT_COTE_RULES;
@@ -1417,6 +1540,8 @@
     },
     loan: LIBRARY_BARCODE_PROFILE,
     equip: LIBRARY_BARCODE_PROFILE,
+    weed: LIBRARY_BARCODE_PROFILE,
+    inventory: LIBRARY_BARCODE_PROFILE,
     transferSend: LIBRARY_BARCODE_PROFILE,
     transferReceive: LIBRARY_BARCODE_PROFILE,
   };
@@ -1485,7 +1610,7 @@
   // Modes où la caméra reste ouverte pour enchaîner plusieurs scans sans la
   // rouvrir (22/09/2026) : catalogage en rafale, check-in à l'entrée d'un
   // événement. Les autres modes se ferment après un seul scan.
-  const BURST_SCAN_MODES = ['book', 'checkin', 'equip'];
+  const BURST_SCAN_MODES = ['book', 'checkin', 'equip', 'weed', 'inventory'];
 
   // Brouillons de catalogage (17/09/2026) : chaque ISBN scanné ou tapé part en
   // recherche multi-API en arrière-plan et atterrit ici, en liste, pour
@@ -1523,6 +1648,20 @@
   }
 
   const SCAN_UI = {
+    inventory: {
+      slotId: 'inv-camera-slot',
+      toggleBtnId: 'inv-camera-btn',
+      hintId: 'inv-camera-hint',
+      defaultLabel: 'Scanner avec la caméra',
+      hint: 'Passe les livres un par un devant la caméra : elle reste ouverte.',
+    },
+    weed: {
+      slotId: 'weed-camera-slot',
+      toggleBtnId: 'weed-camera-btn',
+      hintId: 'weed-camera-hint',
+      defaultLabel: 'Scanner avec la caméra',
+      hint: 'Vise le code-barres de la médiathèque : la caméra reste ouverte pour enchaîner.',
+    },
     equip: {
       slotId: 'equip-camera-slot',
       toggleBtnId: 'equip-camera-btn',
@@ -1728,6 +1867,23 @@
 
         // Équipement : la caméra reste ouverte, chaque code remplit
         // l'exemplaire suivant encore vide.
+        if (scanState.mode === 'inventory') {
+          lastBatchCode = code;
+          lastBatchCodeTime = Date.now();
+          addInventoryScan(code);
+          scanTimeoutId = setTimeout(scanLoop, 700);
+          return;
+        }
+
+        if (scanState.mode === 'weed') {
+          lastBatchCode = code;
+          lastBatchCodeTime = Date.now();
+          playBeep();
+          addWeedBarcode(code);
+          scanTimeoutId = setTimeout(scanLoop, 700);
+          return;
+        }
+
         if (scanState.mode === 'equip') {
           lastBatchCode = code;
           lastBatchCodeTime = Date.now();
@@ -2011,6 +2167,7 @@
         if (bnf.publisher) meta.publisher = bnf.publisher;
         if (bnf.published_date) meta.published_date = bnf.published_date;
         meta.binding = bnf.binding;
+        if (bnf.price_cents) meta.price_cents = bnf.price_cents;
         meta.collection = bnf.collection;
         meta.dimensions = bnf.dimensions;
         meta.illustrations = bnf.illustrations;
@@ -2445,6 +2602,8 @@
     draft.illustrator = meta.illustrator || '';
     draft.authorKey = meta.authorKey || null;
     draft.issue = meta.issue || '';
+    draft.issn = meta.issn || null;
+    draft.price = meta.price_cents ? (meta.price_cents / 100).toFixed(2).replace('.', ',') : '';
     draft.usuel = !!meta.usuel;
     draft.onSiteOnly = !!meta.onSiteOnly;
     draft.coteEdited = false;
@@ -2469,7 +2628,7 @@
   // provisoire « DOC … » (pas encore une vraie étiquette).
   const ENRICH_FIELD_LABELS = {
     author: 'auteur', category: 'catégorie', format: 'type de document', dewey: 'indice Dewey', shelf_location: 'cote',
-    binding: 'reliure', dimensions: 'dimensions', illustrations: 'illustrations', collection: 'collection',
+    price_cents: 'prix', binding: 'reliure', dimensions: 'dimensions', illustrations: 'illustrations', collection: 'collection',
     subjects: 'sujets', publisher: 'éditeur', published_date: 'date', page_count: 'pages', language: 'langue',
     legal_deposit: 'dépôt légal', printer: 'imprimeur', translator: 'traducteur', illustrator: 'illustrateur',
     summary: 'résumé', isbn: 'ISBN', cover_url: 'couverture',
@@ -2477,7 +2636,7 @@
 
   async function enrichExistingBook(book, meta) {
     const patch = {};
-    ['dewey', 'binding', 'dimensions', 'illustrations', 'collection', 'subjects', 'format', 'publisher', 'published_date',
+    ['dewey', 'price_cents', 'binding', 'dimensions', 'illustrations', 'collection', 'subjects', 'format', 'publisher', 'published_date',
       'page_count', 'language', 'legal_deposit', 'printer', 'translator', 'illustrator', 'summary', 'isbn', 'cover_url']
       .forEach(f => { if ((book[f] == null || book[f] === '') && meta[f]) patch[f] = meta[f]; });
     if (/^auteur inconnu$/i.test((book.author || '').trim()) && meta.author && !/inconnu/i.test(meta.author)) patch.author = meta.author;
@@ -2510,9 +2669,15 @@
     draft[field] = value;
     // La cote suit la catégorie, l'indice Dewey, le type et l'auteur tant que
     // l'agent ne l'a pas retouchée lui-même.
+    if (field === 'format' && /^jeu/i.test(value || '') && draft.category !== 'Jeux') {
+      draft.category = 'Jeux';
+      const catSelect = document.getElementById(`draft-category-${localId}`);
+      if (catSelect) catSelect.value = 'Jeux';
+    }
     if (field === 'cote') {
       draft.coteEdited = true;
-    } else if (['category', 'dewey', 'format', 'author', 'title', 'usuel'].includes(field) && !draft.coteEdited) {
+    }
+    if (field !== 'cote' && ['category', 'dewey', 'format', 'author', 'title', 'usuel'].includes(field) && !draft.coteEdited) {
       if (field === 'author') draft.authorKey = null;
       draft.cote = draftSuggestedCote(draft);
       const coteInput = document.getElementById(`draft-cote-${localId}`);
@@ -2601,6 +2766,7 @@
     draft.meta.subjects = (draft.subjects || '').trim() || null;
     draft.meta.translator = (draft.translator || '').trim() || null;
     draft.meta.illustrator = (draft.illustrator || '').trim() || null;
+    draft.meta.price_cents = parsePriceCents(draft.price);
     draft.meta.category = draft.category;
     draft.meta.copyCount = Math.max(1, parseInt(draft.copyCount, 10) || 1);
     draft.meta.shelfOverride = (draft.cote || '').trim() || document.getElementById('batch-shelf')?.value.trim() || null;
@@ -2608,6 +2774,9 @@
 
     const inserted = await insertBook(draft.meta);
     if (inserted) await maybeRecordDonation(inserted.id, null);
+    if (inserted && draft.issn && documentTypeKind(draft.format) === 'periodique') {
+      supabase.rpc('receive_issue_by_issn', { p_issn: draft.issn, p_issue: parseIssueNumber(draft.issue) || null }).then(() => {});
+    }
     window.removeDraft(localId);
   };
 
@@ -2843,6 +3012,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <input id="draft-translator-${d.localId}" value="${escapeHtml(d.translator || '')}" oninput="updateDraftField('${d.localId}', 'translator', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
           </div>
         </div>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Prix (€) <span class="font-normal text-ink/40">· sert à facturer un document perdu ou abîmé</span></label>
+        <input id="draft-price-${d.localId}" value="${escapeHtml(d.price || '')}" oninput="updateDraftField('${d.localId}', 'price', this.value)" inputmode="decimal" placeholder="Ex. 22,50" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Collection</label>
         <input id="draft-collection-${d.localId}" value="${escapeHtml(d.collection || '')}" oninput="updateDraftField('${d.localId}', 'collection', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Dépôt légal</label>
@@ -2922,6 +3093,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
       const item = data.items?.[0]?.volumeInfo;
       if (!item?.title) return null;
+      const listPrice = data.items?.[0]?.saleInfo?.listPrice;
       return {
         title: item.title,
         author: (item.authors || ['Auteur inconnu']).join(', '),
@@ -2936,6 +3108,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         published_date: item.publishedDate || null,
         page_count: item.pageCount || null,
         language: item.language || null,
+        price_cents: listPrice?.currencyCode === 'EUR' && listPrice.amount ? Math.round(listPrice.amount * 100) : null,
       };
     } catch {
       if (attempt < 5) {
@@ -3200,6 +3373,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const illustrations = getSub(f215, 'c');
       const subjects = [...getFields('606'), ...getFields('607')]
         .map(f => getSubs(f, ['a', 'x', 'y', 'z']).join(' -- ')).filter(Boolean).join(' ; ') || null;
+      // Prix éditeur (010 $d) : « 30 EUR », « 15.00 EUR », « 18 € » (09/10/2026).
+      const priceRaw = getSub(getField('010'), 'd') || '';
+      const priceMatch = priceRaw.match(/(\d+(?:[.,]\d{1,2})?)\s*(EUR|€)/i);
+      const price_cents = priceMatch ? Math.round(parseFloat(priceMatch[1].replace(',', '.')) * 100) : null;
       const f700 = getField('700');
       const authorLastName = getSub(f700, 'a');
       const authorFirstName = getSub(f700, 'b');
@@ -3235,6 +3412,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         language,
         summary,
         dewey,
+        price_cents,
         binding,
         collection,
         dimensions,
@@ -3636,6 +3814,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <p class="text-sm font-bold text-mango-700">✓ ${escapeHtml(data.message)}</p>
         ${data.shelf_location ? `<p class="text-xs text-ink/60 mt-1">À ranger en ${escapeHtml(data.shelf_location)}.</p>` : ''}
         ${data.user_flagged ? `<p class="text-xs text-red-600 font-semibold mt-1">Usager passé « fiché » suite à ce retour.</p>` : ''}
+        ${condition === 'mauvais' ? `<button onclick="declareDamaged('${escapeJsAttr(barcode)}')" class="mt-2 text-xs font-semibold bg-white border border-red-200 text-red-700 rounded-full px-3 py-1.5">Facturer le document abîmé</button>` : ''}
         <p id="loan-hold-alert" class="hidden text-xs font-bold text-hibiscus-700 mt-2"></p>
       </div>`;
     holdAlertForBarcode(barcode).then(msg => {
@@ -3891,9 +4070,81 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           ${loan.renewal_count >= 1
             ? `<span class="text-[10.5px] font-semibold text-ink/40">Déjà prolongé</span>`
             : (!isLate ? `<button onclick="renewLoanFromList(${loan.id})" style="touch-action: manipulation;" class="text-[12px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1.5">Prolonger +7 j</button>` : '')}
+          <button onclick="declareLost(${loan.id}, '${escapeJsAttr(book?.title || '')}')" style="touch-action: manipulation;" class="text-[11px] font-semibold text-red-600/80 hover:text-red-700 underline">Déclarer perdu</button>
         </div>
       </div>`;
   }
+
+  // ---------- Documents perdus ou abîmés (09/10/2026) ----------
+  // Une « dette » au prix du document (BnF/API au catalogage) ou au forfait
+  // de la médiathèque : en rouge sur la fiche, emprunts et réservations
+  // bloqués tant qu'elle n'est pas réglée, annulée si le livre revient.
+  window.declareLost = async function (loanId, title) {
+    const amount = prompt(`Déclarer « ${title} » perdu ?\n\nMontant à demander en € (laisse vide pour le prix du document, ou le forfait de la médiathèque) :`, '');
+    if (amount === null) return;
+    const { data, error } = await supabase.rpc('declare_lost', { p_loan_id: loanId, p_amount_cents: parsePriceCents(amount) });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert(data.message);
+    await loadActiveLoans();
+  };
+
+  window.declareDamaged = async function (barcode) {
+    const { data: copy } = await supabase.from('book_copies').select('id, books ( title, price_cents )').eq('barcode', barcode).maybeSingle();
+    if (!copy) return;
+    const price = copy.books?.price_cents ? (copy.books.price_cents / 100).toFixed(2).replace('.', ',') : '';
+    const amount = prompt(`Facturer « ${copy.books?.title || ''} » rendu abîmé ?\n\nMontant en € (vide = prix du document ou forfait) :`, price);
+    if (amount === null) return;
+    const { data, error } = await supabase.rpc('declare_damaged', { p_copy_id: copy.id, p_amount_cents: parsePriceCents(amount), p_note: null });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert(data.message);
+  };
+
+  async function loadDebtsSection(profile) {
+    const box = document.getElementById('fiche-debts');
+    if (!box) return;
+    const { data, error } = await supabase.from('document_debts').select('id, kind, amount_cents, created_at, automatic, books ( title )')
+      .eq('user_id', profile.id).eq('status', 'open').order('created_at');
+    if (error || !data?.length) { box.innerHTML = ''; return; }
+    const total = data.reduce((n, d) => n + d.amount_cents, 0);
+    box.innerHTML = `<div class="px-4 py-3 bg-red-50 border-b border-red-100 text-xs">
+      <p class="font-bold text-red-700 mb-1.5">⚠️ À régler : ${(total / 100).toFixed(2).replace('.', ',')} € · emprunts et réservations bloqués</p>
+      ${data.map(d => `<div class="flex flex-wrap items-center justify-between gap-2 py-1 border-t border-red-100">
+        <span class="text-red-800">« ${escapeHtml(d.books?.title || 'Document')} » ${d.kind === 'perdu' ? (d.automatic ? 'présumé perdu' : 'perdu') : 'rendu abîmé'} · <strong>${(d.amount_cents / 100).toFixed(2).replace('.', ',')} €</strong> · depuis le ${formatDateShortAdmin(d.created_at)}</span>
+        <span class="flex gap-1.5">
+          <button onclick="settleDebt(${d.id}, 'paid', '${profile.id}')" class="text-[11px] font-semibold bg-white border border-red-200 text-red-700 rounded-full px-2.5 py-1">Payé</button>
+          <button onclick="settleDebt(${d.id}, 'replaced', '${profile.id}')" class="text-[11px] font-semibold bg-white border border-red-200 text-red-700 rounded-full px-2.5 py-1">Remplacé</button>
+          <button onclick="settleDebt(${d.id}, 'cancelled', '${profile.id}')" class="text-[11px] text-red-700/60 underline">Annuler</button>
+        </span>
+      </div>`).join('')}
+      <p class="text-[10.5px] text-red-700/70 mt-1">Si le livre est finalement rapporté, son retour annule la dette tout seul.</p>
+    </div>`;
+  }
+
+  window.settleDebt = async function (debtId, status, userId) {
+    const labels = { paid: 'Confirmer le paiement ?', replaced: 'Confirmer le remplacement à l\'identique ? (ajoute ensuite le nouvel exemplaire au catalogue)', cancelled: 'Annuler cette dette ?' };
+    if (!confirm(labels[status])) return;
+    const { error } = await supabase.rpc('settle_debt', { p_debt_id: debtId, p_status: status, p_note: null });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    const fresh = inscritsList.find(p => p.id === userId);
+    if (fresh) await loadFicheFor(fresh);
+  };
+
+  // Impayés de la médiathèque, pour la régie ou un titre de recette.
+  window.exportUnpaidDebts = async function () {
+    const { data, error } = await supabase.from('document_debts').select('kind, amount_cents, created_at, automatic, user_id, books ( title, isbn )')
+      .eq('status', 'open').eq('commune_id', myCommuneId).order('created_at');
+    if (error) { alert('Erreur : ' + error.message); return; }
+    if (!data?.length) { alert('Aucun impayé en cours.'); return; }
+    const ids = [...new Set(data.map(d => d.user_id))];
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, subscriber_number').in('id', ids);
+    const byId = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    const cell = v => { const x = v == null ? '' : String(v); return /[";\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+    const rows = [['Usager', 'N° abonné', 'Document', 'ISBN', 'Motif', 'Montant (€)', 'Depuis le']]
+      .concat(data.map(d => [byId[d.user_id]?.full_name, byId[d.user_id]?.subscriber_number, d.books?.title, d.books?.isbn,
+        d.kind === 'perdu' ? (d.automatic ? 'Présumé perdu' : 'Perdu') : 'Abîmé', (d.amount_cents / 100).toFixed(2).replace('.', ','), d.created_at.slice(0, 10)]));
+    const csv = '\ufeff' + rows.map(r => r.map(cell).join(';')).join('\r\n');
+    downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `impayes-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
 
   // Prolongation (09/10/2026) : +7 jours, une seule fois, refusée par la base
   // si le prêt est en retard ou si quelqu'un attend le livre.
@@ -4260,7 +4511,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     currentFicheItems = items;
     currentFicheCommuneSettings = communeSettings;
-    setTimeout(() => loadFamilySection(profile), 0);
+    setTimeout(() => { loadFamilySection(profile); loadDebtsSection(profile); }, 0);
 
     const rowsHtml = renderFicheSections(items, communeSettings);
 
@@ -4294,6 +4545,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             ${Object.entries(tariffLabels).map(([v, label]) => `<option value="${v}" ${profile.tariff_category === v ? 'selected' : ''}>${label}</option>`).join('')}
           </select>
         </div>
+        <div id="fiche-debts"></div>
         ${membershipRowHtml(profile)}
         <div id="fiche-family" class="border-b border-mango-50"></div>
         ${flaggedBannerHtml}
@@ -4336,13 +4588,19 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // Achat ou don, un document validé reste en statut « À équiper » tant
   // qu'un agent n'a pas cliqué dessus (voir markEquipped) — la fiche est
   // complète mais le livre n'a pas encore été plastifié/étiqueté.
-  async function insertBook({ title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
+  // « 22,50 », « 22.5 € » → 2250 ; vide → null.
+  function parsePriceCents(value) {
+    const m = String(value ?? '').replace(/\s/g, '').match(/^(\d+)(?:[.,](\d{1,2}))?€?$/);
+    return m ? Number(m[1]) * 100 + Number((m[2] || '').padEnd(2, '0') || 0) : null;
+  }
+
+  async function insertBook({ price_cents = null, title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
     const fromDonation = !!donorSession;
     const cote = shelfOverride || suggestCote(category, author, dewey, { format, authorKey, title });
     // Champs de fiche ajoutés le 07/10/2026 : envoyés seulement s'ils sont
     // remplis, pour que le catalogage continue de marcher même si la
     // migration add_document_types_and_dewey.sql n'est pas encore passée.
-    const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects })
+    const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects, price_cents })
       .filter(([, v]) => v != null && v !== ''));
     // Détection couleur/N&B automatique dès le catalogage si une couverture a
     // été trouvée (18/09/2026) — l'agent n'a plus besoin d'ouvrir la fiche
@@ -4379,14 +4637,352 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // « Ajouter un nouveau document » fusionné dans l'écran Catalogue (17/09/2026) :
   // ce n'est plus un écran de menu séparé, juste une autre vue de la même page.
   window.openScanView = function () {
-    document.getElementById('catalogue-list-view').classList.add('hidden');
+    ['catalogue-list-view', 'catalogue-weed-view', 'catalogue-subs-view', 'catalogue-inv-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
     document.getElementById('catalogue-scan-view').classList.remove('hidden');
   };
 
-  window.closeScanView = function () {
+  window.openCatalogueView = function (which) {
     stopCamera();
-    document.getElementById('catalogue-scan-view').classList.add('hidden');
+    ['catalogue-list-view', 'catalogue-scan-view', 'catalogue-weed-view', 'catalogue-subs-view', 'catalogue-inv-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    document.getElementById(`catalogue-${which}-view`).classList.remove('hidden');
+    if (which === 'inv') loadInventory();
+    if (which === 'weed') { renderWeedList(); loadWeedingStats(); document.getElementById('weed-barcode-input').focus(); }
+    if (which === 'subs') loadSubscriptions();
+  };
+
+  window.closeCatalogueView = function () {
+    stopCamera();
+    ['catalogue-scan-view', 'catalogue-weed-view', 'catalogue-subs-view', 'catalogue-inv-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
     document.getElementById('catalogue-list-view').classList.remove('hidden');
+  };
+
+  // ---------- Récolement (09/10/2026) ----------
+  // Zones déduites des cotes, sans rien paramétrer : premier élément de la
+  // cote (« R », « J », « BD »…) ou classe Dewey (« 7.. » pour les arts).
+  let currentInventory = null;
+  let inventoryScans = [];
+
+  function cotesZoneOptions() {
+    const counts = {};
+    books.filter(b => !b.archived).forEach(b => {
+      const first = (b.shelf_location || '').trim().split(/\s+/)[0] || '';
+      if (!first) return;
+      const key = /^\d/.test(first) ? `dewey:${first[0]}` : first.toUpperCase();
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    const label = k => k.startsWith('dewey:') ? `Documentaires ${k.slice(6)}00 à ${k.slice(6)}99 (${DEWEY_DIVISIONS[k.slice(6) + '0'] || 'Dewey'})` : `Cote « ${k} »`;
+    return Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, n]) => ({ value: k, label: `${label(k)} · ${n} titre${n > 1 ? 's' : ''}` }));
+  }
+
+  function inventoryZoneLabel(zone) {
+    if (!zone) return 'Tout le fonds';
+    return zone.startsWith('dewey:') ? `Documentaires ${zone.slice(6)}00 à ${zone.slice(6)}99` : `Cote « ${zone} »`;
+  }
+
+  async function loadInventory() {
+    const box = document.getElementById('inv-content');
+    document.getElementById('inv-scan-block').classList.add('hidden');
+    const { data, error } = await supabase.from('inventories').select('*').eq('commune_id', myCommuneId).order('started_at', { ascending: false }).limit(6);
+    if (error) { box.innerHTML = `<p class="text-sm text-red-600">Le récolement sera disponible une fois la migration add_collections_management.sql exécutée.</p>`; return; }
+    currentInventory = (data || []).find(i => !i.finished_at) || null;
+    if (currentInventory) {
+      const { data: scans } = await supabase.from('inventory_scans').select('copy_id, scanned_at, book_copies ( barcode, shelf_location, books ( title, shelf_location ) )')
+        .eq('inventory_id', currentInventory.id).order('scanned_at', { ascending: false });
+      inventoryScans = (scans || []).map(sc => ({ copyId: sc.copy_id, barcode: sc.book_copies?.barcode, title: sc.book_copies?.books?.title, cote: sc.book_copies?.shelf_location || sc.book_copies?.books?.shelf_location }));
+      renderInventoryInProgress();
+      return;
+    }
+    const past = (data || []).filter(i => i.finished_at);
+    box.innerHTML = `<div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm mb-4">
+      <p class="text-sm font-bold text-ink mb-1">Nouveau récolement</p>
+      <p class="text-xs text-ink/55 mb-3">Choisis la zone que tu inventories, puis scanne tous les livres présents en rayon, dans n'importe quel ordre. BliGO te dira ensuite ce qui manque et ce qui est mal rangé.</p>
+      <select id="inv-zone" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+        <option value="">Tout le fonds</option>
+        ${cotesZoneOptions().map(o => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`).join('')}
+      </select>
+      <button onclick="startInventory()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Commencer le récolement</button>
+    </div>
+    ${past.length ? `<p class="text-xs font-bold text-ink/50 uppercase tracking-wide mb-2">Derniers récolements</p>
+      ${past.map(i => `<div class="bg-white border border-mango-100 rounded-lg px-3 py-2 mb-1.5 flex items-center justify-between gap-2 text-xs">
+        <span><span class="font-semibold text-ink">${escapeHtml(inventoryZoneLabel(i.zone))}</span> · ${formatDateShortAdmin(i.finished_at)} · ${i.scanned_count} scanné(s), <span class="${i.missing_count ? 'text-red-600 font-semibold' : ''}">${i.missing_count} manquant(s)</span>, ${i.misplaced_count} mal rangé(s)</span>
+        <button onclick="showInventoryReport(${i.id})" class="text-mango-700 underline shrink-0">Bilan</button>
+      </div>`).join('')}` : ''}`;
+  }
+
+  window.startInventory = async function () {
+    const zone = document.getElementById('inv-zone').value;
+    const { error } = await supabase.from('inventories').insert({ commune_id: myCommuneId, zone, zone_label: inventoryZoneLabel(zone), created_by: currentUser.id });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadInventory();
+  };
+
+  function renderInventoryInProgress() {
+    document.getElementById('inv-content').innerHTML = `<div class="bg-mango-50 border border-mango-100 rounded-xl px-4 py-3 mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <p class="text-sm font-bold text-ink">Récolement en cours · ${escapeHtml(inventoryZoneLabel(currentInventory.zone))}</p>
+        <p class="text-xs text-ink/60">Commencé le ${formatDateShortAdmin(currentInventory.started_at)} · <span id="inv-count" class="font-bold">${inventoryScans.length}</span> livre(s) scanné(s)</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="finishInventory()" class="text-xs font-semibold bg-brand text-white rounded-full px-3.5 py-1.5">Terminer et voir le bilan</button>
+        <button onclick="abandonInventory()" class="text-xs text-ink/45 underline">Abandonner</button>
+      </div>
+    </div>`;
+    document.getElementById('inv-scan-block').classList.remove('hidden');
+    renderInventoryScans();
+    document.getElementById('inv-barcode-input').focus();
+  }
+
+  function renderInventoryScans(warning) {
+    const count = document.getElementById('inv-count');
+    if (count) count.textContent = inventoryScans.length;
+    document.getElementById('inv-last-scans').innerHTML = (warning ? `<p class="text-xs font-semibold text-red-600">${escapeHtml(warning)}</p>` : '') +
+      inventoryScans.slice(0, 12).map(sc => {
+        const misplaced = !coteInZone(sc.cote, currentInventory.zone);
+        return `<div class="bg-white border ${misplaced ? 'border-amber-200' : 'border-mango-100'} rounded-lg px-3 py-1.5 text-xs flex justify-between gap-2">
+          <span class="truncate"><span class="font-semibold text-ink">${escapeHtml(sc.title || '?')}</span> <span class="text-ink/45">· ${escapeHtml(sc.cote || '')}</span></span>
+          ${misplaced ? '<span class="text-amber-700 font-semibold shrink-0">Pas dans cette zone</span>' : '<span class="text-mango-700 shrink-0">✓</span>'}
+        </div>`;
+      }).join('');
+  }
+
+  function coteInZone(cote, zone) {
+    if (!zone) return true;
+    const first = (cote || '').trim().split(/\s+/)[0] || '';
+    return zone.startsWith('dewey:') ? new RegExp(`^${zone.slice(6)}\\d`).test(first) : first.toUpperCase() === zone.toUpperCase();
+  }
+
+  window.addInventoryScan = async function (code) {
+    const barcode = String(code || '').trim();
+    if (!barcode || !currentInventory) return;
+    if (inventoryScans.some(sc => sc.barcode === barcode)) { renderInventoryScans(`${barcode} déjà scanné.`); return; }
+    const { data: copy } = await supabase.from('book_copies').select('id, barcode, shelf_location, books ( title, shelf_location )').eq('barcode', barcode).maybeSingle();
+    if (!copy) { renderInventoryScans(`Code ${barcode} inconnu : livre à cataloguer ?`); return; }
+    const { error } = await supabase.from('inventory_scans').upsert({ inventory_id: currentInventory.id, copy_id: copy.id }, { onConflict: 'inventory_id,copy_id', ignoreDuplicates: true });
+    if (error) { renderInventoryScans('Erreur : ' + error.message); return; }
+    playBeep();
+    inventoryScans.unshift({ copyId: copy.id, barcode: copy.barcode, title: copy.books?.title, cote: copy.shelf_location || copy.books?.shelf_location });
+    renderInventoryScans();
+  };
+
+  window.finishInventory = async function () {
+    if (!confirm('Terminer ce récolement et calculer le bilan ?')) return;
+    stopCamera();
+    const { error } = await supabase.rpc('finish_inventory', { p_inventory_id: currentInventory.id });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await showInventoryReport(currentInventory.id);
+  };
+
+  window.abandonInventory = async function () {
+    if (!confirm('Abandonner ce récolement ? Les scans déjà faits seront perdus.')) return;
+    stopCamera();
+    await supabase.from('inventories').delete().eq('id', currentInventory.id);
+    await loadInventory();
+  };
+
+  window.showInventoryReport = async function (inventoryId) {
+    document.getElementById('inv-scan-block').classList.add('hidden');
+    const box = document.getElementById('inv-content');
+    box.innerHTML = '<p class="text-sm text-ink/40">Calcul du bilan…</p>';
+    const { data, error } = await supabase.rpc('inventory_report', { p_inventory_id: inventoryId });
+    if (error) { box.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    const sections = [
+      ['manquant', 'Manquants', 'Attendus en rayon mais pas scannés : à rechercher (mauvais rayon, chariot, bureau…).', 'border-red-200', 'text-red-700'],
+      ['mal_range', 'Mal rangés', 'Trouvés dans la zone, mais leur cote appartient à un autre rayon.', 'border-amber-200', 'text-amber-700'],
+      ['statut_a_verifier', 'Statut à vérifier', 'Trouvés en rayon alors que BliGO les croit empruntés, perdus ou retirés : retour oublié ?', 'border-brand/20', 'text-ink'],
+    ];
+    const missing = (data || []).filter(r => r.section === 'manquant').length;
+    box.innerHTML = `<button onclick="loadInventory()" class="text-xs font-semibold text-mango-700 underline mb-3">← Récolements</button>` +
+      sections.map(([key, title, help, border, color]) => {
+        const rows = (data || []).filter(r => r.section === key);
+        return `<div class="bg-white border ${border} rounded-xl p-4 shadow-sm mb-3">
+          <p class="text-sm font-bold ${color}">${title} (${rows.length})</p>
+          <p class="text-[11px] text-ink/50 mb-2">${help}</p>
+          ${rows.length ? rows.map(r => `<p class="text-xs border-t border-mango-50 py-1"><span class="font-semibold text-ink">${escapeHtml(r.title || '?')}</span> <span class="text-ink/45">· ${escapeHtml(r.cote || '')} · ${escapeHtml(r.barcode)}</span></p>`).join('') : '<p class="text-xs text-ink/40">Aucun.</p>'}
+        </div>`;
+      }).join('') +
+      (missing ? `<button onclick="markInventoryMissingLost(${inventoryId}, ${missing})" class="text-xs font-semibold text-red-700 border border-red-200 bg-white rounded-full px-3.5 py-1.5">Marquer les ${missing} manquant(s) comme perdus (après recherche)</button>` : '');
+  };
+
+  window.markInventoryMissingLost = async function (inventoryId, n) {
+    if (!confirm(`Passer ${n} exemplaire(s) manquant(s) en « perdu » ? À faire seulement après les avoir cherchés.`)) return;
+    const { data, error } = await supabase.rpc('mark_inventory_missing_lost', { p_inventory_id: inventoryId });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert(`${data} exemplaire(s) passé(s) en « perdu ».`);
+    await loadBooks();
+    await showInventoryReport(inventoryId);
+  };
+
+  // ---------- Désherbage (09/10/2026) ----------
+  const WEED_REASON_LABEL = { use: 'Usé', perime: 'Périmé', incorrect: 'Incorrect', ordinaire: 'Ordinaire', inadequat: 'Inadéquat', autre: 'Autre' };
+  const WEED_DEST_LABEL = { don: 'Don', pilon: 'Pilon', vente: 'Vente', autre_structure: 'Autre structure', autre: 'Autre' };
+  let weedList = [];
+
+  window.addWeedBarcode = async function (code, preset) {
+    const msg = document.getElementById('weed-message');
+    const barcode = String(code || '').trim();
+    if (!barcode && !preset) return;
+    msg.textContent = '';
+    let copy = preset;
+    if (!copy) {
+      const { data } = await supabase.from('book_copies').select('id, barcode, status, shelf_location, books ( title, author, shelf_location )').eq('barcode', barcode).maybeSingle();
+      if (!data) { msg.textContent = `Code ${barcode} inconnu.`; return; }
+      copy = { id: data.id, barcode: data.barcode, status: data.status, title: data.books?.title, author: data.books?.author, cote: data.shelf_location || data.books?.shelf_location };
+    }
+    if (weedList.some(w => w.id === copy.id)) { msg.textContent = 'Déjà dans la liste.'; return; }
+    if (['borrowed', 'reserved', 'in_transit'].includes(copy.status)) { msg.textContent = `« ${copy.title} » est emprunté, mis de côté ou en transit : il ne peut pas être retiré.`; return; }
+    if (copy.status === 'withdrawn') { msg.textContent = `« ${copy.title} » est déjà retiré du fonds.`; return; }
+    weedList.push(copy);
+    renderWeedList();
+  };
+
+  function renderWeedList() {
+    document.getElementById('weed-count').textContent = weedList.length;
+    document.getElementById('weed-list').innerHTML = weedList.length ? weedList.map(w => `
+      <div class="bg-white border border-red-100 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-ink truncate">${escapeHtml(w.title || '?')}</p>
+          <p class="text-[11px] text-ink/50">${escapeHtml(w.author || '')} · ${escapeHtml(w.cote || '')} · ${escapeHtml(w.barcode)}</p>
+        </div>
+        <button onclick="removeWeedItem(${w.id})" class="text-xs text-ink/40 underline shrink-0">Enlever</button>
+      </div>`).join('') : '<p class="text-xs text-ink/40">Scanne un exemplaire, ou ajoute un candidat ci-dessous.</p>';
+  }
+
+  window.removeWeedItem = function (id) {
+    weedList = weedList.filter(w => w.id !== id);
+    renderWeedList();
+  };
+
+  window.validateWeeding = async function () {
+    if (!weedList.length) return;
+    const reason = document.getElementById('weed-reason').value;
+    const destination = document.getElementById('weed-destination').value;
+    if (!confirm(`Retirer ${weedList.length} exemplaire(s) du fonds ?\nMotif : ${WEED_REASON_LABEL[reason]} · Destination : ${WEED_DEST_LABEL[destination]}`)) return;
+    const { data, error } = await supabase.rpc('weed_copies', { p_copy_ids: weedList.map(w => w.id), p_reason: reason, p_destination: destination });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert(data.message);
+    if (!data.ok) return;
+    weedList = [];
+    renderWeedList();
+    loadWeedingStats();
+    await loadBooks();
+  };
+
+  window.loadWeedingCandidates = async function () {
+    const box = document.getElementById('weed-candidates');
+    box.innerHTML = '<p class="text-xs text-ink/40">Recherche…</p>';
+    const { data, error } = await supabase.rpc('weeding_candidates', { p_years: Number(document.getElementById('weed-years').value) });
+    if (error) { box.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    window._weedCandidates = data || [];
+    box.innerHTML = (data || []).length ? data.map((c, i) => `
+      <div class="flex items-center justify-between gap-2 border-t border-mango-50 pt-1.5">
+        <div class="min-w-0">
+          <p class="text-xs font-semibold text-ink truncate">${escapeHtml(c.title)} <span class="font-normal text-ink/45">· ${escapeHtml(c.cote || '')}</span></p>
+          <p class="text-[10.5px] text-ink/45">${c.last_loan_at ? `Dernier emprunt le ${formatDateShortAdmin(c.last_loan_at)}` : 'Jamais emprunté'} · acquis le ${formatDateShortAdmin(c.acquired_at)}</p>
+        </div>
+        <button onclick="addWeedCandidate(${i})" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-full px-2.5 py-1 shrink-0">Ajouter</button>
+      </div>`).join('') : '<p class="text-xs text-ink/40">Aucun candidat pour cette durée.</p>';
+  };
+
+  window.addWeedCandidate = function (i) {
+    const c = window._weedCandidates?.[i];
+    if (c) addWeedBarcode(null, { id: c.copy_id, barcode: c.barcode, status: 'available', title: c.title, author: c.author, cote: c.cote });
+  };
+
+  async function loadWeedingStats() {
+    const box = document.getElementById('weed-stats');
+    const year = new Date().getFullYear();
+    const { data, error } = await supabase.rpc('weeding_stats', { p_year: year });
+    if (error || !data?.length) { box.innerHTML = `<p class="text-ink/40">Aucun document retiré en ${year} pour l'instant.</p>`; return; }
+    const total = data.reduce((n, r) => n + Number(r.copies), 0);
+    box.innerHTML = `<p class="font-semibold text-ink mb-1">${total} exemplaire(s) retiré(s) en ${year}</p>
+      <table class="w-full"><thead><tr class="text-ink/45 text-left"><th class="font-semibold">Motif</th><th class="font-semibold">Destination</th><th class="font-semibold text-right">Exemplaires</th></tr></thead>
+      <tbody>${data.map(r => `<tr class="border-t border-mango-50"><td>${WEED_REASON_LABEL[r.reason] || '—'}</td><td>${WEED_DEST_LABEL[r.destination] || '—'}</td><td class="text-right">${r.copies}</td></tr>`).join('')}</tbody></table>`;
+  }
+
+  // ---------- Abonnements aux magazines (09/10/2026) ----------
+  let periodicalCatalog = [];
+  const FREQ_LABEL = { quotidien: 'Quotidien', hebdomadaire: 'Hebdomadaire', bimensuel: 'Bimensuel', mensuel: 'Mensuel', bimestriel: 'Bimestriel', trimestriel: 'Trimestriel', semestriel: 'Semestriel', annuel: 'Annuel', irregulier: 'Irrégulier' };
+
+  function subscriptionLateDays(s) {
+    if (!s.active || !s.next_expected_at) return 0;
+    const limit = new Date(s.next_expected_at).getTime() + (s.tolerance_days || 0) * 86400000;
+    return Date.now() > limit ? Math.ceil((Date.now() - limit) / 86400000) : 0;
+  }
+
+  async function loadSubscriptions() {
+    const list = document.getElementById('subs-list');
+    if (!list || !myCommuneId) return;
+    const [{ data: subs, error }, { data: catalog }] = await Promise.all([
+      supabase.from('periodical_subscriptions').select('*').eq('commune_id', myCommuneId).order('title'),
+      periodicalCatalog.length ? Promise.resolve({ data: periodicalCatalog }) : supabase.from('periodical_catalog').select('*').order('title'),
+    ]);
+    if (error) { list.innerHTML = ''; return; }
+    periodicalCatalog = catalog || [];
+    document.getElementById('sub-catalog-list').innerHTML = periodicalCatalog.map(c => `<option value="${escapeHtml(c.title)}">${escapeHtml(c.publisher || '')} · ISSN ${escapeHtml(c.issn)}</option>`).join('');
+    const sorted = [...(subs || [])].sort((a, b) => subscriptionLateDays(b) - subscriptionLateDays(a));
+    const late = sorted.filter(subscriptionLateDays).length;
+    const badge = document.getElementById('subs-late-badge');
+    badge.textContent = late;
+    badge.classList.toggle('hidden', !late);
+    list.innerHTML = sorted.length ? sorted.map(s => {
+      const lateDays = subscriptionLateDays(s);
+      const status = lateDays ? `<span class="font-bold text-red-600">Numéro en retard de ${lateDays} j</span>`
+        : s.next_expected_at ? `Prochain numéro attendu vers le ${formatDateShortAdmin(s.next_expected_at)}`
+        : 'Aucun numéro reçu pour l\'instant';
+      return `<div class="bg-white border ${lateDays ? 'border-red-200' : 'border-mango-100'} rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div class="min-w-0">
+          <p class="text-sm font-bold text-ink">${escapeHtml(s.title)} <span class="text-[11px] font-normal text-ink/45">${FREQ_LABEL[s.frequency] || ''}${s.issn ? ' · ISSN ' + escapeHtml(s.issn) : ''}</span></p>
+          <p class="text-[11px] text-ink/60">${status}${s.last_issue ? ` · dernier reçu : ${escapeHtml(s.last_issue)}` : ''}${s.last_received_at ? ` le ${formatDateShortAdmin(s.last_received_at)}` : ''}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="markIssueReceived(${s.id})" class="text-[12px] font-semibold bg-brand text-white rounded-full px-3 py-1.5">Numéro reçu</button>
+          <button onclick="removeSubscription(${s.id})" class="text-[11px] text-ink/40 underline">Retirer</button>
+        </div>
+      </div>`;
+    }).join('') : '<p class="text-xs text-ink/40">Aucun abonnement enregistré.</p>';
+  }
+
+  window.fillSubFromCatalog = function (title) {
+    const c = periodicalCatalog.find(x => x.title.toLowerCase() === title.trim().toLowerCase());
+    if (!c) return;
+    document.getElementById('sub-issn').value = c.issn;
+    document.getElementById('sub-publisher').value = c.publisher || '';
+    document.getElementById('sub-frequency').value = c.frequency;
+  };
+
+  window.addSubscription = async function () {
+    const title = document.getElementById('sub-search').value.trim();
+    if (!title) { alert('Indique le titre du magazine.'); return; }
+    const { error } = await supabase.from('periodical_subscriptions').insert({
+      commune_id: myCommuneId, title,
+      issn: document.getElementById('sub-issn').value.trim() || null,
+      publisher: document.getElementById('sub-publisher').value.trim() || null,
+      frequency: document.getElementById('sub-frequency').value,
+      tolerance_days: Number(document.getElementById('sub-tolerance').value || 7),
+    });
+    if (error) { alert('Erreur : ' + (/duplicate|unique/i.test(error.message) ? 'cet ISSN est déjà dans tes abonnements.' : error.message)); return; }
+    ['sub-search', 'sub-issn', 'sub-publisher'].forEach(id => { document.getElementById(id).value = ''; });
+    await loadSubscriptions();
+  };
+
+  window.markIssueReceived = async function (id) {
+    const issue = prompt('Numéro reçu (ex. 630, ou « octobre 2026 ») — facultatif :', '');
+    if (issue === null) return;
+    const { data, error } = await supabase.rpc('receive_issue', { p_subscription_id: id, p_issue: parseIssueNumber(issue) });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadSubscriptions();
+  };
+
+  window.removeSubscription = async function (id) {
+    if (!confirm('Retirer cet abonnement de la liste ?')) return;
+    const { error } = await supabase.from('periodical_subscriptions').delete().eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadSubscriptions();
+  };
+
+  window.closeScanView = function () {
+    closeCatalogueView();
   };
 
   async function loadBooks() {
@@ -4714,6 +5310,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         document.getElementById('tariff-famille').value = ((commune.tariff_famille_cents || 0) / 100).toFixed(2);
         document.getElementById('family-max-loans').value = commune.family_max_loans;
       }
+      if (commune.lost_default_fee_cents != null) {
+        document.getElementById('lost-default-fee').value = (commune.lost_default_fee_cents / 100).toFixed(2);
+        document.getElementById('presumed-lost-days').value = commune.presumed_lost_days || 0;
+      }
       if (commune.membership_validity) {
         document.getElementById('membership-validity').value = commune.membership_validity;
         document.getElementById('non-resident-policy').value = commune.non_resident_policy;
@@ -4753,6 +5353,16 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     });
     if (familyError && !/update_commune_family_settings/.test(familyError.message)) { alert('Erreur : ' + familyError.message); return; }
     await loadTeamAndTariffs();
+  };
+
+  window.saveDebtSettings = async function () {
+    const { error } = await supabase.rpc('update_commune_debt_settings', {
+      p_commune_id: myCommuneId,
+      p_presumed_lost_days: Number(document.getElementById('presumed-lost-days').value || 0),
+      p_default_fee_cents: Math.round(Number(document.getElementById('lost-default-fee').value || 0) * 100),
+    });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert('Réglages enregistrés.');
   };
 
   window.saveMembershipSettings = async function () {
@@ -5200,7 +5810,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           ${categoryOptionsHtml(b.category)}
         </select>
         <span class="sm:text-center">
-          ${needsEquip(b) ? `
+          ${b.archived ? `<span class="inline-block text-[11px] font-bold px-3 py-1.5 rounded-full bg-brand/5 text-ink/40">Retiré du fonds</span>` : needsEquip(b) ? `
             <button onclick="markEquipped(${b.id})"
               style="touch-action: manipulation;"
               class="w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full bg-hibiscus-50 text-hibiscus-700">
@@ -5256,6 +5866,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   function needsEquip(b) {
+    if (b.archived) return false;
     return !b.equipped || (b.copies || []).some(c => c.status === 'processing');
   }
 
@@ -5549,12 +6160,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     openBookDetail(id);
   };
 
-  window.withdrawCopy = async function (copyId, bookId) {
-    if (!confirm('Retirer cet exemplaire du fonds ? Il ne sera plus comptabilisé comme disponible.')) return;
-    const { error } = await supabase.from('book_copies').update({ status: 'withdrawn' }).eq('id', copyId);
-    if (error) { alert('Erreur : ' + error.message); return; }
-    await loadBooks();
-    openBookDetail(bookId);
+  // Retirer un exemplaire passe par le désherbage, pour garder motif et
+  // destination dans les statistiques (09/10/2026).
+  window.withdrawCopy = function (copyId, bookId) {
+    const b = books.find(x => x.id === bookId);
+    const c = (b?.copies || []).find(x => x.id === copyId);
+    closeBookModal();
+    openCatalogueView('weed');
+    addWeedBarcode(null, { id: copyId, barcode: c?.barcode || '', status: c?.status, title: b?.title, author: b?.author, cote: b?.shelf_location });
   };
 
   window.openBookDetail = function (id) {
@@ -5588,6 +6201,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ${bookFieldRow('Format (dimensions)', 'bd-dimensions', b.dimensions)}
         ${bookFieldRow('Illustrations', 'bd-illustrations', b.illustrations)}
         ${bookFieldRow('Collection', 'bd-collection', b.collection)}
+        ${bookFieldRow('Joueurs (jeux)', 'bd-players', b.players)}
+        ${bookFieldRow('Durée de partie (jeux)', 'bd-play-duration', b.play_duration)}
+        ${bookFieldRow('Prix (€)', 'bd-price', b.price_cents != null ? (b.price_cents / 100).toFixed(2).replace('.', ',') : '')}
         <div>
           ${bookFieldRow('Indice Dewey', 'bd-dewey', b.dewey)}
           ${deweyHintHtml(b.dewey, 'bd-dewey-label')}
@@ -5723,6 +6339,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       collection: val('bd-collection'),
       dewey: val('bd-dewey'),
       subjects: val('bd-subjects'),
+      price_cents: parsePriceCents(val('bd-price')),
+      players: val('bd-players'),
+      play_duration: val('bd-play-duration'),
       legal_deposit: val('bd-legal-deposit'),
       translator: val('bd-translator'),
       illustrator: val('bd-illustrator'),

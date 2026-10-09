@@ -206,7 +206,7 @@
   const CATEGORIES = [
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Documentaire', 'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
-    'Bien-être', 'Maison', 'Autres'
+    'Bien-être', 'Maison', 'Jeux', 'Autres'
   ];
 
   // Sentinelle distincte des vraies catégories : sélection faite par la
@@ -227,6 +227,7 @@
     'Histoire': '<img src="img/categories/histoire.png?v=4" alt="" class="w-full h-full object-contain">',
     'Culture': '<img src="img/categories/culture.png?v=4" alt="" class="w-full h-full object-contain">',
     'Autres': '<img src="img/categories/autres.png?v=4" alt="" class="w-full h-full object-contain">',
+    'Jeux': '<img src="img/categories/jeux.png?v=1" alt="" class="w-full h-full object-contain">',
     'Documentaire': '<img src="img/categories/documentaire.png?v=5" alt="" class="w-full h-full object-contain">',
     'Sciences & nature': '<img src="img/categories/sciences-nature.png?v=5" alt="" class="w-full h-full object-contain">',
     'Voyages': '<img src="img/categories/voyages.png?v=5" alt="" class="w-full h-full object-contain">',
@@ -657,6 +658,7 @@
         </div>
       </div>
       ${b.summary ? `<p class="text-sm text-ink/70 leading-relaxed mt-4">${b.summary}</p>` : `<p class="text-sm text-ink/40 italic mt-4">Résumé non disponible pour ce titre.</p>`}
+      ${(b.players || b.play_duration) ? `<p class="text-[12px] text-ink/60 mt-2">🎲 ${[b.players, b.play_duration, b.age_range].filter(Boolean).join(' · ')}</p>` : ''}
       ${(b.page_count || b.legal_deposit) ? `<p class="text-[11px] text-ink/40 mt-2">${[b.page_count ? `${b.page_count} pages` : '', b.legal_deposit ? `Dépôt légal ${b.legal_deposit}` : ''].filter(Boolean).join(' · ')}</p>` : ''}
       ${btnHtml}
     `;
