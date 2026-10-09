@@ -99,14 +99,16 @@
           <div>
             <h2 class="text-lg font-bold text-ink mb-1">Catalogage</h2>
           </div>
+          <!-- Ordre validé par Mégane le 09/10/2026 : actions du quotidien (don,
+               ajout), gestion du fonds, puis impressions et exports. -->
           <div class="flex flex-wrap items-center gap-2 shrink-0">
-            <button onclick="printToEquipLabels()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">🖨️ Étiquettes à équiper</button>
-            <button id="export-catalogue-btn" onclick="openExportModal()" style="touch-action: manipulation;" class="hidden border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Exporter le catalogue</button>
-            <button onclick="openInscritScanModal()" style="touch-action: manipulation;" class="border border-hibiscus-200 text-hibiscus-700 bg-hibiscus-50 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Scanner la carte de l'inscrit</button>
-            <button onclick="openCatalogueView('subs')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">📰 Abonnements <span id="subs-late-badge" class="hidden ml-1 text-[10px] font-bold bg-red-600 text-white rounded-full px-1.5 py-0.5"></span></button>
-            <button onclick="openCatalogueView('inv')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Récolement</button>
-            <button onclick="openCatalogueView('weed')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Désherbage</button>
-            <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter un nouveau document</button>
+            <button onclick="openInscritScanModal()" style="touch-action: manipulation;" class="border border-hibiscus-200 text-hibiscus-700 bg-hibiscus-50 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M7 11h2"/><path d="M15 9h3v3h-3z"/></svg>Scanner la carte de l'inscrit (don)</button>
+            <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M12 5v14M5 12h14"/></svg>Ajouter un document</button>
+            <button onclick="openCatalogueView('subs')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M18 8h2v10a2 2 0 0 1-2 2"/><path d="M8 8h6M8 12h6M8 16h4"/></svg>Abonnements périodiques <span id="subs-late-badge" class="hidden text-[10px] font-bold bg-red-600 text-white rounded-full px-1.5 py-0.5"></span></button>
+            <button onclick="openCatalogueView('inv')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3"/><path d="M9 12l2 2 4-4"/></svg>Récolement</button>
+            <button onclick="openCatalogueView('weed')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>Désherbage</button>
+            <button onclick="printToEquipLabels()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>Étiquettes à imprimer</button>
+            <button id="export-catalogue-btn" onclick="openExportModal()" style="touch-action: manipulation;" class="hidden border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>Exporter le catalogue</button>
           </div>
         </div>
 
@@ -311,7 +313,7 @@
           <button onclick="applyBulkNewRelease(false)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Retirer « Nouveauté »</button>
           <button onclick="applyBulkStaffPick(true)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">❤️ Marquer « Coup de cœur »</button>
           <button onclick="applyBulkStaffPick(false)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Retirer « Coup de cœur »</button>
-          <button onclick="openLabelsModal([...selectedBookIds])" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">🖨️ Imprimer les étiquettes</button>
+          <button onclick="openLabelsModal([...selectedBookIds])" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-2px] shrink-0"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg> Imprimer les étiquettes</button>
           <button onclick="clearBulkSelection()" class="text-xs text-white/60 hover:text-white ml-auto">Annuler la sélection</button>
         </div>
 
@@ -2825,7 +2827,7 @@
   function GAME_FIELDS_MANUAL(d) {
     if (!isGameDraft(d)) return '';
     return `<div class="bg-mango-50/60 border border-mango-100 rounded-lg p-2.5 mb-2">
-      <button type="button" onclick="fillGameFromWikidata('${d.localId}')" class="w-full text-xs font-semibold text-mango-700 border border-mango-200 bg-white rounded-lg py-2 mb-1">🎲 Chercher ce jeu par son nom (Wikidata)</button>
+      <button type="button" onclick="fillGameFromWikidata('${d.localId}')" class="w-full text-xs font-semibold text-mango-700 border border-mango-200 bg-white rounded-lg py-2 mb-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-2px] shrink-0"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/></svg> Chercher ce jeu par son nom (Wikidata)</button>
       <p id="game-wikidata-status-${d.localId}" class="text-[10.5px] text-ink/50 text-center mb-2 min-h-[14px]"></p>
       ${d.cover_url ? `<img src="${escapeHtml(d.cover_url)}" alt="" class="w-20 h-20 object-contain mx-auto mb-2 rounded bg-white">` : ''}
       <div class="grid grid-cols-3 gap-1.5">
@@ -4203,7 +4205,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error || !data?.length) { box.innerHTML = ''; return; }
     const total = data.reduce((n, d) => n + d.amount_cents, 0);
     box.innerHTML = `<div class="px-4 py-3 bg-red-50 border-b border-red-100 text-xs">
-      <p class="font-bold text-red-700 mb-1.5">⚠️ À régler : ${(total / 100).toFixed(2).replace('.', ',')} € · emprunts et réservations bloqués</p>
+      <p class="font-bold text-red-700 mb-1.5">À régler : ${(total / 100).toFixed(2).replace('.', ',')} € · emprunts et réservations bloqués</p>
       ${data.map(d => `<div class="flex flex-wrap items-center justify-between gap-2 py-1 border-t border-red-100">
         <span class="text-red-800">« ${escapeHtml(d.books?.title || 'Document')} » ${d.kind === 'perdu' ? (d.automatic ? 'présumé perdu' : 'perdu') : 'rendu abîmé'} · <strong>${(d.amount_cents / 100).toFixed(2).replace('.', ',')} €</strong> · depuis le ${formatDateShortAdmin(d.created_at)}</span>
         <span class="flex gap-1.5">
@@ -4263,7 +4265,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       .order('promoted_at', { ascending: false }).limit(1).maybeSingle();
     if (!hold) return null;
     const { data: profile } = await supabase.from('profiles').select('full_name, subscriber_number').eq('id', hold.user_id).maybeSingle();
-    return `📌 Ce livre était attendu : mets-le de côté pour ${profile?.full_name || 'l\'usager'}${profile?.subscriber_number ? ` (${profile.subscriber_number})` : ''}. Il est prévenu et a 48 h pour venir le chercher.`;
+    return `Ce livre était attendu : mets-le de côté pour ${profile?.full_name || 'l\'usager'}${profile?.subscriber_number ? ` (${profile.subscriber_number})` : ''}. Il est prévenu et a 48 h pour venir le chercher.`;
   }
 
   window.quickReturnFromList = async function (barcode) {
@@ -4539,7 +4541,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data } = await supabase.rpc('family_usage', { p_user_id: profile.id });
     const u = data?.[0];
     box.innerHTML = u ? `<div class="px-4 py-2.5 text-xs">
-      <span class="font-bold text-ink">👨‍👩‍👧 Carte famille</span>
+      <span class="font-bold text-ink">Carte famille</span>
       <span class="${u.used >= u.max_loans ? 'text-red-600 font-bold' : 'text-ink/60'}"> · ${u.used}/${u.max_loans} documents en cours pour toute la famille</span>
     </div>` : '';
   }
@@ -5979,7 +5981,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide mb-1">Équipement</p>
       <p class="text-base font-bold text-ink leading-snug pr-8">${escapeHtml(b.title)}</p>
       <p class="text-xs text-ink/55 mb-3">${escapeHtml(b.author || '')}${b.shelf_location ? ` · cote <span class="font-bold text-ink">${escapeHtml(b.shelf_location)}</span>` : ''}</p>
-      <button type="button" onclick="openLabelsModal([${b.id}], true)" class="w-full mb-3 text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg py-2">🖨️ Imprimer ${copies.length > 1 ? `les ${copies.length} étiquettes` : "l'étiquette"} de cote</button>
+      <button type="button" onclick="openLabelsModal([${b.id}], true)" class="w-full mb-3 text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg py-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-2px] shrink-0"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg> Imprimer ${copies.length > 1 ? `les ${copies.length} étiquettes` : "l'étiquette"} de cote</button>
       <p class="text-xs text-ink/60 mb-3">Plastifie et étiquette ${copies.length > 1 ? `les ${copies.length} exemplaires` : 'le document'}, puis scanne le code-barres de la médiathèque collé sur ${copies.length > 1 ? 'chacun' : 'lui'}. ${copies.length > 1 ? 'Chaque exemplaire a son propre code.' : ''}</p>
       ${copies.map((c, i) => `
         <label class="text-xs font-semibold text-ink/60 block mb-1">Exemplaire ${copies.length > 1 ? i + 1 : ''}</label>
@@ -6536,7 +6538,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <span>
           <span class="font-semibold text-ink block">${escapeHtml(p.full_name)}</span>
           <span class="text-[10.5px] text-mango-700 font-semibold">${escapeHtml(p.communes?.name || '')}</span>
-          ${p.tariff_category === 'famille' ? '<span class="block text-[10.5px] font-bold text-hibiscus-700">👨‍👩‍👧 Demande une carte famille</span>' : ''}
+          ${p.tariff_category === 'famille' ? '<span class="block text-[10.5px] font-bold text-hibiscus-700">Demande une carte famille</span>' : ''}
         </span>
         <span class="text-ink/60 text-xs">${escapeHtml(p.subscriber_number)}</span>
         <span class="text-ink/60 text-xs">${formatEventDateShort(p.created_at)}</span>
@@ -7764,7 +7766,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 <div id="labels-modal-backdrop" onclick="closeLabelsModal(event)" class="hidden fixed inset-0 z-50 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative p-6">
     <button onclick="closeLabelsModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
-    <p class="text-base font-bold text-ink mb-1">🖨️ Étiquettes de cote</p>
+    <p class="text-base font-bold text-ink mb-1 flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-2px] shrink-0"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg> Étiquettes de cote</p>
     <p id="labels-summary" class="text-xs text-ink/55 mb-4"></p>
     <label class="text-[11px] font-semibold text-ink/60 block mb-1">Support</label>
     <select id="labels-format" onchange="refreshLabelsForm()" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3"></select>
