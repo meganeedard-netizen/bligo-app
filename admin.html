@@ -763,6 +763,22 @@
 </main>
 
 <!-- Fiche livre complète -->
+<!-- Équipement (09/10/2026) : scan du code-barres de bibliothèque de chaque
+     exemplaire avant la mise en ligne. -->
+<div id="equip-modal-backdrop" onclick="closeEquipModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative">
+    <button onclick="closeEquipModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold z-10">✕</button>
+    <div class="p-6">
+      <div id="equip-modal-content"></div>
+      <div id="equip-camera-slot" class="mt-3"></div>
+      <button type="button" id="equip-camera-btn" onclick="toggleCamera('equip')" style="touch-action: manipulation;" class="w-full mt-2 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2.5 text-sm font-semibold">Scanner avec la caméra</button>
+      <p id="equip-camera-hint" class="text-[11px] text-ink/45 text-center mt-1 min-h-[16px]"></p>
+      <p id="equip-error" class="text-xs text-red-600 font-semibold mt-2 min-h-[16px]"></p>
+      <button type="button" id="equip-validate-btn" class="w-full mt-2 bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition">✓ Valider et mettre en ligne</button>
+    </div>
+  </div>
+</div>
+
 <div id="book-modal-backdrop" onclick="closeBookModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto relative">
     <button onclick="closeBookModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold z-10">✕</button>
@@ -1270,6 +1286,7 @@
       zxingFormats: [BarcodeFormat.QR_CODE],
     },
     loan: LIBRARY_BARCODE_PROFILE,
+    equip: LIBRARY_BARCODE_PROFILE,
     transferSend: LIBRARY_BARCODE_PROFILE,
     transferReceive: LIBRARY_BARCODE_PROFILE,
   };
@@ -1338,7 +1355,7 @@
   // Modes où la caméra reste ouverte pour enchaîner plusieurs scans sans la
   // rouvrir (22/09/2026) : catalogage en rafale, check-in à l'entrée d'un
   // événement. Les autres modes se ferment après un seul scan.
-  const BURST_SCAN_MODES = ['book', 'checkin'];
+  const BURST_SCAN_MODES = ['book', 'checkin', 'equip'];
 
   // Brouillons de catalogage (17/09/2026) : chaque ISBN scanné ou tapé part en
   // recherche multi-API en arrière-plan et atterrit ici, en liste, pour
@@ -1376,6 +1393,13 @@
   }
 
   const SCAN_UI = {
+    equip: {
+      slotId: 'equip-camera-slot',
+      toggleBtnId: 'equip-camera-btn',
+      hintId: 'equip-camera-hint',
+      defaultLabel: 'Scanner avec la caméra',
+      hint: 'Vise le code-barres collé par la médiathèque : la caméra reste ouverte pour enchaîner les exemplaires.',
+    },
     book: {
       slotId: 'book-camera-slot',
       toggleBtnId: 'camera-toggle-btn',
@@ -1568,6 +1592,17 @@
           lastBatchCodeTime = Date.now();
           playBeep();
           addDraftFromIsbn(code);
+          scanTimeoutId = setTimeout(scanLoop, 700);
+          return;
+        }
+
+        // Équipement : la caméra reste ouverte, chaque code remplit
+        // l'exemplaire suivant encore vide.
+        if (scanState.mode === 'equip') {
+          lastBatchCode = code;
+          lastBatchCodeTime = Date.now();
+          playBeep();
+          fillNextEquipCode(code);
           scanTimeoutId = setTimeout(scanLoop, 700);
           return;
         }
@@ -4805,7 +4840,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       banner.classList.add('hidden');
     }
 
-    const toEquipCount = books.filter(b => !b.equipped).length;
+    const toEquipCount = books.filter(needsEquip).length;
     const toEquipBadge = document.getElementById('to-equip-badge');
     // Même filet de sécurité que pour les doublons (voir ci-dessus) : si le
     // dernier livre à équiper vient d'être équipé pendant que le filtre est
@@ -4818,7 +4853,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     toEquipBadge.classList.toggle('hidden', toEquipCount === 0);
     // Filtre dédié (21/09/2026) : retrouver facilement les livres à équiper
     // au milieu d'un catalogue de plusieurs centaines de titres.
-    if (toEquipFilterActive) filtered = filtered.filter(b => !b.equipped);
+    if (toEquipFilterActive) filtered = filtered.filter(needsEquip);
 
     document.getElementById('catalogue-count').textContent = filtered.length;
 
@@ -4859,11 +4894,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           ${categoryOptionsHtml(b.category)}
         </select>
         <span class="sm:text-center">
-          ${!b.equipped ? `
+          ${needsEquip(b) ? `
             <button onclick="markEquipped(${b.id})"
               style="touch-action: manipulation;"
               class="w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full bg-hibiscus-50 text-hibiscus-700">
-              ⏳ À équiper
+              ⏳ À équiper${equipCopies(b).length > 1 ? ` (${equipCopies(b).length} ex.)` : ''}
             </button>
           ` : `
             <span class="inline-block w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full ${b.available_count > 0 ? 'bg-mango-50 text-mango-700' : 'bg-brand/5 text-ink/40'}">
@@ -4902,14 +4937,117 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // Validation par l'agent : le livre vient d'être plastifié et étiqueté,
   // il peut désormais apparaître dans le catalogue en ligne (accueil.html
   // filtre sur equipped = true) et être emprunté.
-  window.markEquipped = async function (id) {
-    const { error } = await supabase.from('books').update({ equipped: true, available: true }).eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
-    // L'exemplaire correspondant passe aussi de 'processing' à 'available' :
-    // c'est ce statut que lisent les fonctions de scan (emprunt/retour/rayon).
-    await supabase.from('book_copies').update({ status: 'available' }).eq('book_id', id);
-    await loadBooks();
+  //
+  // Depuis le 09/10/2026, « À équiper » ouvre une étape de scan : l'agent
+  // scanne le code-barres que la médiathèque a collé sur CHAQUE exemplaire
+  // (douchette ou caméra). Le document n'est mis en ligne qu'une fois tous
+  // les codes saisis, différents du code provisoire BLIGO-… et pas déjà
+  // utilisés : c'est ce code que l'agent scannera ensuite au retour.
+  function equipCopies(b) {
+    const copies = (b.copies || []).filter(c => !['withdrawn', 'lost'].includes(c.status));
+    const pending = copies.filter(c => c.status === 'processing');
+    return pending.length ? pending : (b.equipped ? [] : copies.filter(c => c.status !== 'borrowed'));
+  }
+
+  function needsEquip(b) {
+    return !b.equipped || (b.copies || []).some(c => c.status === 'processing');
+  }
+
+  const isProvisionalBarcode = code => /^BLIGO-/i.test(code || '');
+  let equipBookId = null;
+
+  window.markEquipped = function (id) {
+    const b = books.find(x => x.id === id);
+    if (!b) return;
+    equipBookId = id;
+    const copies = equipCopies(b);
+    document.getElementById('equip-error').textContent = '';
+    document.getElementById('equip-modal-content').innerHTML = `
+      <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide mb-1">Équipement</p>
+      <p class="text-base font-bold text-ink leading-snug pr-8">${escapeHtml(b.title)}</p>
+      <p class="text-xs text-ink/55 mb-3">${escapeHtml(b.author || '')}${b.shelf_location ? ` · cote <span class="font-bold text-ink">${escapeHtml(b.shelf_location)}</span>` : ''}</p>
+      <p class="text-xs text-ink/60 mb-3">Plastifie et étiquette ${copies.length > 1 ? `les ${copies.length} exemplaires` : 'le document'}, puis scanne le code-barres de la médiathèque collé sur ${copies.length > 1 ? 'chacun' : 'lui'}. ${copies.length > 1 ? 'Chaque exemplaire a son propre code.' : ''}</p>
+      ${copies.map((c, i) => `
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Exemplaire ${copies.length > 1 ? i + 1 : ''}</label>
+        <input id="equip-code-${c.id}" data-copy-id="${c.id}" class="equip-code-input w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300"
+          value="${isProvisionalBarcode(c.barcode) ? '' : escapeHtml(c.barcode)}" placeholder="Scanne le code-barres (douchette)" autocomplete="off" style="font-size: 16px;">`).join('')}
+    `;
+    const inputs = [...document.querySelectorAll('.equip-code-input')];
+    // La douchette tape le code puis « Entrée » : on passe à l'exemplaire suivant.
+    inputs.forEach((input, i) => input.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (inputs[i + 1]) inputs[i + 1].focus();
+      else validateEquip();
+    }));
+    document.getElementById('equip-validate-btn').onclick = validateEquip;
+    const backdrop = document.getElementById('equip-modal-backdrop');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
+    (inputs.find(i => !i.value) || inputs[0])?.focus();
   };
+
+  function fillNextEquipCode(code) {
+    const inputs = [...document.querySelectorAll('.equip-code-input')];
+    if (inputs.some(i => i.value.trim() === code)) {
+      document.getElementById('equip-error').textContent = `Le code ${code} vient déjà d'être scanné : passe à l'exemplaire suivant.`;
+      return;
+    }
+    const next = inputs.find(i => !i.value.trim());
+    if (!next) return;
+    next.value = code;
+    document.getElementById('equip-error').textContent = '';
+    if (!inputs.some(i => !i.value.trim())) {
+      stopCamera();
+      document.getElementById('equip-camera-hint').textContent = 'Tous les exemplaires sont scannés.';
+    }
+  }
+
+  window.closeEquipModal = function (event) {
+    if (event && event.target !== event.currentTarget) return;
+    stopCamera();
+    const backdrop = document.getElementById('equip-modal-backdrop');
+    backdrop.classList.add('hidden');
+    backdrop.classList.remove('flex');
+    equipBookId = null;
+  };
+
+  async function validateEquip() {
+    const errorEl = document.getElementById('equip-error');
+    const inputs = [...document.querySelectorAll('.equip-code-input')];
+    const entries = inputs.map(i => ({ copyId: Number(i.dataset.copyId), code: i.value.trim() }));
+
+    if (entries.some(e => !e.code)) { errorEl.textContent = 'Scanne le code-barres de chaque exemplaire avant de valider.'; return; }
+    if (entries.some(e => isProvisionalBarcode(e.code))) { errorEl.textContent = 'Le code provisoire BLIGO-… ne convient pas : scanne le code-barres collé par la médiathèque.'; return; }
+    const codes = entries.map(e => e.code);
+    if (new Set(codes).size !== codes.length) { errorEl.textContent = 'Deux exemplaires ont le même code : chaque exemplaire doit avoir son propre code-barres.'; return; }
+
+    const { data: taken } = await supabase.from('book_copies').select('id, barcode, books ( title )').in('barcode', codes);
+    const conflict = (taken || []).find(t => !entries.some(e => e.copyId === t.id));
+    if (conflict) { errorEl.textContent = `Le code ${conflict.barcode} est déjà attribué à « ${conflict.books?.title || 'un autre document'} ».`; return; }
+
+    const btn = document.getElementById('equip-validate-btn');
+    btn.disabled = true;
+    btn.textContent = 'Mise en ligne…';
+    try {
+      for (const e of entries) {
+        const { error } = await supabase.from('book_copies').update({ barcode: e.code, status: 'available' }).eq('id', e.copyId);
+        if (error) throw error;
+      }
+      const { error } = await supabase.from('books').update({ equipped: true, available: true }).eq('id', equipBookId);
+      if (error) throw error;
+    } catch (err) {
+      errorEl.textContent = 'Erreur : ' + err.message;
+      btn.disabled = false;
+      btn.textContent = '✓ Valider et mettre en ligne';
+      return;
+    }
+    btn.disabled = false;
+    btn.textContent = '✓ Valider et mettre en ligne';
+    playBeep();
+    closeEquipModal();
+    await loadBooks();
+  }
 
   window.deleteBook = async function (id, title) {
     if (!confirm(`Es-tu sûr de vouloir supprimer le livre « ${title} » ?`)) return;
