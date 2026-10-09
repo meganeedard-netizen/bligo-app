@@ -894,6 +894,10 @@
   // Jeunesse et Fonds local documentaires : lettre de section + indice
   // (ex. « J 797.1 ELB »). CD et DVD : « CD ABC », « DVD ABC » (07/10/2026).
   function suggestCote(category, author, dewey, opts = {}) {
+    if (opts.usuel) {
+      const base = suggestCote(category, author, dewey, { ...opts, usuel: false });
+      return base.startsWith('U ') ? base : `U ${base}`;
+    }
     const suffix = coteLetters(opts.authorKey) || authorCotePrefix(author) || titleCotePrefix(opts.title);
     const kind = opts.format ? documentTypeKind(opts.format) : null;
     if (kind === 'cd') return suffix ? `CD ${suffix}` : 'CD';
@@ -1002,6 +1006,24 @@
     if (x >= 790 && x < 800) return 'Sports & loisirs';
     if (x >= 700 && x < 790) return 'Culture';
     return 'Documentaire';
+  }
+
+  // Usuels (09/10/2026) : dictionnaires, encyclopédies, atlas, codes
+  // juridiques. Reconnus par l'indice Dewey (030-039 encyclopédies, 4x3
+  // dictionnaires de langue, 912 atlas) ou par le titre et les sujets
+  // Rameau. Choix de Mégane : type « usuels », consultation sur place et
+  // cote préfixée « U ».
+  const USUEL_WORDS = /(^|\s|--\s*)(dictionnaires?|encyclop[ée]dies?|atlas|lexiques?|vocabulaires?)(\s|$|,|\.)/i;
+  const LEGAL_CODE_TITLE = /^code (civil|p[ée]nal|du travail|de commerce|de proc[ée]dure|de la |de l'|des |du |g[ée]n[ée]ral)/i;
+  function isUsuel(title, subjects, dewey) {
+    const n = normalizeDewey(dewey);
+    if (n) {
+      const x = parseInt(n.slice(0, 3), 10);
+      if ((x >= 30 && x < 40) || (x >= 410 && x < 500 && x % 10 === 3) || x === 912) return true;
+    }
+    // « Dictionnaire amoureux de… » (Plon) : des essais qui s'empruntent.
+    if (/dictionnaire amoureux/i.test(title || '')) return false;
+    return USUEL_WORDS.test(title || '') || USUEL_WORDS.test(subjects || '') || LEGAL_CODE_TITLE.test((title || '').trim());
   }
 
   function categorizeDocument(rawText, title, dewey) {
@@ -1827,6 +1849,11 @@
     if (!meta.summary) meta.summary = await fetchSummaryFromWikipedia(meta.title, meta.authorKey || meta.author);
     if (meta.dewey) meta.dewey = String(meta.dewey).replace(/\//g, '').trim();
     meta.category = forcedGenre || categorizeDocument(meta.rawCategoryText, meta.title, meta.dewey);
+    if (isUsuel(meta.title, [meta.subjects, meta.rawCategoryText].filter(Boolean).join(' '), meta.dewey)) {
+      meta.usuel = true;
+      meta.onSiteOnly = true;
+      meta.format = FORMAT_OPTIONS.find(f => f.startsWith('Beaux livres')) || meta.format;
+    }
     delete meta.rawCategoryText;
     meta.isbn = isbn;
     return meta;
@@ -2194,6 +2221,8 @@
     draft.illustrator = meta.illustrator || '';
     draft.authorKey = meta.authorKey || null;
     draft.issue = meta.issue || '';
+    draft.usuel = !!meta.usuel;
+    draft.onSiteOnly = !!meta.onSiteOnly;
     draft.coteEdited = false;
     draft.cote = draftSuggestedCote(draft);
     if (existingBook) {
@@ -2259,7 +2288,7 @@
     // l'agent ne l'a pas retouchée lui-même.
     if (field === 'cote') {
       draft.coteEdited = true;
-    } else if (['category', 'dewey', 'format', 'author', 'title'].includes(field) && !draft.coteEdited) {
+    } else if (['category', 'dewey', 'format', 'author', 'title', 'usuel'].includes(field) && !draft.coteEdited) {
       if (field === 'author') draft.authorKey = null;
       draft.cote = draftSuggestedCote(draft);
       const coteInput = document.getElementById(`draft-cote-${localId}`);
@@ -2280,7 +2309,7 @@
   // reste prioritaire sur la cote calculée.
   function draftSuggestedCote(d) {
     return document.getElementById('batch-shelf')?.value.trim()
-      || suggestCote(d.category, d.author, d.dewey, { format: d.format, authorKey: d.authorKey, title: d.title });
+      || suggestCote(d.category, d.author, d.dewey, { format: d.format, authorKey: d.authorKey, title: d.title, usuel: d.usuel });
   }
 
   window.forceDraftAsNew = function (localId) {
@@ -2351,7 +2380,7 @@
     draft.meta.category = draft.category;
     draft.meta.copyCount = Math.max(1, parseInt(draft.copyCount, 10) || 1);
     draft.meta.shelfOverride = (draft.cote || '').trim() || document.getElementById('batch-shelf')?.value.trim() || null;
-    draft.meta.onSiteOnly = document.getElementById('batch-onsite-only')?.checked || false;
+    draft.meta.onSiteOnly = document.getElementById('batch-onsite-only')?.checked || !!draft.onSiteOnly;
 
     const inserted = await insertBook(draft.meta);
     if (inserted) await maybeRecordDonation(inserted.id, null);
@@ -2503,6 +2532,7 @@
                 ${categoryOptionsHtml(d.category)}
               </select>
               <p class="text-[11px] text-ink/55 mt-1.5">Cote : <span id="draft-cote-preview-${d.localId}" class="font-bold text-ink">${escapeHtml(d.cote || '')}</span></p>
+              ${d.usuel ? `<p class="text-[11px] font-semibold text-hibiscus-700">Usuel${d.onSiteOnly ? ' · consultation sur place' : ''}</p>` : ''}
               ${d.dewey ? `<p class="text-[11px] text-ink/55">Dewey ${escapeHtml(d.dewey)}${deweyLabel(d.dewey) ? ` · ${escapeHtml(deweyLabel(d.dewey))}` : ''}</p>` : ''}
               ${d.format ? `<p class="text-[11px] text-ink/55">${escapeHtml(d.format)}${d.binding ? ` · ${escapeHtml(d.binding)}` : ''}${d.dimensions ? ` · ${escapeHtml(d.dimensions)}` : ''}</p>` : ''}
             </div>
@@ -2610,6 +2640,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           </div>
         </div>
         ${deweyHintHtml(d.dewey, `draft-dewey-label-${d.localId}`)}
+        <div class="flex flex-wrap gap-x-4 gap-y-1 mb-2">
+          <label class="flex items-center gap-1.5 text-xs font-semibold text-ink/60">
+            <input type="checkbox" ${d.usuel ? 'checked' : ''} onchange="updateDraftField('${d.localId}', 'usuel', this.checked)"> Usuel (cote « U »)
+          </label>
+          <label class="flex items-center gap-1.5 text-xs font-semibold text-ink/60">
+            <input type="checkbox" ${d.onSiteOnly ? 'checked' : ''} onchange="updateDraftField('${d.localId}', 'onSiteOnly', this.checked)"> Consultation sur place
+          </label>
+        </div>
         <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé</label>
         <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">${escapeHtml(d.summary || '')}</textarea>
         ${d.summary ? '' : `<input id="back-photo-input-${d.localId}" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleBackPhoto(event, '${d.localId}')">
