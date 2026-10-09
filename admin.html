@@ -100,6 +100,7 @@
             <h2 class="text-lg font-bold text-ink mb-1">Catalogage</h2>
           </div>
           <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button onclick="printToEquipLabels()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">🖨️ Étiquettes à équiper</button>
             <button id="export-catalogue-btn" onclick="openExportModal()" style="touch-action: manipulation;" class="hidden border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Exporter le catalogue</button>
             <button onclick="openInscritScanModal()" style="touch-action: manipulation;" class="border border-hibiscus-200 text-hibiscus-700 bg-hibiscus-50 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Scanner la carte de l'inscrit</button>
             <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter un nouveau document</button>
@@ -207,6 +208,7 @@
           <button onclick="applyBulkNewRelease(false)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Retirer « Nouveauté »</button>
           <button onclick="applyBulkStaffPick(true)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">❤️ Marquer « Coup de cœur »</button>
           <button onclick="applyBulkStaffPick(false)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Retirer « Coup de cœur »</button>
+          <button onclick="openLabelsModal([...selectedBookIds])" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">🖨️ Imprimer les étiquettes</button>
           <button onclick="clearBulkSelection()" class="text-xs text-white/60 hover:text-white ml-auto">Annuler la sélection</button>
         </div>
 
@@ -731,6 +733,46 @@
         </div>
         <p id="settings-save-status" class="text-[11px] text-ink/45 mt-2 h-4"></p>
 
+        <h3 class="text-base font-bold text-ink mb-2 mt-10">Règles de cote</h3>
+        <p class="text-xs text-ink/55 mb-3 max-w-xl">Reprends le système de ta médiathèque : BliGO propose la cote de chaque nouveau document selon ces règles. Elle reste modifiable au catalogage.</p>
+        <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm max-w-xl mb-2">
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Lettres de l'auteur</label>
+              <select id="cote-author-letters" oninput="refreshCotePreview()" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white">
+                <option value="3">3 lettres (MUS)</option>
+                <option value="4">4 lettres (MUSS)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Indice Dewey</label>
+              <select id="cote-dewey-decimals" oninput="refreshCotePreview()" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white">
+                <option value="0">Sans décimale (797)</option>
+                <option value="1">1 décimale (797.1)</option>
+                <option value="2">2 décimales (797.14)</option>
+              </select>
+            </div>
+          </div>
+          <div class="hidden sm:grid grid-cols-[1.3fr_1fr_1.2fr] gap-2 text-[10.5px] font-bold uppercase tracking-wide text-ink/45 mb-1">
+            <span>Catégorie</span><span>Préfixe</span><span>Classement</span>
+          </div>
+          <div id="cote-rules-rows" class="flex flex-col gap-1.5 mb-4"></div>
+          <div class="grid grid-cols-3 gap-2 mb-4">
+            <div><label class="text-[11px] font-semibold text-ink/60 block mb-1">Préfixe usuels</label><input id="cote-usuel-prefix" oninput="refreshCotePreview()" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm"></div>
+            <div><label class="text-[11px] font-semibold text-ink/60 block mb-1">Préfixe CD</label><input id="cote-cd-prefix" oninput="refreshCotePreview()" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm"></div>
+            <div><label class="text-[11px] font-semibold text-ink/60 block mb-1">Préfixe DVD</label><input id="cote-dvd-prefix" oninput="refreshCotePreview()" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm"></div>
+          </div>
+          <div class="bg-mango-50 rounded-lg px-3 py-2.5 mb-3">
+            <p class="text-[10.5px] font-bold uppercase tracking-wide text-mango-700 mb-1">Exemples avec ces règles</p>
+            <div id="cote-rules-preview" class="text-xs text-ink/75 flex flex-col gap-0.5"></div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="saveCoteRules()" class="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les règles de cote</button>
+            <button onclick="resetCoteRules()" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-lg px-3 shrink-0">Règles BliGO par défaut</button>
+          </div>
+          <p class="text-[10.5px] text-ink/45 mt-2">Les documents déjà catalogués gardent leur cote : les nouvelles règles s'appliquent aux prochains catalogages.</p>
+        </div>
+
         <h3 class="text-base font-bold text-ink mb-2 mt-10">Types de documents</h3>
         <p class="text-xs text-ink/55 mb-3 max-w-md">La liste proposée au catalogage. Les types BliGO sont communs à toutes les médiathèques ; ajoute ceux propres à la tienne (ex. « Partition », « Liseuse », « Vinyle »).</p>
         <div id="settings-doctypes-list" class="max-w-md flex flex-col gap-1.5 mb-3"></div>
@@ -894,9 +936,46 @@
   // thriller, SF, BD, jeunesse), indice Dewey pour les documentaires (le vrai
   // indice si Open Library le connaît, sinon une plage par défaut à vérifier
   // par l'agent), toujours suivi des 3 premières lettres du nom de l'auteur.
-  const COTE_LETTER_PREFIX = {
-    'Fonds local': 'FL', 'Roman': 'R', 'Thriller': 'T', 'Fantasy': 'SF', 'BD': 'BD', 'Jeunesse': 'J',
+  //
+  // Règles réglables par médiathèque depuis le 09/10/2026 (communes.cote_rules,
+  // écran Réglages) : chaque médiathèque garde son propre système (« P R MUSS »
+  // pour un roman policier de Musso, « R MUS », « 843 MUS »…). Les valeurs
+  // ci-dessous sont les règles BliGO par défaut.
+  //   mode « lettres » : préfixe + lettres de l'auteur
+  //   mode « dewey »   : préfixe éventuel + indice Dewey + lettres
+  //   mode « auto »    : indice si c'est un documentaire, sinon lettres
+  const DEFAULT_COTE_RULES = {
+    author_letters: 3,
+    dewey_decimals: 1,
+    usuel_prefix: 'U',
+    cd_prefix: 'CD',
+    dvd_prefix: 'DVD',
+    categories: {
+      'Fonds local': { prefix: 'FL', mode: 'auto' },
+      'Roman': { prefix: 'R', mode: 'lettres' },
+      'Thriller': { prefix: 'T', mode: 'lettres' },
+      'Fantasy': { prefix: 'SF', mode: 'lettres' },
+      'Poésie & théâtre': { prefix: 'P', mode: 'lettres' },
+      'Jeunesse': { prefix: 'J', mode: 'auto' },
+      'BD': { prefix: 'BD', mode: 'lettres' },
+    },
   };
+  let coteRules = DEFAULT_COTE_RULES;
+
+  function mergeCoteRules(saved) {
+    if (!saved) return DEFAULT_COTE_RULES;
+    return { ...DEFAULT_COTE_RULES, ...saved, categories: { ...DEFAULT_COTE_RULES.categories, ...(saved.categories || {}) } };
+  }
+
+  function coteRuleFor(category, rules = coteRules) {
+    return rules.categories?.[category] || { prefix: '', mode: 'dewey' };
+  }
+
+  async function loadCoteRules() {
+    if (!myCommuneId) return;
+    const { data } = await supabase.from('communes').select('*').eq('id', myCommuneId).maybeSingle();
+    coteRules = mergeCoteRules(data?.cote_rules);
+  }
   // Plages Dewey par défaut, faute de mieux quand Open Library ne connaît pas
   // l'indice réel du livre : 150 Psychologie/développement personnel, 640
   // Économie domestique (cuisine, bricolage, jardin), 900 Histoire, 700 Arts
@@ -913,7 +992,8 @@
   // Lettres de cote sans accents ni espaces (« El Bèze » → « ELB »), comme
   // sur les étiquettes de médiathèque.
   function coteLetters(text) {
-    return (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+    const n = Number(coteRules.author_letters) || 3;
+    return (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z]/g, '').slice(0, n).toUpperCase();
   }
 
   function authorCotePrefix(author) {
@@ -937,30 +1017,29 @@
   // Jeunesse et Fonds local documentaires : lettre de section + indice
   // (ex. « J 797.1 ELB »). CD et DVD : « CD ABC », « DVD ABC » (07/10/2026).
   function suggestCote(category, author, dewey, opts = {}) {
+    const join = (...parts) => parts.filter(Boolean).join(' ');
     if (opts.usuel) {
       const base = suggestCote(category, author, dewey, { ...opts, usuel: false });
-      return base.startsWith('U ') ? base : `U ${base}`;
+      const u = coteRules.usuel_prefix || '';
+      return !u || base.startsWith(u + ' ') ? base : join(u, base);
     }
     const suffix = coteLetters(opts.authorKey) || authorCotePrefix(author) || titleCotePrefix(opts.title);
     const kind = opts.format ? documentTypeKind(opts.format) : null;
-    if (kind === 'cd') return suffix ? `CD ${suffix}` : 'CD';
-    if (kind === 'dvd') return suffix ? `DVD ${suffix}` : 'DVD';
+    if (kind === 'cd') return join(coteRules.cd_prefix, suffix) || 'CD';
+    if (kind === 'dvd') return join(coteRules.dvd_prefix, suffix) || 'DVD';
     const deweyCote = deweyForCote(dewey);
     const isFictionDewey = !deweyCote || deweyCote.startsWith('8');
-    // Poésie « P », théâtre « TH » (indice en 8x2), comme sur les étiquettes.
-    if (category === 'Poésie & théâtre') {
-      const prefix = normalizeDewey(dewey)?.[2] === '2' ? 'TH' : 'P';
-      return suffix ? `${prefix} ${suffix}` : prefix;
+    const rule = coteRuleFor(category);
+    let prefix = rule.prefix || '';
+    // Théâtre « TH » plutôt que « P » (indice en 8x2), tant que la
+    // médiathèque garde le préfixe par défaut de Poésie & théâtre.
+    if (category === 'Poésie & théâtre' && prefix === 'P' && normalizeDewey(dewey)?.[2] === '2') prefix = 'TH';
+    const useDewey = rule.mode === 'dewey' || (rule.mode === 'auto' && !isFictionDewey);
+    if (useDewey) {
+      const numeric = deweyCote || COTE_DEWEY_DEFAULT[category] || (prefix ? '' : 'DOC');
+      return join(prefix, numeric, suffix);
     }
-    const letters = COTE_LETTER_PREFIX[category];
-    if (letters) {
-      if (['Jeunesse', 'Fonds local'].includes(category) && !isFictionDewey) {
-        return [letters, deweyCote, suffix].filter(Boolean).join(' ');
-      }
-      return suffix ? `${letters} ${suffix}` : letters;
-    }
-    const numeric = deweyCote || COTE_DEWEY_DEFAULT[category] || 'DOC';
-    return suffix ? `${numeric} ${suffix}` : numeric;
+    return join(prefix, suffix);
   }
 
   // ---------- Indice Dewey (07/10/2026) ----------
@@ -1027,8 +1106,9 @@
     const n = normalizeDewey(dewey);
     if (!n) return null;
     const [whole, dec] = n.split('.');
-    const first = (dec || '').slice(0, 1);
-    return first && first !== '0' ? `${whole}.${first}` : whole;
+    const decimals = Number(coteRules.dewey_decimals ?? 1);
+    const kept = (dec || '').slice(0, decimals).replace(/0+$/, '');
+    return kept ? `${whole}.${kept}` : whole;
   }
 
   // Catégorie BliGO déduite de la classe Dewey pour les documentaires, qui
@@ -1069,6 +1149,18 @@
     return USUEL_WORDS.test(title || '') || USUEL_WORDS.test(subjects || '') || LEGAL_CODE_TITLE.test((title || '').trim());
   }
 
+  // Accessibilité (09/10/2026) : éditeurs et collections spécialisés en gros
+  // caractères (La Loupe, À vue d'œil, Feryane…), livres adaptés DYS
+  // (Dyscool…) et FALC. Seulement vers un type présent dans la liste.
+  function detectAccessibleFormat(text) {
+    const t = (text || '').toLowerCase();
+    const pick = re => FORMAT_OPTIONS.find(f => re.test(f)) || null;
+    if (/(gros caract|large print|[ée]ditions de la loupe|à vue d'(œ|oe)il|a vue d'oeil|feryane|corps 16)/i.test(t)) return pick(/^gros caract/i);
+    if (/(dyscool|\bdys\b|adapt[ée]e? aux dys|dyslexi)/i.test(t)) return pick(/dys/i);
+    if (/(\bfalc\b|facile à lire et à comprendre)/i.test(t)) return pick(/^falc/i);
+    return null;
+  }
+
   function categorizeDocument(rawText, title, dewey) {
     const byKeywords = guessCategory(rawText, title);
     if (['Fonds local', 'BD', 'Jeunesse'].includes(byKeywords)) return byKeywords;
@@ -1098,12 +1190,16 @@
   function findCoteMismatches() {
     const mismatches = [];
     for (const b of books) {
-      const letters = COTE_LETTER_PREFIX[b.category];
-      if (!letters) continue;
-      const expected = suggestCote(b.category, b.author, null);
-      const currentPrefix = (b.shelf_location || '').trim().split(' ')[0];
-      if (currentPrefix !== letters) {
-        mismatches.push({ id: b.id, title: b.title, old: b.shelf_location || '(vide)', new: expected });
+      const rule = coteRuleFor(b.category);
+      // Seules les catégories cotées en lettres sont contrôlées ; poésie/théâtre,
+      // usuels, CD et DVD ont leurs propres préfixes.
+      if (rule.mode !== 'lettres' || !rule.prefix || b.category === 'Poésie & théâtre') continue;
+      const kind = documentTypeKind(b.format);
+      const current = (b.shelf_location || '').trim();
+      if (kind === 'cd' || kind === 'dvd' || (coteRules.usuel_prefix && current.startsWith(coteRules.usuel_prefix + ' '))) continue;
+      if (current !== rule.prefix && !current.startsWith(rule.prefix + ' ')) {
+        const expected = suggestCote(b.category, b.author, b.dewey, { format: b.format, title: b.title });
+        mismatches.push({ id: b.id, title: b.title, old: current || '(vide)', new: expected });
       }
     }
     return mismatches;
@@ -1213,6 +1309,7 @@
     document.getElementById('stats-scope-commune-btn').classList.add('bg-white', 'shadow-sm', 'text-ink');
     await loadCommunesForAgenda();
     await loadDocumentTypes();
+    await loadCoteRules();
     await Promise.all([loadBooks(), loadReservations(), loadActiveLoans(), loadReshelveLoans(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents(), loadTransfers()]);
     if (myIsDirection) await loadTeamAndTariffs();
   }
@@ -1233,7 +1330,7 @@
     if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
     if (screen === 'catalogue') { closeScanView(); }
     if (screen === 'logistics') loadTransfers();
-    if (screen === 'settings') { loadCommuneSettings(); loadDocumentTypes().then(renderDocumentTypesSettings); }
+    if (screen === 'settings') { loadCommuneSettings(); loadDocumentTypes().then(renderDocumentTypesSettings); loadCoteRules().then(renderCoteRulesSettings); }
   };
 
   // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
@@ -1911,6 +2008,8 @@
     if (!meta.summary) meta.summary = await fetchSummaryFromWikipedia(meta.title, meta.authorKey || meta.author);
     if (meta.dewey) meta.dewey = String(meta.dewey).replace(/\//g, '').trim();
     meta.category = forcedGenre || categorizeDocument(meta.rawCategoryText, meta.title, meta.dewey);
+    const accessibleFormat = detectAccessibleFormat([meta.title, meta.publisher, meta.collection, meta.subjects, meta.rawCategoryText].filter(Boolean).join(' '));
+    if (accessibleFormat) meta.format = accessibleFormat;
     if (isUsuel(meta.title, [meta.subjects, meta.rawCategoryText].filter(Boolean).join(' '), meta.dewey)) {
       meta.usuel = true;
       meta.onSiteOnly = true;
@@ -2842,6 +2941,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     'Livre broché',
     'Livre relié',
     'Livre de poche',
+    'Gros caractères',
+    'Livre adapté DYS',
+    'FALC (facile à lire et à comprendre)',
     'Périodiques (journaux quotidiens, magazines, revues spécialisées)',
     'Beaux livres et usuels (encyclopédies, dictionnaires, atlas, livres d\'art)',
     'Documents graphiques et cartographiques (cartes, plans, estampes, partitions)',
@@ -4633,6 +4735,80 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     renderThemePalette('settings-accent-palette', selectedAccentHex, 'pickAccentColor');
   };
 
+  // ---------- Règles de cote (Réglages) ----------
+  const COTE_MODE_LABEL = { lettres: 'Lettres (préfixe + auteur)', dewey: 'Indice Dewey', auto: 'Dewey si documentaire, sinon lettres' };
+
+  function renderCoteRulesSettings() {
+    const rows = document.getElementById('cote-rules-rows');
+    if (!rows) return;
+    document.getElementById('cote-author-letters').value = String(coteRules.author_letters || 3);
+    document.getElementById('cote-dewey-decimals').value = String(coteRules.dewey_decimals ?? 1);
+    document.getElementById('cote-usuel-prefix').value = coteRules.usuel_prefix ?? 'U';
+    document.getElementById('cote-cd-prefix').value = coteRules.cd_prefix ?? 'CD';
+    document.getElementById('cote-dvd-prefix').value = coteRules.dvd_prefix ?? 'DVD';
+    rows.innerHTML = CATEGORIES.map(cat => {
+      const rule = coteRuleFor(cat);
+      return `<div class="grid grid-cols-[1.3fr_1fr_1.2fr] gap-2 items-center">
+        <span class="text-xs font-semibold text-ink">${escapeHtml(cat)}</span>
+        <input data-cote-cat="${escapeHtml(cat)}" data-field="prefix" value="${escapeHtml(rule.prefix || '')}" oninput="refreshCotePreview()" placeholder="—" class="border border-mango-100 rounded-lg px-2 py-1.5 text-sm uppercase">
+        <select data-cote-cat="${escapeHtml(cat)}" data-field="mode" oninput="refreshCotePreview()" class="border border-mango-100 rounded-lg px-1.5 py-1.5 text-xs bg-white">
+          ${Object.entries(COTE_MODE_LABEL).map(([v, l]) => `<option value="${v}" ${rule.mode === v ? 'selected' : ''}>${l}</option>`).join('')}
+        </select>
+      </div>`;
+    }).join('');
+    refreshCotePreview();
+  }
+
+  function readCoteRulesForm() {
+    const categories = {};
+    document.querySelectorAll('[data-cote-cat]').forEach(el => {
+      const cat = el.dataset.coteCat;
+      categories[cat] = categories[cat] || {};
+      categories[cat][el.dataset.field] = el.dataset.field === 'prefix' ? el.value.trim().toUpperCase() : el.value;
+    });
+    return {
+      author_letters: Number(document.getElementById('cote-author-letters').value),
+      dewey_decimals: Number(document.getElementById('cote-dewey-decimals').value),
+      usuel_prefix: document.getElementById('cote-usuel-prefix').value.trim().toUpperCase(),
+      cd_prefix: document.getElementById('cote-cd-prefix').value.trim().toUpperCase(),
+      dvd_prefix: document.getElementById('cote-dvd-prefix').value.trim().toUpperCase(),
+      categories,
+    };
+  }
+
+  window.refreshCotePreview = function () {
+    const box = document.getElementById('cote-rules-preview');
+    if (!box) return;
+    const saved = coteRules;
+    coteRules = mergeCoteRules(readCoteRulesForm());
+    const examples = [
+      ['Roman policier de Guillaume Musso', suggestCote('Thriller', 'Guillaume Musso', null)],
+      ['Roman de Patrick Chamoiseau', suggestCote('Roman', 'Patrick Chamoiseau', '843')],
+      ['La Route du Rhum (sport, Dewey 797.140 90511)', suggestCote('Sports & loisirs', 'Camille El Bèze', '797.140 90511', { authorKey: 'El Bèze' })],
+      ['Documentaire jeunesse sur les oiseaux (598.2)', suggestCote('Jeunesse', 'Anne Dupont', '598.2')],
+      ['Le Petit Larousse (usuel, 443)', suggestCote('Documentaire', '', '443', { usuel: true, title: 'Le petit Larousse illustré' })],
+    ];
+    coteRules = saved;
+    box.innerHTML = examples.map(([label, cote]) => `<span>${escapeHtml(label)} → <strong class="text-ink">${escapeHtml(cote)}</strong></span>`).join('');
+  };
+
+  window.saveCoteRules = async function () {
+    const rules = readCoteRulesForm();
+    const { error } = await supabase.rpc('update_commune_cote_rules', { p_commune_id: myCommuneId, p_rules: rules });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    coteRules = mergeCoteRules(rules);
+    alert('Règles de cote enregistrées. Elles s\'appliquent aux prochains documents catalogués.');
+    renderCatalogue();
+  };
+
+  window.resetCoteRules = function () {
+    if (!confirm('Remettre les règles BliGO par défaut dans le formulaire ? (Pense à enregistrer ensuite.)')) return;
+    const saved = coteRules;
+    coteRules = DEFAULT_COTE_RULES;
+    renderCoteRulesSettings();
+    coteRules = saved;
+  };
+
   const DOCUMENT_KIND_LABEL = { livre: 'Livre', periodique: 'Périodique', cd: 'CD / musique', dvd: 'DVD / vidéo', autre: 'Autre' };
 
   function renderDocumentTypesSettings() {
@@ -4966,6 +5142,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide mb-1">Équipement</p>
       <p class="text-base font-bold text-ink leading-snug pr-8">${escapeHtml(b.title)}</p>
       <p class="text-xs text-ink/55 mb-3">${escapeHtml(b.author || '')}${b.shelf_location ? ` · cote <span class="font-bold text-ink">${escapeHtml(b.shelf_location)}</span>` : ''}</p>
+      <button type="button" onclick="openLabelsModal([${b.id}], true)" class="w-full mb-3 text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg py-2">🖨️ Imprimer ${copies.length > 1 ? `les ${copies.length} étiquettes` : "l'étiquette"} de cote</button>
       <p class="text-xs text-ink/60 mb-3">Plastifie et étiquette ${copies.length > 1 ? `les ${copies.length} exemplaires` : 'le document'}, puis scanne le code-barres de la médiathèque collé sur ${copies.length > 1 ? 'chacun' : 'lui'}. ${copies.length > 1 ? 'Chaque exemplaire a son propre code.' : ''}</p>
       ${copies.map((c, i) => `
         <label class="text-xs font-semibold text-ink/60 block mb-1">Exemplaire ${copies.length > 1 ? i + 1 : ''}</label>
@@ -5058,6 +5235,124 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       return;
     }
     await loadBooks();
+  };
+
+  // ---------- Étiquettes de cote (09/10/2026) ----------
+  // Planches A4 les plus courantes en médiathèque et rouleaux pour imprimante
+  // thermique. Dimensions en mm (marges de la planche, pas entre étiquettes) ;
+  // un décalage réglable rattrape les écarts d'imprimante.
+  const LABEL_FORMATS = {
+    a4_65: { name: 'Planche A4 · 65 étiquettes 38,1 × 21,2 mm (Avery L7651)', cols: 5, rows: 13, w: 38.1, h: 21.2, top: 10.7, left: 4.75, colPitch: 40.6, rowPitch: 21.2 },
+    a4_40: { name: 'Planche A4 · 40 étiquettes 45,7 × 25,4 mm (Avery L7654)', cols: 4, rows: 10, w: 45.7, h: 25.4, top: 21.4, left: 9.75, colPitch: 48.3, rowPitch: 25.4 },
+    a4_24: { name: 'Planche A4 · 24 étiquettes 63,5 × 33,9 mm (Avery L7159)', cols: 3, rows: 8, w: 63.5, h: 33.9, top: 12.9, left: 7.25, colPitch: 66.0, rowPitch: 33.9 },
+    roll_50x25: { name: 'Rouleau thermique · 50 × 25 mm (Dymo, Zebra…)', roll: true, w: 50, h: 25 },
+    roll_62x29: { name: 'Rouleau thermique · 62 × 29 mm (Brother DK-11209)', roll: true, w: 62, h: 29 },
+  };
+  const LABEL_SETTINGS_KEY = 'bligo_label_settings';
+  let labelsToPrint = [];
+
+  function readLabelSettings() {
+    try { return JSON.parse(localStorage.getItem(LABEL_SETTINGS_KEY) || '{}'); } catch { return {}; }
+  }
+
+  // Une étiquette par exemplaire (chaque exemplaire a son dos à étiqueter).
+  // onlyToEquip : seulement les exemplaires en cours d'équipement.
+  window.openLabelsModal = function (bookIds, onlyToEquip = false) {
+    labelsToPrint = [];
+    books.filter(b => bookIds.includes(b.id)).forEach(b => {
+      const copies = onlyToEquip ? equipCopies(b) : (b.copies || []).filter(c => !['withdrawn', 'lost'].includes(c.status));
+      const cote = b.shelf_location || suggestCote(b.category, b.author, b.dewey, { format: b.format, title: b.title });
+      (copies.length ? copies : [null]).forEach(() => labelsToPrint.push({ cote, title: b.title }));
+    });
+    if (!labelsToPrint.length) { alert('Aucune étiquette à imprimer.'); return; }
+
+    const settings = readLabelSettings();
+    const formatSelect = document.getElementById('labels-format');
+    formatSelect.innerHTML = Object.entries(LABEL_FORMATS).map(([k, f]) => `<option value="${k}">${f.name}</option>`).join('');
+    formatSelect.value = LABEL_FORMATS[settings.format] ? settings.format : 'a4_65';
+    document.getElementById('labels-layout').value = settings.layout || 'lines';
+    document.getElementById('labels-offset-x').value = settings.offsetX || 0;
+    document.getElementById('labels-offset-y').value = settings.offsetY || 0;
+    document.getElementById('labels-start').value = 1;
+    const titles = [...new Set(labelsToPrint.map(l => l.title))];
+    document.getElementById('labels-summary').textContent =
+      `${labelsToPrint.length} étiquette${labelsToPrint.length > 1 ? 's' : ''} pour ${titles.length} document${titles.length > 1 ? 's' : ''} (une par exemplaire).`;
+    refreshLabelsForm();
+    const backdrop = document.getElementById('labels-modal-backdrop');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
+  };
+
+  window.refreshLabelsForm = function () {
+    const f = LABEL_FORMATS[document.getElementById('labels-format').value];
+    document.getElementById('labels-start-wrap').classList.toggle('hidden', !!f.roll);
+  };
+
+  window.closeLabelsModal = function (event) {
+    if (event && event.target !== event.currentTarget) return;
+    const backdrop = document.getElementById('labels-modal-backdrop');
+    backdrop.classList.add('hidden');
+    backdrop.classList.remove('flex');
+  };
+
+  function spineLabelHtml(cote, f, layout, x, y) {
+    const parts = (cote || '').trim().split(/\s+/).filter(Boolean);
+    const lines = layout === 'single' ? [parts.join(' ')] : parts;
+    const longest = Math.max(1, ...lines.map(l => l.length));
+    // Taille du texte en mm : la plus grande qui tient en hauteur et en largeur.
+    const size = Math.min((f.h - 2) / (lines.length * 1.1), (f.w - 3) / (longest * 0.62), 9);
+    return `<div class="spine-label" style="left:${x}mm;top:${y}mm;width:${f.w}mm;height:${f.h}mm;font-size:${size.toFixed(2)}mm;">
+      ${lines.map(l => `<div>${escapeHtml(l)}</div>`).join('')}
+    </div>`;
+  }
+
+  window.printSpineLabels = function () {
+    const key = document.getElementById('labels-format').value;
+    const f = LABEL_FORMATS[key];
+    const layout = document.getElementById('labels-layout').value;
+    const offsetX = Number(document.getElementById('labels-offset-x').value) || 0;
+    const offsetY = Number(document.getElementById('labels-offset-y').value) || 0;
+    const start = Math.max(1, parseInt(document.getElementById('labels-start').value, 10) || 1);
+    try { localStorage.setItem(LABEL_SETTINGS_KEY, JSON.stringify({ format: key, layout, offsetX, offsetY })); } catch {}
+
+    let html = '';
+    let pageCss;
+    if (f.roll) {
+      pageCss = `@page { size: ${f.w}mm ${f.h}mm; margin: 0; }`;
+      html = labelsToPrint.map(l => `<div class="spine-page" style="width:${f.w}mm;height:${f.h}mm;">${spineLabelHtml(l.cote, f, layout, offsetX, offsetY)}</div>`).join('');
+    } else {
+      pageCss = '@page { size: 210mm 297mm; margin: 0; }';
+      const perPage = f.cols * f.rows;
+      const slots = [...Array(start - 1).fill(null), ...labelsToPrint];
+      for (let p = 0; p * perPage < slots.length; p++) {
+        const pageSlots = slots.slice(p * perPage, (p + 1) * perPage);
+        html += `<div class="spine-page" style="width:210mm;height:297mm;">${pageSlots.map((l, i) => {
+          if (!l) return '';
+          const col = i % f.cols, row = Math.floor(i / f.cols);
+          return spineLabelHtml(l.cote, f, layout, f.left + offsetX + col * f.colPitch, f.top + offsetY + row * f.rowPitch);
+        }).join('')}</div>`;
+      }
+    }
+
+    document.getElementById('print-spine-area').innerHTML = html;
+    let style = document.getElementById('spine-page-style');
+    if (!style) { style = document.createElement('style'); style.id = 'spine-page-style'; document.head.appendChild(style); }
+    style.textContent = pageCss;
+    document.body.classList.add('printing-spine');
+    closeLabelsModal();
+    const cleanup = () => {
+      document.body.classList.remove('printing-spine');
+      style.textContent = '';
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(() => window.print(), 50);
+  };
+
+  window.printToEquipLabels = function () {
+    const ids = books.filter(needsEquip).map(b => b.id);
+    if (!ids.length) { alert('Aucun document à équiper : sélectionne des documents dans la liste pour imprimer leurs étiquettes.'); return; }
+    openLabelsModal(ids, true);
   };
 
   // ---------- Fiche livre complète ----------
@@ -6616,12 +6911,48 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 <!-- Étiquettes de transfert à imprimer (23/09/2026) — masqué à l'écran, seule
      cette zone s'imprime (voir le <style> ci-dessous). -->
 <div id="print-labels-area" class="hidden"></div>
+<div id="print-spine-area" class="hidden"></div>
+
+<!-- Impression des étiquettes de cote (09/10/2026) -->
+<div id="labels-modal-backdrop" onclick="closeLabelsModal(event)" class="hidden fixed inset-0 z-50 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative p-6">
+    <button onclick="closeLabelsModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+    <p class="text-base font-bold text-ink mb-1">🖨️ Étiquettes de cote</p>
+    <p id="labels-summary" class="text-xs text-ink/55 mb-4"></p>
+    <label class="text-[11px] font-semibold text-ink/60 block mb-1">Support</label>
+    <select id="labels-format" onchange="refreshLabelsForm()" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3"></select>
+    <div id="labels-start-wrap">
+      <label class="text-[11px] font-semibold text-ink/60 block mb-1">Commencer à l'étiquette n°</label>
+      <input id="labels-start" type="number" min="1" value="1" class="w-24 border border-mango-100 rounded-lg px-2 py-1.5 text-sm mb-1">
+      <p class="text-[10.5px] text-ink/45 mb-3">Pour réutiliser une planche déjà entamée (on compte de gauche à droite, ligne par ligne).</p>
+    </div>
+    <label class="text-[11px] font-semibold text-ink/60 block mb-1">Disposition de la cote</label>
+    <select id="labels-layout" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+      <option value="lines">Un élément par ligne (P / R / MUSS)</option>
+      <option value="single">Sur une seule ligne (P R MUSS)</option>
+    </select>
+    <details class="mb-4">
+      <summary class="text-[11px] font-semibold text-ink/50 cursor-pointer select-none">Les étiquettes sont décalées à l'impression ?</summary>
+      <div class="grid grid-cols-2 gap-2 mt-2">
+        <div><label class="text-[11px] text-ink/60 block mb-1">Décalage vers le bas (mm)</label><input id="labels-offset-y" type="number" step="0.5" value="0" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm"></div>
+        <div><label class="text-[11px] text-ink/60 block mb-1">Décalage vers la droite (mm)</label><input id="labels-offset-x" type="number" step="0.5" value="0" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm"></div>
+      </div>
+      <p class="text-[10.5px] text-ink/45 mt-1">Valeurs négatives pour remonter ou décaler vers la gauche. Mémorisé sur cet ordinateur. Dans la fenêtre d'impression, choisis l'échelle « 100 % » (pas « Ajuster à la page »).</p>
+    </details>
+    <button onclick="printSpineLabels()" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition">Imprimer</button>
+  </div>
+</div>
 <style>
   @media print {
-    body > *:not(#print-labels-area) { display: none !important; }
-    #print-labels-area { display: block !important; }
+    body:not(.printing-spine) > *:not(#print-labels-area) { display: none !important; }
+    body:not(.printing-spine) #print-labels-area { display: block !important; }
     #print-labels-area .label { page-break-after: always; }
+    body.printing-spine > *:not(#print-spine-area) { display: none !important; }
+    body.printing-spine #print-spine-area { display: block !important; }
   }
+  .spine-page { position: relative; overflow: hidden; break-after: page; page-break-after: always; }
+  .spine-label { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: Arial, Helvetica, sans-serif; font-weight: 800; color: #000; text-align: center; line-height: 1.05; overflow: hidden; }
 </style>
 </body>
 </html>

@@ -517,7 +517,8 @@
         searchNormalize(b.author).includes(q) ||
         searchNormalize(b.summary).includes(q) ||
         searchNormalize(b.category).includes(q) ||
-        searchNormalize(b.subjects).includes(q)
+        searchNormalize(b.subjects).includes(q) ||
+        searchNormalize(b.format).includes(q)
       );
     }
     filtered = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
