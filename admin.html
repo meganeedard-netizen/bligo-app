@@ -2333,12 +2333,42 @@
     applyFetchedMeta(localId, meta);
   }
 
+  // Erreurs fréquentes des API corrigées avant d'arriver sur le brouillon
+  // (09/10/2026, relevées sur le vrai catalogue) : champs « - » de Google,
+  // dates avec heure, éditeur en majuscules, collection réduite à un numéro,
+  // coquilles de notices BnF (« J'ai eu » pour « J'ai lu »), texte dans
+  // l'indice Dewey, livre de poche classé broché.
+  const API_TYPO_FIXES = [[/^j'ai eu\b/i, "J'ai lu"], [/^j’ai eu\b/i, 'J’ai lu']];
+  const POCKET_PUBLISHERS = /(livre de poche|pocket|folio|j'ai lu|j’ai lu|points|10\/18|babel|librio)/i;
+
+  function fixApiErrors(meta) {
+    ['title', 'author', 'publisher', 'collection', 'translator', 'illustrator', 'printer'].forEach(f => {
+      if (typeof meta[f] !== 'string') return;
+      let v = meta[f].replace(/\s+/g, ' ').trim();
+      if (/^[-–—.?_\s]*$/.test(v)) v = null;
+      if (v && ['publisher', 'collection'].includes(f)) API_TYPO_FIXES.forEach(([re, to]) => { v = v.replace(re, to); });
+      meta[f] = v;
+    });
+    if (meta.publisher && meta.publisher.length > 3 && meta.publisher === meta.publisher.toUpperCase() && /[A-Z]/.test(meta.publisher)) {
+      meta.publisher = meta.publisher.toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (m, sep, c) => sep + c.toUpperCase());
+    }
+    if (!meta.publisher && meta.collection) meta.publisher = meta.collection.split(',')[0].trim();
+    if (meta.collection && /^\d+$/.test(meta.collection) && meta.publisher) meta.collection = `${meta.publisher}, ${meta.collection}`;
+    if (meta.published_date) meta.published_date = String(meta.published_date).replace(/T\d.*$/, '');
+    if (meta.dewey) meta.dewey = String(meta.dewey).replace(/[^\d.\s]/g, '').replace(/\s+/g, ' ').trim() || null;
+    if ((!meta.format || meta.format === 'Livre broché') && (POCKET_PUBLISHERS.test(meta.publisher || '') || POCKET_PUBLISHERS.test(meta.collection || ''))) {
+      meta.format = FORMAT_OPTIONS.includes('Livre de poche') ? 'Livre de poche' : meta.format;
+    }
+    return meta;
+  }
+
   // Même titre + même auteur déjà au catalogue (une autre édition scannée une
   // autre fois, typiquement) : on propose d'ajouter un exemplaire à la fiche
   // existante plutôt que de laisser créer une fiche en double.
   function applyFetchedMeta(localId, meta) {
     const draft = draftBooks.find(d => d.localId === localId);
     if (!draft) return;
+    if (meta) fixApiErrors(meta);
 
     if (!meta) {
       draft.status = 'not_found';
