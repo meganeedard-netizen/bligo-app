@@ -44,10 +44,7 @@
   <div class="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between gap-2">
     <span class="flex-1"></span>
     <h1 class="text-lg font-semibold text-ink/70">Mon profil</h1>
-    <span class="flex-1 flex justify-end"><a href="points.html" aria-label="Mes points" class="shrink-0 flex items-center gap-1 bg-white border border-mango-100 rounded-full pl-2.5 pr-1 py-1 shadow-sm">
-      <span id="points-display" class="text-xs font-bold bg-gradient-to-r from-mango-500 to-hibiscus-600 bg-clip-text text-transparent whitespace-nowrap">0 pt</span>
-      <img src="img/bligo-icon.png" alt="" class="w-6 h-6 object-contain">
-    </a></span>
+    <span class="flex-1"></span>
   </div>
 </header>
 
@@ -379,7 +376,6 @@
     }
 
     const points = profile?.loyalty_points ?? 0;
-    document.getElementById('points-display').textContent = `${points} ${points > 1 ? 'pts' : 'pt'}`;
     document.getElementById('stat-points').textContent = points;
     const fullName = profile?.full_name && profile.full_name !== 'Nouvel usager' ? profile.full_name : '';
     document.getElementById('card-name').textContent = fullName;
