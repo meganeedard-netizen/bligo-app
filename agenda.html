@@ -347,7 +347,8 @@
         <p class="text-base font-bold text-ink mb-2">Crée ton compte pour t'inscrire</p>
         <p class="text-sm text-ink/70 leading-relaxed">${ev ? `Pour t'inscrire à <strong>${esc(ev.title)}</strong>, tu as besoin d'un compte BliGO.` : "Pour t'inscrire à un événement, tu as besoin d'un compte BliGO."} Ça ne prend que 2 minutes.</p>
         <a href="index.html?gate=event" class="block w-full mt-5 bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">Créer mon compte</a>
-        <button data-a="cancel" class="w-full mt-2 text-sm font-semibold text-ink/50 py-2">Annuler</button>
+        <p class="mt-4 text-sm text-ink/70">J'ai déjà un compte - <a href="index.html?login=1" class="font-semibold text-mango-700">Se connecter</a></p>
+        <button data-a="cancel" class="w-full mt-1 text-sm font-semibold text-ink/50 py-2">Annuler</button>
       </div>`;
     backdrop.querySelector('[data-a="cancel"]').onclick = () => backdrop.remove();
     backdrop.onclick = e => { if (e.target === backdrop) backdrop.remove(); };
