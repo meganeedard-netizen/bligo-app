@@ -164,13 +164,28 @@
               <option value="direction">Direction (accès complet)</option>
             </select>
             <button onclick="createAgentAccount()" class="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer le compte</button>
+
+            <!-- 12/10/2026 : un usager déjà inscrit dans l'appli devient agent.
+                 Le bouton « Back-office » apparaît alors dans son profil. -->
+            <div class="border-t border-mango-100 mt-5 pt-5">
+              <p class="text-sm font-bold text-ink mb-1">Ou basculer un compte usager existant</p>
+              <p class="text-xs text-ink/55 mb-3">La personne s'est déjà inscrite dans l'appli : indique son e-mail. Elle accédera au back-office de cette médiathèque depuis son profil.</p>
+              <label class="text-xs font-semibold text-ink/60 block mb-1">E-mail du compte usager</label>
+              <input id="promote-email" type="email" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="prenom.nom@exemple.fr">
+              <label class="text-xs font-semibold text-ink/60 block mb-1">Niveau d'accès</label>
+              <select id="promote-level" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-3 bg-white">
+                <option value="agent">Agent</option>
+                <option value="direction">Direction (accès complet)</option>
+              </select>
+              <button onclick="promoteUserToAgent()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Passer en compte agent</button>
+            </div>
           </div>
 
           <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto h-fit">
-            <div class="grid grid-cols-[1.4fr_1fr_130px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[380px]">
-              <span>Nom</span><span>Niveau</span><span></span>
+            <div class="grid grid-cols-[1.4fr_0.8fr_110px_90px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 min-w-[420px]">
+              <span>Nom</span><span>Niveau</span><span></span><span></span>
             </div>
-            <div id="team-accounts-list" class="min-w-[380px]"></div>
+            <div id="team-accounts-list" class="min-w-[420px]"></div>
           </div>
         </div>
       </section>
@@ -262,7 +277,9 @@
     currentUser = session.user;
 
     const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', currentUser.id).single();
-    if (error || profile?.role !== 'super_admin') {
+    // Espace admin BliGO : uniquement le compte de Mégane (12/10/2026).
+    const isOwner = (currentUser.email || '').toLowerCase() === 'megane@bligo.fr';
+    if (error || profile?.role !== 'super_admin' || !isOwner) {
       if (profile?.role === 'agent') { window.location.href = 'admin.html'; return; }
       if (window.BLIGO_AGENT_APP) {
         await supabase.auth.signOut();
@@ -422,6 +439,8 @@
     if (previous && communes.some(c => String(c.id) === previous)) select.value = previous;
   }
 
+  let lastTeam = [];
+
   window.loadTeamForCommune = async function () {
     const communeId = document.getElementById('team-commune-select').value;
     const body = document.getElementById('team-accounts-body');
@@ -434,18 +453,42 @@
 
     const list = document.getElementById('team-accounts-list');
     if (error) { console.error(error); return; }
+    lastTeam = team;
     if (!team.length) {
       list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8 px-4">Aucun compte agent pour cette médiathèque.</p>`;
       return;
     }
     list.innerHTML = team.map(t => `
-      <div class="grid grid-cols-[1.4fr_1fr_130px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-[1.4fr_0.8fr_110px_90px] gap-2 px-4 py-3 items-center border-t border-mango-50 text-sm">
         <span class="font-semibold text-ink truncate">${escapeHtml(t.full_name)}</span>
         <span class="text-ink/55 text-xs">${t.agent_level === 'direction' ? 'Direction' : 'Agent'}</span>
         <button onclick="toggleAgentLevel('${t.id}', '${t.agent_level === 'direction' ? 'agent' : 'direction'}')" class="text-xs font-semibold text-mango-700 hover:text-mango-800 text-right">
           ${t.agent_level === 'direction' ? 'Passer agent' : 'Passer direction'}
         </button>
+        <button onclick="revokeAgentAccess('${t.id}')" class="text-xs font-semibold text-red-600 hover:text-red-700 text-right">Retirer l'accès</button>
       </div>`).join('');
+  };
+
+  window.promoteUserToAgent = async function () {
+    const communeId = document.getElementById('team-commune-select').value;
+    const email = document.getElementById('promote-email').value.trim();
+    const level = document.getElementById('promote-level').value;
+    if (!communeId) { alert('Choisis d\'abord une médiathèque.'); return; }
+    if (!email) { alert('Indique l\'e-mail du compte usager.'); return; }
+    const { data: name, error } = await supabase.rpc('promote_user_to_agent', { p_email: email, p_commune_id: Number(communeId), p_level: level });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    document.getElementById('promote-email').value = '';
+    document.getElementById('promote-level').value = 'agent';
+    alert(`${name} est maintenant ${level === 'direction' ? 'direction' : 'agent'} de cette médiathèque. Le bouton « Back-office » apparaît dans son profil.`);
+    await loadTeamForCommune();
+  };
+
+  window.revokeAgentAccess = async function (userId) {
+    const name = lastTeam.find(t => t.id === userId)?.full_name || 'cette personne';
+    if (!confirm(`Retirer l'accès au back-office à ${name} ? Son compte redevient un compte usager.`)) return;
+    const { error } = await supabase.rpc('revoke_agent_access', { p_user_id: userId });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadTeamForCommune();
   };
 
   window.toggleAgentLevel = async function (userId, newLevel) {

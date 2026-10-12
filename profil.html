@@ -344,8 +344,14 @@
       document.getElementById('agent-section').classList.remove('hidden');
       document.getElementById('admin-link').classList.remove('hidden');
     }
-    if (profile?.role === 'super_admin') {
+    // Espace admin BliGO : visible uniquement pour le compte de Mégane (12/10/2026).
+    if (profile?.role === 'super_admin' && (currentUser.email || '').toLowerCase() === 'megane@bligo.fr') {
       document.getElementById('superadmin-link').classList.remove('hidden');
+    }
+    // Appli iPhone/Android : le back-office n'est pas embarqué, il s'ouvre sur bligo.app.
+    if (window.Capacitor?.isNativePlatform?.()) {
+      document.getElementById('admin-link').href = 'https://bligo.app/admin.html';
+      document.getElementById('superadmin-link').href = 'https://bligo.app/superadmin.html';
     }
 
     document.getElementById('points-display').textContent = `${profile?.loyalty_points ?? 0}`;
