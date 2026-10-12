@@ -577,7 +577,7 @@
             Réservations (<span id="reservations-open-count">0</span>)
           </button>
           <button id="pr-tab-active-btn" type="button" onclick="switchPrTab('active')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
-            Prêts en cours (<span id="loan-active-count">0</span>)
+            Prêts en cours (<span id="loan-active-count">0</span>)<span id="late-tab-badge" class="hidden ml-1.5 text-[11px] font-bold text-white bg-red-600 rounded-full px-2 py-0.5"></span>
           </button>
           <button id="pr-tab-retours-btn" type="button" onclick="switchPrTab('retours')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
             Retours
@@ -616,8 +616,23 @@
         </div>
 
         <div id="pr-panel-active" class="hidden">
-          <p class="text-sm text-ink/55 mb-4">Tous les livres empruntés, classés par date de retour. Les retards apparaissent en rouge.</p>
-          <div id="active-loans-list" class="flex flex-col gap-2.5 max-w-2xl"></div>
+          <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
+            <div class="order-2 lg:order-1 min-w-0">
+              <p class="text-sm text-ink/55 mb-4">Livres empruntés et pas encore en retard, classés par date de retour.</p>
+              <div id="active-loans-list" class="flex flex-col gap-2.5"></div>
+            </div>
+            <!-- Retards : colonne à part, bien visible -->
+            <aside class="order-1 lg:order-2 lg:sticky lg:top-20">
+              <div class="bg-red-50 border border-red-200 rounded-xl overflow-hidden">
+                <div class="bg-red-600 text-white px-4 py-3 flex items-center gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                  <p class="text-sm font-bold flex-1">En retard</p>
+                  <span id="late-loans-count" class="text-sm font-bold bg-white/20 rounded-full px-2.5 py-0.5">0</span>
+                </div>
+                <div id="late-loans-list" class="p-3 flex flex-col gap-2 max-h-[70vh] overflow-y-auto"></div>
+              </div>
+            </aside>
+          </div>
         </div>
 
         <div id="pr-panel-retours" class="hidden">
@@ -977,15 +992,6 @@
         </div>
 
         </div>
-        <div>
-        <h2 class="text-lg font-bold text-ink mb-1">Horaires d'ouverture</h2>
-        <p class="text-sm text-ink/55 mb-4">Affichés aux usagers depuis l'accueil de l'appli. Laisse vide ou écris « Fermé » pour un jour de fermeture.</p>
-        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm ">
-          <div id="opening-hours-fields" class="flex flex-col gap-2 mb-3"></div>
-          <button onclick="saveOpeningHours()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les horaires</button>
-        </div>
-      
-        </div>
         </div>
       </section>
 
@@ -995,7 +1001,7 @@
         <p class="text-sm text-ink/55 mb-6">Réservé à la direction. Personnalise l'apparence de l'appli usager et de ce logiciel agent pour ta médiathèque.</p>
 
         <div class="grid lg:grid-cols-[200px_1fr] gap-6 items-start">
-          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button></nav>
+          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('horaires')" data-settings-tab="horaires" class="settings-tab-btn">Horaires d'ouverture</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button></nav>
           <div class="max-w-3xl min-w-0">
           <div data-settings-pane="apparence" class="bg-white border border-[#E5E7EB] rounded-xl p-6">
         <h3 class="text-base font-bold text-ink mb-2">Logo</h3>
@@ -1022,6 +1028,12 @@
         </div>
         <p id="settings-save-status" class="text-[11px] text-ink/45 mt-2 h-4"></p>
 
+          </div>
+          <div data-settings-pane="horaires" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
+            <h3 class="text-base font-bold text-ink mb-1">Horaires d'ouverture</h3>
+            <p class="text-sm text-ink/55 mb-4">Affichés aux usagers depuis l'accueil de l'appli. Laisse vide ou écris « Fermé » pour un jour de fermeture.</p>
+            <div id="opening-hours-fields" class="flex flex-col gap-2 mb-4 max-w-md"></div>
+            <button onclick="saveOpeningHours()" class="bg-brand text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les horaires</button>
           </div>
           <div data-settings-pane="ressources" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
         <h3 class="text-base font-bold text-ink mb-2">Ressources numériques</h3>
@@ -1699,7 +1711,7 @@
     });
     // Prêt à scanner dès l'arrivée sur l'écran, sans avoir à cliquer dans le
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
-    if (screen === 'reservations') { switchPrTab('reservations'); refreshVisitorCount(); }
+    if (screen === 'reservations') { switchPrTab('reservations'); refreshVisitorCount(); loadActiveLoans(); }
     if (screen === 'stats') switchStatsTab('emprunts');
     if (screen === 'sigb-stats') initSigbStatsYearSelect();
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
@@ -1707,7 +1719,7 @@
     if (screen === 'catalogue') { closeScanView(); }
     if (screen === 'logistics') loadTransfers();
     if (screen === 'home') loadDashboard();
-    if (screen === 'settings') { showSettingsTab('apparence'); loadCommuneSettings(); loadDocumentTypes().then(renderDocumentTypesSettings); loadCoteRules().then(renderCoteRulesSettings); loadDigitalResources(); }
+    if (screen === 'settings') { showSettingsTab('apparence'); loadCommuneSettings(); loadDocumentTypes().then(renderDocumentTypesSettings); loadCoteRules().then(renderCoteRulesSettings); loadDigitalResources(); loadOpeningHours(); }
   };
 
   // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
@@ -4356,11 +4368,46 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   function renderActiveLoans() {
     const list = document.getElementById('active-loans-list');
-    if (!activeLoans.length) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Pas de prêt en cours.</p>`;
+    const now = new Date();
+    const late = activeLoans.filter(l => new Date(l.due_at) <= now);
+    const onTime = activeLoans.filter(l => new Date(l.due_at) > now);
+    renderLateLoans(late);
+    list.innerHTML = onTime.length
+      ? onTime.map(loanRowHtml).join('')
+      : `<p class="text-sm text-ink/40 text-center py-8">Pas d'autre prêt en cours.</p>`;
+  }
+
+  // Colonne rouge « En retard » : du plus en retard au moins en retard.
+  function renderLateLoans(late) {
+    const box = document.getElementById('late-loans-list');
+    document.getElementById('late-loans-count').textContent = late.length;
+    const badge = document.getElementById('late-tab-badge');
+    badge.textContent = `${late.length} en retard`;
+    badge.classList.toggle('hidden', !late.length);
+    if (!late.length) {
+      box.innerHTML = `<p class="text-sm text-ink/50 text-center py-6">Aucun retard 🎉</p>`;
       return;
     }
-    list.innerHTML = activeLoans.map(loanRowHtml).join('');
+    box.innerHTML = late.map(loan => {
+      const book = loan.book_copies?.books;
+      const barcode = loan.book_copies?.barcode;
+      const daysLate = Math.max(1, Math.ceil((new Date() - new Date(loan.due_at)) / 86400000));
+      return `
+        <div class="bg-white border border-red-100 rounded-lg p-3">
+          <div class="flex items-start gap-2">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-bold text-ink truncate">${escapeHtml(book?.title || 'Livre supprimé')}</p>
+              <p class="text-xs text-ink/60 truncate">${escapeHtml(loan.profile?.full_name || '?')} · ${escapeHtml(loan.profile?.subscriber_number || '?')}</p>
+              <p class="text-[11px] text-ink/45">Prévu le ${formatDateShortAdmin(loan.due_at)}</p>
+            </div>
+            <span class="shrink-0 text-xs font-bold text-white bg-red-600 rounded-full px-2.5 py-1">${daysLate} j</span>
+          </div>
+          <div class="flex items-center gap-3 mt-2">
+            ${barcode ? `<button onclick="quickReturnFromList('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="text-[12px] font-semibold text-ink border border-red-100 rounded-full px-3 py-1 hover:bg-red-50">Marquer rendu</button>` : ''}
+            <button onclick="declareLost(${loan.id}, '${escapeJsAttr(book?.title || '')}')" style="touch-action: manipulation;" class="text-[11px] font-semibold text-red-600/80 hover:text-red-700 underline">Déclarer perdu</button>
+          </div>
+        </div>`;
+    }).join('');
   }
 
   function loanRowHtml(loan) {
@@ -5606,13 +5653,25 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     await loadBooks();
   };
 
-  // ---------- Tarifs & horaires (direction uniquement) ----------
+  // ---------- Tarifs (direction uniquement) ----------
   // La création des comptes agents a été retirée d'ici le 21/09/2026 : elle
   // se fait désormais uniquement depuis superadmin.html (voir createAgentAccount
   // là-bas), pour que ce soit clairement Mégane seule qui crée les comptes —
   // la fonction Edge create-agent-account accepte déjà un appelant super_admin.
 
   const WEEKDAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+
+  // Horaires d'ouverture : rubrique de l'écran Réglages.
+  async function loadOpeningHours() {
+    if (!myCommuneId) return;
+    const { data: commune } = await supabase.from('communes').select('opening_hours').eq('id', myCommuneId).single();
+    const hours = commune?.opening_hours || {};
+    document.getElementById('opening-hours-fields').innerHTML = WEEKDAYS.map(day => `
+        <div class="grid grid-cols-[110px_1fr] items-center gap-2">
+          <label class="text-xs font-semibold text-ink/60 capitalize">${day}</label>
+          <input id="hours-${day}" value="${escapeHtml(hours[day] || '')}" placeholder="Ex. 9h - 12h / 14h - 18h" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
+        </div>`).join('');
+  }
 
   async function loadTeamAndTariffs() {
     if (!myCommuneId) return;
@@ -5647,12 +5706,6 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ? `Dernière modification le ${formatDateShortAdmin(commune.tariff_updated_at)}`
         : 'Jamais modifiés.';
 
-      const hours = commune.opening_hours || {};
-      document.getElementById('opening-hours-fields').innerHTML = WEEKDAYS.map(day => `
-        <div class="grid grid-cols-[110px_1fr] items-center gap-2">
-          <label class="text-xs font-semibold text-ink/60 capitalize">${day}</label>
-          <input id="hours-${day}" value="${escapeHtml(hours[day] || '')}" placeholder="Ex. 9h - 12h / 14h - 18h" class="w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
-        </div>`).join('');
     }
   }
 
@@ -6165,9 +6218,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
               ⏳ À équiper${equipCopies(b).length > 1 ? ` (${equipCopies(b).length} ex.)` : ''}
             </button>
           ` : `
-            <span class="inline-block w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full ${b.available_count > 0 ? 'bg-mango-50 text-mango-700' : 'bg-brand/5 text-ink/40'}">
-              ● ${b.available_count}/${b.total_copies} dispo${b.total_copies > 1 ? 'nibles' : 'nible'}
-            </span>
+            <button onclick="openBookDetail(${b.id})" title="Voir la disponibilité" class="inline-block w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full hover:ring-1 hover:ring-brand/30 ${b.available_count > 0 ? 'bg-mango-50 text-mango-700' : 'bg-red-50 text-red-600'}">
+              ● ${b.available_count}/${b.total_copies} dispo${b.total_copies > 1 ? 'nibles' : 'nible'}${b.available_count > 0 ? '' : ' ›'}
+            </button>
           `}
         </span>
         <span class="sm:text-right">
@@ -6518,6 +6571,61 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     addWeedBarcode(null, { id: copyId, barcode: c?.barcode || '', status: c?.status, title: b?.title, author: b?.author, cote: b?.shelf_location });
   };
 
+  // Fiche document : pour chaque exemplaire indisponible, jusqu'à quand
+  // (date de retour prévue, ou fin du délai de retrait de 48 h), et la
+  // file d'attente des usagers qui attendent ce document.
+  async function loadBookAvailability(b) {
+    const box = document.getElementById('bd-availability');
+    if (!box) return;
+    const copyIds = (b.copies || []).map(c => c.id);
+    const [loansRes, resaRes, holdsRes] = await Promise.all([
+      copyIds.length
+        ? supabase.from('loans').select('copy_id, due_at, user_id').in('copy_id', copyIds).is('returned_at', null)
+        : Promise.resolve({ data: [] }),
+      supabase.from('reservations').select('status, ready_at, created_at, user_id').eq('book_id', b.id).in('status', ['preparation', 'pret']).order('created_at'),
+      supabase.from('holds').select('user_id, created_at').eq('book_id', b.id).eq('status', 'waiting').order('created_at'),
+    ]);
+    const loans = loansRes.data || [], resas = resaRes.data || [], holds = holdsRes.data || [];
+    if (document.getElementById('book-modal-content')?.dataset.bookId != b.id) return;
+    if (!loans.length && !resas.length && !holds.length) { box.innerHTML = ''; return; }
+
+    const ids = [...new Set([...loans, ...resas, ...holds].map(x => x.user_id))];
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, subscriber_number').in('id', ids);
+    const who = Object.fromEntries((profiles || []).map(p => [p.id, `${p.full_name || '?'}${p.subscriber_number ? ' · ' + p.subscriber_number : ''}`]));
+    const barcodeOf = Object.fromEntries((b.copies || []).map(c => [c.id, c.barcode]));
+    const now = new Date();
+
+    const rows = [];
+    loans.sort((x, y) => new Date(x.due_at) - new Date(y.due_at)).forEach(l => {
+      const late = new Date(l.due_at) <= now;
+      rows.push(`
+        <div class="py-2 border-t border-mango-50 first:border-t-0">
+          <p class="text-sm font-semibold ${late ? 'text-red-600' : 'text-ink'}">${late ? 'En retard depuis le' : 'Emprunté jusqu\'au'} ${formatDateShortAdmin(l.due_at)}</p>
+          <p class="text-xs text-ink/55">${escapeHtml(who[l.user_id] || '?')}${barcodeOf[l.copy_id] ? ' · ex. ' + escapeHtml(barcodeOf[l.copy_id]) : ''}</p>
+        </div>`);
+    });
+    resas.forEach(r => {
+      const label = r.status === 'pret' && r.ready_at
+        ? `Mis de côté jusqu'au ${formatDateShortAdmin(new Date(new Date(r.ready_at).getTime() + 48 * 3600 * 1000).toISOString())}`
+        : 'Réservé, en préparation';
+      rows.push(`
+        <div class="py-2 border-t border-mango-50 first:border-t-0">
+          <p class="text-sm font-semibold text-amber-700">${label}</p>
+          <p class="text-xs text-ink/55">Pour ${escapeHtml(who[r.user_id] || '?')}</p>
+        </div>`);
+    });
+
+    box.innerHTML = `
+      ${rows.length ? `
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Disponibilité</label>
+        <div class="border border-mango-100 rounded-lg px-3 py-1 mb-3">${rows.join('')}</div>` : ''}
+      ${holds.length ? `
+        <label class="text-xs font-semibold text-ink/60 block mb-1">File d'attente (${holds.length})</label>
+        <ol class="border border-mango-100 rounded-lg px-3 py-1 mb-3">${holds.map((hd, i) => `
+          <li class="py-1.5 border-t border-mango-50 first:border-t-0 text-xs text-ink/70"><span class="font-bold text-ink">${i + 1}.</span> ${escapeHtml(who[hd.user_id] || '?')} <span class="text-ink/40">· depuis le ${formatDateShortAdmin(hd.created_at)}</span></li>`).join('')}
+        </ol>` : ''}`;
+  }
+
   window.openBookDetail = function (id) {
     const b = books.find(x => x.id === id);
     if (!b) return;
@@ -6537,6 +6645,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       </div>
 
       ${copiesManagementHtml(b)}
+      <div id="bd-availability"></div>
 
       <div class="grid grid-cols-2 gap-x-3">
         ${bookFieldRow('ISBN', 'bd-isbn', b.isbn)}
@@ -6584,6 +6693,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
       <button onclick="saveBookDetail(${b.id})" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
     `;
+    loadBookAvailability(b);
     document.getElementById('book-modal-backdrop').classList.remove('hidden');
     document.getElementById('book-modal-backdrop').classList.add('flex');
     document.getElementById('bd-dewey').addEventListener('input', e => {
