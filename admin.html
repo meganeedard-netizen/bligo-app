@@ -605,7 +605,7 @@
 
           <div id="pickup-scan-block" class="hidden bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl mb-5">
             <p class="text-sm font-bold text-ink mb-1">Remettre une commande à un usager</p>
-            <p class="text-xs text-ink/55 mb-3">Scanne la carte (QR code) de l'usager : ses réservations prêtes à récupérer s'affichent, à confirmer en un clic — le prêt est enregistré automatiquement.</p>
+            <p class="text-xs text-ink/55 mb-3">Scanne la carte (QR code) de l'usager : ses réservations prêtes à récupérer s'affichent, à confirmer en un clic, et le prêt est enregistré automatiquement.</p>
             <div id="pickup-camera-slot" class="mb-2"></div>
             <button type="button" id="pickup-camera-btn" onclick="toggleCamera('pickup'); document.getElementById('pickup-subscriber-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-2">Scanner la carte de l'usager</button>
             <p id="pickup-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
@@ -4374,9 +4374,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // autres communes de la communauté), qu'ils viennent d'une réservation
   // Click & Collect ou d'un prêt comptoir direct — la table loans couvre les
   // deux cas depuis add_scan_operations.sql.
+  // Plusieurs chargements peuvent partir en même temps (ouverture de l'écran
+  // + onglet) : seul le dernier affiche son résultat.
+  let activeLoansRequest = 0;
+
   async function loadActiveLoans() {
+    const requestId = ++activeLoansRequest;
     const list = document.getElementById('active-loans-list');
-    list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Chargement…</p>`;
+    if (!list.children.length) list.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Chargement…</p>`;
 
     let query = supabase
       .from('loans')
@@ -4406,6 +4411,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     }
 
     holdCounts = (await loadWaitingHoldCounts()) || {};
+    if (requestId !== activeLoansRequest) return;
     activeLoans = (data || []).map(l => ({ ...l, profile: profilesById[l.user_id], waiting: holdCounts[l.book_copies?.book_id] || 0 }));
     document.getElementById('loan-active-count').textContent = activeLoans.length;
     renderActiveLoans();
@@ -4433,7 +4439,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     badge.textContent = `${late.length} en retard`;
     badge.classList.toggle('hidden', !late.length);
     if (!late.length) {
-      box.innerHTML = `<p class="text-sm text-ink/50 text-center py-6">Aucun retard 🎉</p>`;
+      box.innerHTML = `<p class="text-sm text-ink/50 text-center py-6">${awaitedOnly ? 'Aucun livre attendu en retard.' : 'Aucun retard 🎉'}</p>`;
       return;
     }
     box.innerHTML = late.map(loan => {
