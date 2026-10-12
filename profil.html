@@ -542,13 +542,16 @@
     }, { once: true });
   }
 
-  // Compteur d'emprunts (tous, rendus ou en cours).
+  // Compteur d'emprunts (tous, rendus ou en cours), compté comme l'historique
+  // de la page Réservations : livres réservés puis récupérés + prêts faits
+  // directement au comptoir (sans réservation).
   async function loadStats(userId) {
-    const { data, error } = await supabase.from('loans')
-      .select('id').eq('user_id', userId);
-    if (error) return;
-    const loans = data || [];
-    document.getElementById('stat-loans').textContent = loans.length;
+    const [resa, counter] = await Promise.all([
+      supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'recupere'),
+      supabase.from('loans').select('id', { count: 'exact', head: true }).eq('user_id', userId).is('reservation_id', null),
+    ]);
+    if (resa.error && counter.error) return;
+    document.getElementById('stat-loans').textContent = (resa.count || 0) + (counter.count || 0);
   }
 
   let openedSheet = null;
