@@ -691,6 +691,7 @@
   const urlParams = new URLSearchParams(window.location.search);
   const refCode = urlParams.get('ref');
   const gateReason = urlParams.get('gate');
+  const wantSignup = urlParams.has('signup');
   await loadCommuneOptions();
 
   const guestCommuneIdOnLoad = localStorage.getItem('bligo_guest_commune_id');
@@ -707,7 +708,7 @@
   document.getElementById('landing-commune').addEventListener('change', (e) => applyCommuneHeader(e.target.value));
   document.getElementById('signup-commune').addEventListener('change', (e) => applyCommuneHeader(e.target.value));
 
-  if (refCode || gateReason) {
+  if (refCode || gateReason || wantSignup) {
     showAuthCard();
     if (refCode) {
       document.getElementById('signup-referral').value = refCode;
@@ -733,6 +734,8 @@
     }
   } else {
     switchTab('login');
+    // Depuis « Se connecter » du profil sans compte : directement le formulaire.
+    if (urlParams.has('login')) showAuthCard();
   }
 
   // Arrivée juste après avoir confirmé son adresse mail (lien reçu par

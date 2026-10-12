@@ -51,15 +51,10 @@
 <main class="max-w-md mx-auto px-4 py-5">
 
   <!-- Vu sans compte -->
-  <div id="guest-profile-view" class="hidden text-center py-10">
-    <p class="text-lg font-bold text-ink">Ton profil</p>
-    <p class="text-sm text-ink/60 mt-2 max-w-xs mx-auto">Crée ton compte pour obtenir ta carte de médiathèque, réserver et suivre tes emprunts.</p>
-    <button onclick="window.location.href = 'index.html?gate=reserve'" class="mt-6 bg-brand text-white rounded-full px-6 py-3 text-sm font-semibold active:scale-[0.98] transition">Créer mon compte</button>
-    <div class="mt-8 text-left">
-      <p class="profile-section-title">Informations</p>
-      <a href="cgu.html" class="profile-row">Conditions générales d'utilisation<span class="profile-chevron">›</span></a>
-      <a href="confidentialite.html" class="profile-row">Politique de confidentialité<span class="profile-chevron">›</span></a>
-    </div>
+  <div id="guest-profile-view" class="hidden">
+    <p class="profile-section-title">Mes informations personnelles</p>
+    <a href="index.html?signup=1" class="profile-row">Créer mon compte<span class="profile-chevron">›</span></a>
+    <a href="index.html?login=1" class="profile-row">Se connecter<span class="profile-chevron">›</span></a>
   </div>
 
   <div id="profile-content">
@@ -133,6 +128,9 @@
   <a id="admin-link" href="admin.html" class="hidden profile-row">Back-office de ma médiathèque<span class="profile-chevron">›</span></a>
   <a id="superadmin-link" href="superadmin.html" class="hidden profile-row">Espace admin BliGO<span class="profile-chevron">›</span></a>
 
+
+  </div>
+
   <!-- Support -->
   <p class="profile-section-title mt-6">Support</p>
   <a href="https://bligo.fr" target="_blank" rel="noopener" class="profile-row">Tu travailles dans une médiathèque ?<span class="profile-chevron">›</span></a>
@@ -142,12 +140,11 @@
   <a href="cgu.html" class="profile-row">Conditions générales d'utilisation<span class="profile-chevron">›</span></a>
   <a href="confidentialite.html" class="profile-row">Politique de confidentialité<span class="profile-chevron">›</span></a>
 
-  <div class="flex flex-col items-center mt-8 mb-4">
-    <button onclick="logout()" class="border-2 border-mango-100 text-ink/70 rounded-xl px-6 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Se déconnecter</button>
-    <p class="text-xs text-ink/40 mt-4">BliGO - v1.0</p>
-  </div>
 
+  <div id="logout-block" class="flex flex-col items-center mt-8">
+    <button onclick="logout()" class="border-2 border-mango-100 text-ink/70 rounded-xl px-6 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Se déconnecter</button>
   </div>
+  <p class="text-xs text-ink/40 text-center mt-6 mb-4">BliGO - v1.0</p>
 </main>
 
 <!-- Fenêtres du profil (feuilles qui montent du bas) -->
@@ -346,11 +343,41 @@
     };
   }
 
+  // Code de parrainage ajouté au lien partagé, une fois l'usager connu.
+  let shareRefCode = '';
+
   async function init() {
+    document.getElementById('share-app-btn').addEventListener('click', async () => {
+      // En dur plutôt que window.location.origin : dans l'app (iOS/Android),
+      // l'origine réelle est une adresse interne (capacitor://localhost),
+      // pas https://bligo.app — le lien partagé serait invalide pour qui le
+      // reçoit.
+      const shareUrl = shareRefCode
+        ? `https://bligo.app/index.html?ref=${encodeURIComponent(shareRefCode)}`
+        : 'https://bligo.app/';
+      const shareText = 'Rejoins-moi sur BliGO, la médiathèque numérique gratuite !';
+      const msg = document.getElementById('share-message');
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'BliGO', text: shareText, url: shareUrl });
+        } catch (e) {
+          // Partage annulé par l'usager — rien à faire.
+        }
+      } else {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          msg.textContent = 'Lien copié ! Colle-le où tu veux.';
+        } catch (e) {
+          msg.textContent = shareUrl;
+        }
+      }
+    });
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       document.getElementById('profile-content').classList.add('hidden');
       document.getElementById('guest-profile-view').classList.remove('hidden');
+      document.getElementById('logout-block').classList.add('hidden');
       return;
     }
     const currentUser = session.user;
@@ -383,31 +410,9 @@
     document.getElementById('delete-request-link').href = 'mailto:megane@bligo.fr?subject=' +
       encodeURIComponent('Suppression de mon compte BliGO') + '&body=' +
       encodeURIComponent(`Bonjour,\n\nJe souhaite supprimer mon compte BliGO.\n\nE-mail : ${currentUser.email}\nN° abonné : ${profile?.subscriber_number || ''}\n`);
+    shareRefCode = profile?.subscriber_number || '';
     loadStats(currentUser.id);
 
-    document.getElementById('share-app-btn').addEventListener('click', async () => {
-      // En dur plutôt que window.location.origin : dans l'app (iOS/Android),
-      // l'origine réelle est une adresse interne (capacitor://localhost),
-      // pas https://bligo.app — le lien partagé serait invalide pour qui le
-      // reçoit.
-      const shareUrl = `https://bligo.app/index.html?ref=${encodeURIComponent(profile?.subscriber_number || '')}`;
-      const shareText = 'Rejoins-moi sur BliGO, la médiathèque numérique gratuite !';
-      const msg = document.getElementById('share-message');
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: 'BliGO', text: shareText, url: shareUrl });
-        } catch (e) {
-          // Partage annulé par l'usager — rien à faire.
-        }
-      } else {
-        try {
-          await navigator.clipboard.writeText(shareUrl);
-          msg.textContent = 'Lien copié ! Colle-le où tu veux.';
-        } catch (e) {
-          msg.textContent = shareUrl;
-        }
-      }
-    });
 
     const isLibre = profile?.account_type === 'libre';
     const isValidated = profile?.registration_status === 'valide';
