@@ -244,6 +244,25 @@
   let catalogueCommuneId = null;
   let myMemberships = [];
   let isMinorAccount = false;
+  let hasFullName = true;
+
+  // « Oups » (12/10/2026, idée de l'appli Gaspiz) : prénom et nom obligatoires
+  // pour réserver ; anciens comptes créés sans nom.
+  function askForName() {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-6';
+    backdrop.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+        <p class="text-lg font-bold text-ink mb-2">Oups</p>
+        <p class="text-sm text-ink/70 leading-relaxed">Il nous manque ton prénom et ton nom. Ils sont indispensables pour ta réservation. Ouvrir ton profil ?</p>
+        <div class="flex justify-end gap-6 mt-6">
+          <button data-a="cancel" class="text-sm font-semibold text-mango-700">Annuler</button>
+          <a href="infos.html" class="text-sm font-semibold text-mango-700">Ouvrir mon profil</a>
+        </div>
+      </div>`;
+    backdrop.querySelector('[data-a="cancel"]').onclick = () => backdrop.remove();
+    document.body.appendChild(backdrop);
+  }
   let myCommuneName = '';
   let myOpeningHours = null;
   let preferredCategories = [];
@@ -645,6 +664,7 @@
 
   async function reserveBook(bookId, btn) {
     if (!requireAccount('reserve')) return;
+    if (!hasFullName) { askForName(); return; }
     const alreadyRead = reservations.some(r => r.status === 'recupere' && r.books?.id === bookId);
     if (alreadyRead) {
       const confirmed = confirm('Tu as déjà lu ce livre. Es-tu sûr(e) de vouloir l\'ajouter à tes réservations ?');
@@ -1058,6 +1078,7 @@
     myCommuneName = profile?.communes?.name || '';
     myOpeningHours = profile?.communes?.opening_hours || null;
     isMinorAccount = profile?.tariff_category === 'mineur';
+    hasFullName = !!(profile?.full_name && profile.full_name !== 'Nouvel usager' && profile.full_name.trim().includes(' '));
     applyCommuneTheme(profile?.communes);
     const browsed = readBrowseCommune() || myCommuneId;
     if (browsed && browsed !== myCommuneId) catalogueCommuneId = browsed;
