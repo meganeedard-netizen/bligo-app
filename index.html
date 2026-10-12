@@ -146,25 +146,36 @@
         <button type="submit" class="mt-1 w-full bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer mon compte</button>
       </form>
 
-      <!-- Vérification de l'adresse par code à 6 chiffres (12/10/2026),
-           sans quitter la page : remplace l'ancien lien de confirmation. -->
-      <form id="form-code" class="hidden flex-col gap-3">
-        <p class="text-sm font-bold text-ink text-center">Vérifie ton adresse e-mail</p>
-        <p class="text-xs text-ink/60 text-center leading-relaxed">Saisis le code à 6 chiffres envoyé à <span id="code-email" class="font-semibold text-ink"></span>.</p>
-        <input required id="signup-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" class="w-full border border-mango-100 rounded-lg px-3 py-3 text-center text-2xl font-bold tracking-[0.5em] outline-none focus:ring-2 focus:ring-mango-300">
-        <button type="submit" class="w-full bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Valider</button>
-        <button type="button" id="resend-code-btn" onclick="resendCode()" class="w-full text-xs font-semibold text-mango-700 disabled:text-ink/35">Renvoyer le code</button>
-        <p class="text-[11px] text-ink/45 text-center">Pense à regarder dans tes courriers indésirables.</p>
-      </form>
 
       <p id="auth-message" class="text-xs text-center mt-3"></p>
 
-      <div id="post-signup-actions" class="hidden flex-col gap-2 mt-3">
-        <button type="button" onclick="openPreregInfo()" class="w-full bg-white border border-mango-200 text-mango-700 rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Préinscription — documents et tarif</button>
-      </div>
     </div>
 
     <p class="text-[11px] text-ink/35 text-center mt-6">BliGO — l'appli de votre médiathèque</p>
+  </div>
+
+  <!-- Après « Créer mon compte » (12/10/2026) : fenêtre du code de vérification
+       envoyé par e-mail, puis fenêtre de bienvenue, puis le catalogue. -->
+  <div id="code-backdrop" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-4">
+    <form id="form-code" class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 flex flex-col gap-3">
+      <p class="text-base font-bold text-ink text-center">Rentre ton code de vérification</p>
+      <p class="text-xs text-ink/60 text-center leading-relaxed">Un code à 6 chiffres vient d'être envoyé par e-mail à <span id="code-email" class="font-semibold text-ink"></span>.</p>
+      <input required id="signup-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" class="w-full border border-mango-100 rounded-lg px-3 py-3 text-center text-2xl font-bold tracking-[0.5em] outline-none focus:ring-2 focus:ring-mango-300">
+      <p id="code-message" class="text-xs text-center min-h-[16px]"></p>
+      <button type="submit" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Valider</button>
+      <button type="button" id="resend-code-btn" onclick="resendCode()" class="w-full text-xs font-semibold text-mango-700 disabled:text-ink/35">Renvoyer le code de vérification</button>
+      <p class="text-[11px] text-ink/45 text-center">Pense à regarder dans tes courriers indésirables.</p>
+    </form>
+  </div>
+
+  <div id="welcome-backdrop" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 max-h-[90dvh] overflow-y-auto">
+      <img src="img/bligo-icon.png" alt="" class="w-12 h-12 object-contain mb-3">
+      <p id="welcome-title" class="text-base font-bold text-ink">Bienvenue dans ta médiathèque !</p>
+      <p class="text-sm font-semibold text-mango-700 mt-1 mb-3">Tu es préinscrit·e.</p>
+      <p id="welcome-text" class="text-sm text-ink/65 leading-relaxed"></p>
+      <button type="button" onclick="enterCatalogue()" class="w-full mt-5 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">J'ai compris</button>
+    </div>
   </div>
 
   <!-- CGU / politique de confidentialité (12/10/2026) : lisibles depuis
@@ -300,9 +311,7 @@
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error && /not confirmed/i.test(error.message)) {
       await supabase.auth.resend({ type: 'signup', email });
-      showCodeStep(email);
-      messageEl.textContent = 'Ton adresse n\'est pas encore vérifiée : un code vient de t\'être envoyé.';
-      messageEl.className = 'text-xs text-center mt-3 text-mango-700';
+      showCodeStep(email, 'Ton adresse n\'est pas encore vérifiée : un nouveau code vient de t\'être envoyé.');
       return;
     }
     if (error) {
@@ -361,21 +370,48 @@
 
   let lastSignup = null;
 
-  function showCodeStep(email) {
+  const codeMessageEl = document.getElementById('code-message');
+  const setCodeMessage = (text, color) => {
+    codeMessageEl.textContent = text;
+    codeMessageEl.className = `text-xs text-center min-h-[16px] ${color}`;
+  };
+
+  function showCodeStep(email, info) {
     lastSignup = { ...(lastSignup || {}), email };
-    for (const id of ['form-login', 'form-signup']) {
-      document.getElementById(id).classList.add('hidden');
-      document.getElementById(id).classList.remove('flex');
-    }
-    document.getElementById('tab-login').parentElement.classList.add('hidden');
-    const form = document.getElementById('form-code');
-    form.classList.remove('hidden');
-    form.classList.add('flex');
-    document.getElementById('code-email').textContent = email;
     messageEl.textContent = '';
+    document.getElementById('code-email').textContent = email;
+    setCodeMessage(info || '', 'text-mango-700');
+    const backdrop = document.getElementById('code-backdrop');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
     startResendCooldown();
     document.getElementById('signup-code').focus();
   }
+
+  // Code validé : fenêtre de bienvenue avec les infos de la médiathèque.
+  async function showWelcome() {
+    document.getElementById('code-backdrop').classList.add('hidden');
+    document.getElementById('code-backdrop').classList.remove('flex');
+    const { data: { session } } = await supabase.auth.getSession();
+    const { data: profile } = session
+      ? await supabase.from('profiles').select('commune_id, communes ( name )').eq('id', session.user.id).single()
+      : { data: null };
+    lastSignup = { ...lastSignup, commune_id: profile?.commune_id || lastSignup?.commune_id };
+    const communeName = profile?.communes?.name;
+    document.getElementById('welcome-title').textContent = communeName
+      ? `Bienvenue dans ta médiathèque de ${communeName.replace(/-/g, '\u2011')} !`
+      : 'Bienvenue dans ta médiathèque !';
+    document.getElementById('welcome-text').innerHTML = await preregInfoHtml();
+    const backdrop = document.getElementById('welcome-backdrop');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
+  }
+
+  window.enterCatalogue = function () {
+    // Déjà expliqué ici : pas besoin de le répéter en arrivant sur le catalogue.
+    try { sessionStorage.setItem('bligo_prereg_popup_shown', '1'); } catch {}
+    window.location.href = 'accueil.html';
+  };
 
   // Supabase n'accepte qu'un envoi par minute environ : bouton grisé 60 s.
   function startResendCooldown() {
@@ -397,16 +433,10 @@
 
   window.resendCode = async function () {
     if (!lastSignup) return;
-    messageEl.textContent = 'Envoi en cours…';
-    messageEl.className = 'text-xs text-center mt-3 text-ink/50';
+    setCodeMessage('Envoi en cours…', 'text-ink/50');
     const { error } = await supabase.auth.resend({ type: 'signup', email: lastSignup.email });
-    if (error) {
-      messageEl.textContent = error.message;
-      messageEl.className = 'text-xs text-center mt-3 text-red-600';
-      return;
-    }
-    messageEl.textContent = 'Nouveau code envoyé !';
-    messageEl.className = 'text-xs text-center mt-3 text-mango-700';
+    if (error) { setCodeMessage(error.message, 'text-red-600'); return; }
+    setCodeMessage('Nouveau code envoyé !', 'text-mango-700');
     startResendCooldown();
   };
 
@@ -417,23 +447,16 @@
   document.getElementById('form-code').addEventListener('submit', async (e) => {
     e.preventDefault();
     const token = document.getElementById('signup-code').value.trim();
-    if (!/^\d{6}$/.test(token)) {
-      messageEl.textContent = 'Le code contient 6 chiffres.';
-      messageEl.className = 'text-xs text-center mt-3 text-red-600';
-      return;
-    }
-    messageEl.textContent = 'Vérification…';
-    messageEl.className = 'text-xs text-center mt-3 text-ink/50';
+    if (!/^\d{6}$/.test(token)) { setCodeMessage('Le code contient 6 chiffres.', 'text-red-600'); return; }
+    setCodeMessage('Vérification…', 'text-ink/50');
     const { error } = await supabase.auth.verifyOtp({ email: lastSignup.email, token, type: 'signup' });
     if (error) {
-      messageEl.textContent = /expired|invalid/i.test(error.message)
+      setCodeMessage(/expired|invalid/i.test(error.message)
         ? 'Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.'
-        : error.message;
-      messageEl.className = 'text-xs text-center mt-3 text-red-600';
+        : error.message, 'text-red-600');
       return;
     }
-    // Compte vérifié et connecté : direction le catalogue de sa médiathèque.
-    window.location.href = 'accueil.html';
+    await showWelcome();
   });
 
   window.openPreregInfo = async function () {
@@ -442,7 +465,10 @@
     backdrop.classList.remove('hidden');
     backdrop.classList.add('flex');
     textEl.textContent = 'Chargement…';
+    textEl.innerHTML = await preregInfoHtml();
+  };
 
+  async function preregInfoHtml() {
     let tariffLine = '';
     if (lastSignup?.commune_id) {
       const { data: commune } = await supabase
@@ -466,7 +492,7 @@
       }
     }
 
-    textEl.innerHTML = `Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là.${tariffLine} Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.`;
+    return `Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là.${tariffLine} Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.`;
   };
 
   window.closePreregInfo = function (event) {
