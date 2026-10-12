@@ -81,6 +81,14 @@ function setVars(brandHex, accentHex) {
   const root = document.documentElement.style;
   if (brandHex) root.setProperty('--color-brand', brandHex);
   else root.removeProperty('--color-brand');
+  // Même couleur en « r g b » : permet les versions transparentes de Tailwind
+  // (bg-brand/50, to-brand/85...), qui ne marchent pas avec un code hexadécimal
+  // dans une variable (12/10/2026).
+  const rgb = /^#?([0-9a-f]{6})$/i.exec(brandHex || '');
+  if (rgb) {
+    const n = parseInt(rgb[1], 16);
+    root.setProperty('--color-brand-rgb', `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`);
+  } else root.removeProperty('--color-brand-rgb');
 
   if (accentHex) {
     const ramp = generateRamp(accentHex);
