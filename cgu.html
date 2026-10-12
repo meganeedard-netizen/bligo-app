@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Conditions générales d'utilisation | BliGO</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
+      colors: {
+        ink: '#1B4B43',
+        brand: 'var(--color-brand, #1B4B43)',
+        mango: { 50:'var(--color-mango-50, #FFF7ED)',100:'var(--color-mango-100, #FFEAD2)',200:'var(--color-mango-200, #FFD4A3)',300:'var(--color-mango-300, #FFB86B)',400:'var(--color-mango-400, #FFA33F)',500:'var(--color-mango-500, #FF9B2E)',600:'var(--color-mango-600, #F07F14)',700:'var(--color-mango-700, #C7630F)',800:'var(--color-mango-800, #9E4E12)',900:'var(--color-mango-900, #7C3F12)' },
+        hibiscus: { 50:'var(--color-hibiscus-50, #FFF0F5)',100:'var(--color-hibiscus-100, #FFDCE9)',200:'var(--color-hibiscus-200, #FFB8D3)',300:'var(--color-hibiscus-300, #FF8FB9)',400:'var(--color-hibiscus-400, #F2609A)',500:'var(--color-hibiscus-500, #E8437A)',600:'var(--color-hibiscus-600, #C92C61)',700:'var(--color-hibiscus-700, #A3234E)',800:'var(--color-hibiscus-800, #7E1C3D)',900:'var(--color-hibiscus-900, #5F1730)' }
+      }
+    } }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  html, body { overscroll-behavior-y: contain; }
+  body { min-height: 100dvh !important; }
+  /* Sur un vrai iPhone (encoche/île dynamique + barre du bas), le contenu
+     touche sinon la barre de statut et le menu chevauche la barre du bas. */
+  body { padding-top: env(safe-area-inset-top); padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
+  .font-logo { font-family: 'Poppins', sans-serif; }
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
+</style>
+</head>
+<body class="bg-white text-ink min-h-screen">
+<header class="sticky top-0 z-30 bg-white shadow-sm" id="legal-header">
+  <div class="max-w-2xl mx-auto px-5 py-3 flex items-center gap-3">
+    <button type="button" onclick="history.length > 1 ? history.back() : (location.href = 'index.html')" aria-label="Retour" class="w-8 h-8 rounded-full bg-mango-50 flex items-center justify-center text-ink/60">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h1 class="text-base font-bold text-ink">Conditions générales d'utilisation</h1>
+  </div>
+</header>
+<main class="max-w-2xl mx-auto px-5 py-5 text-sm text-ink/75 leading-relaxed">
+<p class="text-xs text-ink/45 mb-4">Mise à jour le 12 octobre 2026</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 1 — Objet et acceptation</h2>
+<p class="my-2">Les présentes conditions générales d'utilisation (« CGU ») fixent les règles d'utilisation de l'application BliGO, sur le web (bligo.app), sur iPhone et sur Android.</p>
+<p class="my-2">BliGO est éditée par <strong class="text-ink">Mégane Prieto-Blanco</strong>, entreprise individuelle, SIRET 930 781 919 00012, Rue Owel Solvet Saint Protais, 97180 Sainte-Anne, Guadeloupe (« l'Éditeur »). Contact : megane@bligo.fr.</p>
+<p class="my-2">Créer un compte ou utiliser l'application vaut acceptation des CGU. L'usager qui ne les accepte pas ne doit pas utiliser le service. Le catalogue et l'agenda culturel restent consultables sans compte.</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 2 — Le service BliGO et le rôle des médiathèques</h2>
+<p class="my-2">BliGO est l'application et le logiciel de gestion utilisés par les médiathèques partenaires. L'usager y consulte le catalogue, réserve, suit ses emprunts, reçoit des alertes et accède aux services de sa médiathèque.</p>
+<p class="my-2">Chaque médiathèque partenaire reste <strong class="text-ink">seule responsable de ses collections et de ses règles de prêt</strong> : tarifs, durée et nombre d'emprunts, pénalités, accueil des non-résidents. Son règlement intérieur s'applique en plus des CGU et prévaut en cas de différence sur ces points.</p>
+<p class="my-2">L'Éditeur fournit l'outil. Il n'est ni prêteur, ni dépositaire des documents.</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 3 — Compte et inscription</h2>
+<p class="my-2">Le compte se crée gratuitement avec un prénom, un nom, une adresse e-mail et un mot de passe. L'adresse e-mail est vérifiée par un code à 6 chiffres envoyé par e-mail. Le compte est rattaché à la médiathèque choisie par l'usager.</p>
+<p class="my-2"><strong class="text-ink">Préinscription puis validation.</strong> Le compte créé dans l'application est une préinscription. L'inscription devient définitive quand un agent de la médiathèque la valide, après présentation d'une pièce d'identité et d'un justificatif de domicile de moins de 3 mois. La carte et son QR code s'activent alors dans le profil.</p>
+<p class="my-2"><strong class="text-ink">Catégorie.</strong> La catégorie d'abonnement (adulte, mineur, famille) est fixée par l'agent lors de la validation, sur la base des justificatifs présentés. BliGO ne demande pas de date de naissance.</p>
+<p class="my-2"><strong class="text-ink">Exactitude.</strong> L'usager fournit des informations exactes et les tient à jour. Il garde ses identifiants confidentiels. Un compte aux informations manifestement fausses peut être suspendu.</p>
+<p class="my-2"><strong class="text-ink">Carte famille.</strong> Quand la médiathèque la propose, la carte famille est <strong class="text-ink">un seul compte</strong>, avec une seule adresse e-mail, une seule carte et un seul numéro d'abonné. Tous les membres de la famille s'y connectent avec ces mêmes identifiants pour réserver et suivre les emprunts. Le compte dispose d'un nombre maximum de documents en cours pour toute la famille, fixé par la médiathèque.</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 4 — Carte, adhésion et tarifs</h2>
+<p class="my-2">La carte d'usager est personnelle. Elle s'affiche dans le profil sous forme de QR code et sert au comptoir pour emprunter et retirer les réservations.</p>
+<p class="my-2"><strong class="text-ink">Tarifs.</strong> L'utilisation de l'application est gratuite. L'adhésion à la médiathèque peut être gratuite ou payante, selon les tarifs fixés par chaque médiathèque (adulte, mineur, gratuité, famille, supplément non-résident). Le paiement se fait à la médiathèque, jamais dans l'application.</p>
+<p class="my-2"><strong class="text-ink">Durée de l'adhésion.</strong> Selon la médiathèque, l'adhésion est sans limite de durée, valable 12 mois ou valable jusqu'au 31 décembre. La date d'échéance figure dans le profil. Un rappel est envoyé un mois avant. Une fois l'adhésion expirée, les emprunts et réservations sont bloqués jusqu'à son renouvellement à l'accueil.</p>
+<p class="my-2"><strong class="text-ink">Non-résidents.</strong> L'usager peut demander à s'inscrire dans la médiathèque d'une autre commune. Chaque médiathèque décide d'accepter ou non les non-résidents, gratuitement ou avec un supplément. L'inscription devient active quand un agent la valide. Quand plusieurs médiathèques forment un réseau, une même carte est valable dans toutes.</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 5 — Réservations, emprunts et retours</h2>
+<p class="my-2"><strong class="text-ink">Réserver.</strong> L'usager réserve un document disponible depuis le catalogue. La médiathèque le prépare et prévient l'usager quand il est prêt. L'usager a <strong class="text-ink">48 heures</strong> pour venir le chercher. Passé ce délai, la réservation est annulée et le document repart en rayon ou au suivant de la file d'attente.</p>
+<p class="my-2"><strong class="text-ink">File d'attente.</strong> Pour un document déjà emprunté, l'usager peut rejoindre la file d'attente et voit son rang. Au retour du document, il est mis de côté pour le premier de la file, qui est prévenu et dispose de 48 heures. S'il ne peut pas le recevoir (quota atteint, adhésion expirée), le document passe au suivant.</p>
+<p class="my-2"><strong class="text-ink">Emprunter.</strong> La durée de prêt et le nombre de documents sont fixés par la médiathèque. Certains documents, comme les dictionnaires et encyclopédies, se consultent uniquement sur place.</p>
+<p class="my-2"><strong class="text-ink">Prolonger.</strong> Un prêt peut être prolongé <strong class="text-ink">une fois, de 7 jours</strong>, depuis l'application ou au comptoir. La prolongation est impossible si le prêt est déjà en retard ou si quelqu'un attend le document.</p>
+<p class="my-2"><strong class="text-ink">Rendre.</strong> Le document est rendu à la médiathèque, ou dans une autre médiathèque du même réseau quand celui-ci le permet. L'agent note son état au retour.</p>
+<p class="my-2"><strong class="text-ink">Retards.</strong> L'usager reçoit un rappel 3 jours avant la date de retour, puis un rappel en cas de retard. La médiathèque peut appliquer des pénalités, par exemple 1 € par jour après une semaine de grâce, selon son règlement. Un retard prolongé ou un document rendu abîmé peut restreindre temporairement les emprunts de l'usager (par exemple, plus d'accès aux nouveautés).</p>
+<p class="my-2"><strong class="text-ink">Documents perdus ou abîmés.</strong> L'usager est responsable des documents qu'il emprunte. En cas de perte ou de dégradation, la médiathèque peut demander leur remplacement à l'identique ou leur remboursement, selon son règlement. Tant que la situation n'est pas réglée, elle peut suspendre les emprunts.</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 6 — Mineurs et carte famille</h2>
+<p class="my-2">Un mineur peut créer un compte. À la validation, la médiathèque recueille l'autorisation d'un titulaire de l'autorité parentale. Un compte mineur ne voit pas les documents réservés aux adultes et ne peut pas les emprunter.</p>
+<p class="my-2">Un enfant peut aussi utiliser le compte de la carte famille de ses parents. Ce compte appartient à l'adulte titulaire, qui choisit les identifiants et décide de les partager au sein de sa famille.</p>
+<p class="my-2">L'adulte titulaire de la carte famille reste responsable de tous les documents empruntés avec ce compte, notamment de leur retour, de leur état et du choix des documents empruntés par les enfants.</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 7 — Avis, fidélité, dons, agenda et services numériques</h2>
+<p class="my-2"><strong class="text-ink">Avis.</strong> L'usager peut noter un document emprunté et laisser un commentaire de 300 caractères maximum. Les avis s'affichent sans le nom de leur auteur. Ils restent courtois et ne contiennent ni propos injurieux, diffamatoires ou discriminatoires, ni données personnelles. L'Éditeur ou la médiathèque peut retirer un avis contraire à ces règles.</p>
+<p class="my-2"><strong class="text-ink">Points de fidélité et badges.</strong> Les emprunts, avis, dons et défis de lecture rapportent des points et des badges. Ils sont purement ludiques : sans valeur monétaire, ni échangeables, ni convertibles. L'Éditeur peut en faire évoluer les règles.</p>
+<p class="my-2"><strong class="text-ink">Dons de livres.</strong> L'usager peut donner des livres à la médiathèque, qui reste libre de les intégrer à ses collections ou non. Un don ne donne droit à aucune contrepartie autre que les points de fidélité.</p>
+<p class="my-2"><strong class="text-ink">Agenda culturel.</strong> L'usager peut consulter les événements de sa médiathèque et s'y inscrire. Les places étant limitées, il s'engage à venir. En cas d'empêchement, il annule son inscription avant le délai indiqué par la médiathèque pour libérer sa place.</p>
+<p class="my-2"><strong class="text-ink">Ressources numériques.</strong> Le profil peut proposer des liens vers les services en ligne auxquels la médiathèque est abonnée (livres numériques, presse, autoformation…). Ces services sont fournis par des tiers, avec leurs propres conditions d'utilisation.</p>
+<p class="my-2"><strong class="text-ink">Fiches des documents.</strong> Les informations des documents proviennent en partie de sources publiques (BnF, Open Library, Google Books, Wikipédia). Les résumés issus de Wikipédia sont diffusés sous licence CC BY-SA et signalés comme tels.</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 8 — Données personnelles</h2>
+<p class="my-2">Le traitement des données est détaillé dans la <strong class="text-ink">politique de confidentialité</strong> de BliGO, qui fait partie des présentes conditions.</p>
+<p class="my-2"><strong class="text-ink">Données utilisées</strong> : adresse e-mail, prénom et nom, numéro d'abonné, commune, catégorie (adulte, mineur, famille), réservations, emprunts et retours, avis, points de fidélité, inscriptions aux événements. Aucune date de naissance n'est collectée.</p>
+<p class="my-2"><strong class="text-ink">Historique des emprunts.</strong> L'historique est conservé tant que le compte existe. Il permet à l'usager de retrouver ses lectures et à la médiathèque de suivre ses prêts et d'établir ses statistiques. Il est consultable par l'usager et par les agents de la médiathèque, jamais par les autres usagers.</p>
+<p class="my-2"><strong class="text-ink">Hébergement.</strong> Les fichiers de l'application sont hébergés par Hostinger (Union européenne). Les comptes et données de prêt sont stockés chez Supabase (Union européenne).</p>
+<p class="my-2"><strong class="text-ink">Droits.</strong> L'usager peut accéder à ses données, les faire corriger ou supprimer, et s'opposer à certains traitements, en écrivant à megane@bligo.fr ou à sa médiathèque. Il peut aussi saisir la CNIL (www.cnil.fr). La suppression du compte n'est possible qu'une fois tous les documents rendus.</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 9 — Obligations de l'usager</h2>
+<p class="my-2">L'usager s'engage à :</p>
+<ul class="list-disc pl-5 space-y-1 my-2">
+<li>respecter les CGU et le règlement intérieur de chaque médiathèque où il est inscrit ;</li>
+<li>rendre les documents à temps et en bon état ;</li>
+<li>venir chercher ses réservations ou les annuler s'il n'en a plus besoin ;</li>
+<li>n'utiliser que sa propre carte, ou la carte famille partagée de son foyer ;</li>
+<li>ne pas créer de fausses réservations, de faux avis ni de compte au nom d'un tiers ;</li>
+<li>ne pas tenter de perturber ou de contourner le fonctionnement de l'application.</li>
+</ul>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 10 — Responsabilité et propriété intellectuelle</h2>
+<p class="my-2"><strong class="text-ink">Disponibilité.</strong> L'Éditeur fait son possible pour que l'application soit accessible et ses informations exactes. Il ne garantit pas un service sans interruption : maintenance, panne d'un hébergeur ou d'une source de données externe. Les disponibilités et horaires affichés dépendent des médiathèques.</p>
+<p class="my-2"><strong class="text-ink">Limites.</strong> L'Éditeur n'est pas responsable des décisions des médiathèques (inscription, prêt, pénalités, gestion des collections), ni des dommages liés à une utilisation non conforme de l'application, ni du contenu des services numériques de tiers.</p>
+<p class="my-2"><strong class="text-ink">Propriété intellectuelle.</strong> L'application, son code, ses textes, logos, icônes et éléments de jeu appartiennent à Mégane Prieto-Blanco. Les couvertures, résumés et marques restent la propriété de leurs éditeurs et auteurs. Toute reproduction sans autorisation est interdite.</p>
+<h2 class="text-base font-bold text-ink mt-6 mb-2">Article 11 — Suspension, modification et droit applicable</h2>
+<p class="my-2"><strong class="text-ink">Suspension et suppression.</strong> En cas de manquement aux CGU ou au règlement d'une médiathèque, le compte peut être restreint ou suspendu. L'usager peut supprimer son compte à tout moment, une fois ses documents rendus et sa situation réglée avec la médiathèque.</p>
+<p class="my-2"><strong class="text-ink">Modification des CGU.</strong> L'Éditeur peut modifier les CGU, notamment quand l'application évolue. Les usagers sont prévenus dans l'application ou par e-mail avant l'entrée en vigueur d'un changement important. Continuer à utiliser l'application vaut acceptation de la nouvelle version.</p>
+<p class="my-2"><strong class="text-ink">Droit applicable.</strong> Les CGU sont soumises au droit français. En cas de litige, une solution amiable est recherchée en priorité. L'usager consommateur peut recourir gratuitement à un médiateur de la consommation. À défaut, les tribunaux compétents sont ceux prévus par la loi.</p>
+<p class="my-2"><strong class="text-ink">Contact</strong> : megane@bligo.fr · Rue Owel Solvet Saint Protais, 97180 Sainte-Anne, Guadeloupe.</p>
+</main>
+<script>
+  // Ouverte dans la fenêtre de l'inscription : pas besoin du bouton retour.
+  if (window.self !== window.top) document.getElementById('legal-header').classList.add('hidden');
+</script>
+</body>
+</html>

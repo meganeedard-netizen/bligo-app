@@ -9,7 +9,7 @@ DEST="www"
 rm -rf "$DEST"
 mkdir -p "$DEST"
 
-PAGES="index.html accueil.html agenda.html liste-envie.html points.html profil.html reservations.html"
+PAGES="index.html accueil.html agenda.html liste-envie.html points.html profil.html reservations.html cgu.html confidentialite.html"
 for page in $PAGES; do
   cp "$ROOT$page" "$DEST/"
 done
