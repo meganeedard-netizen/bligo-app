@@ -48,7 +48,15 @@
     <div class="absolute -right-2 bottom-4 w-16 h-16 rounded-full bg-white/10"></div>
     <p class="text-lg font-bold relative">Tu as</p>
     <p class="relative mb-2"><span id="points-total" class="text-5xl font-extrabold">0</span> <span id="points-unit" class="text-2xl font-bold">point</span></p>
-    <a href="reservations.html#history-section" class="text-[11px] text-white/85 underline relative">Voir mon historique</a>
+    <!-- Progression vers le prochain badge (12/10/2026) -->
+    <div id="next-badge" class="hidden relative bg-white/15 rounded-xl p-3 mt-3 flex items-center gap-3 text-left">
+      <img id="next-badge-img" src="" alt="" class="w-11 h-11 shrink-0">
+      <div class="flex-1 min-w-0">
+        <p class="text-xs text-white/85">Prochain badge : <strong id="next-badge-name" class="text-white"></strong></p>
+        <div class="h-2 bg-white/25 rounded-full mt-1.5 overflow-hidden"><div id="next-badge-bar" class="h-full bg-white rounded-full" style="width:0%"></div></div>
+        <p id="next-badge-left" class="text-[11px] text-white/80 mt-1"></p>
+      </div>
+    </div>
   </div>
 
   <!-- À 0 point : donner envie de démarrer (12/10/2026) -->
@@ -57,25 +65,37 @@
     <a href="accueil.html" class="inline-block mt-4 bg-brand text-white text-sm font-semibold rounded-full px-6 py-3 active:scale-[0.98] transition">Voir le catalogue</a>
   </div>
 
-  <!-- Explication courte : comment on gagne des points, à quoi ils servent -->
-  <div class="bg-white rounded-2xl p-5 shadow-sm mb-6">
-    <p class="text-sm font-bold text-ink mb-2">Comment gagner des points ?</p>
-    <ul class="text-sm text-ink/70 leading-relaxed space-y-1">
-      <li><strong>+10</strong> pour chaque livre réservé et récupéré</li>
-      <li><strong>+15</strong> pour chaque avis laissé sur un livre lu</li>
-      <li><strong>+5</strong> pour chaque inscription à un événement</li>
-      <li><strong>+50</strong> quand un proche s'inscrit grâce à toi</li>
-      <li><strong>Bonus</strong> en réussissant les défis ci-dessous</li>
-    </ul>
-    <p class="text-sm font-bold text-ink mt-4 mb-1">À quoi servent-ils ?</p>
-    <p class="text-sm text-ink/70 leading-relaxed">Tes points font monter ton niveau et débloquent tes badges de lecteur, du « Premier Chapitre » à « Légende BliGO ».</p>
+  <!-- Comment gagner des points : tuiles visuelles (12/10/2026) -->
+  <p class="text-base font-bold text-ink mb-3">Gagne des points</p>
+  <div class="grid grid-cols-2 gap-2.5 mb-2.5">
+    <div class="bg-white rounded-2xl p-3.5 shadow-sm flex items-center gap-3">
+      <span class="w-10 h-10 rounded-full bg-mango-50 text-mango-600 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg></span>
+      <span class="min-w-0"><span class="block text-lg font-extrabold text-mango-600 leading-none">+10</span><span class="block text-[11px] text-ink/65 leading-tight mt-1">Livre réservé et récupéré</span></span>
+    </div>
+    <div class="bg-white rounded-2xl p-3.5 shadow-sm flex items-center gap-3">
+      <span class="w-10 h-10 rounded-full bg-mango-50 text-mango-600 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.8z"/></svg></span>
+      <span class="min-w-0"><span class="block text-lg font-extrabold text-mango-600 leading-none">+15</span><span class="block text-[11px] text-ink/65 leading-tight mt-1">Avis sur un livre lu</span></span>
+    </div>
+    <div class="bg-white rounded-2xl p-3.5 shadow-sm flex items-center gap-3">
+      <span class="w-10 h-10 rounded-full bg-mango-50 text-mango-600 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg></span>
+      <span class="min-w-0"><span class="block text-lg font-extrabold text-mango-600 leading-none">+5</span><span class="block text-[11px] text-ink/65 leading-tight mt-1">Inscription à un événement</span></span>
+    </div>
+    <div class="bg-white rounded-2xl p-3.5 shadow-sm flex items-center gap-3">
+      <span class="w-10 h-10 rounded-full bg-mango-50 text-mango-600 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5"/><path d="M19 8v6M16 11h6"/></svg></span>
+      <span class="min-w-0"><span class="block text-lg font-extrabold text-mango-600 leading-none">+50</span><span class="block text-[11px] text-ink/65 leading-tight mt-1">Un proche inscrit grâce à toi</span></span>
+    </div>
   </div>
+  <a href="#defis-list" class="bg-white rounded-2xl p-3.5 shadow-sm flex items-center gap-3 mb-8">
+    <span class="w-10 h-10 rounded-full bg-hibiscus-50 text-hibiscus-600 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4"/></svg></span>
+    <span class="flex-1 text-sm text-ink/70"><strong class="text-hibiscus-600">Bonus</strong> en réussissant tes défis</span>
+    <span class="text-ink/40 text-xl">›</span>
+  </a>
 
-  <p class="text-sm font-bold text-ink mb-1">Mes badges de fidélité</p>
-  <p id="badges-progress-text" class="text-xs text-ink/50 mb-3"></p>
+  <p class="text-base font-bold text-ink mb-0.5">Mes badges</p>
+  <p class="text-xs text-ink/50 mb-3">Tes points débloquent tes badges de lecteur, du « Premier Chapitre » à « Légende BliGO ».</p>
   <div id="badges-grid" class="grid grid-cols-3 gap-2.5 mb-8"></div>
 
-  <p class="text-sm font-bold text-ink mb-3">Mes défis</p>
+  <p class="text-base font-bold text-ink mb-3">Mes défis</p>
   <div id="defis-list" class="flex flex-col gap-2.5 mb-8"></div>
 
 </main>
@@ -167,9 +187,17 @@
     }));
 
     const next = currentBadges.find(b => b.type === 'niveau' && !b.unlocked);
-    document.getElementById('badges-progress-text').textContent = next
-      ? `Encore ${Math.max(0, next.threshold - xp)} points pour le badge « ${next.name} »`
-      : `Tous les paliers sont débloqués !`;
+    if (next) {
+      const previous = BADGES.find(b => b.type === 'niveau' && b.level === next.level - 1);
+      const from = previous?.threshold || 0;
+      const progress = Math.min(100, Math.max(0, ((xp - from) / (next.threshold - from)) * 100));
+      document.getElementById('next-badge').classList.remove('hidden');
+      document.getElementById('next-badge-img').src = next.img;
+      document.getElementById('next-badge-name').textContent = next.name;
+      document.getElementById('next-badge-bar').style.width = `${progress}%`;
+      const left = Math.max(0, next.threshold - xp);
+      document.getElementById('next-badge-left').textContent = `Encore ${left} point${left > 1 ? 's' : ''}`;
+    }
 
     document.getElementById('badges-grid').innerHTML = currentBadges.map(b => `
       <button type="button" onclick="openBadgeModal('${b.id}')" style="touch-action: manipulation;" class="rounded-xl p-2.5 border text-center ${b.unlocked ? 'bg-white border-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_10px_rgba(0,0,0,0.07)]' : 'bg-brand/5 border-transparent'}">
