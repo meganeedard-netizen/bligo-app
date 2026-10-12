@@ -377,7 +377,7 @@
     const isValidated = profile?.registration_status === 'valide';
     if (!isLibre && isValidated && profile?.commune_id) setupMemberships(profile.commune_id);
     if (!isLibre && profile?.commune_id) {
-      if (!isValidated) setupCategoryChoice();
+      // Catégorie d'abonnement : visible et réglée côté agents uniquement (12/10/2026).
       setupFamily();
       setupDigitalResources(profile.commune_id);
     }

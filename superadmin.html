@@ -263,6 +263,13 @@
 
     const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', currentUser.id).single();
     if (error || profile?.role !== 'super_admin') {
+      if (profile?.role === 'agent') { window.location.href = 'admin.html'; return; }
+      if (window.BLIGO_AGENT_APP) {
+        await supabase.auth.signOut();
+        window.location.href = 'index.html?not_agent=1';
+        return;
+      }
+      if (profile) { window.location.href = 'accueil.html'; return; }
       accessMessage.textContent = "Cette page est réservée à l'administratrice de BliGO.";
       return;
     }
