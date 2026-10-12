@@ -170,7 +170,7 @@
       <section id="screen-home" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Aujourd'hui</h2>
         <p class="text-sm text-ink/55 mb-5">Ce qui t'attend à la médiathèque. Clique sur un chiffre pour ouvrir la liste.</p>
-        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
+        <div class="grid grid-cols-2 xl:grid-cols-3 gap-3 mb-8">
             <button type="button" onclick="switchScreen('reservations'); switchReservationTab('preparation')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <p class="text-xs font-semibold text-ink/55">Réservations à préparer</p>
               <p id="kpi-prep" class="text-3xl font-bold mt-1 text-ink">–</p>
@@ -190,6 +190,11 @@
               <p class="text-xs font-semibold text-ink/55">En retard</p>
               <p id="kpi-late" class="text-3xl font-bold mt-1 text-red-600">–</p>
               <p class="text-[11px] text-ink/45 mt-1">Date de retour dépassée</p>
+            </button>
+            <button type="button" onclick="showAwaitedLoans()" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
+              <p class="text-xs font-semibold text-ink/55">Livres attendus</p>
+              <p id="kpi-awaited" class="text-3xl font-bold mt-1 text-amber-600">–</p>
+              <p class="text-[11px] text-ink/45 mt-1">Empruntés, avec une file d'attente</p>
             </button>
             <button type="button" onclick="switchScreen('reservations'); switchPrTab('rayon')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <p class="text-xs font-semibold text-ink/55">À remettre en rayon</p>
@@ -618,7 +623,13 @@
         <div id="pr-panel-active" class="hidden">
           <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
             <div class="order-2 lg:order-1 min-w-0">
-              <p class="text-sm text-ink/55 mb-4">Livres empruntés et pas encore en retard, classés par date de retour.</p>
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <p class="text-sm text-ink/55">Livres empruntés et pas encore en retard, classés par date de retour.</p>
+                <label class="flex items-center gap-2 text-xs font-semibold text-ink/70 bg-white border border-[#E5E7EB] rounded-full px-3 py-1.5 cursor-pointer">
+                  <input id="awaited-only-toggle" type="checkbox" onchange="awaitedOnly = this.checked; renderActiveLoans()" class="accent-amber-600">
+                  ⏳ Seulement les livres attendus
+                </label>
+              </div>
               <div id="active-loans-list" class="flex flex-col gap-2.5"></div>
             </div>
             <!-- Retards : colonne à part, bien visible -->
@@ -1692,9 +1703,40 @@
     ]);
     const set = (key, r) => { document.getElementById(`kpi-${key}`).textContent = r?.error ? '–' : (r?.count ?? 0); };
     set('prep', prep); set('ready', ready); set('loans', active); set('late', late); set('reshelve', reshelve); set('prereg', pre);
+    countAwaitedLoans().then(n => { document.getElementById('kpi-awaited').textContent = n ?? '–'; });
     document.getElementById('kpi-transfers').textContent = document.getElementById('logistics-badge')?.textContent || '0';
     document.getElementById('kpi-visitors').textContent = document.getElementById('visitor-today-count')?.textContent || '0';
   }
+
+  // Files d'attente de la médiathèque : book_id -> nombre d'usagers qui attendent.
+  async function loadWaitingHoldCounts() {
+    let q = supabase.from('holds').select('book_id, books!inner(commune_id)').eq('status', 'waiting');
+    if (myCommuneId) q = q.eq('books.commune_id', myCommuneId);
+    const { data, error } = await q;
+    if (error) return null;
+    const counts = {};
+    (data || []).forEach(x => { counts[x.book_id] = (counts[x.book_id] || 0) + 1; });
+    return counts;
+  }
+
+  // « Livres attendus » : prêts en cours dont le livre a une file d'attente.
+  async function countAwaitedLoans() {
+    const counts = await loadWaitingHoldCounts();
+    if (!counts) return null;
+    const bookIds = Object.keys(counts).map(Number);
+    if (!bookIds.length) return 0;
+    let q = supabase.from('loans').select('id, book_copies!inner(book_id)', { count: 'exact', head: true })
+      .is('returned_at', null).in('book_copies.book_id', bookIds);
+    if (myCommuneId) q = q.eq('borrowed_at_commune_id', myCommuneId);
+    const { count, error } = await q;
+    return error ? null : (count ?? 0);
+  }
+
+  window.showAwaitedLoans = function () {
+    switchScreen('reservations');
+    awaitedOnly = true;
+    switchPrTab('active');
+  };
 
   window.showSettingsTab = function (tab) {
     document.querySelectorAll('[data-settings-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.settingsPane !== tab));
@@ -1711,7 +1753,7 @@
     });
     // Prêt à scanner dès l'arrivée sur l'écran, sans avoir à cliquer dans le
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
-    if (screen === 'reservations') { switchPrTab('reservations'); refreshVisitorCount(); loadActiveLoans(); }
+    if (screen === 'reservations') { awaitedOnly = false; switchPrTab('reservations'); refreshVisitorCount(); loadActiveLoans(); }
     if (screen === 'stats') switchStatsTab('emprunts');
     if (screen === 'sigb-stats') initSigbStatsYearSelect();
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
@@ -4307,6 +4349,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // ---------- Emprunts en cours + Fiche usager ----------
 
   let activeLoans = [];
+  let holdCounts = {};
+  window.awaitedOnly = false;
 
   // Réservations, Prêts en cours et Retours fusionnés dans un seul écran
   // « Prêts & réservations » (17/09/2026) : 3 onglets de haut niveau au lieu
@@ -4336,7 +4380,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     let query = supabase
       .from('loans')
-      .select('id, due_at, borrowed_at, user_id, renewal_count, book_copies ( barcode, books ( title, author, cover_url, cover_initial ) )')
+      .select('id, due_at, borrowed_at, user_id, renewal_count, book_copies ( barcode, book_id, books ( title, author, cover_url, cover_initial ) )')
       .is('returned_at', null)
       .order('due_at', { ascending: true });
     if (myCommuneId) query = query.eq('borrowed_at_commune_id', myCommuneId);
@@ -4346,7 +4390,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       // Colonne renewal_count absente tant que add_renewal_holds_membership.sql n'est pas passée.
       let fallback = supabase
         .from('loans')
-        .select('id, due_at, borrowed_at, user_id, book_copies ( barcode, books ( title, author, cover_url, cover_initial ) )')
+        .select('id, due_at, borrowed_at, user_id, book_copies ( barcode, book_id, books ( title, author, cover_url, cover_initial ) )')
         .is('returned_at', null)
         .order('due_at', { ascending: true });
       if (myCommuneId) fallback = fallback.eq('borrowed_at_commune_id', myCommuneId);
@@ -4361,7 +4405,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       profilesById = Object.fromEntries((profiles || []).map(p => [p.id, p]));
     }
 
-    activeLoans = (data || []).map(l => ({ ...l, profile: profilesById[l.user_id] }));
+    holdCounts = (await loadWaitingHoldCounts()) || {};
+    activeLoans = (data || []).map(l => ({ ...l, profile: profilesById[l.user_id], waiting: holdCounts[l.book_copies?.book_id] || 0 }));
     document.getElementById('loan-active-count').textContent = activeLoans.length;
     renderActiveLoans();
   }
@@ -4369,12 +4414,15 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   function renderActiveLoans() {
     const list = document.getElementById('active-loans-list');
     const now = new Date();
-    const late = activeLoans.filter(l => new Date(l.due_at) <= now);
-    const onTime = activeLoans.filter(l => new Date(l.due_at) > now);
+    const toggle = document.getElementById('awaited-only-toggle');
+    if (toggle) toggle.checked = awaitedOnly;
+    const shown = awaitedOnly ? activeLoans.filter(l => l.waiting > 0) : activeLoans;
+    const late = shown.filter(l => new Date(l.due_at) <= now);
+    const onTime = shown.filter(l => new Date(l.due_at) > now);
     renderLateLoans(late);
     list.innerHTML = onTime.length
       ? onTime.map(loanRowHtml).join('')
-      : `<p class="text-sm text-ink/40 text-center py-8">Pas d'autre prêt en cours.</p>`;
+      : `<p class="text-sm text-ink/40 text-center py-8">${awaitedOnly ? "Aucun autre livre attendu." : "Pas d'autre prêt en cours."}</p>`;
   }
 
   // Colonne rouge « En retard » : du plus en retard au moins en retard.
@@ -4399,6 +4447,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
               <p class="text-sm font-bold text-ink truncate">${escapeHtml(book?.title || 'Livre supprimé')}</p>
               <p class="text-xs text-ink/60 truncate">${escapeHtml(loan.profile?.full_name || '?')} · ${escapeHtml(loan.profile?.subscriber_number || '?')}</p>
               <p class="text-[11px] text-ink/45">Prévu le ${formatDateShortAdmin(loan.due_at)}</p>
+              ${loan.waiting ? `<div class="mt-1">${waitingBadgeHtml(loan)}</div>` : ''}
             </div>
             <span class="shrink-0 text-xs font-bold text-white bg-red-600 rounded-full px-2.5 py-1">${daysLate} j</span>
           </div>
@@ -4408,6 +4457,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           </div>
         </div>`;
     }).join('');
+  }
+
+  function waitingBadgeHtml(loan) {
+    return loan.waiting
+      ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">⏳ ${loan.waiting} en attente</span>`
+      : '';
   }
 
   function loanRowHtml(loan) {
@@ -4427,13 +4482,13 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <div class="flex-1 min-w-0">
           <p class="text-sm font-bold text-ink truncate">${escapeHtml(book?.title || 'Livre supprimé')}</p>
           <p class="text-xs text-ink/55 truncate">${escapeHtml(loan.profile?.full_name || '?')} · ${escapeHtml(loan.profile?.subscriber_number || '?')}</p>
-          <div class="mt-1">${dueLabel}</div>
+          <div class="mt-1 flex flex-wrap gap-1.5">${dueLabel}${waitingBadgeHtml(loan)}</div>
         </div>
         <div class="shrink-0 flex flex-col gap-1.5 items-end">
           ${barcode ? `<button onclick="quickReturnFromList('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="text-[12px] font-semibold text-ink border border-mango-100 rounded-full px-3 py-1.5 hover:bg-mango-50">Marquer rendu</button>` : ''}
           ${loan.renewal_count >= 1
             ? `<span class="text-[10.5px] font-semibold text-ink/40">Déjà prolongé</span>`
-            : (!isLate ? `<button onclick="renewLoanFromList(${loan.id})" style="touch-action: manipulation;" class="text-[12px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1.5">Prolonger +7 j</button>` : '')}
+            : (!isLate && !loan.waiting ? `<button onclick="renewLoanFromList(${loan.id})" style="touch-action: manipulation;" class="text-[12px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1.5">Prolonger +7 j</button>` : '')}
           <button onclick="declareLost(${loan.id}, '${escapeJsAttr(book?.title || '')}')" style="touch-action: manipulation;" class="text-[11px] font-semibold text-red-600/80 hover:text-red-700 underline">Déclarer perdu</button>
         </div>
       </div>`;
