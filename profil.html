@@ -28,6 +28,11 @@
      touche sinon la barre de statut et le menu chevauche la barre du bas. */
   body { padding-top: env(safe-area-inset-top); padding-bottom: calc(6rem + env(safe-area-inset-bottom)) !important; }
   .font-logo { font-family: 'Poppins', sans-serif; }
+  /* Listes du profil en sections (12/10/2026, inspiré de l'appli Gaspiz) */
+  .profile-section-title { background: #EEEDF2; color: rgba(27,75,67,.6); font-size: 13px; font-weight: 600; border-radius: 12px; padding: 9px 16px; margin-bottom: 2px; }
+  .profile-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; text-align: left; padding: 16px; font-size: 15px; font-weight: 500; color: #1B4B43; border-bottom: 1px solid #EEEDF2; }
+  .profile-row:active { background: #FAFAFB; }
+  .profile-chevron { color: rgba(27,75,67,.45); font-size: 22px; line-height: 1; }
   @media (max-width: 640px) {
     input, select, textarea { font-size: 16px !important; }
   }
@@ -37,28 +42,58 @@
 
 <header class="sticky top-0 z-30 bg-white shadow-sm">
   <div class="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between gap-2">
-    <h1 class="text-base font-bold text-ink">Mon Profil</h1>
-    <a href="points.html" class="shrink-0 flex items-center gap-2 bg-white border border-mango-100 rounded-full pl-4 pr-1 py-1 shadow-sm">
-      <span id="points-display" class="text-sm font-bold bg-gradient-to-r from-mango-500 to-hibiscus-600 bg-clip-text text-transparent">0</span>
-      <span class="w-7 h-7 rounded-full bg-mango-50 flex items-center justify-center overflow-hidden shrink-0 text-mango-700">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-      </span>
-    </a>
+    <span class="flex-1"></span>
+    <h1 class="text-lg font-semibold text-ink/70">Mon profil</h1>
+    <span class="flex-1 flex justify-end"><a href="points.html" aria-label="Mes points" class="shrink-0 flex items-center gap-1 bg-white border border-mango-100 rounded-full pl-2.5 pr-1 py-1 shadow-sm">
+      <span id="points-display" class="text-xs font-bold bg-gradient-to-r from-mango-500 to-hibiscus-600 bg-clip-text text-transparent whitespace-nowrap">0 pt</span>
+      <img src="img/bligo-icon.png" alt="" class="w-6 h-6 object-contain">
+    </a></span>
   </div>
 </header>
 
-<main class="max-w-4xl mx-auto px-5 py-8 max-w-sm">
+<main class="max-w-md mx-auto px-4 py-5">
 
-  <!-- Vu sans compte : pas de fiche à afficher, juste une invitation claire
-       à en créer un pour accéder au reste. -->
+  <!-- Vu sans compte -->
   <div id="guest-profile-view" class="hidden text-center py-10">
-    <p class="text-sm font-bold text-ink/50 mb-8">Mes informations personnelles</p>
-    <button onclick="window.location.href = 'index.html?gate=reserve'" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer mon compte</button>
+    <p class="text-lg font-bold text-ink">Ton profil</p>
+    <p class="text-sm text-ink/60 mt-2 max-w-xs mx-auto">Crée ton compte pour obtenir ta carte de médiathèque, réserver et suivre tes emprunts.</p>
+    <button onclick="window.location.href = 'index.html?gate=reserve'" class="mt-6 bg-brand text-white rounded-full px-6 py-3 text-sm font-semibold active:scale-[0.98] transition">Créer mon compte</button>
+    <div class="mt-8 text-left">
+      <p class="profile-section-title">Informations</p>
+      <a href="cgu.html" class="profile-row">Conditions générales d'utilisation<span class="profile-chevron">›</span></a>
+      <a href="confidentialite.html" class="profile-row">Politique de confidentialité<span class="profile-chevron">›</span></a>
+    </div>
   </div>
 
   <div id="profile-content">
-  <div class="flex items-center justify-center gap-2 mb-6">
-    <button id="registration-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full"></button>
+
+  <!-- Carte d'identité + compteurs (inspiré de Gaspiz, 12/10/2026) -->
+  <div class="bg-white border border-mango-100 rounded-2xl shadow-sm overflow-hidden mb-5">
+    <div class="flex items-center gap-4 p-4">
+      <div id="profile-avatar" class="w-16 h-16 rounded-2xl bg-mango-50 border-2 border-mango-200 flex items-center justify-center text-xl font-bold text-mango-700 shrink-0"></div>
+      <div class="min-w-0">
+        <p id="profile-name" class="text-lg font-bold text-ink truncate">—</p>
+        <p id="profile-email" class="text-xs text-ink/55 truncate">—</p>
+        <button id="registration-badge" class="hidden mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full"></button>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 border-t border-mango-100">
+      <a href="reservations.html#history-section" class="flex flex-col items-center py-3 px-1">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-mango-500"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>
+        <span id="stat-loans" class="text-xl font-bold text-ink mt-1">0</span>
+        <span class="text-[11px] text-ink/55">Emprunts</span>
+      </a>
+      <div class="flex flex-col items-center py-3 px-1 border-x border-mango-100">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-mango-500"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+        <span id="stat-saved" class="text-xl font-bold text-ink mt-1">0 €</span>
+        <span class="text-[11px] text-ink/55">Économisés</span>
+      </div>
+      <a href="points.html" class="flex flex-col items-center py-3 px-1">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" class="text-mango-500"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></svg>
+        <span id="stat-points" class="text-xl font-bold text-ink mt-1">0</span>
+        <span class="text-[11px] text-ink/55">Points</span>
+      </a>
+    </div>
   </div>
 
   <div id="attach-commune-notice" class="hidden bg-white rounded-xl p-4 shadow-sm mb-6">
@@ -71,7 +106,9 @@
     <p id="attach-commune-message" class="text-xs text-center mt-2"></p>
   </div>
 
-  <div class="rounded-2xl p-6 text-white shadow-xl bg-gradient-to-br from-hibiscus-700 via-hibiscus-600 to-mango-600 relative overflow-hidden mb-6">
+  <!-- Ma carte -->
+  <p class="profile-section-title">Ma carte</p>
+  <div class="rounded-2xl p-6 text-white shadow-xl bg-gradient-to-br from-hibiscus-700 via-hibiscus-600 to-mango-600 relative overflow-hidden mt-2 mb-5">
     <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
     <div class="absolute -right-2 bottom-6 w-16 h-16 rounded-full bg-white/10"></div>
     <div class="relative flex items-center gap-2">
@@ -79,17 +116,14 @@
       <p id="card-logo-text" class="font-logo font-bold text-sm">Bli<span class="text-mango-300">GO</span></p>
     </div>
     <p id="card-subtitle" class="text-[11px] text-white/70 relative mb-4">Médiathèque de Val-Fleuri</p>
-
     <p id="card-name" class="text-lg font-bold relative"></p>
     <p id="card-number" class="text-xs text-white/70 relative mb-4"></p>
-
     <div id="card-qr-block" class="hidden">
       <button type="button" onclick="openQrModal()" class="bg-white rounded-xl p-3 w-fit relative active:scale-95 transition" aria-label="Agrandir le QR code">
         <canvas id="card-qr-canvas" width="160" height="160"></canvas>
       </button>
-      <p class="text-[10px] text-white/60 mt-2 relative">Présente ce code à l'accueil pour récupérer tes réservations — appuie dessus pour l'agrandir.</p>
+      <p class="text-[10px] text-white/60 mt-2 relative">Présente ce code à l'accueil pour récupérer tes réservations. Appuie dessus pour l'agrandir.</p>
     </div>
-
     <div id="card-pending-block" class="hidden bg-white/15 border border-white/25 rounded-xl px-4 py-6 relative flex flex-col items-center text-center gap-2">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-white/85"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
       <p class="text-xs font-bold">Carte en attente d'activation</p>
@@ -97,80 +131,82 @@
     </div>
   </div>
 
-  <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <p class="text-xs font-semibold text-ink/50 mb-1">Nom</p>
-    <p class="text-sm font-bold text-ink mb-3 flex items-center gap-1.5">
-      <span id="profile-name">—</span>
-      <button type="button" onclick="editMyName()" aria-label="Modifier mon nom" class="text-ink/30 hover:text-ink/60">✎</button>
-    </p>
-    <p class="text-xs font-semibold text-ink/50 mb-1">E-mail</p>
-    <p id="profile-email" class="text-sm font-bold text-ink">—</p>
+  <!-- Mes informations personnelles -->
+  <p class="profile-section-title">Mes informations personnelles</p>
+  <a href="infos.html" class="profile-row">Modifier mon profil<span class="profile-chevron">›</span></a>
+  <button type="button" onclick="openSheet('sheet-password')" class="profile-row">Changer de mot de passe<span class="profile-chevron">›</span></button>
+  <button type="button" onclick="openSheet('sheet-delete')" class="profile-row">Supprimer mon compte<span class="profile-chevron">›</span></button>
+  <button type="button" onclick="logout()" class="profile-row">Se déconnecter<span class="profile-chevron">›</span></button>
+
+  <!-- Ma médiathèque -->
+  <p class="profile-section-title mt-6">Ma médiathèque</p>
+  <button type="button" id="membership-row" onclick="openSheet('sheet-membership')" class="hidden profile-row">
+    <span class="min-w-0"><span class="block">Mon adhésion</span><span id="membership-status" class="block text-xs text-ink/50 font-normal mt-0.5"></span></span>
+    <span class="profile-chevron">›</span>
+  </button>
+  <div id="family-block" class="hidden profile-row cursor-default">
+    <span class="min-w-0"><span class="block">Carte famille</span><span id="family-usage" class="block text-xs text-ink/50 font-normal mt-0.5"></span></span>
   </div>
-  <!-- Catégorie déclarée en préinscription (09/10/2026) -->
-  <div id="category-block" class="hidden bg-white rounded-xl p-4 shadow-sm mb-6">
-    <p class="text-xs font-semibold text-ink/50 mb-1">Ma catégorie d'abonnement</p>
-    <p class="text-[11px] text-ink/50 mb-2">L'agent la confirmera lors de ton passage à la médiathèque.</p>
-    <div class="grid grid-cols-3 gap-2">
-      <button type="button" data-cat="majeur" class="category-choice border rounded-lg py-2 text-xs font-semibold">Adulte</button>
-      <button type="button" data-cat="mineur" class="category-choice border rounded-lg py-2 text-xs font-semibold">Mineur·e</button>
-      <button type="button" data-cat="famille" class="category-choice border rounded-lg py-2 text-xs font-semibold">Famille</button>
-    </div>
-    <p id="category-message" class="text-[11px] text-ink/55 mt-2 min-h-[16px]"></p>
+  <div id="digital-list"></div>
+  <a id="admin-link" href="admin.html" class="hidden profile-row">Back-office de ma médiathèque<span class="profile-chevron">›</span></a>
+  <a id="superadmin-link" href="superadmin.html" class="hidden profile-row">Espace admin BliGO<span class="profile-chevron">›</span></a>
+
+  <!-- Support -->
+  <p class="profile-section-title mt-6">Support</p>
+  <a href="https://bligo.fr" target="_blank" rel="noopener" class="profile-row">Tu travailles dans une médiathèque ?<span class="profile-chevron">›</span></a>
+  <button type="button" id="share-app-btn" class="profile-row">Partager l'appli à un ami<span class="profile-chevron">›</span></button>
+  <p id="share-message" class="text-xs text-center text-mango-700"></p>
+  <a id="contact-link" href="mailto:megane@bligo.fr?subject=BliGO%20-%20Besoin%20d%27aide" class="profile-row">Nous contacter<span class="profile-chevron">›</span></a>
+  <a href="cgu.html" class="profile-row">Conditions générales d'utilisation<span class="profile-chevron">›</span></a>
+  <a href="confidentialite.html" class="profile-row">Politique de confidentialité<span class="profile-chevron">›</span></a>
+
+  <div class="flex flex-col items-center mt-8 mb-4">
+    <button onclick="logout()" class="border-2 border-mango-100 text-ink/70 rounded-xl px-6 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Se déconnecter</button>
+    <p class="text-xs text-ink/40 mt-4">BliGO - v1.0</p>
   </div>
 
-  <!-- Carte famille (09/10/2026) : un seul compte partagé par toute la famille -->
-  <div id="family-block" class="hidden bg-white rounded-xl p-4 shadow-sm mb-6">
-    <p class="text-xs font-semibold text-ink/50 mb-1">👨‍👩‍👧 Carte famille</p>
-    <p id="family-usage" class="text-sm font-bold text-ink"></p>
-    <p class="text-[11px] text-ink/50 mt-1">Ce compte est partagé par toute ta famille : chacun peut s'y connecter avec la même adresse e-mail pour réserver.</p>
   </div>
+</main>
 
-  <!-- Ressources numériques de la médiathèque (09/10/2026) -->
-  <div id="digital-block" class="hidden bg-white rounded-xl p-4 shadow-sm mb-6">
-    <p class="text-xs font-semibold text-ink/50 mb-2">Ressources numériques</p>
-    <div id="digital-list" class="flex flex-col gap-2"></div>
-  </div>
-
-  <!-- Adhésion et inscription dans une autre médiathèque (09/10/2026) -->
-  <div id="membership-block" class="hidden bg-white rounded-xl p-4 shadow-sm mb-6">
-    <p class="text-xs font-semibold text-ink/50 mb-1">Mon adhésion</p>
-    <p id="membership-status" class="text-sm font-bold text-ink mb-4"></p>
-    <p class="text-xs font-semibold text-ink/50 mb-1">Emprunter dans une autre médiathèque</p>
-    <p class="text-[11px] text-ink/50 mb-2">Tu habites une commune et tu veux emprunter aussi ailleurs ? Demande ton inscription : chaque médiathèque fixe ses conditions pour les non-résidents.</p>
+<!-- Fenêtres du profil (feuilles qui montent du bas) -->
+<div id="sheet-membership" onclick="closeSheet(event, this)" class="hidden fixed inset-0 z-50 bg-black/40 items-end sm:items-center justify-center">
+  <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[85dvh] overflow-y-auto relative" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+    <button type="button" onclick="closeSheet()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-ink/50 text-xl">✕</button>
+    <p class="text-base font-bold text-ink mb-1">Mon adhésion</p>
+    <p id="membership-status-detail" class="text-sm text-ink/70 mb-5"></p>
+    <p class="text-sm font-bold text-ink mb-1">Emprunter dans une autre médiathèque</p>
+    <p class="text-xs text-ink/55 mb-3">Tu veux emprunter aussi ailleurs ? Demande ton inscription : chaque médiathèque fixe ses conditions pour les non-résidents.</p>
     <div id="memberships-list" class="flex flex-col gap-1.5 mb-2"></div>
-    <select id="membership-commune-select" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-1 bg-white">
+    <select id="membership-commune-select" class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm mb-1 bg-white">
       <option value="" disabled selected>Choisis une médiathèque</option>
     </select>
     <p id="membership-commune-info" class="text-[11px] text-ink/55 mb-2 min-h-[16px]"></p>
-    <button id="membership-request-btn" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Demander mon inscription</button>
+    <button id="membership-request-btn" class="w-full bg-brand text-white rounded-xl py-3 text-sm font-semibold active:scale-[0.98] transition">Demander mon inscription</button>
     <p id="membership-message" class="text-xs text-center mt-2"></p>
   </div>
+</div>
 
-  <div class="rounded-2xl p-5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden mb-8">
-    <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
-    <p class="text-sm font-bold relative mb-1">📣 Partager BliGO à mes proches</p>
-    <p class="text-xs text-white/80 relative mb-4">Invite ta famille et tes amis à rejoindre la médiathèque.</p>
-    <button id="share-app-btn" class="relative w-full bg-white text-mango-700 rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Partager mon lien d'invitation</button>
-    <p id="share-message" class="relative text-xs text-center text-white/80 mt-2"></p>
+<div id="sheet-password" onclick="closeSheet(event, this)" class="hidden fixed inset-0 z-50 bg-black/40 items-end sm:items-center justify-center">
+  <form id="password-form" class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 relative flex flex-col gap-3" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+    <button type="button" onclick="closeSheet()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-ink/50 text-xl">✕</button>
+    <p class="text-base font-bold text-ink">Changer de mot de passe</p>
+    <input required minlength="6" type="password" id="new-password" autocomplete="new-password" placeholder="Nouveau mot de passe" class="w-full bg-[#EEEDF2] rounded-xl px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+    <input required minlength="6" type="password" id="new-password-confirm" autocomplete="new-password" placeholder="Confirmation du mot de passe" class="w-full bg-[#EEEDF2] rounded-xl px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+    <p id="password-message" class="text-xs text-center min-h-[16px]"></p>
+    <button type="submit" class="w-full bg-brand text-white rounded-xl py-3 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+  </form>
+</div>
+
+<div id="sheet-delete" onclick="closeSheet(event, this)" class="hidden fixed inset-0 z-50 bg-black/40 items-end sm:items-center justify-center">
+  <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 relative" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+    <button type="button" onclick="closeSheet()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-ink/50 text-xl">✕</button>
+    <p class="text-base font-bold text-ink mb-2">Supprimer mon compte</p>
+    <p class="text-sm text-ink/70 leading-relaxed">Ton compte, ta carte et ton historique seront supprimés. La suppression n'est possible qu'une fois tous tes documents rendus et ta situation réglée avec la médiathèque.</p>
+    <p class="text-sm text-ink/70 leading-relaxed mt-2">Envoie ta demande : elle sera traitée sous un mois.</p>
+    <a id="delete-request-link" href="mailto:megane@bligo.fr" class="block text-center w-full mt-5 bg-red-600 text-white rounded-xl py-3 text-sm font-semibold">Demander la suppression</a>
+    <button type="button" onclick="closeSheet()" class="w-full mt-2 text-sm font-semibold text-ink/50 py-2">Annuler</button>
   </div>
-
-  <div id="agent-section" class="hidden mb-6">
-    <p class="text-sm font-bold text-ink mb-3">Espace agent</p>
-    <div class="flex flex-col gap-2">
-      <a id="admin-link" href="admin.html" class="hidden w-full text-center text-sm font-semibold text-white bg-brand hover:bg-brand/90 rounded-lg py-2.5 shadow-sm">Back-office</a>
-      <a id="superadmin-link" href="superadmin.html" class="hidden w-full text-center text-sm font-semibold text-white bg-hibiscus-600 hover:bg-hibiscus-700 rounded-lg py-2.5 shadow-sm">Espace admin</a>
-    </div>
-  </div>
-
-  <button onclick="logout()" class="w-full text-sm font-semibold text-red-600 hover:text-red-700 border border-red-100 bg-red-50 rounded-lg py-2.5">Déconnexion</button>
-  <p class="text-center text-[11px] text-ink/45 mt-4">
-    <a href="cgu.html" class="underline">Conditions générales d'utilisation</a>
-    ·
-    <a href="confidentialite.html" class="underline">Politique de confidentialité</a>
-  </p>
-  </div>
-
-</main>
+</div>
 
 <!-- Pop-up pré-inscription -->
 <div id="pending-popup-backdrop" onclick="closePendingPopup(event)" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -271,28 +307,32 @@
   async function setupDigitalResources(communeId) {
     const { data, error } = await supabase.from('digital_resources').select('name, kind, url, description').eq('commune_id', communeId).order('sort_order').order('id');
     if (error || !data?.length) return;
-    document.getElementById('digital-block').classList.remove('hidden');
     document.getElementById('digital-list').innerHTML = data.map(r => `
-      <a href="${r.url}" target="_blank" rel="noopener" class="flex items-center gap-3 border border-mango-100 rounded-lg px-3 py-2.5 active:scale-[0.99] transition">
-        <span class="text-xl shrink-0">${DIGITAL_ICONS[r.kind] || '🌐'}</span>
-        <span class="min-w-0 flex-1">
-          <span class="block text-sm font-semibold text-ink truncate">${r.name}</span>
-          ${r.description ? `<span class="block text-[11px] text-ink/50">${r.description}</span>` : ''}
+      <a href="${r.url}" target="_blank" rel="noopener" class="profile-row">
+        <span class="min-w-0 flex items-center gap-3">
+          <span class="text-xl shrink-0">${DIGITAL_ICONS[r.kind] || '🌐'}</span>
+          <span class="min-w-0">
+            <span class="block truncate">${r.name}</span>
+            ${r.description ? `<span class="block text-xs text-ink/50 font-normal">${r.description}</span>` : ''}
+          </span>
         </span>
-        <span class="text-ink/30 shrink-0">↗</span>
+        <span class="profile-chevron">›</span>
       </a>`).join('');
   }
 
   async function setupMemberships(homeCommuneId) {
-    const block = document.getElementById('membership-block');
     const { data: me, error } = await supabase.from('profiles').select('membership_expires_at').eq('id', currentUserId).single();
     if (error) return; // migration pas encore passée
-    block.classList.remove('hidden');
+    document.getElementById('membership-row').classList.remove('hidden');
     const exp = me?.membership_expires_at ? new Date(me.membership_expires_at) : null;
-    const status = document.getElementById('membership-status');
-    if (!exp) status.textContent = 'Active';
-    else if (exp <= new Date()) { status.textContent = `Expirée depuis le ${formatDateFr(exp)} : renouvelle-la à l'accueil pour emprunter.`; status.classList.add('text-red-600'); }
-    else status.textContent = `Valable jusqu'au ${formatDateFr(exp)}`;
+    const text = !exp ? 'Active'
+      : exp <= new Date() ? `Expirée depuis le ${formatDateFr(exp)} : renouvelle-la à l'accueil pour emprunter.`
+      : `Valable jusqu'au ${formatDateFr(exp)}`;
+    for (const id of ['membership-status', 'membership-status-detail']) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.classList.toggle('text-red-600', !!exp && exp <= new Date());
+    }
 
     const [{ data: communes }, { data: memberships }] = await Promise.all([
       supabase.from('communes').select('id, name, non_resident_policy, non_resident_fee_cents').order('name'),
@@ -341,7 +381,6 @@
       .eq('id', currentUser.id).single();
     applyCommuneTheme(profile?.communes);
     if (profile?.role === 'agent' || profile?.role === 'super_admin') {
-      document.getElementById('agent-section').classList.remove('hidden');
       document.getElementById('admin-link').classList.remove('hidden');
     }
     // Espace admin BliGO : visible uniquement pour le compte de Mégane (12/10/2026).
@@ -354,11 +393,21 @@
       document.getElementById('superadmin-link').href = 'https://bligo.app/superadmin.html';
     }
 
-    document.getElementById('points-display').textContent = `${profile?.loyalty_points ?? 0}`;
-    document.getElementById('card-name').textContent = profile?.full_name || '';
+    const points = profile?.loyalty_points ?? 0;
+    document.getElementById('points-display').textContent = `${points} ${points > 1 ? 'pts' : 'pt'}`;
+    document.getElementById('stat-points').textContent = points;
+    const fullName = profile?.full_name && profile.full_name !== 'Nouvel usager' ? profile.full_name : '';
+    document.getElementById('card-name').textContent = fullName;
     document.getElementById('card-number').textContent = profile?.subscriber_number ? `N° abonné ${profile.subscriber_number}` : '';
-    document.getElementById('profile-name').textContent = profile?.full_name || '—';
+    document.getElementById('profile-name').textContent = fullName || 'Ton profil';
     document.getElementById('profile-email').textContent = currentUser.email;
+    document.getElementById('profile-avatar').textContent = fullName
+      ? fullName.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+      : '';
+    document.getElementById('delete-request-link').href = 'mailto:megane@bligo.fr?subject=' +
+      encodeURIComponent('Suppression de mon compte BliGO') + '&body=' +
+      encodeURIComponent(`Bonjour,\n\nJe souhaite supprimer mon compte BliGO.\n\nE-mail : ${currentUser.email}\nN° abonné : ${profile?.subscriber_number || ''}\n`);
+    loadStats(currentUser.id);
 
     document.getElementById('share-app-btn').addEventListener('click', async () => {
       // En dur plutôt que window.location.origin : dans l'app (iOS/Android),
@@ -500,17 +549,54 @@
     }, { once: true });
   }
 
-  // Complète/corrige son propre nom — utile car l'inscription ne demande
-  // plus que l'e-mail et le mot de passe, le nom se renseigne ici ensuite.
-  window.editMyName = async function () {
-    const current = document.getElementById('profile-name').textContent.trim();
-    const newName = prompt('Ton prénom et nom :', current === '—' || current === 'Nouvel usager' ? '' : current);
-    if (!newName || !newName.trim()) return;
-    const { error } = await supabase.from('profiles').update({ full_name: newName.trim() }).eq('id', currentUserId);
-    if (error) { alert('Erreur : ' + error.message); return; }
-    document.getElementById('profile-name').textContent = newName.trim();
-    document.getElementById('card-name').textContent = newName.trim();
+  // Compteurs : nombre d'emprunts et valeur des documents empruntés
+  // (prix saisi au catalogage) = ce que l'usager a économisé.
+  async function loadStats(userId) {
+    const { data, error } = await supabase.from('loans')
+      .select('id, book_copies ( books ( price_cents ) )').eq('user_id', userId);
+    if (error) return;
+    const loans = data || [];
+    const savedCents = loans.reduce((sum, l) => sum + (l.book_copies?.books?.price_cents || 0), 0);
+    document.getElementById('stat-loans').textContent = loans.length;
+    document.getElementById('stat-saved').textContent = `${Math.round(savedCents / 100)} €`;
+  }
+
+  let openedSheet = null;
+  window.openSheet = function (id) {
+    openedSheet = document.getElementById(id);
+    openedSheet.classList.remove('hidden');
+    openedSheet.classList.add('flex');
   };
+  window.closeSheet = function (event, el) {
+    if (event && el && event.target !== el) return;
+    if (!openedSheet) return;
+    openedSheet.classList.add('hidden');
+    openedSheet.classList.remove('flex');
+    openedSheet = null;
+  };
+
+  document.getElementById('password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('password-message');
+    const password = document.getElementById('new-password').value;
+    if (password !== document.getElementById('new-password-confirm').value) {
+      msg.textContent = 'Les deux mots de passe ne correspondent pas.';
+      msg.className = 'text-xs text-center min-h-[16px] text-red-600';
+      return;
+    }
+    msg.textContent = 'Enregistrement…';
+    msg.className = 'text-xs text-center min-h-[16px] text-ink/50';
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      msg.textContent = /different from the old/i.test(error.message) ? 'Choisis un mot de passe différent de l\'ancien.' : error.message;
+      msg.className = 'text-xs text-center min-h-[16px] text-red-600';
+      return;
+    }
+    e.target.reset();
+    msg.textContent = 'Mot de passe modifié !';
+    msg.className = 'text-xs text-center min-h-[16px] text-mango-700';
+    setTimeout(() => window.closeSheet(), 1200);
+  });
 
   window.openPendingPopup = function () {
     const backdrop = document.getElementById('pending-popup-backdrop');

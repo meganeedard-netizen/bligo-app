@@ -28,45 +28,56 @@
      touche sinon la barre de statut et le menu chevauche la barre du bas. */
   body { padding-top: env(safe-area-inset-top); padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
   .font-logo { font-family: 'Poppins', sans-serif; }
+  /* Listes du profil en sections (12/10/2026, inspiré de l'appli Gaspiz) */
+  .profile-section-title { background: #EEEDF2; color: rgba(27,75,67,.6); font-size: 13px; font-weight: 600; border-radius: 12px; padding: 9px 16px; margin-bottom: 2px; }
+  .profile-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; text-align: left; padding: 16px; font-size: 15px; font-weight: 500; color: #1B4B43; border-bottom: 1px solid #EEEDF2; }
+  .profile-row:active { background: #FAFAFB; }
+  .profile-chevron { color: rgba(27,75,67,.45); font-size: 22px; line-height: 1; }
   @media (max-width: 640px) {
     input, select, textarea { font-size: 16px !important; }
   }
 </style>
 </head>
 <body class="bg-white text-ink min-h-screen">
-<header class="sticky top-0 z-30 bg-white shadow-sm" id="legal-header">
-  <div class="max-w-2xl mx-auto px-5 py-3 flex items-center gap-3">
-    <button type="button" onclick="history.length > 1 ? history.back() : (location.href = 'index.html')" aria-label="Retour" class="w-8 h-8 rounded-full bg-mango-50 flex items-center justify-center text-ink/60">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+<!-- Mise en page inspirée de l'appli Gaspiz (12/10/2026) : dessin + grand
+     titre à gauche, croix de fermeture en haut à droite. -->
+<header class="bg-white">
+  <div class="max-w-2xl mx-auto px-5 pt-5 pb-3 flex items-start gap-3">
+    <svg viewBox="0 0 64 64" class="w-16 h-16 shrink-0" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M32 6l20 8v14c0 13-8.5 23-20 28C20.5 51 12 41 12 28V14z" fill="#FFEAD2" stroke="#1B4B43" stroke-width="2.5"/><rect x="23" y="29" width="18" height="14" rx="3" fill="#FF9B2E" stroke="#1B4B43" stroke-width="2.5"/><path d="M27 29v-4a5 5 0 0 1 10 0v4" stroke="#1B4B43" stroke-width="2.5"/><circle cx="32" cy="36" r="2" fill="#1B4B43"/></svg>
+    <div class="flex-1 min-w-0 pt-1">
+      <h1 class="text-2xl font-bold text-ink leading-tight">Politique de confidentialité</h1>
+      <p class="text-sm text-ink/50 mt-1">Tes données personnelles</p>
+    </div>
+    <button type="button" onclick="closeLegalPage()" aria-label="Fermer" class="w-10 h-10 -mr-2 flex items-center justify-center text-ink/60 shrink-0">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
-    <h1 class="text-base font-bold text-ink">Politique de confidentialité</h1>
   </div>
 </header>
-<main class="max-w-2xl mx-auto px-5 py-5 text-sm text-ink/75 leading-relaxed">
+<main class="max-w-2xl mx-auto px-5 pb-8 text-[15px] text-ink/75 leading-relaxed">
 <p class="text-xs text-ink/45 mb-4">Mise à jour le 12 octobre 2026</p>
 <p class="my-2"><strong class="text-ink">En bref.</strong> BliGO collecte le strict nécessaire pour gérer ton inscription et tes emprunts : ton adresse e-mail, ton nom, ta carte et tes prêts. Aucune date de naissance, aucune publicité, aucune revente. Les données sont hébergées à Paris, dans l'Union européenne.</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">1. Qui traite tes données</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">1. Qui traite tes données</h2>
 <p class="my-2"><strong class="text-ink">La médiathèque</strong> où tu es inscrit, c'est-à-dire la commune ou l'intercommunalité qui la gère, est <strong class="text-ink">responsable du traitement</strong>. C'est elle qui décide des règles d'inscription et de prêt, et à qui tu peux t'adresser en premier.</p>
 <p class="my-2"><strong class="text-ink">BliGO</strong> est <strong class="text-ink">sous-traitant</strong> : il fournit l'application et le logiciel, et traite les données uniquement pour le compte de la médiathèque et selon ses instructions, dans le cadre d'un contrat de sous-traitance (article 28 du RGPD).</p>
 <p class="my-2">Éditeur de BliGO : Mégane Prieto-Blanco, entreprise individuelle, SIRET 930 781 919 00012, Rue Owel Solvet Saint Protais, 97180 Sainte-Anne, Guadeloupe. Contact : megane@bligo.fr.</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">2. Données collectées</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">2. Données collectées</h2>
 <p class="my-2">Le catalogue et l'agenda se consultent sans compte : aucune donnée personnelle n'est alors collectée.</p>
 <div class="overflow-x-auto my-3"><table class="w-full text-xs border-collapse"><thead><tr><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Donnée</th><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Fournie par</th><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Utilisation</th></tr></thead><tbody><tr><td class="align-top border border-mango-100 px-2 py-1.5">Adresse e-mail et mot de passe (chiffré)</td><td class="align-top border border-mango-100 px-2 py-1.5">Toi, à l'inscription</td><td class="align-top border border-mango-100 px-2 py-1.5">Connexion, code de vérification, rappels et alertes par e-mail</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Prénom et nom</td><td class="align-top border border-mango-100 px-2 py-1.5">Toi, à l'inscription, ou l'agent au comptoir</td><td class="align-top border border-mango-100 px-2 py-1.5">Identification à l'accueil</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Médiathèque et commune de rattachement</td><td class="align-top border border-mango-100 px-2 py-1.5">Toi</td><td class="align-top border border-mango-100 px-2 py-1.5">Inscription, catalogue affiché, règles de prêt</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Numéro d'abonné et QR code</td><td class="align-top border border-mango-100 px-2 py-1.5">Générés par BliGO</td><td class="align-top border border-mango-100 px-2 py-1.5">Carte d'usager</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Catégorie (adulte, mineur, gratuité, famille)</td><td class="align-top border border-mango-100 px-2 py-1.5">L'agent, à la validation</td><td class="align-top border border-mango-100 px-2 py-1.5">Tarif, quotas, documents réservés aux adultes</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Statut et date d'adhésion</td><td class="align-top border border-mango-100 px-2 py-1.5">L'agent</td><td class="align-top border border-mango-100 px-2 py-1.5">Validité de la carte</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Réservations, emprunts, retours, prolongations, files d'attente</td><td class="align-top border border-mango-100 px-2 py-1.5">Ton utilisation</td><td class="align-top border border-mango-100 px-2 py-1.5">Gestion des prêts, rappels, statistiques</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Retards, état des documents rendus, documents perdus ou abîmés et montants dus</td><td class="align-top border border-mango-100 px-2 py-1.5">L'agent et le logiciel</td><td class="align-top border border-mango-100 px-2 py-1.5">Application du règlement de la médiathèque</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Avis et notes sur les documents</td><td class="align-top border border-mango-100 px-2 py-1.5">Toi</td><td class="align-top border border-mango-100 px-2 py-1.5">Affichés sans ton nom aux autres usagers</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Points de fidélité, badges, objectif de lecture</td><td class="align-top border border-mango-100 px-2 py-1.5">Ton utilisation</td><td class="align-top border border-mango-100 px-2 py-1.5">Fonctions ludiques de l'appli</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Liste d'envie, préférences de lecture</td><td class="align-top border border-mango-100 px-2 py-1.5">Toi</td><td class="align-top border border-mango-100 px-2 py-1.5">Suggestions et alertes</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Dons de livres</td><td class="align-top border border-mango-100 px-2 py-1.5">L'agent</td><td class="align-top border border-mango-100 px-2 py-1.5">Points de fidélité</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Inscriptions aux événements</td><td class="align-top border border-mango-100 px-2 py-1.5">Toi</td><td class="align-top border border-mango-100 px-2 py-1.5">Gestion des places</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Notifications dans l'appli</td><td class="align-top border border-mango-100 px-2 py-1.5">Le logiciel</td><td class="align-top border border-mango-100 px-2 py-1.5">T'informer (réservation prête, retard…)</td></tr></tbody></table></div>
 <p class="my-2">BliGO ne collecte <strong class="text-ink">pas</strong> de date de naissance, de pièce d'identité ni de justificatif de domicile : ceux-ci sont seulement présentés à l'agent, qui ne les enregistre pas dans BliGO.</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">3. Finalités et bases légales</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">3. Finalités et bases légales</h2>
 <div class="overflow-x-auto my-3"><table class="w-full text-xs border-collapse"><thead><tr><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Finalité</th><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Base légale (article 6 du RGPD)</th></tr></thead><tbody><tr><td class="align-top border border-mango-100 px-2 py-1.5">Inscription, gestion des prêts, réservations, retours, adhésion</td><td class="align-top border border-mango-100 px-2 py-1.5">Mission d'intérêt public de la médiathèque (lecture publique)</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Rappels de retour, alertes de file d'attente, rappel d'adhésion</td><td class="align-top border border-mango-100 px-2 py-1.5">Mission d'intérêt public</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Documents perdus ou abîmés, pénalités de retard</td><td class="align-top border border-mango-100 px-2 py-1.5">Mission d'intérêt public et règlement de la médiathèque</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Statistiques de prêt et rapports au ministère de la Culture</td><td class="align-top border border-mango-100 px-2 py-1.5">Obligation légale et mission d'intérêt public</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Avis, points de fidélité, badges, liste d'envie, défis de lecture</td><td class="align-top border border-mango-100 px-2 py-1.5">Ton consentement, par l'utilisation de ces fonctions facultatives</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Sécurité du service, prévention des abus</td><td class="align-top border border-mango-100 px-2 py-1.5">Intérêt légitime</td></tr></tbody></table></div>
 <p class="my-2">Tes données ne sont <strong class="text-ink">jamais</strong> vendues, louées ni utilisées à des fins publicitaires.</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">4. Durées de conservation</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">4. Durées de conservation</h2>
 <div class="overflow-x-auto my-3"><table class="w-full text-xs border-collapse"><thead><tr><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Données</th><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Durée</th></tr></thead><tbody><tr><td class="align-top border border-mango-100 px-2 py-1.5">Compte (e-mail, nom, carte, catégorie)</td><td class="align-top border border-mango-100 px-2 py-1.5">Tant que le compte existe ; supprimé sur demande, une fois les documents rendus</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Historique des emprunts et réservations</td><td class="align-top border border-mango-100 px-2 py-1.5">Tant que le compte existe, pour te permettre de retrouver tes lectures et à la médiathèque d'établir ses statistiques</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Montants dus pour un document perdu ou abîmé</td><td class="align-top border border-mango-100 px-2 py-1.5">Jusqu'à leur règlement, puis durée de la prescription comptable</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Avis</td><td class="align-top border border-mango-100 px-2 py-1.5">Tant qu'ils ne sont pas supprimés par toi ou la médiathèque</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Statistiques</td><td class="align-top border border-mango-100 px-2 py-1.5">Sans limite, sous forme agrégée, sans nom d'usager</td></tr></tbody></table></div>
 <p class="my-2">À la suppression d'un compte, les données nominatives sont effacées. Les statistiques de prêt sont conservées sans lien avec la personne.</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">5. Destinataires et sous-traitants</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">5. Destinataires et sous-traitants</h2>
 <p class="my-2"><strong class="text-ink">Ont accès à tes données</strong> : les agents de ta médiathèque (et des médiathèques de ton réseau quand le prêt y est partagé), dans la limite de leur rôle, et l'Éditeur pour la maintenance et l'assistance. Les autres usagers ne voient jamais tes données ; tes avis leur apparaissent sans ton nom.</p>
 <div class="overflow-x-auto my-3"><table class="w-full text-xs border-collapse"><thead><tr><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Sous-traitant</th><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Rôle</th><th class="text-left font-semibold bg-mango-50 border border-mango-100 px-2 py-1.5">Localisation</th></tr></thead><tbody><tr><td class="align-top border border-mango-100 px-2 py-1.5">Supabase</td><td class="align-top border border-mango-100 px-2 py-1.5">Base de données, comptes, stockage des images</td><td class="align-top border border-mango-100 px-2 py-1.5">Paris (Union européenne)</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Hostinger</td><td class="align-top border border-mango-100 px-2 py-1.5">Hébergement des fichiers du site et de l'application</td><td class="align-top border border-mango-100 px-2 py-1.5">Lituanie (Union européenne)</td></tr><tr><td class="align-top border border-mango-100 px-2 py-1.5">Resend</td><td class="align-top border border-mango-100 px-2 py-1.5">Envoi des e-mails (code de vérification, rappels, alertes)</td><td class="align-top border border-mango-100 px-2 py-1.5">Voir la section 6</td></tr></tbody></table></div>
 <p class="my-2"><strong class="text-ink">Sources bibliographiques.</strong> Pour remplir les fiches des documents, BliGO interroge la BnF, Open Library, Google Books, Wikipédia, Wikidata et MusicBrainz. Ces services reçoivent uniquement l'ISBN, le code-barres ou le titre d'un document, <strong class="text-ink">jamais tes données personnelles</strong>.</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">6. Hébergement et transferts hors UE</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">6. Hébergement et transferts hors UE</h2>
 <p class="my-2">Les données des comptes, des prêts et des avis sont stockées par Supabase dans un centre de données situé <strong class="text-ink">à Paris</strong>. Les fichiers de l'application sont hébergés par Hostinger en <strong class="text-ink">Lituanie</strong>. Aucun de ces hébergements n'entraîne de transfert de données hors de l'Union européenne.</p>
 <p class="my-2">Si un prestataire situé hors de l'Union européenne est utilisé (par exemple pour l'envoi des e-mails), le transfert est encadré par les clauses contractuelles types de la Commission européenne.</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">7. Sécurité des données</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">7. Sécurité des données</h2>
 <ul class="list-disc pl-5 space-y-1 my-2">
 <li>Tous les échanges se font en connexion chiffrée (HTTPS).</li>
 <li>Les mots de passe sont stockés chiffrés et ne sont lisibles par personne, pas même l'Éditeur.</li>
@@ -74,14 +85,14 @@
 <li>La base est sauvegardée automatiquement par l'hébergeur.</li>
 <li>Une violation de données serait signalée à la médiathèque dans les meilleurs délais, pour qu'elle puisse prévenir la CNIL sous 72 heures.</li>
 </ul>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">8. Cookies, stockage local et services tiers</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">8. Cookies, stockage local et services tiers</h2>
 <p class="my-2">BliGO <strong class="text-ink">n'utilise aucun cookie publicitaire ni outil de mesure d'audience</strong>. Aucun bandeau de consentement n'est donc nécessaire.</p>
 <p class="my-2">L'application garde sur ton appareil, dans le stockage local du navigateur, uniquement ce qui est indispensable : ta session de connexion, la médiathèque dont tu consultes le catalogue et le fait d'avoir déjà vu certaines bulles d'aide.</p>
 <p class="my-2">Pour s'afficher, l'application charge des polices de caractères (Google Fonts), des bibliothèques techniques (cdn.tailwindcss.com, esm.sh) et des images de couverture (Google Books, Open Library, Wikimedia). Ces services reçoivent, comme pour tout site, l'adresse IP de ton appareil, mais aucune donnée de ton compte.</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">9. Mineurs et carte famille</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">9. Mineurs et carte famille</h2>
 <p class="my-2">Un mineur peut créer un compte. L'autorisation d'un titulaire de l'autorité parentale est vérifiée par la médiathèque à la validation de l'inscription. Le compte d'un mineur ne voit pas les documents réservés aux adultes.</p>
 <p class="my-2">La carte famille est un compte unique, partagé par les membres d'un même foyer sous la responsabilité de l'adulte titulaire. Les emprunts de toute la famille apparaissent donc dans le même historique, visible par chacun de ceux qui utilisent ce compte.</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">10. Tes droits</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">10. Tes droits</h2>
 <p class="my-2">Tu peux à tout moment :</p>
 <ul class="list-disc pl-5 space-y-1 my-2">
 <li><strong class="text-ink">accéder</strong> à tes données et en obtenir une copie ;</li>
@@ -92,12 +103,16 @@
 </ul>
 <p class="my-2"><strong class="text-ink">Contact</strong> : ta médiathèque, ou megane@bligo.fr. Une réponse t'est apportée sous un mois.</p>
 <p class="my-2">Si tu estimes que tes droits ne sont pas respectés, tu peux adresser une réclamation à la <strong class="text-ink">CNIL</strong> (www.cnil.fr, 3 place de Fontenoy, 75007 Paris).</p>
-<h2 class="text-base font-bold text-ink mt-6 mb-2">11. Modifications</h2>
+<h2 class="text-xl font-bold text-ink mt-6 mb-2">11. Modifications</h2>
 <p class="my-2">Cette politique peut évoluer avec l'application. En cas de changement important, les usagers sont prévenus dans l'application ou par e-mail. La date de dernière mise à jour figure en haut de la page.</p>
 </main>
 <script>
-  // Ouverte dans la fenêtre de l'inscription : pas besoin du bouton retour.
-  if (window.self !== window.top) document.getElementById('legal-header').classList.add('hidden');
+  // Ouverte dans la fenêtre de l'inscription : la croix ferme cette fenêtre ;
+  // sinon retour à la page précédente.
+  function closeLegalPage() {
+    if (window.self !== window.top && window.parent.closeLegal) { window.parent.closeLegal(); return; }
+    if (history.length > 1) history.back(); else location.href = 'profil.html';
+  }
 </script>
 </body>
 </html>

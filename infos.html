@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>BliGO — Mes informations</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], logo: ['Poppins', 'sans-serif'] },
+      colors: {
+        ink: '#1B4B43',
+        brand: 'var(--color-brand, #1B4B43)',
+        mango: { 50:'var(--color-mango-50, #FFF7ED)',100:'var(--color-mango-100, #FFEAD2)',200:'var(--color-mango-200, #FFD4A3)',300:'var(--color-mango-300, #FFB86B)',400:'var(--color-mango-400, #FFA33F)',500:'var(--color-mango-500, #FF9B2E)',600:'var(--color-mango-600, #F07F14)',700:'var(--color-mango-700, #C7630F)',800:'var(--color-mango-800, #9E4E12)',900:'var(--color-mango-900, #7C3F12)' },
+        hibiscus: { 50:'var(--color-hibiscus-50, #FFF0F5)',100:'var(--color-hibiscus-100, #FFDCE9)',200:'var(--color-hibiscus-200, #FFB8D3)',300:'var(--color-hibiscus-300, #FF8FB9)',400:'var(--color-hibiscus-400, #F2609A)',500:'var(--color-hibiscus-500, #E8437A)',600:'var(--color-hibiscus-600, #C92C61)',700:'var(--color-hibiscus-700, #A3234E)',800:'var(--color-hibiscus-800, #7E1C3D)',900:'var(--color-hibiscus-900, #5F1730)' }
+      }
+    } }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  html, body { overscroll-behavior-y: contain; }
+  body { min-height: 100dvh !important; }
+  /* Sur un vrai iPhone (encoche/île dynamique + barre du bas), le contenu
+     touche sinon la barre de statut et le menu chevauche la barre du bas. */
+  body { padding-top: env(safe-area-inset-top); padding-bottom: 0 !important; }
+  .font-logo { font-family: 'Poppins', sans-serif; }
+  /* Listes du profil en sections (12/10/2026, inspiré de l'appli Gaspiz) */
+  .profile-section-title { background: #EEEDF2; color: rgba(27,75,67,.6); font-size: 13px; font-weight: 600; border-radius: 12px; padding: 9px 16px; margin-bottom: 2px; }
+  .profile-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; text-align: left; padding: 16px; font-size: 15px; font-weight: 500; color: #1B4B43; border-bottom: 1px solid #EEEDF2; }
+  .profile-row:active { background: #FAFAFB; }
+  .profile-chevron { color: rgba(27,75,67,.45); font-size: 22px; line-height: 1; }
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
+  /* Interrupteur (12/10/2026) */
+  .toggle { width: 52px; height: 30px; border-radius: 999px; background: #E3E2E8; position: relative; transition: background .2s; }
+  .toggle span { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s; }
+  .toggle[aria-checked="true"] { background: var(--color-mango-500, #FF9B2E); }
+  .toggle[aria-checked="true"] span { transform: translateX(22px); }
+</style>
+</head>
+<body class="bg-[#F4F3F7] text-ink min-h-screen">
+
+<header class="sticky top-0 z-30 bg-white shadow-sm">
+  <div class="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
+    <a href="profil.html" aria-label="Retour" class="w-9 h-9 flex items-center justify-center text-ink/70">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+    </a>
+    <h1 class="text-lg font-semibold text-ink/70">Mes informations</h1>
+  </div>
+</header>
+
+<main class="max-w-md mx-auto px-4 py-5" style="padding-bottom: calc(7rem + env(safe-area-inset-bottom));">
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <input id="first-name" maxlength="30" autocomplete="given-name" placeholder="Ton prénom" class="w-full bg-white rounded-xl px-4 py-3.5 text-sm shadow-sm outline-none focus:ring-2 focus:ring-mango-300">
+      <p id="first-name-count" class="text-[11px] text-ink/40 text-right mt-1">0/30</p>
+    </div>
+    <div>
+      <input id="last-name" maxlength="40" autocomplete="family-name" placeholder="Ton nom" class="w-full bg-white rounded-xl px-4 py-3.5 text-sm shadow-sm outline-none focus:ring-2 focus:ring-mango-300">
+      <p id="last-name-count" class="text-[11px] text-ink/40 text-right mt-1">0/40</p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl px-4 py-3.5 shadow-sm mt-2">
+    <p class="text-[11px] font-semibold text-ink/45">E-mail</p>
+    <p id="email" class="text-sm text-ink"></p>
+  </div>
+  <div class="bg-white rounded-xl px-4 py-3.5 shadow-sm mt-3">
+    <p class="text-[11px] font-semibold text-ink/45">Ma médiathèque</p>
+    <p id="commune" class="text-sm text-ink"></p>
+    <p class="text-[11px] text-ink/45 mt-1">Pour changer de médiathèque de rattachement, adresse-toi à l'accueil.</p>
+  </div>
+
+  <p class="text-sm font-bold text-ink mt-7 mb-1">Ce que j'aime lire</p>
+  <p class="text-xs text-ink/50 mb-3">Pour te proposer les bonnes nouveautés.</p>
+  <div id="categories" class="flex flex-wrap gap-2"></div>
+
+  <p class="text-sm font-bold text-ink mt-7 mb-1">Mon rythme de lecture</p>
+  <p class="text-xs text-ink/50 mb-3">Combien de livres par mois ?</p>
+  <div id="pace" class="flex gap-2"></div>
+
+  <div class="bg-white rounded-2xl p-4 shadow-sm mt-7 flex items-center justify-between gap-4">
+    <div>
+      <p class="text-base font-bold text-ink">Notifications</p>
+      <p class="text-xs text-ink/55 mt-0.5">Pour recevoir les messages sur tes réservations, tes retours et ta liste d'envie.</p>
+    </div>
+    <button type="button" id="notif-toggle" role="switch" aria-checked="false" class="toggle shrink-0"><span></span></button>
+  </div>
+
+  <p class="text-center text-sm text-ink/70 mt-8">Voir nos <a href="cgu.html" class="text-mango-700 font-semibold">conditions générales</a></p>
+</main>
+
+<div class="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-[#EEEDF2]" style="padding-bottom: env(safe-area-inset-bottom);">
+  <div class="max-w-md mx-auto px-4 py-3 flex flex-col items-center">
+    <p id="save-message" class="text-xs min-h-[16px] mb-1"></p>
+    <button id="save-btn" class="flex items-center gap-2 bg-brand text-white rounded-xl px-8 py-3 text-sm font-semibold shadow-md active:scale-[0.98] transition">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>
+      Sauvegarder
+    </button>
+  </div>
+</div>
+
+<script type="module">
+  import { supabase } from './js/supabaseClient.js';
+  import { applyCachedTheme, applyCommuneTheme } from './js/theme.js';
+  applyCachedTheme();
+
+  const CATEGORIES = [
+    'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
+    'Documentaire', 'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
+    'Bien-être', 'Maison', 'Jeux',
+  ];
+  const PACES = [{ value: 1, label: '1' }, { value: 2, label: '2' }, { value: 3, label: '3' }, { value: 4, label: '4 et +' }];
+
+  let user = null;
+  let selectedCategories = new Set();
+  let selectedPace = null;
+  let notifications = false;
+
+  const chip = on => `text-sm font-semibold px-3.5 py-2 rounded-full border transition ${on ? 'bg-brand text-white border-brand' : 'bg-white text-ink/65 border-transparent shadow-sm'}`;
+
+  function renderChoices() {
+    document.getElementById('categories').innerHTML = CATEGORIES.map(c =>
+      `<button type="button" data-cat="${c}" class="${chip(selectedCategories.has(c))}">${c}</button>`).join('');
+    document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => {
+      const c = b.dataset.cat;
+      selectedCategories.has(c) ? selectedCategories.delete(c) : selectedCategories.add(c);
+      renderChoices();
+    });
+    document.getElementById('pace').innerHTML = PACES.map(p =>
+      `<button type="button" data-pace="${p.value}" class="flex-1 ${chip(selectedPace === p.value)}">${p.label}</button>`).join('');
+    document.querySelectorAll('[data-pace]').forEach(b => b.onclick = () => {
+      const v = Number(b.dataset.pace);
+      selectedPace = selectedPace === v ? null : v;
+      renderChoices();
+    });
+    const t = document.getElementById('notif-toggle');
+    t.setAttribute('aria-checked', String(notifications));
+  }
+
+  function bindCounter(id, max) {
+    const input = document.getElementById(id);
+    const count = document.getElementById(`${id}-count`);
+    const update = () => { count.textContent = `${input.value.length}/${max}`; };
+    input.addEventListener('input', update);
+    update();
+  }
+
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = 'profil.html'; return; }
+    user = session.user;
+    const { data: profile } = await supabase.from('profiles')
+      .select('full_name, preferred_categories, reading_pace, notifications_enabled, communes ( name, theme_ink_hex, theme_accent_hex )')
+      .eq('id', user.id).single();
+    applyCommuneTheme(profile?.communes);
+
+    // Prénom / nom : ceux saisis à l'inscription, sinon découpés depuis le nom complet.
+    const meta = user.user_metadata || {};
+    const full = profile?.full_name && profile.full_name !== 'Nouvel usager' ? profile.full_name : '';
+    const [first, ...rest] = full.split(' ');
+    document.getElementById('first-name').value = meta.first_name || first || '';
+    document.getElementById('last-name').value = meta.last_name || rest.join(' ') || '';
+    bindCounter('first-name', 30);
+    bindCounter('last-name', 40);
+    document.getElementById('email').textContent = user.email;
+    document.getElementById('commune').textContent = profile?.communes?.name ? `Médiathèque de ${profile.communes.name}` : '—';
+
+    selectedCategories = new Set(profile?.preferred_categories || []);
+    selectedPace = profile?.reading_pace || null;
+    notifications = !!profile?.notifications_enabled;
+    renderChoices();
+  }
+
+  document.getElementById('notif-toggle').addEventListener('click', async () => {
+    notifications = !notifications;
+    if (notifications && 'Notification' in window && Notification.permission === 'default') {
+      try { await Notification.requestPermission(); } catch {}
+    }
+    renderChoices();
+  });
+
+  document.getElementById('save-btn').addEventListener('click', async () => {
+    const msg = document.getElementById('save-message');
+    const firstName = document.getElementById('first-name').value.trim();
+    const lastName = document.getElementById('last-name').value.trim();
+    if (!firstName || !lastName) {
+      msg.textContent = 'Ton prénom et ton nom sont obligatoires.';
+      msg.className = 'text-xs min-h-[16px] mb-1 text-red-600';
+      return;
+    }
+    msg.textContent = 'Enregistrement…';
+    msg.className = 'text-xs min-h-[16px] mb-1 text-ink/50';
+    const payload = {
+      full_name: `${firstName} ${lastName}`,
+      preferred_categories: [...selectedCategories],
+      notifications_enabled: notifications,
+    };
+    if (selectedPace) { payload.reading_pace = selectedPace; payload.reading_goal = selectedPace * 12; }
+    const [{ error }, { error: metaError }] = await Promise.all([
+      supabase.from('profiles').update(payload).eq('id', user.id),
+      supabase.auth.updateUser({ data: { first_name: firstName, last_name: lastName, full_name: `${firstName} ${lastName}` } }),
+    ]);
+    if (error || metaError) {
+      msg.textContent = 'Erreur : ' + (error || metaError).message;
+      msg.className = 'text-xs min-h-[16px] mb-1 text-red-600';
+      return;
+    }
+    msg.textContent = 'C\'est enregistré !';
+    msg.className = 'text-xs min-h-[16px] mb-1 text-mango-700';
+  });
+
+  init();
+</script>
+</body>
+</html>

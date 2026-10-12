@@ -180,24 +180,14 @@
 
   <!-- CGU / politique de confidentialité (12/10/2026) : lisibles depuis
        l'inscription sans quitter le formulaire déjà rempli. -->
-  <div id="legal-backdrop" onclick="if (event.target === this) closeLegal()" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-3" style="padding-top: calc(0.75rem + env(safe-area-inset-top)); padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
-    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full h-full max-h-[90dvh] flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-mango-100">
-        <p id="legal-title" class="text-sm font-bold text-ink"></p>
-        <button type="button" onclick="closeLegal()" aria-label="Fermer" class="w-8 h-8 rounded-full bg-mango-50 text-ink/50 flex items-center justify-center text-sm font-bold">✕</button>
-      </div>
-      <iframe id="legal-frame" title="Document" class="flex-1 w-full"></iframe>
-      <div class="px-4 py-3 border-t border-mango-100">
-        <button type="button" onclick="closeLegal()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold">J'ai lu</button>
-      </div>
-    </div>
+  <div id="legal-backdrop" class="hidden fixed inset-0 z-50 bg-white flex-col" style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);">
+    <iframe id="legal-frame" title="Document" class="flex-1 w-full"></iframe>
   </div>
   <script>
     function openLegal(event, url, title) {
       // Le lien est dans le <label> de la case : on évite de la cocher/décocher.
       event.preventDefault();
       event.stopPropagation();
-      document.getElementById('legal-title').textContent = title;
       document.getElementById('legal-frame').src = url;
       const backdrop = document.getElementById('legal-backdrop');
       backdrop.classList.remove('hidden');
