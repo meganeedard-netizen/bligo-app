@@ -44,7 +44,7 @@ const INDEX_INJECT = "\n  window.redirectAfterLogin = async function () {\n    c
   "  document.querySelector('#auth-card > button[onclick=\"backToBrowsing()\"]')?.classList.add('hidden');\n" +
   "  switchTab('login');\n" +
   "  if (new URLSearchParams(location.search).get('not_agent')) {\n" +
-  "    messageEl.textContent = 'Ce logiciel est réservé au personnel de la médiathèque. Les usagers utilisent l\\'appli BliGO.';\n" +
+  "    messageEl.textContent = 'Ce compte n\\'a pas accès au back-office.';\n" +
   "    messageEl.className = 'text-xs text-center mt-3 text-red-600';\n" +
   "  }\n";
 edit('index.html', html => html
