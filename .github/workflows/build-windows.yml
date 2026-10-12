@@ -20,6 +20,9 @@ on:
       - 'tauri-app/**'
       - '.github/workflows/build-windows.yml'
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -57,3 +60,21 @@ jobs:
             tauri-app/src-tauri/target/release/bundle/nsis/*.exe
             tauri-app/src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
+
+      # Publication sur la page « Releases » du dépôt : téléchargement direct,
+      # sans compte GitHub (le PC d'une médiathèque peut le récupérer tel quel).
+      - name: Publication de la version Windows
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: agent-windows-${{ github.run_number }}
+          name: BliGO Agent pour Windows (version ${{ github.run_number }})
+          body: |
+            Logiciel agent BliGO pour Windows, fabriqué automatiquement à partir du back-office.
+            Installer le fichier « setup.exe ». Au premier lancement, Windows peut afficher
+            « Windows a protégé votre ordinateur » (logiciel pas encore signé) : cliquer sur
+            « Informations complémentaires » puis « Exécuter quand même ».
+          make_latest: true
+          files: |
+            tauri-app/src-tauri/target/release/bundle/nsis/*.exe
+            tauri-app/src-tauri/target/release/bundle/msi/*.msi
+
