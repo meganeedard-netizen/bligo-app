@@ -334,6 +334,23 @@
     return `${hours} h`;
   }
 
+  // Sans compte (12/10/2026) : on explique sur place avant d'envoyer vers l'inscription.
+  function askAccountForEvent(ev) {
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const backdrop = document.createElement('div');
+    backdrop.className = 'fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4';
+    backdrop.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
+        <p class="text-base font-bold text-ink mb-2">Crée ton compte pour t'inscrire</p>
+        <p class="text-sm text-ink/70 leading-relaxed">${ev ? `Pour t'inscrire à <strong>${esc(ev.title)}</strong>, tu as besoin d'un compte BliGO.` : "Pour t'inscrire à un événement, tu as besoin d'un compte BliGO."} C'est gratuit et ça prend 2 minutes.</p>
+        <a href="index.html?gate=event" class="block w-full mt-5 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer mon compte</a>
+        <button data-a="cancel" class="w-full mt-2 text-sm font-semibold text-ink/50 py-2">Annuler</button>
+      </div>`;
+    backdrop.querySelector('[data-a="cancel"]').onclick = () => backdrop.remove();
+    backdrop.onclick = e => { if (e.target === backdrop) backdrop.remove(); };
+    document.body.appendChild(backdrop);
+  }
+
   function confirmRsvp(ev) {
     const start = new Date(ev.event_date);
     const day = start.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -362,7 +379,7 @@
 
   async function toggleRsvp(eventId) {
     // Sans compte : l'agenda se consulte librement, l'inscription demande un compte (12/10/2026).
-    if (!currentUser) { window.location.href = 'index.html?gate=event'; return; }
+    if (!currentUser) { askAccountForEvent(events.find(e => e.id === eventId)); return; }
     // Confirmation avant de s'inscrire (12/10/2026) : places limitées et délai
     // de désinscription réglé par la médiathèque (48 h par défaut).
     if (!myRsvps.has(eventId)) {
