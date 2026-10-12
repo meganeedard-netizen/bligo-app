@@ -45,7 +45,13 @@
       <img id="commune-logo" alt="" class="hidden w-14 h-14 rounded-full object-contain bg-white shadow-md shrink-0">
       <div>
         <h1 id="greeting" class="text-xl font-bold text-ink leading-tight">Bonjour</h1>
-        <p id="commune-display" class="text-xs text-ink/45 mt-0.5"></p>
+        <p id="commune-display" class="hidden text-xs text-ink/45 mt-0.5"></p>
+        <!-- Changement de médiathèque (12/10/2026) : catalogue, agenda,
+             horaires, logo et couleurs basculent sur la médiathèque choisie. -->
+        <label class="relative inline-flex items-center mt-0.5">
+          <select id="commune-switch" aria-label="Changer de médiathèque" class="appearance-none bg-transparent text-xs font-semibold text-ink/60 pr-4 cursor-pointer focus:outline-none"></select>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="absolute right-0 text-ink/40 pointer-events-none"><path d="M6 9l6 6 6-6"/></svg>
+        </label>
         <button id="opening-hours-link" onclick="openOpeningHoursModal()" class="hidden text-[11px] font-semibold text-mango-700 underline mt-0.5">Horaires</button>
       </div>
     </div>
@@ -186,6 +192,42 @@
   let currentUser = null;
   let isLibreAccount = false;
   let myCommuneId = null;
+  // Médiathèque consultée (12/10/2026) : celle choisie avec le sélecteur de
+  // l'en-tête, ou par défaut celle de l'usager. Partagée avec l'agenda.
+  const BROWSE_KEY = 'bligo_guest_commune_id';
+  const readBrowseCommune = () => { try { return Number(localStorage.getItem(BROWSE_KEY)) || null; } catch { return null; } };
+  const writeBrowseCommune = id => { try { localStorage.setItem(BROWSE_KEY, String(id)); } catch {} };
+
+  async function setupCommuneSwitch(currentId) {
+    const select = document.getElementById('commune-switch');
+    const { data } = await supabase.from('communes').select('id, name').order('name');
+    select.innerHTML = (data || []).map(c => `<option value="${c.id}" ${c.id === currentId ? 'selected' : ''}>Médiathèque de ${escapeHtmlU(c.name)}</option>`).join('');
+    select.onchange = () => {
+      writeBrowseCommune(select.value);
+      window.location.reload();
+    };
+  }
+
+  // Logo, couleurs et horaires de la médiathèque consultée.
+  async function applyBrowsedCommune(communeId) {
+    const { data: commune } = await supabase.from('communes')
+      .select('name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url').eq('id', communeId).single();
+    myCommuneName = commune?.name || '';
+    myOpeningHours = commune?.opening_hours || null;
+    applyCommuneTheme(commune);
+    document.getElementById('opening-hours-link').classList.toggle('hidden', !myOpeningHours || !Object.values(myOpeningHours).some(Boolean));
+    const logoEl = document.getElementById('commune-logo');
+    logoEl.onerror = () => logoEl.classList.add('hidden');
+    logoEl.onload = () => logoEl.classList.remove('hidden');
+    if (commune?.logo_url) {
+      logoEl.src = commune.logo_url;
+    } else if (myCommuneName) {
+      const slug = myCommuneName.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      logoEl.src = `img/commune-logos/${slug}.png`;
+    }
+    await setupCommuneSwitch(communeId);
+  }
   // File d'attente (09/10/2026) : livre emprunté → book_id → { hold_id, position }.
   let myHolds = {};
   // Non-résidents : catalogue d'une autre médiathèque où l'usager est inscrit.
@@ -398,8 +440,8 @@
     const { data } = await supabase.from('memberships').select('commune_id, communes ( name )').eq('user_id', currentUser.id).eq('status', 'active');
     myMemberships = data || [];
     const box = document.getElementById('catalogue-switch');
-    if (!box) return;
-    if (!myMemberships.length) { box.classList.add('hidden'); return; }
+    // Remplacé par le sélecteur de médiathèque de l'en-tête (12/10/2026).
+    if (!box || true) return;
     const { data: home } = await supabase.from('communes').select('name').eq('id', myCommuneId).maybeSingle();
     const current = catalogueCommuneId || myCommuneId;
     box.classList.remove('hidden');
@@ -608,9 +650,18 @@
       ...(otherLibrary ? { pickup_commune_id: catalogueCommuneId } : {}),
     });
     if (error) {
-      showAppAlert(error.message);
       btn.disabled = false;
       btn.textContent = 'Réserver';
+      // Médiathèque indépendante où l'usager n'a pas encore de carte (12/10/2026) :
+      // on lui propose d'en ajouter une à son compte.
+      if (/pas inscrit dans cette médiathèque/i.test(error.message) && otherLibrary) {
+        if (confirm(`Tu n'as pas encore de carte pour la médiathèque de ${myCommuneName}.\n\nDemander ton inscription ? Elle sera validée par la médiathèque, selon ses conditions pour les non-résidents.`)) {
+          const { data, error: reqError } = await supabase.rpc('request_membership', { p_commune_id: catalogueCommuneId });
+          showAppAlert(reqError ? reqError.message : data.message);
+        }
+        return;
+      }
+      showAppAlert(error.message);
       return;
     }
     await loadReservations();
@@ -949,20 +1000,10 @@
   // lecture/réservations, juste la vitrine, avec un renvoi vers l'inscription
   // dès qu'il tente de réserver ou d'ajouter à sa liste d'envie.
   async function initGuest(communeId) {
-    const { data: commune } = await supabase
-      .from('communes')
-      .select('name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url')
-      .eq('id', communeId)
-      .single();
-
     myCommuneId = Number(communeId);
-    myCommuneName = commune?.name || '';
-    myOpeningHours = commune?.opening_hours || null;
-    applyCommuneTheme(commune);
+    await applyBrowsedCommune(myCommuneId);
 
     document.getElementById('greeting').textContent = 'Bienvenue !';
-    document.getElementById('commune-display').textContent = myCommuneName ? `Médiathèque de ${myCommuneName}` : '';
-    document.getElementById('opening-hours-link').classList.toggle('hidden', !myOpeningHours || !Object.values(myOpeningHours).some(Boolean));
     document.getElementById('challenge-card').classList.add('hidden');
 
     const pointsLink = document.getElementById('points-link');
@@ -970,13 +1011,6 @@
     pointsLink.classList.add('cursor-pointer');
     pointsLink.addEventListener('click', () => requireAccount('reserve'));
     document.getElementById('points-display').textContent = 'Créer mon compte';
-
-    const logoEl = document.getElementById('commune-logo');
-    if (commune?.logo_url) {
-      logoEl.onerror = () => logoEl.classList.add('hidden');
-      logoEl.onload = () => logoEl.classList.remove('hidden');
-      logoEl.src = commune.logo_url;
-    }
 
     renderCategoryFilters();
     await loadBooks();
@@ -1004,6 +1038,8 @@
     myOpeningHours = profile?.communes?.opening_hours || null;
     isMinorAccount = profile?.tariff_category === 'mineur';
     applyCommuneTheme(profile?.communes);
+    const browsed = readBrowseCommune() || myCommuneId;
+    if (browsed && browsed !== myCommuneId) catalogueCommuneId = browsed;
 
     // Jamais les deux fenêtres en même temps : on attend que les préférences de
     // lecture soient répondues (ou passées) avant de proposer le pop-up de
@@ -1021,23 +1057,7 @@
 
     const name = profile?.full_name || currentUser.email;
     document.getElementById('greeting').textContent = 'Bonjour ' + name.split(' ')[0];
-    document.getElementById('commune-display').textContent = myCommuneName ? `Médiathèque de ${myCommuneName}` : '';
-    document.getElementById('opening-hours-link').classList.toggle('hidden', !myOpeningHours || !Object.values(myOpeningHours).some(Boolean));
-
-    const logoEl = document.getElementById('commune-logo');
-    if (profile?.communes?.logo_url) {
-      logoEl.onerror = () => logoEl.classList.add('hidden');
-      logoEl.onload = () => logoEl.classList.remove('hidden');
-      logoEl.src = profile.communes.logo_url;
-    } else if (myCommuneName) {
-      // Ancienne convention (fichier déposé manuellement), tant que la
-      // médiathèque n'a pas envoyé son logo depuis les réglages (22/09/2026).
-      const slug = myCommuneName.normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      logoEl.onerror = () => logoEl.classList.add('hidden');
-      logoEl.onload = () => logoEl.classList.remove('hidden');
-      logoEl.src = `img/commune-logos/${slug}.png`;
-    }
+    if (browsed) await applyBrowsedCommune(browsed);
     document.getElementById('points-display').textContent = `${profile?.loyalty_points ?? 0}`;
 
     renderCategoryFilters();

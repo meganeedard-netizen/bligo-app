@@ -251,6 +251,8 @@
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }
+    // À la connexion, on repart de la médiathèque de l'usager (12/10/2026).
+    try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
     window.location.href = 'accueil.html';
   });
 

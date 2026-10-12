@@ -89,13 +89,14 @@
 
 <script type="module">
   import { supabase } from './js/supabaseClient.js';
-  import { applyCachedTheme } from './js/theme.js';
+  import { applyCachedTheme, applyCommuneTheme } from './js/theme.js';
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js';
 
 
 
   let currentUser = null;
+  let browseCommuneId = null;
   let events = [];
   let myRsvps = new Set();
   let rsvpCounts = {};
@@ -116,6 +117,7 @@
     const { data: eventsData, error } = await supabase
       .from('events')
       .select('*, communes ( name )')
+      .eq('commune_id', browseCommuneId)
       .order('event_date', { ascending: true });
     if (error) {
       console.error(error);
@@ -125,13 +127,13 @@
 
     const [{ data: rsvpsData }, { data: checkinsData }] = await Promise.all([
       supabase.from('event_rsvps').select('event_id, user_id'),
-      supabase.from('event_checkins').select('event_id').eq('user_id', currentUser.id),
+      currentUser ? supabase.from('event_checkins').select('event_id').eq('user_id', currentUser.id) : Promise.resolve({ data: [] }),
     ]);
     rsvpCounts = {};
     myRsvps = new Set();
     (rsvpsData || []).forEach(r => {
       rsvpCounts[r.event_id] = (rsvpCounts[r.event_id] || 0) + 1;
-      if (r.user_id === currentUser.id) myRsvps.add(r.event_id);
+      if (currentUser && r.user_id === currentUser.id) myRsvps.add(r.event_id);
     });
     myCheckins = new Set((checkinsData || []).map(c => c.event_id));
 
@@ -328,6 +330,8 @@
   }
 
   async function toggleRsvp(eventId) {
+    // Sans compte : l'agenda se consulte librement, l'inscription demande un compte (12/10/2026).
+    if (!currentUser) { window.location.href = 'index.html?gate=event'; return; }
     if (myRsvps.has(eventId)) {
       await supabase.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', currentUser.id);
     } else {
@@ -341,12 +345,21 @@
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.href = 'index.html?gate=event';
-      return;
+    // Médiathèque consultée : celle choisie sur l'accueil (12/10/2026).
+    let stored = null;
+    try { stored = Number(localStorage.getItem('bligo_guest_commune_id')) || null; } catch {}
+    if (session) {
+      currentUser = session.user;
+      updateReservationBadge(currentUser.id);
+      if (!stored) {
+        const { data: profile } = await supabase.from('profiles').select('commune_id').eq('id', currentUser.id).single();
+        stored = profile?.commune_id || null;
+      }
     }
-    currentUser = session.user;
-    updateReservationBadge(currentUser.id);
+    if (!stored) { window.location.href = 'index.html'; return; }
+    browseCommuneId = stored;
+    const { data: commune } = await supabase.from('communes').select('name, theme_ink_hex, theme_accent_hex').eq('id', browseCommuneId).single();
+    applyCommuneTheme(commune);
 
     await loadEvents();
   }
