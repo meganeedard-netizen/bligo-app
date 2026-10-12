@@ -7111,7 +7111,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         if (r.status === 'preparation') {
           actionHtml = `<button onclick="prepareReservation(${r.id})" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer prêt</button>`;
         } else if (r.status === 'pret') {
-          actionHtml = `<button onclick="setStatus(${r.id}, 'recupere')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-mango-600 text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer récupéré</button>`;
+          actionHtml = `<button onclick="setStatus(${r.id}, 'recupere')" style="touch-action: manipulation;" title="Si l'usager n'a pas sa carte : valide la remise sans scanner" class="w-full sm:w-auto text-[12.5px] font-semibold bg-white text-ink/70 border border-[#D1D5DB] hover:border-brand/40 rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Remettre sans la carte</button>`;
         }
         let countdownHtml = '';
         if (r.status === 'pret' && r.ready_at) {
@@ -7214,28 +7214,64 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       return;
     }
 
-    resultBox.innerHTML = `
-      <div class="bg-white border border-mango-100 rounded-xl overflow-hidden">
-        <p class="text-xs font-bold uppercase tracking-wide text-ink/50 px-4 py-2.5 bg-mango-50">${escapeHtml(profile.full_name)} — ${ready.length} prête${ready.length > 1 ? 's' : ''} à récupérer</p>
-        ${ready.map(r => `
-          <div class="flex items-center gap-3 px-4 py-3 border-t border-mango-50">
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.books?.title || '?')}</p>
-              <p class="text-xs text-ink/55 truncate">${escapeHtml(r.books?.author || '')}</p>
-            </div>
-            <button onclick="confirmPickup(${r.id})" class="shrink-0 text-xs font-semibold bg-mango-600 text-white rounded-full px-3.5 py-2">Confirmer la remise</button>
-          </div>`).join('')}
-      </div>`;
+    pickupState = { profile, items: ready.map(r => ({ ...r, done: false, message: '' })) };
+    renderPickupList();
   };
 
-  window.confirmPickup = async function (reservationId) {
+  // Retrait au comptoir : la liste reste affichée après chaque remise (plus
+  // besoin de rescanner la carte pour chaque document), avec « Tout remettre ».
+  let pickupState = null;
+
+  function renderPickupList() {
+    const resultBox = document.getElementById('pickup-result');
+    if (!pickupState) { resultBox.innerHTML = ''; return; }
+    const { profile, items } = pickupState;
+    const remaining = items.filter(r => !r.done);
+    resultBox.innerHTML = `
+      <div class="bg-white border border-mango-100 rounded-xl overflow-hidden">
+        <div class="flex items-center gap-2 px-4 py-2.5 bg-mango-50">
+          <p class="flex-1 text-xs font-bold uppercase tracking-wide text-ink/50">${escapeHtml(profile.full_name)} · ${remaining.length ? `${remaining.length} à remettre` : 'tout est remis'}</p>
+          ${remaining.length > 1 ? `<button onclick="confirmAllPickups()" class="shrink-0 text-xs font-bold bg-brand text-white rounded-full px-3.5 py-1.5">Tout remettre (${remaining.length})</button>` : ''}
+        </div>
+        ${items.map(r => `
+          <div class="flex items-center gap-3 px-4 py-3 border-t border-mango-50 ${r.done ? 'bg-mango-50/40' : ''}">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold ${r.done ? 'text-ink/50' : 'text-ink'} truncate">${escapeHtml(r.books?.title || '?')}</p>
+              <p class="text-xs text-ink/55 truncate">${r.done ? escapeHtml(r.message) : escapeHtml(r.books?.author || '')}</p>
+            </div>
+            ${r.done
+              ? `<span class="shrink-0 text-xs font-bold text-mango-700">✓ Remis</span>`
+              : `<button onclick="confirmPickup(${r.id})" class="shrink-0 text-xs font-semibold bg-mango-600 text-white rounded-full px-3.5 py-2">Confirmer la remise</button>`}
+          </div>`).join('')}
+      </div>`;
+  }
+
+  async function pickupOne(reservationId) {
     const { data, error } = await supabase.rpc('mark_reservation_picked_up', { p_reservation_id: reservationId });
-    if (error) { alert('Erreur : ' + error.message); return; }
-    if (!data.ok) { alert(data.message); return; }
+    if (error) { alert('Erreur : ' + error.message); return false; }
+    if (!data.ok) { alert(data.message); return false; }
+    const item = pickupState?.items.find(r => r.id === reservationId);
+    if (item) { item.done = true; item.message = data.message; }
+    return true;
+  }
+
+  async function afterPickup() {
     playBeep();
-    document.getElementById('pickup-result').innerHTML = `<div class="bg-mango-50 border border-mango-100 rounded-xl p-4"><p class="text-sm font-bold text-mango-700">✓ ${escapeHtml(data.message)}</p></div>`;
-    document.getElementById('pickup-subscriber-input').value = '';
+    renderPickupList();
+    if (pickupState && pickupState.items.every(r => r.done)) document.getElementById('pickup-subscriber-input').value = '';
     await Promise.all([loadReservations(), loadActiveLoans()]);
+  }
+
+  window.confirmPickup = async function (reservationId) {
+    if (await pickupOne(reservationId)) await afterPickup();
+  };
+
+  window.confirmAllPickups = async function () {
+    let any = false;
+    for (const r of (pickupState?.items || []).filter(x => !x.done)) {
+      if (await pickupOne(r.id)) any = true;
+    }
+    if (any) await afterPickup(); else renderPickupList();
   };
 
   // « Marquer prêt » vérifie maintenant la disponibilité réelle plutôt que de
