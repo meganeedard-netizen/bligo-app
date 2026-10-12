@@ -4508,7 +4508,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     return items.map(it => {
       const feeCents = it.state === 'retard' ? computeLateFeeCentsClient(it.dueAt, communeSettings) : 0;
       const details = [
-        it.shelf_location ? `📍 ${escapeHtml(it.shelf_location)}` : '',
+        it.shelf_location ? `${escapeHtml(it.shelf_location)}` : '',
         it.barcode ? `Code ${escapeHtml(it.barcode)}` : '',
         it.isbn ? `ISBN ${escapeHtml(it.isbn)}` : '',
       ].filter(Boolean).join(' · ');
@@ -5914,7 +5914,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           ${coverHtml}
           <span class="min-w-0">
             <button onclick="openBookDetail(${b.id})" class="w-full font-semibold text-ink truncate block text-left hover:underline">${escapeHtml(b.title)}</button>
-            ${b.shelf_location ? `<span class="text-[10px] text-mango-700 font-semibold truncate block">📍 ${escapeHtml(b.shelf_location)}</span>` : ''}
+            ${b.shelf_location ? `<span class="text-[10px] text-mango-700 font-semibold truncate block">${escapeHtml(b.shelf_location)}</span>` : ''}
             ${b.copy_barcode ? `<span class="text-[10px] text-ink/40 truncate block">${escapeHtml(b.copy_barcode)}</span>` : ''}
             ${b.on_site_only ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">📍 Sur place uniquement</span>` : ''}
             ${b.is_new_release ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">✨ Nouveauté</span>` : ''}
@@ -6729,8 +6729,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         // (plutôt qu'un champ vide) montre où cette info apparaîtra une fois les
         // vraies étiquettes posées, sans faire croire que c'est une vraie donnée.
         const shelfHtml = r.books?.shelf_location
-          ? `<span class="text-mango-700 font-semibold">📍 ${escapeHtml(r.books.shelf_location)}</span>`
-          : `<span class="text-ink/35 italic">📍 Ex. R AGA (rayon à définir)</span>`;
+          ? `<span class="text-mango-700 font-semibold">${escapeHtml(r.books.shelf_location)}</span>`
+          : `<span class="text-ink/35 italic">Ex. R AGA (cote à définir)</span>`;
         const barcode = r.books?.book_copies?.[0]?.barcode;
         const codeHtml = barcode
           ? `<span class="text-ink/45">Code ${escapeHtml(barcode)}</span>`
@@ -6915,8 +6915,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       ? `<img src="${escapeHtml(book.cover_url)}" alt="" onclick="zoomCover('${escapeJsAttr(book.cover_url)}')" class="w-10 h-14 object-cover rounded shrink-0 bg-mango-50 cursor-pointer hover:opacity-80">`
       : `<div class="w-10 h-14 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${escapeHtml((book?.cover_initial || book?.title?.[0] || '?'))}</div>`;
     const shelfHtml = shelf
-      ? `<span class="text-red-700 font-semibold">📍 ${escapeHtml(shelf)}</span>`
-      : `<span class="text-ink/35 italic">📍 Rayon à définir</span>`;
+      ? `<span class="text-red-700 font-semibold">${escapeHtml(shelf)}</span>`
+      : `<span class="text-ink/35 italic">Cote à définir</span>`;
     const codeHtml = barcode ? `<span class="text-ink/45">Code ${escapeHtml(barcode)}</span>` : '';
     const isbnHtml = book?.isbn ? `<span class="text-ink/45">ISBN ${escapeHtml(book.isbn)}</span>` : '';
     return `

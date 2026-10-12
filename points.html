@@ -46,9 +46,29 @@
   <div class="rounded-2xl p-6 text-white shadow-xl bg-gradient-to-br from-hibiscus-700 via-hibiscus-600 to-mango-600 relative overflow-hidden mb-5 text-center">
     <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
     <div class="absolute -right-2 bottom-4 w-16 h-16 rounded-full bg-white/10"></div>
-    <p class="text-xs font-semibold text-white/70 uppercase tracking-wide relative mb-1">Mes points BliGO</p>
-    <p id="points-total" class="text-4xl font-extrabold relative mb-2">0</p>
+    <p class="text-lg font-bold relative">Tu as</p>
+    <p class="relative mb-2"><span id="points-total" class="text-5xl font-extrabold">0</span> <span id="points-unit" class="text-2xl font-bold">point</span></p>
     <a href="reservations.html#history-section" class="text-[11px] text-white/85 underline relative">Voir mon historique</a>
+  </div>
+
+  <!-- À 0 point : donner envie de démarrer (12/10/2026) -->
+  <div id="points-zero" class="hidden bg-white rounded-2xl p-5 shadow-sm mb-5 text-center">
+    <p class="text-sm font-semibold text-ink leading-relaxed">Réserve ton premier livre pour gagner tes premiers points et débloquer tes badges.</p>
+    <a href="accueil.html" class="inline-block mt-4 bg-brand text-white text-sm font-semibold rounded-full px-6 py-3 active:scale-[0.98] transition">Voir le catalogue</a>
+  </div>
+
+  <!-- Explication courte : comment on gagne des points, à quoi ils servent -->
+  <div class="bg-white rounded-2xl p-5 shadow-sm mb-6">
+    <p class="text-sm font-bold text-ink mb-2">Comment gagner des points ?</p>
+    <ul class="text-sm text-ink/70 leading-relaxed space-y-1">
+      <li><strong>+10</strong> pour chaque livre réservé et récupéré</li>
+      <li><strong>+15</strong> pour chaque avis laissé sur un livre lu</li>
+      <li><strong>+5</strong> pour chaque inscription à un événement</li>
+      <li><strong>+50</strong> quand un proche s'inscrit grâce à toi</li>
+      <li><strong>Bonus</strong> en réussissant les défis ci-dessous</li>
+    </ul>
+    <p class="text-sm font-bold text-ink mt-4 mb-1">À quoi servent-ils ?</p>
+    <p class="text-sm text-ink/70 leading-relaxed">Tes points font monter ton niveau et débloquent tes badges de lecteur, du « Premier Chapitre » à « Légende BliGO ».</p>
   </div>
 
   <p class="text-sm font-bold text-ink mb-1">Mes badges de fidélité</p>
@@ -136,6 +156,8 @@
     const tier = profile?.badge_tier || 0;
 
     document.getElementById('points-total').textContent = xp;
+    document.getElementById('points-unit').textContent = xp > 1 ? 'points' : 'point';
+    document.getElementById('points-zero').classList.toggle('hidden', xp > 0);
 
     currentBadges = BADGES.map(b => ({
       ...b,
@@ -146,8 +168,8 @@
 
     const next = currentBadges.find(b => b.type === 'niveau' && !b.unlocked);
     document.getElementById('badges-progress-text').textContent = next
-      ? `${xp} XP — encore ${Math.max(0, next.threshold - xp)} XP pour "${next.name}"`
-      : `${xp} XP — tous les paliers sont débloqués !`;
+      ? `Encore ${Math.max(0, next.threshold - xp)} points pour le badge « ${next.name} »`
+      : `Tous les paliers sont débloqués !`;
 
     document.getElementById('badges-grid').innerHTML = currentBadges.map(b => `
       <button type="button" onclick="openBadgeModal('${b.id}')" style="touch-action: manipulation;" class="rounded-xl p-2.5 border text-center ${b.unlocked ? 'bg-white border-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_10px_rgba(0,0,0,0.07)]' : 'bg-brand/5 border-transparent'}">

@@ -43,26 +43,34 @@
 <main class="max-w-4xl mx-auto px-5 py-6">
 
   <div class="flex items-start justify-between gap-2 mb-5">
-    <div class="flex items-center gap-2.5">
+    <div class="flex items-center gap-2.5 min-w-0">
       <img id="commune-logo" alt="" class="hidden w-14 h-14 rounded-full object-contain bg-white shadow-md shrink-0">
-      <div>
+      <div class="min-w-0">
         <h1 id="greeting" class="text-xl font-bold text-ink leading-tight">Bonjour</h1>
         <p id="commune-display" class="hidden text-xs text-ink/45 mt-0.5"></p>
         <!-- Changement de médiathèque (12/10/2026) : catalogue, agenda,
              horaires, logo et couleurs basculent sur la médiathèque choisie. -->
-        <label class="relative inline-flex items-center mt-0.5">
-          <select id="commune-switch" aria-label="Changer de médiathèque" class="appearance-none bg-transparent text-xs font-semibold text-ink/60 pr-4 cursor-pointer focus:outline-none"></select>
+        <label class="relative flex items-center mt-0.5 max-w-full">
+          <select id="commune-switch" aria-label="Changer de médiathèque" class="appearance-none bg-transparent text-xs font-semibold text-ink/60 pr-4 cursor-pointer focus:outline-none max-w-full truncate"></select>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="absolute right-0 text-ink/40 pointer-events-none"><path d="M6 9l6 6 6-6"/></svg>
         </label>
-        <button id="opening-hours-link" onclick="openOpeningHoursModal()" class="hidden text-[11px] font-semibold text-mango-700 underline mt-0.5">Horaires</button>
+        <button id="opening-hours-link" onclick="openOpeningHoursModal()" class="hidden block text-[11px] font-semibold text-mango-700 underline mt-0.5">Horaires</button>
       </div>
     </div>
-    <a id="points-link" href="points.html" class="shrink-0 flex items-center gap-2 bg-white border border-mango-100 rounded-full pl-4 pr-1 py-1 shadow-sm">
-      <span id="points-display" class="text-sm font-bold bg-gradient-to-r from-mango-500 to-hibiscus-600 bg-clip-text text-transparent">0</span>
-      <span class="w-7 h-7 rounded-full bg-mango-50 flex items-center justify-center overflow-hidden shrink-0 text-mango-700">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-      </span>
-    </a>
+    <!-- Pastille de points (12/10/2026) : « 120 pts » + logo livre BliGO,
+         toujours visible et cliquable, même à 0 point. -->
+    <div class="relative shrink-0">
+      <a id="points-link" href="points.html" aria-label="Mes points de fidélité" class="flex items-center gap-1.5 bg-white border border-mango-100 rounded-full pl-3.5 pr-1.5 py-1 shadow-sm">
+        <span id="points-display" class="text-sm font-bold bg-gradient-to-r from-mango-500 to-hibiscus-600 bg-clip-text text-transparent whitespace-nowrap">0 pt</span>
+        <img src="img/bligo-icon.png" alt="" class="w-7 h-7 object-contain">
+      </a>
+      <!-- Bulle d'explication, une seule fois (première connexion) -->
+      <div id="points-tip" class="hidden absolute right-0 top-full mt-2.5 z-30 w-56 bg-brand text-white rounded-xl shadow-lg p-3 pr-8">
+        <span class="absolute -top-1.5 right-6 w-3 h-3 bg-brand rotate-45"></span>
+        <p class="text-xs leading-relaxed relative">Gagne des points à chaque réservation et débloque des badges.</p>
+        <button type="button" onclick="closePointsTip()" aria-label="Fermer" class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full text-white/80 hover:text-white flex items-center justify-center text-sm font-bold">✕</button>
+      </div>
+    </div>
   </div>
 
   <div id="challenge-card" onclick="if (event.target.id !== 'edit-goal-btn') window.location.href = 'reservations.html#history-section';" class="cursor-pointer rounded-2xl p-5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden mb-6">
@@ -1001,6 +1009,20 @@
   // catalogue (voir index.html) — pas de session, donc pas de points/défi de
   // lecture/réservations, juste la vitrine, avec un renvoi vers l'inscription
   // dès qu'il tente de réserver ou d'ajouter à sa liste d'envie.
+  const formatPoints = n => `${n} ${n > 1 ? 'pts' : 'pt'}`;
+
+  // Bulle « Gagne des points… » : affichée une seule fois par compte.
+  function showPointsTipOnce(userId) {
+    const key = `bligo_points_tip_seen_${userId}`;
+    try { if (localStorage.getItem(key)) return; } catch { return; }
+    document.getElementById('points-tip').classList.remove('hidden');
+    window.closePointsTip = () => {
+      document.getElementById('points-tip').classList.add('hidden');
+      try { localStorage.setItem(key, '1'); } catch {}
+    };
+    document.getElementById('points-link').addEventListener('click', () => window.closePointsTip());
+  }
+
   async function initGuest(communeId) {
     myCommuneId = Number(communeId);
     await applyBrowsedCommune(myCommuneId);
@@ -1008,11 +1030,8 @@
     document.getElementById('greeting').textContent = 'Bienvenue !';
     document.getElementById('challenge-card').classList.add('hidden');
 
-    const pointsLink = document.getElementById('points-link');
-    pointsLink.removeAttribute('href');
-    pointsLink.classList.add('cursor-pointer');
-    pointsLink.addEventListener('click', () => requireAccount('reserve'));
-    document.getElementById('points-display').textContent = 'Créer mon compte';
+    // Sans compte : « 0 pt », la page fidélité explique et invite à s'inscrire.
+    document.getElementById('points-display').textContent = formatPoints(0);
 
     renderCategoryFilters();
     await loadBooks();
@@ -1062,7 +1081,8 @@
     const firstName = currentUser.user_metadata?.first_name || (profile?.full_name && profile.full_name !== 'Nouvel usager' ? name.split(' ')[0] : '');
     document.getElementById('greeting').textContent = firstName ? `Bonjour ${firstName}` : 'Bonjour !';
     if (browsed) await applyBrowsedCommune(browsed);
-    document.getElementById('points-display').textContent = `${profile?.loyalty_points ?? 0}`;
+    document.getElementById('points-display').textContent = formatPoints(profile?.loyalty_points ?? 0);
+    showPointsTipOnce(currentUser.id);
 
     renderCategoryFilters();
 
