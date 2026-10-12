@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BliGO — Accueil</title>
+<title>BliGO · Accueil</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -108,8 +108,8 @@
 
 <!-- Overlay détail livre -->
 <div id="book-modal-backdrop" onclick="closeBookModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm flex items-center justify-center p-4">
-  <div id="book-modal-card" class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative">
-    <button onclick="closeBookModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold z-10">✕</button>
+  <div id="book-modal-card" class="bg-white rounded-3xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative">
+    <button onclick="closeBookModal()" aria-label="Fermer" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 text-ink/60 flex items-center justify-center text-lg z-10">✕</button>
     <div id="book-modal-content" class="p-6"></div>
     <div id="book-reviews-section" class="px-6 pb-6 border-t border-mango-50 pt-5"></div>
   </div>
@@ -122,7 +122,7 @@
     <svg class="w-8 h-8 text-mango-600 mb-3" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
     <p class="text-base font-bold text-ink mb-2">Pré-inscription en attente de validation</p>
     <p class="text-sm text-ink/60 leading-relaxed">Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là. Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.</p>
-    <button onclick="closePendingPopup()" class="w-full mt-5 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">J'ai compris</button>
+    <button onclick="closePendingPopup()" class="w-full mt-5 bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">J'ai compris</button>
   </div>
 </div>
 
@@ -147,7 +147,7 @@
     <p class="text-xs font-semibold text-ink/70 mb-2">Combien de livres environ par mois ?</p>
     <div id="onboarding-pace" class="flex gap-1.5 mb-7"></div>
 
-    <button id="onboarding-submit-btn" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition mb-2">Valider mes préférences</button>
+    <button id="onboarding-submit-btn" class="w-full bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition mb-2">Valider mes préférences</button>
     <button id="onboarding-skip-btn" class="w-full text-xs text-ink/40 hover:text-ink/60 font-semibold py-1">Répondre plus tard</button>
   </div>
 </div>
@@ -156,7 +156,7 @@
 <div id="app-alert-backdrop" onclick="closeAppAlert(event)" class="hidden fixed inset-0 z-[60] bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
     <p id="app-alert-message" class="text-sm text-ink/80 leading-relaxed mb-5"></p>
-    <button onclick="closeAppAlert()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Compris</button>
+    <button onclick="closeAppAlert()" class="w-full bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">Compris</button>
   </div>
 </div>
 
@@ -707,15 +707,15 @@
 
     let btnHtml = '';
     if (b.on_site_only) {
-      btnHtml = `<p class="w-full mt-4 text-center text-sm font-semibold bg-brand/5 text-ink/50 rounded-lg py-2.5">📍 Consultation sur place uniquement</p>`;
+      btnHtml = `<p class="w-full mt-4 text-center text-sm font-semibold bg-brand/5 text-ink/50 rounded-2xl py-3">📍 Consultation sur place uniquement</p>`;
     } else if (isLibreAccount) {
       btnHtml = `<a href="profil.html" class="block w-full mt-4 text-center text-sm font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-2.5">Réservé aux usagers d'une commune — rattache ton compte</a>`;
     } else if (!b.available) {
       btnHtml = holdButtonHtml(b.id, true);
     } else if (reserved) {
-      btnHtml = `<button disabled class="w-full mt-4 text-sm font-semibold bg-mango-100 text-mango-700 rounded-lg py-2.5">Déjà réservé</button>`;
+      btnHtml = `<button disabled class="w-full mt-4 text-sm font-semibold bg-mango-100 text-mango-700 rounded-2xl py-3">Déjà réservé</button>`;
     } else {
-      btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-sm font-semibold bg-brand text-white rounded-lg py-2.5 active:scale-[0.98] transition">Réserver</button>`;
+      btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-base font-semibold bg-brand text-white rounded-2xl py-3.5 shadow-md active:scale-[0.98] transition">Réserver</button>`;
     }
 
     const existingCover = document.getElementById('cover-' + b.id);
