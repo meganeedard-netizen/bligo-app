@@ -27,6 +27,10 @@
      contrairement aux autres pages de l'app. */
   body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
   .font-logo { font-family: 'Poppins', sans-serif; }
+  /* Champs gris arrondis sans étiquette (12/10/2026) */
+  .auth-input { width: 100%; background: #EEEDF2; border-radius: 16px; padding: 16px 18px; font-size: 15px; color: #1B4B43; outline: none; }
+  .auth-input::placeholder { color: rgba(27,75,67,.55); }
+  .auth-input:focus { box-shadow: 0 0 0 2px var(--color-mango-300, #FFB86B); }
   /* En dessous de 16px, Safari iOS zoome automatiquement sur un champ au clic
      (la page semble "bouger") — on force 16px sur mobile pour l'empêcher.
      !important nécessaire : les classes Tailwind (text-sm, text-xs...) sur
@@ -36,145 +40,149 @@
   }
 </style>
 </head>
-<body class="bg-white text-ink min-h-screen flex items-center justify-center px-4">
+<body class="text-ink min-h-screen">
+  <!-- Fond dégradé doux (12/10/2026, inspiré de l'appli Gaspiz) -->
+  <div class="fixed inset-0 -z-10" style="background: linear-gradient(170deg, #FFE3C2 0%, #FFF7EE 38%, #FFFFFF 62%, #F3F8F1 100%);"></div>
 
-  <div class="w-full max-w-sm">
-    <div class="flex flex-col items-center gap-2 mb-8">
-      <img id="header-bligo-logo" src="img/bligo-logo.png" alt="BliGO" class="w-40 h-auto">
-      <img id="header-commune-logo" alt="" class="hidden w-20 h-20 rounded-full object-contain bg-white shadow-md">
+  <!-- Après clic sur le lien de confirmation reçu par mail, si on est sur
+       le site (pas dans l'app elle-même) : proposer de rouvrir l'app. -->
+  <div id="reopen-app-banner" class="hidden min-h-screen flex items-center justify-center px-4">
+    <div class="bg-white rounded-3xl shadow-xl p-6 text-center max-w-sm w-full">
+      <p class="text-sm font-bold text-ink mb-1">Adresse confirmée ! ✓</p>
+      <p class="text-xs text-ink/55 mb-4">Ton compte BliGO est prêt.</p>
+      <a href="bligo://open" class="block w-full bg-brand text-white rounded-xl py-3 text-sm font-semibold active:scale-[0.98] transition">Retourner sur l'application</a>
+      <button type="button" onclick="document.getElementById('reopen-app-banner').classList.add('hidden'); window.location.href = 'accueil.html';" class="w-full mt-3 text-xs font-semibold text-ink/50 hover:text-ink/80">Continuer sur le site</button>
+    </div>
+  </div>
+
+  <!-- Choix de la médiathèque : premier écran vu sans compte -->
+  <div id="landing-choice" class="min-h-screen flex flex-col items-center justify-between px-6 py-8 max-w-md mx-auto">
+    <div class="relative w-full flex justify-center pt-6">
+      <img src="img/bligo-icon.png" alt="" class="absolute top-0 w-56 h-56 object-contain opacity-[0.12]">
+      <svg viewBox="0 0 300 170" class="relative w-full max-w-xs mt-14" aria-hidden="true">
+        <ellipse cx="150" cy="158" rx="135" ry="8" fill="#1B4B43" opacity=".12"/>
+        <rect x="38" y="62" width="30" height="94" rx="4" fill="#FF9B2E"/><rect x="38" y="78" width="30" height="5" fill="#fff" opacity=".6"/>
+        <rect x="70" y="44" width="26" height="112" rx="4" fill="#1B4B43"/><rect x="70" y="60" width="26" height="4" fill="#FFB86B"/><rect x="70" y="136" width="26" height="4" fill="#FFB86B"/>
+        <rect x="98" y="70" width="34" height="86" rx="4" fill="#E8437A"/><rect x="104" y="84" width="22" height="16" rx="2" fill="#fff" opacity=".7"/>
+        <rect x="134" y="54" width="24" height="102" rx="4" fill="#FFD4A3"/><rect x="134" y="70" width="24" height="4" fill="#C7630F"/>
+        <g transform="rotate(12 182 156)"><rect x="166" y="66" width="28" height="90" rx="4" fill="#5FA38F"/><rect x="166" y="82" width="28" height="4" fill="#fff" opacity=".7"/></g>
+        <path d="M205 156c0-30 18-44 42-44s42 14 42 44z" fill="#FFB86B"/>
+        <path d="M209 156c4-22 20-34 38-34s34 12 38 34" fill="none" stroke="#1B4B43" stroke-width="3"/>
+        <path d="M247 112v44" stroke="#1B4B43" stroke-width="3"/>
+        <circle cx="247" cy="78" r="18" fill="#E8437A"/><circle cx="247" cy="78" r="7" fill="#fff"/>
+        <path d="M233 88l14 22 14-22" fill="#E8437A"/>
+      </svg>
+    </div>
+
+    <div class="w-full text-center">
+      <h1 class="font-logo text-4xl font-bold text-ink">Bli<span class="text-mango-500">GO</span></h1>
+      <p class="text-[15px] text-ink/60 mt-2">L'appli de ta médiathèque</p>
+      <select id="landing-commune" class="hidden" aria-hidden="true">
+        <option value="" disabled selected>Choisis ta médiathèque</option>
+      </select>
+      <div class="flex items-center justify-between gap-3 mt-8">
+        <button type="button" onclick="stepCommune(-1)" aria-label="Médiathèque précédente" class="w-12 h-12 rounded-xl bg-mango-300 text-white text-xl font-bold shadow-md flex items-center justify-center active:scale-95 transition">«</button>
+        <p id="landing-commune-name" class="flex-1 text-xl text-ink/75 leading-tight">Médiathèque</p>
+        <button type="button" onclick="stepCommune(1)" aria-label="Médiathèque suivante" class="w-12 h-12 rounded-xl bg-mango-300 text-white text-xl font-bold shadow-md flex items-center justify-center active:scale-95 transition">»</button>
+      </div>
+    </div>
+
+    <div class="w-full flex flex-col items-center">
+      <button type="button" onclick="continueAsGuest()" class="w-full max-w-[260px] bg-mango-500 text-white rounded-2xl py-4 text-base font-semibold shadow-lg active:scale-[0.98] transition">Continuer</button>
+      <button type="button" onclick="showAuthCard()" class="mt-5 text-sm text-ink/70">J'ai déjà un compte - <span class="font-semibold text-mango-700">Se connecter</span></button>
+    </div>
+  </div>
+
+  <!-- Connexion / inscription : carte blanche sur le dégradé -->
+  <div id="auth-card" class="hidden min-h-screen px-4 py-6 max-w-md mx-auto flex-col">
+    <button type="button" onclick="backToBrowsing()" aria-label="Retour" class="w-10 h-10 flex items-center justify-center text-ink/70 mb-2">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="flex flex-col items-center gap-2 mb-4">
+      <img id="header-bligo-logo" src="img/bligo-logo.png" alt="BliGO" class="w-28 h-auto">
+      <img id="header-commune-logo" alt="" class="hidden w-16 h-16 rounded-full object-contain bg-white shadow-md">
       <p id="header-commune-name" class="hidden text-sm font-bold text-ink text-center"></p>
     </div>
 
-    <!-- Après clic sur le lien de confirmation reçu par mail, si on est sur
-         le site (pas dans l'app elle-même) : proposer de rouvrir l'app
-         plutôt que de continuer sur le navigateur du téléphone. -->
-    <div id="reopen-app-banner" class="hidden bg-white border border-mango-100 rounded-2xl shadow-sm p-6 text-center">
-      <p class="text-sm font-bold text-ink mb-1">Adresse confirmée ! ✓</p>
-      <p class="text-xs text-ink/55 mb-4">Ton compte BliGO est prêt.</p>
-      <a href="bligo://open" class="block w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Retourner sur l'application</a>
-      <button type="button" onclick="document.getElementById('reopen-app-banner').classList.add('hidden'); window.location.href = 'accueil.html';" class="w-full mt-3 text-xs font-semibold text-ink/50 hover:text-ink/80">Continuer sur le site</button>
-    </div>
-
-    <!-- Choix de la médiathèque : premier écran vu sans compte connecté,
-         pour parcourir le catalogue avant même de s'inscrire. -->
-    <div id="landing-choice" class="bg-white border border-mango-100 rounded-2xl shadow-sm p-6">
-      <p class="text-sm font-bold text-ink mb-1 text-center">Bienvenue !</p>
-      <p class="text-xs text-ink/55 text-center mb-5">Choisis ta médiathèque pour découvrir son catalogue.</p>
-      <select id="landing-commune" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 bg-white mb-3">
-        <option value="" disabled selected>Choisis ta médiathèque</option>
-      </select>
-      <button type="button" onclick="continueAsGuest()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Continuer</button>
-      <button type="button" onclick="showAuthCard()" class="w-full mt-3 text-xs font-semibold text-mango-700 hover:text-mango-800">J'ai déjà un compte — Se connecter</button>
-    </div>
-
-    <div id="auth-card" class="hidden bg-white border border-mango-100 rounded-2xl shadow-sm p-6">
-      <button type="button" onclick="backToBrowsing()" class="flex items-center gap-1 text-xs font-semibold text-ink/50 hover:text-ink/80 mb-4">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        Retour
-      </button>
-      <p id="gate-message" class="hidden text-xs text-center text-ink/70 bg-mango-50 border border-mango-100 rounded-lg px-3 py-2.5 mb-4 leading-relaxed"></p>
-      <div class="flex items-center gap-1 bg-mango-50 border border-mango-100 rounded-full p-1 mb-5">
-        <button id="tab-login" onclick="switchTab('login')" class="auth-tab flex-1 text-sm font-semibold py-1.5 rounded-full">Se connecter</button>
-        <button id="tab-signup" onclick="switchTab('signup')" class="auth-tab flex-1 text-sm font-semibold py-1.5 rounded-full">Créer un compte</button>
-      </div>
+    <div class="bg-white rounded-3xl shadow-xl px-6 py-7">
+      <p id="gate-message" class="hidden text-xs text-center text-ink/70 bg-mango-50 border border-mango-100 rounded-xl px-3 py-2.5 mb-4 leading-relaxed"></p>
+      <!-- Onglets conservés pour le code existant, remplacés par les liens en bas -->
+      <div class="hidden"><button id="tab-login" type="button"></button><button id="tab-signup" type="button"></button></div>
 
       <!-- LOGIN -->
-      <form id="form-login" class="flex flex-col gap-3">
-        <p class="text-sm font-bold text-ink text-center mb-1">De retour ?</p>
-        <div>
-          <label class="text-xs font-semibold text-ink/60 block mb-1">E-mail</label>
-          <input required type="email" id="login-email" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+      <form id="form-login" class="flex flex-col gap-4">
+        <p class="text-3xl font-bold text-ink text-center mb-2">👋 De retour ?</p>
+        <input required type="email" id="login-email" autocomplete="email" placeholder="E-mail" class="auth-input">
+        <div class="relative">
+          <input required type="password" id="login-password" autocomplete="current-password" placeholder="Mot de passe" class="auth-input pr-12">
+          <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="pw-toggle-btn absolute right-4 top-1/2 -translate-y-1/2 text-ink/50"></button>
         </div>
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="text-xs font-semibold text-ink/60">Mot de passe</label>
-            <button type="button" onclick="forgotPassword()" class="text-xs font-semibold text-mango-700 hover:text-mango-800">Mot de passe oublié ?</button>
-          </div>
-          <div class="relative">
-            <input required type="password" id="login-password" class="w-full border border-mango-100 rounded-lg pl-3 pr-9 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
-            <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="pw-toggle-btn absolute right-2.5 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/70"></button>
-          </div>
-        </div>
-        <button type="submit" class="mt-1 w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Se connecter</button>
+        <button type="submit" class="mt-2 w-full bg-mango-500 text-white rounded-2xl py-3.5 text-base font-semibold shadow-md active:scale-[0.98] transition">Se connecter</button>
+        <p class="text-sm text-center text-ink/75">Mot de passe <button type="button" onclick="forgotPassword()" class="font-semibold text-mango-700">oublié ?</button></p>
+        <p class="text-sm text-center text-ink/75 mt-6">Je n'ai pas de compte - <button type="button" onclick="switchTab('signup')" class="font-semibold text-mango-700">Créer mon compte</button></p>
       </form>
 
       <!-- SIGNUP -->
-      <form id="form-signup" class="hidden flex-col gap-3">
-        <p id="signup-welcome" class="text-sm font-bold text-ink text-center mb-1">Rejoins l'appli de ta médiathèque !</p>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-xs font-semibold text-ink/60 block mb-1">Prénom</label>
-            <input required type="text" id="signup-first-name" autocomplete="given-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-ink/60 block mb-1">Nom</label>
-            <input required type="text" id="signup-last-name" autocomplete="family-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
-          </div>
+      <form id="form-signup" class="hidden flex-col gap-4">
+        <p class="text-3xl font-bold text-ink text-center">👋 Bienvenue</p>
+        <p id="signup-welcome" class="text-sm text-ink/60 text-center -mt-2 mb-1">Rejoins l'appli de ta médiathèque !</p>
+        <label class="flex items-start justify-center gap-2 text-sm text-ink/75 leading-relaxed">
+          <input required type="checkbox" id="signup-cgu" class="mt-1 w-4 h-4 accent-mango-600 shrink-0">
+          <span>Accepter nos <button type="button" onclick="openLegal(event, 'cgu.html')" class="font-semibold text-mango-700">conditions générales</button> et notre <button type="button" onclick="openLegal(event, 'confidentialite.html')" class="font-semibold text-mango-700">politique de confidentialité</button></span>
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <input required type="text" id="signup-first-name" autocomplete="given-name" placeholder="Prénom" class="auth-input">
+          <input required type="text" id="signup-last-name" autocomplete="family-name" placeholder="Nom" class="auth-input">
         </div>
-        <div>
-          <label class="text-xs font-semibold text-ink/60 block mb-1">E-mail</label>
-          <input required type="email" id="signup-email" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
-        </div>
+        <input required type="email" id="signup-email" autocomplete="email" placeholder="E-mail" class="auth-input">
         <!-- Repli seulement : normalement la médiathèque est déjà connue
-             (choisie en invité) et ce champ reste caché — voir applyCommuneHeader. -->
+             (choisie en invité) et ce champ reste caché, voir applyCommuneHeader. -->
         <div id="signup-commune-field" class="hidden">
-          <label class="text-xs font-semibold text-ink/60 block mb-1">Médiathèque</label>
-          <select id="signup-commune" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 bg-white">
+          <select id="signup-commune" class="auth-input">
             <option value="" disabled selected>Choisis ta médiathèque</option>
           </select>
         </div>
         <input type="hidden" id="signup-referral">
-        <div>
-          <label class="text-xs font-semibold text-ink/60 block mb-1">Mot de passe</label>
-          <div class="relative">
-            <input required minlength="6" type="password" id="signup-password" class="w-full border border-mango-100 rounded-lg pl-3 pr-9 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
-            <button type="button" onclick="togglePasswordVisibility('signup-password', this)" class="pw-toggle-btn absolute right-2.5 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/70"></button>
-          </div>
+        <div class="relative">
+          <input required minlength="6" type="password" id="signup-password" autocomplete="new-password" placeholder="Mot de passe" class="auth-input pr-12">
+          <button type="button" onclick="togglePasswordVisibility('signup-password', this)" class="pw-toggle-btn absolute right-4 top-1/2 -translate-y-1/2 text-ink/50"></button>
         </div>
-        <div>
-          <label class="text-xs font-semibold text-ink/60 block mb-1">Confirmer le mot de passe</label>
-          <div class="relative">
-            <input required minlength="6" type="password" id="signup-password-confirm" class="w-full border border-mango-100 rounded-lg pl-3 pr-9 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300">
-            <button type="button" onclick="togglePasswordVisibility('signup-password-confirm', this)" class="pw-toggle-btn absolute right-2.5 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/70"></button>
-          </div>
+        <div class="relative">
+          <input required minlength="6" type="password" id="signup-password-confirm" autocomplete="new-password" placeholder="Confirmation mot de passe" class="auth-input pr-12">
+          <button type="button" onclick="togglePasswordVisibility('signup-password-confirm', this)" class="pw-toggle-btn absolute right-4 top-1/2 -translate-y-1/2 text-ink/50"></button>
         </div>
-        <label class="flex items-start gap-2 text-[11px] text-ink/60 leading-relaxed">
-          <input required type="checkbox" id="signup-cgu" class="mt-0.5 accent-mango-600">
-          <span>J'accepte les <button type="button" onclick="openLegal(event, 'cgu.html', 'Conditions générales d\'utilisation')" class="font-semibold text-mango-700 underline">conditions générales d'utilisation</button> et la <button type="button" onclick="openLegal(event, 'confidentialite.html', 'Politique de confidentialité')" class="font-semibold text-mango-700 underline">politique de confidentialité</button> de BliGO.</span>
-        </label>
-        <p class="text-[11px] text-ink/45 leading-relaxed">Un code de vérification va t'être envoyé par e-mail. Un agent validera ton compte lors de ton prochain passage (pièce d'identité + justificatif de domicile).</p>
-        <button type="submit" class="mt-1 w-full bg-mango-600 text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer mon compte</button>
+        <p class="text-xs text-ink/50 text-center leading-relaxed">Un code de vérification va t'être envoyé par e-mail. Un agent validera ton compte lors de ton prochain passage (pièce d'identité + justificatif de domicile).</p>
+        <button type="submit" class="w-full bg-mango-500 text-white rounded-2xl py-3.5 text-base font-semibold shadow-md active:scale-[0.98] transition">Créer mon compte</button>
+        <button type="button" onclick="switchTab('login')" class="text-sm font-semibold text-mango-700 mt-3">J'ai déjà un compte</button>
       </form>
 
-
       <p id="auth-message" class="text-xs text-center mt-3"></p>
-
     </div>
 
-    <p class="text-[11px] text-ink/35 text-center mt-6">BliGO, l'appli de ta médiathèque</p>
+    <p class="text-[11px] text-ink/40 text-center mt-6">BliGO, l'appli de ta médiathèque</p>
   </div>
 
   <!-- Après « Créer mon compte » (12/10/2026) : fenêtre du code de vérification
        envoyé par e-mail, puis fenêtre de bienvenue, puis le catalogue. -->
-  <div id="code-backdrop" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-4">
-    <form id="form-code" class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 flex flex-col gap-3">
-      <p class="text-base font-bold text-ink text-center">Rentre ton code de vérification</p>
+  <div id="code-backdrop" class="hidden fixed inset-0 z-50 bg-black/40 items-center justify-center p-4">
+    <form id="form-code" class="bg-white rounded-3xl shadow-xl max-w-sm w-full p-6 flex flex-col gap-3">
+      <p class="text-lg font-bold text-ink text-center">Rentre ton code de vérification</p>
       <p class="text-xs text-ink/60 text-center leading-relaxed">Un code à 6 chiffres vient d'être envoyé par e-mail à <span id="code-email" class="font-semibold text-ink"></span>.</p>
-      <input required id="signup-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" class="w-full border border-mango-100 rounded-lg px-3 py-3 text-center text-2xl font-bold tracking-[0.5em] outline-none focus:ring-2 focus:ring-mango-300">
+      <input required id="signup-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" class="auth-input text-center text-2xl font-bold tracking-[0.5em]">
       <p id="code-message" class="text-xs text-center min-h-[16px]"></p>
-      <button type="submit" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Valider</button>
+      <button type="submit" class="w-full bg-mango-500 text-white rounded-2xl py-3.5 text-base font-semibold shadow-md active:scale-[0.98] transition">Valider</button>
       <button type="button" id="resend-code-btn" onclick="resendCode()" class="w-full text-xs font-semibold text-mango-700 disabled:text-ink/35">Renvoyer le code de vérification</button>
       <p class="text-[11px] text-ink/45 text-center">Pense à regarder dans tes courriers indésirables.</p>
     </form>
   </div>
 
-  <div id="welcome-backdrop" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 max-h-[90dvh] overflow-y-auto">
+  <div id="welcome-backdrop" class="hidden fixed inset-0 z-50 bg-black/40 items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-xl max-w-sm w-full p-6 max-h-[90dvh] overflow-y-auto">
       <img src="img/bligo-icon.png" alt="" class="w-12 h-12 object-contain mb-3">
       <p id="welcome-title" class="text-base font-bold text-ink">Bienvenue dans ta médiathèque !</p>
       <p class="text-sm font-semibold text-mango-700 mt-1 mb-3">Tu es préinscrit·e.</p>
       <p id="welcome-text" class="text-sm text-ink/65 leading-relaxed"></p>
-      <button type="button" onclick="enterCatalogue()" class="w-full mt-5 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">J'ai compris</button>
+      <button type="button" onclick="enterCatalogue()" class="w-full mt-5 bg-mango-500 text-white rounded-2xl py-3.5 text-base font-semibold shadow-md active:scale-[0.98] transition">J'ai compris</button>
     </div>
   </div>
 
@@ -211,11 +219,52 @@
     </div>
   </div>
 
+  <!-- Mot de passe oublié (12/10/2026) : code à 6 chiffres reçu par e-mail,
+       puis nouveau mot de passe, sans quitter l'appli. -->
+  <div id="reset-backdrop" class="hidden fixed inset-0 z-50 bg-black/40 items-center justify-center p-4">
+    <form id="form-reset" class="bg-white rounded-3xl shadow-xl max-w-sm w-full p-6 flex flex-col gap-3 relative">
+      <button type="button" onclick="closeReset()" aria-label="Fermer" class="absolute top-3 right-3 w-9 h-9 flex items-center justify-center text-ink/50 text-xl">✕</button>
+      <p class="text-lg font-bold text-ink text-center">Nouveau mot de passe</p>
+      <p class="text-xs text-ink/60 text-center leading-relaxed">Saisis le code à 6 chiffres envoyé à <span id="reset-email" class="font-semibold text-ink"></span>, puis ton nouveau mot de passe.</p>
+      <input required id="reset-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" class="auth-input text-center text-2xl font-bold tracking-[0.5em]">
+      <input required minlength="6" type="password" id="reset-password" autocomplete="new-password" placeholder="Nouveau mot de passe" class="auth-input">
+      <input required minlength="6" type="password" id="reset-password-confirm" autocomplete="new-password" placeholder="Confirmation mot de passe" class="auth-input">
+      <p id="reset-message" class="text-xs text-center min-h-[16px]"></p>
+      <button type="submit" class="w-full bg-mango-500 text-white rounded-2xl py-3.5 text-base font-semibold shadow-md active:scale-[0.98] transition">Valider</button>
+      <button type="button" id="reset-resend-btn" onclick="resendResetCode()" class="text-xs font-semibold text-mango-700 disabled:text-ink/35">Renvoyer le code</button>
+    </form>
+  </div>
+
+  <!-- Écran Notifications après l'inscription (12/10/2026) -->
+  <div id="notif-screen" class="hidden fixed inset-0 z-[55] flex-col items-center justify-between px-6 py-10" style="background: linear-gradient(170deg, #FFE3C2 0%, #FFF7EE 38%, #FFFFFF 62%, #F3F8F1 100%); padding-top: calc(2.5rem + env(safe-area-inset-top)); padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));">
+    <svg viewBox="0 0 240 220" class="w-full max-w-[260px] mt-10" aria-hidden="true">
+      <rect x="20" y="40" width="44" height="34" rx="8" fill="#FFD4A3"/><path d="M34 74l-6 10 14-10" fill="#FFD4A3"/>
+      <path d="M42 66c-8-6-12-10-12-15a6 6 0 0 1 12-2 6 6 0 0 1 12 2c0 5-4 9-12 15z" fill="#E8437A"/>
+      <rect x="168" y="96" width="50" height="36" rx="8" fill="#9FD3C7"/><path d="M182 132l-4 10 14-10" fill="#9FD3C7"/>
+      <rect x="180" y="106" width="26" height="17" rx="2" fill="#fff"/><path d="M180 106l13 10 13-10" fill="none" stroke="#E8437A" stroke-width="2"/>
+      <rect x="78" y="20" width="84" height="150" rx="12" fill="#fff" stroke="#1B4B43" stroke-width="5"/>
+      <rect x="90" y="40" width="60" height="30" rx="4" fill="#FFB86B"/>
+      <circle cx="96" cy="84" r="6" fill="#5FA38F"/><rect x="106" y="80" width="40" height="7" rx="3" fill="#FF9B2E"/>
+      <rect x="90" y="96" width="34" height="5" rx="2" fill="#9FD3C7"/><rect x="128" y="96" width="20" height="5" rx="2" fill="#9FD3C7"/>
+      <rect x="90" y="110" width="28" height="32" rx="3" fill="#5FA38F"/><rect x="122" y="110" width="28" height="32" rx="3" fill="#E8437A"/>
+      <path d="M140 150c18-6 30 0 44 14 10 10 16 30 18 46h-60c-6-16-14-24-22-32-8-8-4-22 20-28z" fill="#FFD4A3"/>
+      <path d="M150 150c-8 2-14 8-14 14" fill="none" stroke="#E8A87C" stroke-width="3"/>
+    </svg>
+    <div class="text-center max-w-sm">
+      <p class="text-4xl font-bold text-ink">Notifications</p>
+      <p class="text-[15px] text-ink/65 mt-4 leading-relaxed">Reçois en direct tes réservations prêtes, les rappels de retour et les événements de ta médiathèque en activant les notifications.</p>
+    </div>
+    <div class="w-full max-w-sm flex gap-3">
+      <button type="button" onclick="finishNotifications(false)" class="flex-1 bg-white border-2 border-[#E3E2E8] text-ink rounded-2xl py-4 text-base font-semibold active:scale-[0.98] transition">Non merci</button>
+      <button type="button" onclick="finishNotifications(true)" class="flex-1 bg-mango-500 text-white rounded-2xl py-4 text-base font-semibold shadow-lg active:scale-[0.98] transition">Continuer</button>
+    </div>
+  </div>
+
   <!-- Confirmation avant l'envoi du mail de réinitialisation -->
   <div id="forgot-password-backdrop" onclick="closeForgotPasswordPopup(event)" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-      <p class="text-base font-bold text-ink mb-2">Réinitialisation de mot de passe</p>
-      <p class="text-sm text-ink/60 leading-relaxed mb-5">Tu veux réinitialiser ton mot de passe ? Un e-mail te sera envoyé à cette adresse.</p>
+      <p class="text-lg font-bold text-ink mb-2">Réinitialisation du mot de passe</p>
+      <p class="text-sm text-ink/60 leading-relaxed mb-5">Tu veux réinitialiser ton mot de passe ? Un code va t'être envoyé par e-mail.</p>
       <div class="flex gap-2">
         <button onclick="closeForgotPasswordPopup()" class="flex-1 bg-mango-50 text-ink/70 rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Annuler</button>
         <button onclick="confirmForgotPassword()" class="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Confirmer</button>
@@ -272,9 +321,59 @@
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }
-    messageEl.textContent = 'E-mail envoyé si un compte existe avec cette adresse. Vérifie ta boîte mail.';
-    messageEl.className = 'text-xs text-center mt-3 text-mango-700';
+    messageEl.textContent = '';
+    document.getElementById('reset-email').textContent = email;
+    const backdrop = document.getElementById('reset-backdrop');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
+    startCooldown('reset-resend-btn', 'Renvoyer le code');
+    document.getElementById('reset-code').focus();
   };
+
+  const setResetMessage = (text, color) => {
+    const el = document.getElementById('reset-message');
+    el.textContent = text;
+    el.className = `text-xs text-center min-h-[16px] ${color}`;
+  };
+
+  window.closeReset = function () {
+    document.getElementById('reset-backdrop').classList.add('hidden');
+    document.getElementById('reset-backdrop').classList.remove('flex');
+  };
+
+  window.resendResetCode = async function () {
+    const email = document.getElementById('reset-email').textContent;
+    setResetMessage('Envoi en cours…', 'text-ink/50');
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) { setResetMessage(error.message, 'text-red-600'); return; }
+    setResetMessage('Nouveau code envoyé !', 'text-mango-700');
+    startCooldown('reset-resend-btn', 'Renvoyer le code');
+  };
+
+  document.getElementById('form-reset').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('reset-email').textContent;
+    const token = document.getElementById('reset-code').value.replace(/\D/g, '');
+    const password = document.getElementById('reset-password').value;
+    if (token.length !== 6) { setResetMessage('Le code contient 6 chiffres.', 'text-red-600'); return; }
+    if (password !== document.getElementById('reset-password-confirm').value) {
+      setResetMessage('Les deux mots de passe ne correspondent pas.', 'text-red-600');
+      return;
+    }
+    setResetMessage('Vérification…', 'text-ink/50');
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
+    if (error) {
+      setResetMessage(/expired|invalid/i.test(error.message) ? 'Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.' : error.message, 'text-red-600');
+      return;
+    }
+    const { error: updError } = await supabase.auth.updateUser({ password });
+    if (updError) {
+      setResetMessage(/different from the old/i.test(updError.message) ? 'Choisis un mot de passe différent de l\'ancien.' : updError.message, 'text-red-600');
+      return;
+    }
+    try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
+    window.location.href = 'accueil.html';
+  });
 
   window.switchTab = function (tab) {
     document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
@@ -400,26 +499,42 @@
   window.enterCatalogue = function () {
     // Déjà expliqué ici : pas besoin de le répéter en arrivant sur le catalogue.
     try { sessionStorage.setItem('bligo_prereg_popup_shown', '1'); } catch {}
+    document.getElementById('welcome-backdrop').classList.add('hidden');
+    document.getElementById('welcome-backdrop').classList.remove('flex');
+    const screen = document.getElementById('notif-screen');
+    screen.classList.remove('hidden');
+    screen.classList.add('flex');
+  };
+
+  window.finishNotifications = async function (enable) {
+    if (enable && 'Notification' in window && Notification.permission === 'default') {
+      try { await Notification.requestPermission(); } catch {}
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      await supabase.from('profiles').update({ notifications_enabled: enable }).eq('id', session.user.id);
+    }
     window.location.href = 'accueil.html';
   };
 
   // Supabase n'accepte qu'un envoi par minute environ : bouton grisé 60 s.
-  function startResendCooldown() {
-    const btn = document.getElementById('resend-code-btn');
+  function startCooldown(btnId, label) {
+    const btn = document.getElementById(btnId);
     let left = 60;
     btn.disabled = true;
-    btn.textContent = `Renvoyer le code (${left} s)`;
+    btn.textContent = `${label} (${left} s)`;
     const timer = setInterval(() => {
       left -= 1;
       if (left <= 0) {
         clearInterval(timer);
         btn.disabled = false;
-        btn.textContent = 'Renvoyer le code';
+        btn.textContent = label;
         return;
       }
-      btn.textContent = `Renvoyer le code (${left} s)`;
+      btn.textContent = `${label} (${left} s)`;
     }, 1000);
   }
+  const startResendCooldown = () => startCooldown('resend-code-btn', 'Renvoyer le code de vérification');
 
   window.resendCode = async function () {
     if (!lastSignup) return;
@@ -530,7 +645,9 @@
   // pas un vrai "souvenir" durable — on repasse par ce choix à chaque
   // reconnexion, comme demandé.
   window.continueAsGuest = function () {
-    const communeId = document.getElementById('landing-commune').value;
+    const select = document.getElementById('landing-commune');
+    if (!select.value && landingOptions().length) select.value = landingOptions()[0].value;
+    const communeId = select.value;
     if (!communeId) return;
     localStorage.setItem('bligo_guest_commune_id', communeId);
     window.location.href = 'accueil.html';
@@ -539,6 +656,27 @@
   window.showAuthCard = function () {
     document.getElementById('landing-choice').classList.add('hidden');
     document.getElementById('auth-card').classList.remove('hidden');
+    document.getElementById('auth-card').classList.add('flex');
+  };
+
+  // Boutons « et » de part et d'autre du nom de la médiathèque (12/10/2026).
+  function landingOptions() {
+    return [...document.getElementById('landing-commune').options].filter(o => o.value);
+  }
+  function showLandingCommune() {
+    const select = document.getElementById('landing-commune');
+    const current = landingOptions().find(o => o.value === select.value);
+    document.getElementById('landing-commune-name').textContent = current ? `Médiathèque de ${current.textContent}` : 'Choisis ta médiathèque';
+  }
+  window.stepCommune = function (step) {
+    const options = landingOptions();
+    if (!options.length) return;
+    const select = document.getElementById('landing-commune');
+    const index = options.findIndex(o => o.value === select.value);
+    const next = options[(index + step + options.length) % options.length];
+    select.value = next.value;
+    showLandingCommune();
+    applyCommuneHeader(next.value);
   };
 
   // Depuis la création de compte : retour au catalogue déjà choisi si on en
@@ -556,8 +694,13 @@
   await loadCommuneOptions();
 
   const guestCommuneIdOnLoad = localStorage.getItem('bligo_guest_commune_id');
+  if (!guestCommuneIdOnLoad && landingOptions().length) {
+    document.getElementById('landing-commune').value = landingOptions()[0].value;
+  }
+  showLandingCommune();
   if (guestCommuneIdOnLoad) {
     document.getElementById('landing-commune').value = guestCommuneIdOnLoad;
+    showLandingCommune();
     document.getElementById('signup-commune').value = guestCommuneIdOnLoad;
     applyCommuneHeader(guestCommuneIdOnLoad);
   }

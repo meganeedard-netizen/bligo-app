@@ -40,6 +40,8 @@ const INDEX_INJECT = "\n  window.redirectAfterLogin = async function () {\n    c
   "  window.BLIGO_AGENT_APP = true;\n" +
   "  document.getElementById('landing-choice')?.classList.add('hidden');\n" +
   "  document.getElementById('auth-card')?.classList.remove('hidden');\n" +
+  "  document.getElementById('auth-card')?.classList.add('flex');\n" +
+  "  document.querySelector('#form-login [onclick=\"switchTab(\\'signup\\')\"]')?.parentElement.classList.add('hidden');\n" +
   "  document.getElementById('tab-login')?.parentElement.classList.add('hidden');\n" +
   "  document.querySelector('#auth-card > button[onclick=\"backToBrowsing()\"]')?.classList.add('hidden');\n" +
   "  switchTab('login');\n" +
