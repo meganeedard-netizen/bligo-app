@@ -33,7 +33,7 @@ const edit = (page, fn) => {
 // usager) — absente de ce paquet, réservé aux agents. On route plutôt vers
 // admin.html ou superadmin.html selon le rôle, sans toucher au index.html
 // source (utilisé tel quel par le vrai site usager bligo.app).
-const INDEX_INJECT = "\n  window.redirectAfterLogin = async function () {\n    const { data: { session } } = await supabase.auth.getSession();\n    if (!session) return;\n    const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();\n    window.location.href = profile?.role === 'super_admin' ? 'superadmin.html' : 'admin.html';\n  };\n" +
+const INDEX_INJECT = "\n  window.redirectAfterLogin = async function () {\n    const { data: { session } } = await supabase.auth.getSession();\n    if (!session) return;\n    const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();\n    window.location.href = profile?.role === 'super_admin' && (session.user.email || '').toLowerCase() === 'megane@bligo.fr' ? 'superadmin.html' : 'admin.html';\n  };\n" +
   // Logiciel réservé aux agents (12/10/2026) : connexion seulement. Pas de choix
   // de médiathèque ni de création de compte (c'est Mégane qui crée les comptes
   // agents) ; un compte usager qui se connecte est refusé avec un message.
