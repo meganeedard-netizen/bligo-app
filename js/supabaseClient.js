@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=20261016c';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=20261016d';
 
 // Logiciel agent Mac/Windows (16/10/2026) : il affiche les pages de bligo.app
 // et les ouvre avec « ?logiciel=1 ». Le repère reste pour toute la fenêtre

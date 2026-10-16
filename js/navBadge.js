@@ -1,28 +1,30 @@
-import { supabase } from './supabaseClient.js?v=20261016c';
+import { supabase } from './supabaseClient.js?v=20261016d';
 
-// Onglet « Mon panier » de la barre du bas (16/10/2026) : la pastille compte
-// les livres du panier, et l'onglet devient « Ma commande » quand le panier
-// est vide mais qu'une commande est en cours (en préparation ou prête).
+// Pastille "Réservation" de la barre du bas : nombre de livres actuellement
+// réservés ou empruntés (en préparation, prêts, ou empruntés et pas encore
+// à échéance) — pour rappel visuel du quota (3 livres adultes + 3 jeunesse,
+// renouvelable tous les 3 semaines une fois rendus).
 export async function updateReservationBadge(userId) {
   const badge = document.getElementById('nav-resa-badge');
-  const label = document.getElementById('nav-resa-label');
   if (!badge) return;
 
   const { data, error } = await supabase
     .from('reservations')
-    .select('status')
+    .select('status, return_due_at')
     .eq('user_id', userId)
-    .in('status', ['panier', 'preparation', 'pret']);
+    .in('status', ['preparation', 'pret', 'recupere']);
 
   if (error) { console.error(error); return; }
 
-  const cartCount = (data || []).filter(r => r.status === 'panier').length;
-  const orderCount = (data || []).length - cartCount;
-  const count = cartCount || orderCount;
+  const now = Date.now();
+  const activeCount = (data || []).filter(r =>
+    r.status === 'preparation' ||
+    r.status === 'pret' ||
+    (r.status === 'recupere' && r.return_due_at && new Date(r.return_due_at).getTime() > now)
+  ).length;
 
-  if (label) label.textContent = !cartCount && orderCount ? 'Ma commande' : 'Mon panier';
-  if (count > 0) {
-    badge.textContent = count;
+  if (activeCount > 0) {
+    badge.textContent = activeCount;
     badge.classList.remove('hidden');
   } else {
     badge.classList.add('hidden');

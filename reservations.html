@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BliGO · Mon panier</title>
+<title>BliGO · Réservations</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -37,23 +37,13 @@
 
 <header class="sticky top-0 z-30 bg-white shadow-sm">
   <div class="max-w-4xl mx-auto px-5 py-3">
-    <h1 id="page-title" class="text-lg font-semibold text-ink/70 text-center">Mon panier</h1>
+    <h1 id="page-title" class="text-lg font-semibold text-ink/70 text-center">Mes réservations</h1>
   </div>
 </header>
 
 <main class="max-w-md mx-auto px-4 py-5">
   <div id="empty-state" class="hidden text-center py-16">
-    <p class="text-base font-bold text-ink">Ton panier est vide</p>
-    <p class="text-sm text-ink/55 mt-1 mb-6">Ajoute des livres depuis le catalogue.</p>
-    <a href="accueil.html" class="inline-block bg-brand text-white text-base font-semibold rounded-2xl px-8 py-3.5 shadow-md active:scale-[0.98] transition">Voir le catalogue</a>
-  </div>
-
-  <!-- Panier (16/10/2026) : les livres ajoutés depuis le catalogue, envoyés à
-       la médiathèque seulement avec « Valider ma commande ». -->
-  <div id="cart-section" class="hidden mb-8">
-    <h2 class="text-base font-bold text-ink mb-3">Mon panier</h2>
-    <div id="cart-list" class="bg-white rounded-2xl p-3.5 shadow-sm flex flex-col gap-2.5 divide-y divide-mango-50"></div>
-    <button id="validate-cart-btn" type="button" onclick="validateCart()" class="w-full mt-4 bg-brand text-white rounded-2xl py-3.5 text-base font-semibold shadow-md active:scale-[0.98] transition">Valider ma commande</button>
+    <a href="accueil.html" class="inline-block bg-mango-500 text-white text-base font-semibold rounded-2xl px-8 py-3.5 shadow-md active:scale-[0.98] transition">Réserver mon premier livre</a>
   </div>
 
   <div id="overdue-section" class="hidden mb-8">
@@ -73,12 +63,12 @@
   </div>
 
   <div id="ready-section" class="hidden mb-8">
-    <h2 class="text-base font-bold text-ink mb-3">Ma commande est prête</h2>
+    <h2 class="text-base font-bold text-ink mb-3">Prêt à récupérer</h2>
     <div id="ready-list" class="flex flex-col gap-3"></div>
   </div>
 
   <div id="preparing-section" class="hidden mb-8">
-    <h2 class="text-base font-bold text-ink mb-3">Ma commande</h2>
+    <h2 class="text-base font-bold text-ink mb-3">En préparation</h2>
     <div id="preparing-list" class="flex flex-col gap-3"></div>
   </div>
 
@@ -104,10 +94,10 @@
   </a>
   <a href="reservations.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-mango-700">
     <span class="relative">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17.5" cy="19.5" r="1.4"/><path d="M2.8 4h2.4l2.4 11.2h10.6l2-7.7H6.4"/></svg>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 1 1 12 0c0 3.8 1.3 5.2 1.3 5.2H4.7S6 13.3 6 9.5Z"/><path d="M10 17.7a2 2 0 0 0 4 0"/></svg>
       <span id="nav-resa-badge" class="hidden absolute -top-1 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-mango-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">0</span>
     </span>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap" id="nav-resa-label">Mon panier</span>
+    <span class="text-[10.5px] font-semibold whitespace-nowrap" id="nav-resa-label">Réservation</span>
   </a>
   <a href="liste-envie.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
@@ -125,11 +115,11 @@
 </nav>
 
 <script type="module">
-  import { supabase } from './js/supabaseClient.js?v=20261016c';
-  import { applyCachedTheme } from './js/theme.js?v=20261016c';
+  import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { applyCachedTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
-  import { updateReservationBadge } from './js/navBadge.js?v=20261016c';
-  import { showSnackbar, showDialog, confirmDialog } from './js/ui.js?v=20261016c';
+  import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
+  import { showSnackbar, showDialog, confirmDialog } from './js/ui.js?v=20261016d';
 
   let currentUser = null;
   let reservations = [];
@@ -168,8 +158,8 @@
       // on l'explique sur place. Le compte n'est demandé qu'au moment de réserver.
       document.querySelector('main').innerHTML = `
         <div class="text-center py-12 px-4">
-          <p class="text-lg font-bold text-ink">Ton panier</p>
-          <p class="text-sm text-ink/60 mt-2 max-w-xs mx-auto">Crée ton compte pour commander des livres et suivre tes emprunts. Le catalogue reste consultable librement.</p>
+          <p class="text-lg font-bold text-ink">Tes réservations</p>
+          <p class="text-sm text-ink/60 mt-2 max-w-xs mx-auto">Crée ton compte pour réserver des livres et suivre tes emprunts. Le catalogue reste consultable librement.</p>
           <a href="index.html?gate=reserve" class="inline-block mt-6 bg-mango-500 text-white text-base font-semibold rounded-2xl px-8 py-3.5 shadow-md">Créer mon compte</a>
           <p class="mt-4 text-sm text-ink/70">J'ai déjà un compte - <a href="index.html?login=1" class="font-semibold text-mango-700">Se connecter</a></p>
           <a href="accueil.html" class="block mt-4 text-sm font-semibold text-mango-700">Retour au catalogue</a>
@@ -205,7 +195,7 @@
   async function loadReservations() {
     const { data, error } = await supabase
       .from('reservations')
-      .select('id, status, created_at, ordered_at, ready_at, return_due_at, books ( id, title, author, cover_initial, cover_url, commune_id )')
+      .select('id, status, created_at, ready_at, return_due_at, books ( id, title, author, cover_initial, cover_url, commune_id )')
       .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false });
     if (error) { console.error(error); return; }
@@ -302,7 +292,7 @@
         bookId: book?.id || null,
         status: r.status,
         createdAt: r.created_at,
-        orderedAt: r.ordered_at || r.created_at,
+        orderedAt: r.created_at,
         readyAt: r.ready_at || null,
         returnDueAt: r.return_due_at || null,
         renewalCount: renewalsByReservation[r.id] || 0,
@@ -502,47 +492,6 @@
     updateReservationBadge(currentUser.id);
   };
 
-  // ---------- Panier ----------
-  function renderCart(items) {
-    document.getElementById('cart-section').classList.toggle('hidden', !items.length);
-    document.getElementById('cart-list').innerHTML = items.map((it, i) => `
-      <div class="${i > 0 ? 'pt-2.5' : ''} flex items-center gap-2">
-        <div class="flex-1 min-w-0">${bookRowHtml(it)}</div>
-        <button type="button" onclick="removeFromCart(${it.id})" class="shrink-0 text-[11px] font-semibold text-red-500/75 hover:text-red-600 border border-red-100 rounded-full px-2.5 py-1.5">Retirer</button>
-      </div>`).join('');
-  }
-
-  window.removeFromCart = async function (reservationId) {
-    const { error } = await supabase.from('reservations').delete().eq('id', reservationId);
-    if (error) { showDialog({ message: 'Erreur : ' + error.message }); return; }
-    showSnackbar('Livre retiré de ton panier');
-    await loadReservations();
-    renderAll();
-    updateReservationBadge(currentUser.id);
-  };
-
-  window.validateCart = async function () {
-    const btn = document.getElementById('validate-cart-btn');
-    btn.disabled = true;
-    const { data, error } = await supabase.rpc('validate_cart');
-    btn.disabled = false;
-    if (error) { showDialog({ message: 'Erreur : ' + error.message }); return; }
-    const unavailable = data?.unavailable || [];
-    if (data?.count > 0) {
-      showSnackbar('Commande envoyée ! Tu recevras une notification et un mail quand elle sera prête.', { duration: 5000 });
-    }
-    if (unavailable.length) {
-      showDialog({
-        title: unavailable.length > 1 ? 'Des livres ne sont plus disponibles' : 'Un livre n\'est plus disponible',
-        message: `${unavailable.join(', ')} ${unavailable.length > 1 ? 'ont été empruntés' : 'a été emprunté'} entre-temps et ${unavailable.length > 1 ? 'restent' : 'reste'} dans ton panier. Retire-${unavailable.length > 1 ? 'les' : 'le'} ou ajoute-${unavailable.length > 1 ? 'les' : 'le'} à ta liste d'envies.`,
-      });
-    }
-    await loadReservations();
-    renderAll();
-    updateReservationBadge(currentUser.id);
-    if (data?.count > 0) window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   function historyItemHtml(item) {
     const isExpired = item.status === 'expiree';
     // Ici, uniquement "Déjà lu" (blanc) ou "Expirée" (rouge) — un livre du
@@ -666,7 +615,6 @@
 
   function renderAll() {
     const combined = [...normalize(reservations), ...normalizeLoans(loans)];
-    const cart = combined.filter(x => x.status === 'panier');
     const ready = combined.filter(x => x.status === 'pret');
     const preparing = combined.filter(x => x.status === 'preparation');
     const isOverdue = x => x.status === 'recupere' && x.returnDueAt && new Date(x.returnDueAt) <= new Date();
@@ -681,8 +629,6 @@
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     document.getElementById('empty-state').classList.toggle('hidden', !!combined.length || !!myHolds.length);
-    document.getElementById('page-title').textContent = !cart.length && (preparing.length || ready.length) ? 'Ma commande' : 'Mon panier';
-    renderCart(cart);
     renderHoldsList();
     renderOverdueList(overdue);
     renderBorrowedList(borrowed);

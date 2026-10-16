@@ -1280,10 +1280,10 @@
 <p id="access-message" class="text-sm text-center text-ink/50 mt-16"></p>
 
 <script type="module">
-  import { supabase } from './js/supabaseClient.js?v=20261016c';
-  import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016c';
+  import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
-  import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016c';
+  import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
   import { BrowserMultiFormatReader } from 'https://esm.sh/@zxing/browser@0.1.5';
   import { BarcodeFormat, DecodeHintType } from 'https://esm.sh/@zxing/library@0.21.3';
 
@@ -7191,7 +7191,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     // super admin voyait aussi celles des autres médiathèques.
     let resaQuery = supabase
       .from('reservations')
-      .select('id, status, created_at, ordered_at, ready_at, reshelved, user_id, book_id, books!inner ( title, author, shelf_location, isbn, cover_url, cover_initial, commune_id, book_copies ( barcode ) )')
+      .select('id, status, created_at, ready_at, reshelved, user_id, book_id, books!inner ( title, author, shelf_location, isbn, cover_url, cover_initial, commune_id, book_copies ( barcode ) )')
       .neq('status', 'panier')
       .order('created_at', { ascending: true });
     if (myCommuneId) resaQuery = resaQuery.eq('books.commune_id', myCommuneId);
@@ -7261,9 +7261,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   const RESERVATION_GRACE_PERIOD_MS = 30 * 60 * 1000;
   function isVisibleToStaff(r) {
     if (r.status !== 'preparation') return true;
-    // Depuis le panier (16/10/2026), les 30 minutes partent de la validation
-    // de la commande (ordered_at), pas de l'ajout du livre.
-    return (Date.now() - new Date(r.ordered_at || r.created_at).getTime()) >= RESERVATION_GRACE_PERIOD_MS;
+    return (Date.now() - new Date(r.created_at).getTime()) >= RESERVATION_GRACE_PERIOD_MS;
   }
 
   function renderReservations() {
