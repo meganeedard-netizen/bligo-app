@@ -849,10 +849,11 @@
       <div class="flex gap-4">
         ${coverHtmlModal}
         <div class="flex-1 min-w-0">
+          ${b.category ? `<p class="text-[10.5px] font-bold uppercase tracking-wide text-mango-600 leading-tight mb-1">${CATEGORY_SHORT_LABELS[b.category] || b.category}</p>` : ''}
           <p class="text-base font-bold text-ink leading-snug">${b.title}</p>
           <p class="text-sm text-ink/55 mt-0.5">${b.author}</p>
           <div class="flex items-center gap-2 mt-2 flex-wrap">
-            ${b.category ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-hibiscus-50 text-hibiscus-700">${CATEGORY_SHORT_LABELS[b.category] || b.category}</span>` : '<span></span>'}
+            <span></span>
             ${b.age_range ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-mango-50 text-mango-700">${b.age_range}</span>` : ''}
             <button id="modal-wishlist-btn" class="ml-auto w-7 h-7 shrink-0 ${inWishlist ? 'text-hibiscus-600' : 'text-ink/25 hover:text-hibiscus-400'}">${heartIcon(inWishlist)}</button>
           </div>
