@@ -385,7 +385,6 @@
             <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M12 5v14M5 12h14"/></svg>Ajouter un document</button>
             <button onclick="openCatalogueView('subs')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M18 8h2v10a2 2 0 0 1-2 2"/><path d="M8 8h6M8 12h6M8 16h4"/></svg>Abonnements périodiques <span id="subs-late-badge" class="hidden text-[10px] font-bold bg-red-600 text-white rounded-full px-1.5 py-0.5"></span></button>
             <button onclick="printToEquipLabels()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>Étiquettes à imprimer</button>
-            <button id="export-catalogue-btn" onclick="openExportModal()" style="touch-action: manipulation;" class="hidden border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>Exporter le catalogue</button>
           </div>
         </div>
 
@@ -997,7 +996,7 @@
         <p class="text-sm text-ink/55 mb-6">Réservé à la direction. Apparence, tarifs, horaires et règles de ta médiathèque.</p>
 
         <div class="grid lg:grid-cols-[200px_1fr] gap-6 items-start">
-          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('tarifs')" data-settings-tab="tarifs" class="settings-tab-btn">Tarifs</button><button type="button" onclick="showSettingsTab('horaires')" data-settings-tab="horaires" class="settings-tab-btn">Horaires d'ouverture</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button></nav>
+          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('tarifs')" data-settings-tab="tarifs" class="settings-tab-btn">Tarifs</button><button type="button" onclick="showSettingsTab('horaires')" data-settings-tab="horaires" class="settings-tab-btn">Horaires d'ouverture</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button><button type="button" onclick="showSettingsTab('donnees')" data-settings-tab="donnees" class="settings-tab-btn">Données et export</button></nav>
           <div class="max-w-3xl min-w-0">
           <div data-settings-pane="apparence" class="bg-white border border-[#E5E7EB] rounded-xl p-6">
         <h3 class="text-base font-bold text-ink mb-2">Logo</h3>
@@ -1200,6 +1199,18 @@
           <p class="text-[10.5px] text-ink/45 mt-2">Les documents déjà catalogués gardent leur cote : les nouvelles règles s'appliquent aux prochains catalogages.</p>
         </div>
 
+          </div>
+          <!-- Données de la médiathèque (16/10/2026) : export du catalogue, sorti de Catalogage. -->
+          <div data-settings-pane="donnees" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
+            <h3 class="text-base font-bold text-ink mb-1">Données de la médiathèque</h3>
+            <p class="text-sm text-ink/55 mb-5">Tes données t'appartiennent : tu peux les récupérer à tout moment, par exemple pour les archiver ou changer de logiciel.</p>
+            <div class="border border-[#E5E7EB] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p class="text-sm font-bold text-ink">Catalogue complet</p>
+                <p class="text-xs text-ink/55 mt-0.5">Tous les documents et exemplaires, en Excel (CSV) ou en UNIMARC, le format standard des bibliothèques.</p>
+              </div>
+              <button onclick="openExportModal()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition shrink-0">Exporter le catalogue</button>
+            </div>
           </div>
           <div data-settings-pane="types" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
         <h3 class="text-base font-bold text-ink mb-2">Types de documents</h3>
@@ -1714,7 +1725,6 @@
     myCommuneId = profile.commune_id || null;
     myIsDirection = profile.role === 'super_admin' || (profile.role === 'agent' && profile.agent_level === 'direction');
     document.getElementById('nav-sigb-stats-btn').classList.toggle('hidden', !myIsDirection);
-    document.getElementById('export-catalogue-btn').classList.toggle('hidden', !myIsDirection);
     document.getElementById('nav-settings-btn').classList.toggle('hidden', !myIsDirection);
 
     if (myCommuneId) {
