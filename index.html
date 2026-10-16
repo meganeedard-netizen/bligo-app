@@ -765,25 +765,67 @@
   window.redirectAfterLogin = async function () {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('role, commune_id').eq('id', session.user.id).single();
+    // Logiciel : le compte doit appartenir à la médiathèque choisie (16/10/2026).
+    let chosen = null;
+    try { chosen = sessionStorage.getItem('bligo_agent_commune'); } catch (e) {}
+    if (chosen && profile?.commune_id && String(profile.commune_id) !== chosen && ['agent', 'super_admin'].includes(profile.role)) {
+      const { data: home } = await supabase.from('communes').select('name').eq('id', profile.commune_id).single();
+      await supabase.auth.signOut();
+      window.location.href = 'index.html?wrong_commune=' + encodeURIComponent(home?.name || 'une autre commune') + '&t=' + Date.now();
+      return;
+    }
     // ?t= : toujours la dernière version mise en ligne, jamais une copie en cache.
     window.location.href = (profile?.role === 'super_admin' && (session.user.email || '').toLowerCase() === 'megane@bligo.fr' ? 'superadmin.html' : 'admin.html') + '?t=' + Date.now();
   };
-  // Logiciel réservé aux agents (12/10/2026) : connexion seulement. Pas de
-  // choix de médiathèque ni de création de compte (c'est Mégane qui crée les
-  // comptes agents) ; un compte usager qui se connecte est refusé.
+  // Logiciel réservé aux agents (12/10/2026, choix de médiathèque le
+  // 16/10/2026) : l'agent choisit d'abord sa médiathèque, puis se connecte.
+  // Pas de visite sans compte ni de création de compte (c'est Mégane qui crée
+  // les comptes agents) ; un compte usager est refusé, et un compte agent
+  // d'une autre médiathèque aussi (voir redirectAfterLogin).
   if (window.BLIGO_AGENT_APP) {
-    document.getElementById('landing-choice')?.classList.add('hidden');
+    const landing = document.getElementById('landing-choice');
+    landing.querySelector('button[onclick="continueAsGuest()"]')?.classList.add('hidden');
+    const loginBtn = landing.querySelector('button[onclick="showAuthCard()"]');
+    if (loginBtn) {
+      loginBtn.textContent = 'Se connecter';
+      loginBtn.className = 'w-full max-w-[260px] bg-mango-500 text-white rounded-2xl py-4 text-base font-semibold shadow-lg active:scale-[0.98] transition';
+    }
+    [...landing.querySelectorAll('p')].find(el => el.textContent.trim() === "L'appli de ta médiathèque")?.replaceChildren('Back-office de ta médiathèque');
     // « De retour ? » : seulement pour l'appli usagers (16/10/2026).
     document.getElementById('login-welcome-title')?.classList.add('hidden');
-    document.getElementById('auth-card')?.classList.remove('hidden');
-    document.getElementById('auth-card')?.classList.add('flex');
     document.querySelector('#form-login [onclick="switchTab(\'signup\')"]')?.parentElement.classList.add('hidden');
     document.getElementById('tab-login')?.parentElement.classList.add('hidden');
-    document.querySelector('#auth-card > button[onclick="backToBrowsing()"]')?.classList.add('hidden');
     switchTab('login');
-    if (new URLSearchParams(location.search).get('not_agent')) {
-      messageEl.textContent = 'Ce compte n\'a pas accès au back-office.';
+    // Dernière médiathèque choisie sur ce poste, présélectionnée.
+    try {
+      const last = localStorage.getItem('bligo_agent_last_commune');
+      if (last && landingOptions().some(o => o.value === last)) {
+        document.getElementById('landing-commune').value = last;
+        showLandingCommune();
+        applyCommuneHeader(last);
+      }
+    } catch (e) {}
+    const baseShowAuthCard = window.showAuthCard;
+    window.showAuthCard = function () {
+      const chosen = document.getElementById('landing-commune').value;
+      try { sessionStorage.setItem('bligo_agent_commune', chosen); localStorage.setItem('bligo_agent_last_commune', chosen); } catch (e) {}
+      applyCommuneHeader(chosen);
+      baseShowAuthCard();
+    };
+    // Flèche retour de la connexion : revient au choix de la médiathèque.
+    window.backToBrowsing = function () {
+      document.getElementById('auth-card').classList.add('hidden');
+      document.getElementById('auth-card').classList.remove('flex');
+      landing.classList.remove('hidden');
+      messageEl.textContent = '';
+    };
+    const params = new URLSearchParams(location.search);
+    if (params.get('not_agent') || params.get('wrong_commune')) {
+      window.showAuthCard();
+      messageEl.textContent = params.get('wrong_commune')
+        ? `Ce compte est rattaché à la Médiathèque de ${params.get('wrong_commune')}. Choisis cette médiathèque pour te connecter.`
+        : 'Ce compte n\'a pas accès au back-office.';
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
     }
   }
