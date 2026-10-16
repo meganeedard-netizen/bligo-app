@@ -517,7 +517,7 @@
           <button onclick="applyBulkLoanDuration()" class="text-xs font-semibold bg-white text-ink rounded-lg px-3 py-1.5">Appliquer le délai</button>
           <button onclick="applyBulkNewRelease(true)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Marquer « Nouveauté »</button>
           <button onclick="applyBulkNewRelease(false)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Retirer « Nouveauté »</button>
-          <button onclick="applyBulkStaffPick(true)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">❤️ Marquer « Coup de cœur »</button>
+          <button onclick="applyBulkStaffPick(true)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5"><svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>Marquer « Coup de cœur »</button>
           <button onclick="applyBulkStaffPick(false)" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5">Retirer « Coup de cœur »</button>
           <button onclick="openLabelsModal([...selectedBookIds])" class="text-xs font-semibold bg-white/15 rounded-lg px-3 py-1.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-2px] shrink-0"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg> Imprimer les étiquettes</button>
           <button onclick="clearBulkSelection()" class="text-xs text-white/60 hover:text-white ml-auto">Annuler la sélection</button>
@@ -702,7 +702,7 @@
                 <p class="text-sm text-ink/55">Livres empruntés et pas encore en retard, classés par date de retour.</p>
                 <label class="flex items-center gap-2 text-xs font-semibold text-ink/70 bg-white border border-[#E5E7EB] rounded-full px-3 py-1.5 cursor-pointer">
                   <input id="awaited-only-toggle" type="checkbox" onchange="awaitedOnly = this.checked; renderActiveLoans()" class="accent-amber-600">
-                  ⏳ Seulement les livres attendus
+                  <svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10M7 21h10"/><path d="M8 3c0 5 8 5 8 9s-8 4-8 9"/><path d="M16 3c0 5-8 5-8 9s8 4 8 9"/></svg>Seulement les livres attendus
                 </label>
               </div>
               <div id="active-loans-list" class="flex flex-col gap-2.5"></div>
@@ -799,7 +799,7 @@
             <p class="text-sm text-ink/55">Ajoute un événement pour qu'il apparaisse dans l'agenda de l'appli usagers.</p>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <button onclick="openPastEventsView()" style="touch-action: manipulation;" class="bg-hibiscus-50 text-hibiscus-700 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Événements passés</button>
+            <button onclick="openPastEventsView()" style="touch-action: manipulation;" class="bg-[#F3F4F6] text-ink/70 border border-[#E5E7EB] hover:bg-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Événements passés</button>
             <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un événement</button>
           </div>
         </div>
@@ -3433,7 +3433,7 @@
           </div>
           ${d.summary ? `<p class="text-xs text-ink/60 leading-relaxed mt-3 line-clamp-4">${escapeHtml(d.summary)}</p>` : `
           <input id="back-photo-input-${d.localId}" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleBackPhoto(event, '${d.localId}')">
-          <button type="button" onclick="document.getElementById('back-photo-input-${d.localId}').click()" class="w-full mt-3 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">📷 Aucun résumé trouvé : photo du verso pour le remplir</button>
+          <button type="button" onclick="document.getElementById('back-photo-input-${d.localId}').click()" class="w-full mt-3 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold"><svg class="inline-block align-[-2px] mr-1 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Aucun résumé trouvé : photo du verso pour le remplir</button>
           <p id="cover-ocr-status-${d.localId}" class="text-[11px] text-ink/45 text-center mt-1 min-h-[16px]"></p>`}
 ${documentTypeKind(d.format) === 'periodique' ? `
           <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Numéro du magazine</label>${d.meta?.fromCatalogue ? `<p class="text-[11px] text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 mb-1.5">Magazine déjà au catalogue : la fiche est remplie, vérifie juste le numéro${d.issue ? '' : ' (tape-le ou scanne le petit code à côté du code-barres)'}.</p>` : ''}
@@ -3441,7 +3441,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <p class="text-[10.5px] text-ink/45 mt-1">Tu peux coller le code L de la couverture (« L 13834-630H-F ») : le numéro est extrait tout seul.</p>` : ''}
           <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires</label>
           <input type="number" id="draft-copies-${d.localId}" min="1" value="${d.copyCount || 1}" onchange="updateDraftField('${d.localId}', 'copyCount', this.value)" class="w-24 border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm">
-          <button onclick="toggleDraftVerify('${d.localId}')" class="w-full mt-3 border border-mango-200 text-ink rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">🔍 Vérifier la fiche</button>
+          <button onclick="toggleDraftVerify('${d.localId}')" class="w-full mt-3 border border-mango-200 text-ink rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition"><svg class="inline-block align-[-2px] mr-1 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Vérifier la fiche</button>
         </div>`;
     }
 
@@ -3547,7 +3547,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <label class="text-xs font-semibold text-ink/60 block mb-1">Résumé</label>
         <textarea id="draft-summary-${d.localId}" oninput="updateDraftField('${d.localId}', 'summary', this.value)" rows="3" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">${escapeHtml(d.summary || '')}</textarea>
         ${d.summary ? '' : `<input id="back-photo-input-${d.localId}" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleBackPhoto(event, '${d.localId}')">
-        <button type="button" onclick="document.getElementById('back-photo-input-${d.localId}').click()" class="w-full -mt-1 mb-1 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">📷 Photo du verso pour remplir le résumé</button>
+        <button type="button" onclick="document.getElementById('back-photo-input-${d.localId}').click()" class="w-full -mt-1 mb-1 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold"><svg class="inline-block align-[-2px] mr-1 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photo du verso pour remplir le résumé</button>
         <p id="cover-ocr-status-${d.localId}" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>`}
 ${documentTypeKind(d.format) === 'periodique' ? `
           <label class="text-xs font-semibold text-ink/60 block mb-1">Numéro du magazine</label>${d.meta?.fromCatalogue ? `<p class="text-[11px] text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 mb-1.5">Magazine déjà au catalogue : la fiche est remplie, vérifie juste le numéro${d.issue ? '' : ' (tape-le ou scanne le petit code à côté du code-barres)'}.</p>` : ''}
@@ -4583,7 +4583,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     badge.textContent = `${late.length} en retard`;
     badge.classList.toggle('hidden', !late.length);
     if (!late.length) {
-      box.innerHTML = `<p class="text-sm text-ink/50 text-center py-6">${awaitedOnly ? 'Aucun livre attendu en retard.' : 'Aucun retard 🎉'}</p>`;
+      box.innerHTML = `<p class="text-sm text-ink/50 text-center py-6">${awaitedOnly ? 'Aucun livre attendu en retard.' : 'Aucun retard.'}</p>`;
       return;
     }
     box.innerHTML = late.map(loan => {
@@ -4611,7 +4611,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   function waitingBadgeHtml(loan) {
     return loan.waiting
-      ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">⏳ ${loan.waiting} en attente</span>`
+      ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"><svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10M7 21h10"/><path d="M8 3c0 5 8 5 8 9s-8 4-8 9"/><path d="M16 3c0 5-8 5-8 9s8 4 8 9"/></svg>${loan.waiting} en attente</span>`
       : '';
   }
 
@@ -6470,9 +6470,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <button onclick="openBookDetail(${b.id})" class="w-full font-semibold text-ink truncate block text-left hover:underline">${escapeHtml(b.title)}</button>
             ${b.shelf_location ? `<span class="text-[10px] text-mango-700 font-semibold truncate block">${escapeHtml(b.shelf_location)}</span>` : ''}
             ${b.copy_barcode ? `<span class="text-[10px] text-ink/40 truncate block">${escapeHtml(b.copy_barcode)}</span>` : ''}
-            ${b.on_site_only ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">📍 Sur place uniquement</span>` : ''}
-            ${b.is_new_release ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">✨ Nouveauté</span>` : ''}
-            ${b.is_staff_pick ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block">❤️ Coup de cœur</span>` : ''}
+            ${b.on_site_only ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block"><svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Sur place uniquement</span>` : ''}
+            ${b.is_new_release ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block"><svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Nouveauté</span>` : ''}
+            ${b.is_staff_pick ? `<span class="text-[10px] text-hibiscus-700 font-semibold truncate block"><svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>Coup de cœur</span>` : ''}
           </span>
         </span>
         <span class="text-ink/60 truncate">${escapeHtml(b.author)}</span>
@@ -6484,7 +6484,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <button onclick="markEquipped(${b.id})"
               style="touch-action: manipulation;"
               class="w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full bg-hibiscus-50 text-hibiscus-700">
-              ⏳ À équiper${equipCopies(b).length > 1 ? ` (${equipCopies(b).length} ex.)` : ''}
+              <svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10M7 21h10"/><path d="M8 3c0 5 8 5 8 9s-8 4-8 9"/><path d="M16 3c0 5-8 5-8 9s8 4 8 9"/></svg>À équiper${equipCopies(b).length > 1 ? ` (${equipCopies(b).length} ex.)` : ''}
             </button>
           ` : `
             <button onclick="openBookDetail(${b.id})" title="Voir la disponibilité" class="inline-block w-full sm:w-auto text-[11px] font-bold px-3 py-2 sm:py-1.5 rounded-full hover:ring-1 hover:ring-brand/30 ${b.available_count > 0 ? 'bg-mango-50 text-mango-700' : 'bg-red-50 text-red-600'}">
@@ -6951,7 +6951,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ${bookFieldRow('Nouveauté', 'bd-new-release', b.is_new_release ? 'Oui' : 'Non', { select: ['Non', 'Oui'] })}
       </div>
       <div class="grid grid-cols-2 gap-x-3">
-        ${bookFieldRow('❤️ Coup de cœur', 'bd-staff-pick', b.is_staff_pick ? 'Oui' : 'Non', { select: ['Non', 'Oui'] })}
+        ${bookFieldRow('Coup de cœur', 'bd-staff-pick', b.is_staff_pick ? 'Oui' : 'Non', { select: ['Non', 'Oui'] })}
       </div>
       <div class="grid grid-cols-2 gap-x-3">
         ${bookFieldRow('Âge conseillé', 'bd-age-range', b.age_range, { type: 'text' })}
@@ -7921,9 +7921,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       <p class="text-xl font-bold text-ink leading-snug">${escapeHtml(e.event_type || 'Type non précisé')}</p>
       ${e.title ? `<p class="text-base text-ink/60 mt-0.5">${escapeHtml(e.title)}</p>` : ''}
       <div class="flex flex-col gap-1 mt-3 text-sm text-ink/70">
-        <span>📅 ${dateLabel} à ${timeLabel} · ${durationLabel}</span>
-        <span>📍 ${escapeHtml(e.communes?.name || e.commune?.name || '')}${e.location ? ' · ' + escapeHtml(e.location) : ''}</span>
-        <span>👥 ${e.max_seats != null ? `${e.max_seats} place${e.max_seats > 1 ? 's' : ''}` : 'Places illimitées'}</span>
+        <span><svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>${dateLabel} à ${timeLabel} · ${durationLabel}</span>
+        <span><svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>${escapeHtml(e.communes?.name || e.commune?.name || '')}${e.location ? ' · ' + escapeHtml(e.location) : ''}</span>
+        <span><svg class="inline-block align-[-2px] mr-1 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 0 1 4.5 6"/></svg>${e.max_seats != null ? `${e.max_seats} place${e.max_seats > 1 ? 's' : ''}` : 'Places illimitées'}</span>
       </div>
       ${e.description ? `<p class="text-sm text-ink/70 leading-relaxed mt-3">${escapeHtml(e.description)}</p>` : ''}
 
