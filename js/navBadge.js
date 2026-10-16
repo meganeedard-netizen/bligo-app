@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js';
+import { supabase } from './supabaseClient.js?v=20261016c';
 
 // Onglet « Mon panier » de la barre du bas (16/10/2026) : la pastille compte
 // les livres du panier, et l'onglet devient « Ma commande » quand le panier
