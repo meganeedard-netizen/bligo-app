@@ -224,14 +224,21 @@
     }
     if (error) { console.error(error); return; }
     loans = data;
-    const { data: fromResa } = await supabase.from('loans').select('reservation_id, renewal_count')
-      .eq('user_id', currentUser.id).is('returned_at', null).not('reservation_id', 'is', null);
-    renewalsByReservation = Object.fromEntries((fromResa || []).map(l => [l.reservation_id, l.renewal_count || 0]));
+    // Prêts issus d'une réservation (16/10/2026) : c'est le prêt qui dit si le
+    // livre est rendu et jusqu'à quand il est emprunté (prolongation comprise).
+    // Sans ça, un livre réservé puis rendu restait « En retard » pour toujours
+    // et n'arrivait jamais dans l'historique.
+    const { data: fromResa } = await supabase.from('loans').select('reservation_id, renewal_count, due_at, returned_at')
+      .eq('user_id', currentUser.id).not('reservation_id', 'is', null).order('borrowed_at', { ascending: false });
+    loanByReservation = {};
+    (fromResa || []).forEach(l => { if (!loanByReservation[l.reservation_id]) loanByReservation[l.reservation_id] = l; });
+    renewalsByReservation = Object.fromEntries(Object.values(loanByReservation).filter(l => !l.returned_at).map(l => [l.reservation_id, l.renewal_count || 0]));
   }
 
   // Prolongation (09/10/2026) : +7 jours, une seule fois, refusée si
   // quelqu'un attend le livre ou si le prêt est déjà en retard.
   let renewalsByReservation = {};
+  let loanByReservation = {};
   let myHolds = [];
 
   function renewButtonHtml(it) {
@@ -282,6 +289,7 @@
   function normalize(list) {
     return (list || []).map(r => {
       const book = r.books;
+      const loan = r.status === 'recupere' ? loanByReservation[r.id] : null;
       return {
         id: r.id,
         title: book?.title || 'Livre supprimé',
@@ -290,11 +298,11 @@
         coverUrl: book?.cover_url || null,
         communeId: book?.commune_id || null,
         bookId: book?.id || null,
-        status: r.status,
+        status: loan?.returned_at ? 'loan_returned' : r.status,
         createdAt: r.created_at,
         orderedAt: r.created_at,
         readyAt: r.ready_at || null,
-        returnDueAt: r.return_due_at || null,
+        returnDueAt: loan?.due_at || r.return_due_at || null,
         renewalCount: renewalsByReservation[r.id] || 0,
         myRating: book?.id ? (myRatings[book.id] || null) : null,
         myComment: book?.id ? (myComments[book.id] || '') : '',
@@ -501,7 +509,7 @@
       ? `<img src="${item.coverUrl}" alt="" class="w-11 aspect-[2/3] object-cover rounded-md shadow-sm shrink-0">`
       : `<div class="w-11 aspect-[2/3] rounded-md bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${item.coverInitial}</div>`;
 
-    const ratingHtml = (item.status === 'recupere' && item.bookId)
+    const ratingHtml = ((item.status === 'recupere' || item.status === 'loan_returned') && item.bookId)
       ? `
         <div class="mt-1.5">
           <p class="text-[10px] font-semibold text-ink/40 mb-1">${item.myRating ? 'Ta note' : 'Note ce livre'}</p>
