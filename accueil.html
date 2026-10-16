@@ -41,9 +41,6 @@
   #category-filters { scroll-snap-type: x proximity; cursor: grab; }
   #category-filters.is-dragging { cursor: grabbing; scroll-snap-type: none; }
   #category-filters.is-dragging .cat-tile { pointer-events: none; }
-  /* Flèches seulement avec une souris (ordinateur) : au doigt, on glisse. */
-  .cat-arrow { display: none; }
-  @media (hover: hover) and (pointer: fine) { .cat-arrow { display: flex; } }
   @media (max-width: 640px) {
     input, select, textarea { font-size: 16px !important; }
   }
@@ -98,9 +95,7 @@
     <div id="catalogue-switch" class="hidden flex items-center mb-2"></div>
     <div id="type-filters" class="hidden flex gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-1"></div>
     <div class="relative -mx-5 mb-2">
-      <button type="button" id="cat-prev" aria-label="Catégories précédentes" class="cat-arrow absolute left-1 top-[46px] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md text-ink/60 hover:text-ink items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
       <div id="category-filters" class="flex gap-2.5 overflow-x-auto no-scrollbar px-5 pt-1 pb-4 scroll-px-5"></div>
-      <button type="button" id="cat-next" aria-label="Catégories suivantes" class="cat-arrow absolute right-1 top-[46px] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md text-ink/60 hover:text-ink items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
     </div>
     <p id="staff-pick-caption" class="hidden text-xs text-stone-400 mb-3">La sélection coup de cœur de ta médiathèque</p>
     <div id="book-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
@@ -428,24 +423,14 @@
         renderBooks();
       });
     });
-    updateCategoryArrows();
   }
 
   // Défilement des catégories (16/10/2026) : au doigt c'est natif ; à la
-  // souris on ajoute le glisser, la molette et les flèches, sinon la rangée
-  // restait bloquée sur ordinateur.
+  // souris on ajoute le glisser et la molette, sinon la rangée restait
+  // bloquée sur ordinateur (flèches retirées le 16/10/2026).
   let categoryDragMoved = false;
-  function updateCategoryArrows() {
-    const el = document.getElementById('category-filters');
-    document.getElementById('cat-prev').style.visibility = el.scrollLeft < 8 ? 'hidden' : 'visible';
-    document.getElementById('cat-next').style.visibility = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8 ? 'hidden' : 'visible';
-  }
   function setupCategoryScroll() {
     const el = document.getElementById('category-filters');
-    el.addEventListener('scroll', updateCategoryArrows, { passive: true });
-    window.addEventListener('resize', updateCategoryArrows);
-    document.getElementById('cat-prev').onclick = () => el.scrollBy({ left: -el.clientWidth * 0.8, behavior: 'smooth' });
-    document.getElementById('cat-next').onclick = () => el.scrollBy({ left: el.clientWidth * 0.8, behavior: 'smooth' });
     el.addEventListener('wheel', e => {
       if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
         const atStart = el.scrollLeft <= 0 && e.deltaY < 0;
