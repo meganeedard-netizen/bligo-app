@@ -325,7 +325,7 @@
     'Sports & loisirs': 'img/categories/v2/sports.png',
     'Poésie & théâtre': 'img/categories/v2/poesie-theatre.png',
   };
-  const ALL_ICON_SVG = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="cat-svg"><rect x="3" y="3" width="7" height="7" rx="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.8"/></svg>';
+  const ALL_ICON_SVG = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="cat-svg"><rect x="3" y="3" width="7" height="7" rx="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.8"/></svg>';
 
   // Filtre par type de document (07/10/2026) : regroupe books.format selon
   // le « kind » de la table document_types. Affiché seulement si la
@@ -383,13 +383,13 @@
 
   // ==================== CATALOGUE (fonds officiel + hors condition) ====================
 
-  // Libellés raccourcis sur les pastilles (largeur fixe de 80 px) : le nom
-  // complet reste utilisé partout ailleurs (fiche, recherche, back-office).
+  // Noms affichés sur les tuiles (16/10/2026, demande de Mégane) : en entier
+  // avec « et », sur deux lignes si besoin. La valeur en base ne change pas.
   const CATEGORY_SHORT_LABELS = {
-    'Poésie & théâtre': 'Théâtre',
-    'Sports & loisirs': 'Sports',
-    'Sciences & nature': 'Sciences',
-    'Documentaire': 'Documents',
+    'Poésie & théâtre': 'Poésie et théâtre',
+    'Sports & loisirs': 'Sports et loisirs',
+    'Sciences & nature': 'Sciences et nature',
+    'Thriller': 'Policiers et thriller',
   };
 
   function renderCategoryFilters() {
@@ -404,9 +404,9 @@
         ? `<img src="${CATEGORY_ICONS[c.label]}" alt="" class="w-full h-full object-contain">`
         : ALL_ICON_SVG;
       return `
-      <button data-value="${c.value ?? ''}" class="category-chip cat-tile ${activeCategory === c.value ? 'is-active' : ''} flex flex-col items-center gap-1.5 pt-3 pb-2.5 px-1 rounded-2xl bg-white shadow-[0_3px_12px_rgba(16,24,40,0.08)] transition active:scale-95">
-        <span class="w-11 h-11 flex items-center justify-center">${icon}</span>
-        <span class="cat-label text-[11.5px] font-semibold leading-tight text-center whitespace-nowrap text-ink/70">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span>
+      <button data-value="${c.value ?? ''}" class="category-chip cat-tile ${activeCategory === c.value ? 'is-active' : ''} flex flex-col items-center gap-1 pt-2.5 pb-2 px-1 rounded-2xl bg-white shadow-[0_3px_12px_rgba(16,24,40,0.08)] transition active:scale-95">
+        <span class="w-9 h-9 flex items-center justify-center">${icon}</span>
+        <span class="cat-label h-[26px] flex items-center text-[10.5px] font-semibold leading-[13px] text-center text-ink/70">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span>
       </button>`;
     }).join('');
     el.querySelectorAll('.category-chip').forEach(btn => {
