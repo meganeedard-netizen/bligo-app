@@ -75,6 +75,7 @@
     // promesse partout (boîte native du navigateur sur le site).
     window.BLIGO_AGENT_APP = (() => { try { return sessionStorage.getItem('bligo_agent_app') === '1'; } catch (e) { return false; } })();
     window.confirmDialog = function (message) { return Promise.resolve(window.confirm(message)); };
+    window.promptDialog = function (message, value) { return Promise.resolve(window.prompt(message, value ?? '')); };
     if (window.BLIGO_AGENT_APP) {
       const bligoDialogBackdrop = function () {
         const backdrop = document.createElement('div');
@@ -102,6 +103,27 @@
           backdrop.querySelector('[data-a="cancel"]').onclick = () => { backdrop.remove(); resolve(false); };
           backdrop.querySelector('[data-a="ok"]').onclick = () => { backdrop.remove(); resolve(true); };
           document.body.appendChild(backdrop);
+        });
+      };
+      // Saisie (16/10/2026) : window.prompt() ne marche pas non plus dans le
+      // logiciel (« Déclarer perdu », « + Groupe »… ne faisaient rien).
+      window.promptDialog = function (message, value) {
+        return new Promise((resolve) => {
+          const backdrop = bligoDialogBackdrop();
+          backdrop.innerHTML = '<div style="background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.2);max-width:400px;width:100%;padding:20px;">' +
+            '<p style="font-size:14px;color:#1B4B43;white-space:pre-wrap;line-height:1.5;margin:0 0 12px;">' + bligoEscapeHtml(message) + '</p>' +
+            '<input data-a="input" type="text" style="width:100%;box-sizing:border-box;border:1px solid #E5E7EB;border-radius:8px;padding:10px;font-size:14px;color:#1B4B43;margin:0 0 16px;outline:none;">' +
+            '<div style="display:flex;gap:8px;"><button data-a="cancel" style="flex:1;background:#f4f4f4;color:#1B4B43;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">Annuler</button>' +
+            '<button data-a="ok" style="flex:1;background:#F07F14;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">Valider</button></div></div>';
+          const input = backdrop.querySelector('[data-a="input"]');
+          input.value = value ?? '';
+          const done = (v) => { backdrop.remove(); resolve(v); };
+          backdrop.querySelector('[data-a="cancel"]').onclick = () => done(null);
+          backdrop.querySelector('[data-a="ok"]').onclick = () => done(input.value);
+          input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(input.value); if (e.key === 'Escape') done(null); });
+          document.body.appendChild(backdrop);
+          input.focus();
+          input.select();
         });
       };
     }
@@ -1876,7 +1898,7 @@
   };
 
   window.addVisitorGroup = async function () {
-    const raw = prompt('Nombre de personnes dans ce groupe (famille, classe...) :', '2');
+    const raw = await promptDialog('Nombre de personnes dans ce groupe (famille, classe...) :', '2');
     if (raw === null) return;
     const count = parseInt(raw, 10);
     if (!Number.isInteger(count) || count < 1) { alert('Indique un nombre entier positif.'); return; }
@@ -4615,7 +4637,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // de la médiathèque : en rouge sur la fiche, emprunts et réservations
   // bloqués tant qu'elle n'est pas réglée, annulée si le livre revient.
   window.declareLost = async function (loanId, title) {
-    const amount = prompt(`Déclarer « ${title} » perdu ?\n\nMontant à demander en € (laisse vide pour le prix du document, ou le forfait de la médiathèque) :`, '');
+    const amount = await promptDialog(`Déclarer « ${title} » perdu ?\n\nMontant à demander en € (laisse vide pour le prix du document, ou le forfait de la médiathèque) :`, '');
     if (amount === null) return;
     const { data, error } = await supabase.rpc('declare_lost', { p_loan_id: loanId, p_amount_cents: parsePriceCents(amount) });
     if (error) { alert('Erreur : ' + error.message); return; }
@@ -4627,7 +4649,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data: copy } = await supabase.from('book_copies').select('id, books ( title, price_cents )').eq('barcode', barcode).maybeSingle();
     if (!copy) return;
     const price = copy.books?.price_cents ? (copy.books.price_cents / 100).toFixed(2).replace('.', ',') : '';
-    const amount = prompt(`Facturer « ${copy.books?.title || ''} » rendu abîmé ?\n\nMontant en € (vide = prix du document ou forfait) :`, price);
+    const amount = await promptDialog(`Facturer « ${copy.books?.title || ''} » rendu abîmé ?\n\nMontant en € (vide = prix du document ou forfait) :`, price);
     if (amount === null) return;
     const { data, error } = await supabase.rpc('declare_damaged', { p_copy_id: copy.id, p_amount_cents: parsePriceCents(amount), p_note: null });
     if (error) { alert('Erreur : ' + error.message); return; }
@@ -4895,7 +4917,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.toggleUserFlag = async function (userId, flag) {
     let reason = null;
     if (flag) {
-      reason = prompt('Raison du fichage (facultatif) :') || null;
+      reason = await promptDialog('Raison du fichage (facultatif) :') || null;
     } else if (!await confirmDialog('Retirer le fichage de cet usager ?')) {
       return;
     }
@@ -5109,7 +5131,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // fait une erreur de saisie à l'inscription, ou si l'agent constate un
   // écart avec la pièce d'identité présentée au retrait de sa commande.
   window.editUsagerName = async function (userId, currentName) {
-    const newName = prompt('Corriger le nom et prénom :', currentName);
+    const newName = await promptDialog('Corriger le nom et prénom :', currentName);
     if (!newName || !newName.trim() || newName.trim() === currentName) return;
     const { error } = await supabase.rpc('update_usager_name', { p_user_id: userId, p_full_name: newName.trim() });
     if (error) { alert('Erreur : ' + error.message); return; }
@@ -5512,7 +5534,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.markIssueReceived = async function (id) {
-    const issue = prompt('Numéro reçu (ex. 630, ou « octobre 2026 ») — facultatif :', '');
+    const issue = await promptDialog('Numéro reçu (ex. 630, ou « octobre 2026 »), facultatif :', '');
     if (issue === null) return;
     const { data, error } = await supabase.rpc('receive_issue', { p_subscription_id: id, p_issue: parseIssueNumber(issue) });
     if (error) { alert('Erreur : ' + error.message); return; }
