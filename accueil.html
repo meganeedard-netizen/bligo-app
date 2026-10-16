@@ -32,13 +32,12 @@
   .no-scrollbar { scrollbar-width: none; }
   /* Catégories façon Gaspiz (16/10/2026) : tuiles blanches surélevées, une
      couleur par catégorie (pastille + icône), tuile pleine quand choisie. */
+  /* Icônes d'origine (remises le 16/10/2026 à la demande de Mégane) ;
+     catégorie choisie : icône en blanc sur le fond vert. */
   .cat-tile { width: 84px; flex-shrink: 0; scroll-snap-align: start; }
-  .cat-tile .cat-bubble { background-color: color-mix(in srgb, var(--cat) 14%, white); }
-  .cat-tile .cat-icon { background-color: var(--cat); -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
-  .cat-tile .cat-svg { color: var(--cat); }
-  .cat-tile.is-active { background-color: var(--cat); box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--cat) 60%, transparent); }
-  .cat-tile.is-active .cat-bubble { background-color: rgba(255,255,255,0.22); }
-  .cat-tile.is-active .cat-icon { background-color: #fff; }
+  .cat-tile .cat-svg { color: rgba(27, 75, 67, 0.75); }
+  .cat-tile.is-active { background-color: rgb(var(--color-brand-rgb, 27 75 67)); }
+  .cat-tile.is-active img { filter: brightness(0) invert(1); }
   .cat-tile.is-active .cat-svg, .cat-tile.is-active .cat-label { color: #fff; }
   #category-filters { scroll-snap-type: x proximity; cursor: grab; }
   #category-filters.is-dragging { cursor: grabbing; scroll-snap-type: none; }
@@ -318,7 +317,6 @@
   // médiathèque (books.is_staff_pick), pas un genre du livre.
   const STAFF_PICK_FILTER = '__coup_de_coeur__';
 
-  // Icône (masque coloré) et couleur de chaque catégorie (16/10/2026).
   const CATEGORY_ICONS = {
     'Favoris': 'img/categories/favoris.png?v=4',
     'Fonds local': 'img/categories/local.png?v=4',
@@ -339,14 +337,7 @@
     'Sports & loisirs': 'img/categories/sports-loisirs.png?v=5',
     'Poésie & théâtre': 'img/categories/poesie-theatre.png?v=4',
   };
-  const CATEGORY_COLORS = {
-    'Tous': '#1B4B43', 'Favoris': '#E8437A', 'Fonds local': '#0E9F6E', 'Roman': '#8B5CF6',
-    'Thriller': '#DC2626', 'Fantasy': '#4F46E5', 'Poésie & théâtre': '#DB2777', 'Jeunesse': '#F59E0B',
-    'BD': '#0EA5E9', 'Documentaire': '#64748B', 'Sciences & nature': '#16A34A', 'Histoire': '#B45309',
-    'Voyages': '#0891B2', 'Culture': '#C026D3', 'Sports & loisirs': '#EA580C', 'Bien-être': '#F43F5E',
-    'Maison': '#CA8A04', 'Jeux': '#2563EB', 'Autres': '#6B7280',
-  };
-  const ALL_ICON_SVG = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cat-svg"><rect x="3" y="3" width="7" height="7" rx="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.8"/></svg>';
+  const ALL_ICON_SVG = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="cat-svg"><rect x="3" y="3" width="7" height="7" rx="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.8"/></svg>';
 
   // Filtre par type de document (07/10/2026) : regroupe books.format selon
   // le « kind » de la table document_types. Affiché seulement si la
@@ -422,11 +413,11 @@
     ];
     el.innerHTML = chips.map(c => {
       const icon = CATEGORY_ICONS[c.label]
-        ? `<span class="cat-icon block w-7 h-7" style="--icon: url('${CATEGORY_ICONS[c.label]}')"></span>`
+        ? `<img src="${CATEGORY_ICONS[c.label]}" alt="" class="w-full h-full object-contain">`
         : ALL_ICON_SVG;
       return `
-      <button data-value="${c.value ?? ''}" style="--cat: ${CATEGORY_COLORS[c.label] || '#1B4B43'}" class="category-chip cat-tile ${activeCategory === c.value ? 'is-active' : ''} flex flex-col items-center gap-1.5 pt-3 pb-2.5 px-1 rounded-2xl bg-white shadow-[0_3px_12px_rgba(16,24,40,0.08)] transition active:scale-95">
-        <span class="cat-bubble w-12 h-12 rounded-full flex items-center justify-center">${icon}</span>
+      <button data-value="${c.value ?? ''}" class="category-chip cat-tile ${activeCategory === c.value ? 'is-active' : ''} flex flex-col items-center gap-1.5 pt-3 pb-2.5 px-1 rounded-2xl bg-white shadow-[0_3px_12px_rgba(16,24,40,0.08)] transition active:scale-95">
+        <span class="w-10 h-10 flex items-center justify-center">${icon}</span>
         <span class="cat-label text-[11.5px] font-semibold leading-tight text-center whitespace-nowrap text-ink/70">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span>
       </button>`;
     }).join('');
