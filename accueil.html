@@ -37,7 +37,6 @@
   .cat-tile { width: 84px; flex-shrink: 0; scroll-snap-align: start; }
   .cat-tile .cat-svg { color: rgba(27, 75, 67, 0.75); }
   .cat-tile.is-active { background-color: rgb(var(--color-brand-rgb, 27 75 67)); }
-  .cat-tile.is-active img { filter: brightness(0) invert(1); }
   .cat-tile.is-active .cat-svg, .cat-tile.is-active .cat-label { color: #fff; }
   #category-filters { scroll-snap-type: x proximity; cursor: grab; }
   #category-filters.is-dragging { cursor: grabbing; scroll-snap-type: none; }
@@ -83,19 +82,6 @@
         <button type="button" onclick="closePointsTip()" aria-label="Fermer" class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full text-white/80 hover:text-white flex items-center justify-center text-sm font-bold">✕</button>
       </div>
     </div>
-  </div>
-
-  <div id="challenge-card" onclick="if (event.target.id !== 'edit-goal-btn') window.location.href = 'reservations.html#history-section';" class="cursor-pointer rounded-2xl p-5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden mb-6">
-    <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
-    <div class="absolute -right-2 bottom-4 w-16 h-16 rounded-full bg-white/10"></div>
-    <div class="relative flex items-center justify-between mb-1.5">
-      <p id="challenge-label" class="text-sm font-bold text-white">Défi de lecture</p>
-      <button id="edit-goal-btn" class="text-[10px] text-white/60 hover:text-white underline">Modifier l'objectif</button>
-    </div>
-    <div class="relative w-full bg-white/20 rounded-full h-2 overflow-hidden">
-      <div id="challenge-bar" class="bg-white h-2 rounded-full" style="width:0%"></div>
-    </div>
-    <p id="challenge-progress" class="relative text-[11px] text-white/80 mt-1.5">—</p>
   </div>
 
   <form id="home-search-form" class="mb-6">
@@ -317,25 +303,27 @@
   // médiathèque (books.is_staff_pick), pas un genre du livre.
   const STAFF_PICK_FILTER = '__coup_de_coeur__';
 
+  // Icônes en couleur (16/10/2026), sources dans BliGO/BliGO-19-icones-transparentes.
   const CATEGORY_ICONS = {
-    'Favoris': 'img/categories/favoris.png?v=4',
-    'Fonds local': 'img/categories/local.png?v=4',
-    'Roman': 'img/categories/roman.png?v=4',
-    'Thriller': 'img/categories/thriller.png?v=4',
-    'Fantasy': 'img/categories/science-fiction.png?v=4',
-    'Jeunesse': 'img/categories/jeunesse.png?v=4',
-    'BD': 'img/categories/bd-mangas.png?v=4',
-    'Bien-être': 'img/categories/bien-etre.png?v=4',
-    'Maison': 'img/categories/maison.png?v=4',
-    'Histoire': 'img/categories/histoire.png?v=4',
-    'Culture': 'img/categories/culture.png?v=4',
-    'Autres': 'img/categories/autres.png?v=4',
-    'Jeux': 'img/categories/jeux.png?v=1',
-    'Documentaire': 'img/categories/documentaire.png?v=5',
-    'Sciences & nature': 'img/categories/sciences-nature.png?v=5',
-    'Voyages': 'img/categories/voyages.png?v=5',
-    'Sports & loisirs': 'img/categories/sports-loisirs.png?v=5',
-    'Poésie & théâtre': 'img/categories/poesie-theatre.png?v=4',
+    'Tous': 'img/categories/v2/tous.png',
+    'Favoris': 'img/categories/v2/favoris.png',
+    'Fonds local': 'img/categories/v2/fonds-local.png',
+    'Roman': 'img/categories/v2/roman.png',
+    'Thriller': 'img/categories/v2/thriller.png',
+    'Fantasy': 'img/categories/v2/fantasy.png',
+    'Jeunesse': 'img/categories/v2/jeunesse.png',
+    'BD': 'img/categories/v2/bd.png',
+    'Bien-être': 'img/categories/v2/bien-etre.png',
+    'Maison': 'img/categories/v2/maison.png',
+    'Histoire': 'img/categories/v2/histoire.png',
+    'Culture': 'img/categories/v2/culture.png',
+    'Autres': 'img/categories/v2/autres.png',
+    'Jeux': 'img/categories/v2/jeux.png',
+    'Documentaire': 'img/categories/v2/documents.png',
+    'Sciences & nature': 'img/categories/v2/sciences.png',
+    'Voyages': 'img/categories/v2/voyages.png',
+    'Sports & loisirs': 'img/categories/v2/sports.png',
+    'Poésie & théâtre': 'img/categories/v2/poesie-theatre.png',
   };
   const ALL_ICON_SVG = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="cat-svg"><rect x="3" y="3" width="7" height="7" rx="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.8"/></svg>';
 
@@ -398,7 +386,7 @@
   // Libellés raccourcis sur les pastilles (largeur fixe de 80 px) : le nom
   // complet reste utilisé partout ailleurs (fiche, recherche, back-office).
   const CATEGORY_SHORT_LABELS = {
-    'Poésie & théâtre': 'Poésie',
+    'Poésie & théâtre': 'Théâtre',
     'Sports & loisirs': 'Sports',
     'Sciences & nature': 'Sciences',
     'Documentaire': 'Documents',
@@ -417,7 +405,7 @@
         : ALL_ICON_SVG;
       return `
       <button data-value="${c.value ?? ''}" class="category-chip cat-tile ${activeCategory === c.value ? 'is-active' : ''} flex flex-col items-center gap-1.5 pt-3 pb-2.5 px-1 rounded-2xl bg-white shadow-[0_3px_12px_rgba(16,24,40,0.08)] transition active:scale-95">
-        <span class="w-10 h-10 flex items-center justify-center">${icon}</span>
+        <span class="w-11 h-11 flex items-center justify-center">${icon}</span>
         <span class="cat-label text-[11.5px] font-semibold leading-tight text-center whitespace-nowrap text-ink/70">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span>
       </button>`;
     }).join('');
@@ -1202,7 +1190,6 @@
     await applyBrowsedCommune(myCommuneId);
 
     document.getElementById('greeting').textContent = 'Bienvenue !';
-    document.getElementById('challenge-card').classList.add('hidden');
 
     // Sans compte : « 0 pt », la page fidélité explique et invite à s'inscrire.
     document.getElementById('points-display').textContent = formatPoints(0);
@@ -1263,26 +1250,7 @@
 
     await loadReservations();
 
-    const currentYear = new Date().getFullYear();
-    const readThisYear = reservations.filter(r => r.status === 'recupere' && new Date(r.created_at).getFullYear() === currentYear);
-    let goal = profile?.reading_goal ?? 12;
-
-    function renderChallenge() {
-      const pct = Math.min(100, Math.round((readThisYear.length / goal) * 100));
-      document.getElementById('challenge-label').textContent = 'Défi de lecture';
-      document.getElementById('challenge-bar').style.width = pct + '%';
-      document.getElementById('challenge-progress').textContent = `${readThisYear.length} / ${goal} livres lus cette année`;
-    }
-    renderChallenge();
-
-    document.getElementById('edit-goal-btn').addEventListener('click', async () => {
-      const input = prompt('Ton objectif de lecture pour ' + currentYear + ' (nombre de livres) :', goal);
-      const n = parseInt(input, 10);
-      if (!n || n <= 0) return;
-      goal = n;
-      renderChallenge();
-      await supabase.from('profiles').update({ reading_goal: n }).eq('id', currentUser.id);
-    });
+    // Défi de lecture déplacé dans le profil (16/10/2026, demande de Mégane).
 
     await Promise.all([loadBooks(), loadWishlist(), loadHolds(), loadMemberships()]);
     renderBooks();

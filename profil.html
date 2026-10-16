@@ -99,6 +99,34 @@
     </a>
   </div>
 
+  <!-- Défi de lecture (16/10/2026) : déplacé depuis l'accueil. -->
+  <div id="challenge-card" onclick="if (event.target.id !== 'edit-goal-btn') window.location.href = 'reservations.html#history-section';" class="cursor-pointer rounded-2xl p-5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden mb-6">
+    <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
+    <div class="absolute -right-2 bottom-4 w-16 h-16 rounded-full bg-white/10"></div>
+    <div class="relative flex items-center justify-between mb-1.5">
+      <p class="text-sm font-bold text-white">Défi de lecture</p>
+      <button id="edit-goal-btn" type="button" class="text-[10px] text-white/70 hover:text-white underline">Modifier l'objectif</button>
+    </div>
+    <div class="relative w-full bg-white/20 rounded-full h-2 overflow-hidden">
+      <div id="challenge-bar" class="bg-white h-2 rounded-full" style="width:0%"></div>
+    </div>
+    <p id="challenge-progress" class="relative text-[11px] text-white/80 mt-1.5">…</p>
+  </div>
+
+  <!-- Objectif de lecture -->
+  <div id="goal-backdrop" class="hidden fixed inset-0 z-[65] bg-black/40 backdrop-blur-sm items-center justify-center p-6">
+    <form id="goal-form" class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center">
+      <p class="text-lg font-bold text-ink mb-1">Ton objectif de lecture</p>
+      <p id="goal-subtitle" class="text-sm text-ink/60 mb-4"></p>
+      <input id="goal-input" type="number" min="1" max="500" inputmode="numeric" class="w-28 mx-auto block text-center text-2xl font-bold border border-mango-100 rounded-xl py-2 outline-none focus:ring-2 focus:ring-mango-300">
+      <p class="text-xs text-ink/50 mt-1">livres</p>
+      <div class="flex flex-col gap-2 mt-6">
+        <button type="submit" class="w-full rounded-2xl py-3 text-base font-semibold bg-brand text-white active:scale-[0.98] transition">Enregistrer</button>
+        <button type="button" id="goal-cancel" class="w-full rounded-2xl py-3 text-base font-semibold bg-[#EEEDF2] text-ink/70">Annuler</button>
+      </div>
+    </form>
+  </div>
+
   <div id="attach-commune-notice" class="hidden bg-white rounded-xl p-4 shadow-sm mb-6">
     <p class="text-sm font-bold text-ink mb-1">Compte Bibliothèque Libre</p>
     <p class="text-xs text-ink/60 leading-relaxed mb-3">Tu prends librement des livres dans la Bibliothèque Libre, sans condition de résidence et sans obligation de les rapporter. Dès que tu es installé(e) dans une commune partenaire, rattache ton compte pour accéder aussi à son Click & Collect.</p>
@@ -386,7 +414,7 @@
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, role, subscriber_number, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, registration_status, account_type, commune_id, loyalty_points, communes ( name, theme_ink_hex, theme_accent_hex, logo_url )')
+      .select('full_name, role, reading_goal, subscriber_number, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, registration_status, account_type, commune_id, loyalty_points, communes ( name, theme_ink_hex, theme_accent_hex, logo_url )')
       .eq('id', currentUser.id).single();
     applyCommuneTheme(profile?.communes);
     if (profile?.role === 'agent' || profile?.role === 'super_admin') {
@@ -412,6 +440,7 @@
       encodeURIComponent(`Bonjour,\n\nJe souhaite supprimer mon compte BliGO.\n\nE-mail : ${currentUser.email}\nN° abonné : ${profile?.subscriber_number || ''}\n`);
     shareRefCode = profile?.subscriber_number || '';
     loadStats(currentUser.id);
+    setupReadingChallenge(currentUser.id, profile?.reading_goal ?? 12);
 
 
     const isLibre = profile?.account_type === 'libre';
@@ -540,6 +569,44 @@
     ]);
     if (resa.error && counter.error) return;
     document.getElementById('stat-loans').textContent = (resa.count || 0) + (counter.count || 0);
+  }
+
+  // Défi de lecture : livres empruntés cette année (réservations récupérées
+  // + prêts faits directement au comptoir) face à l'objectif de l'usager.
+  async function setupReadingChallenge(userId, initialGoal) {
+    const year = new Date().getFullYear();
+    const start = new Date(year, 0, 1).toISOString();
+    const [resa, counter] = await Promise.all([
+      supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'recupere').gte('created_at', start),
+      supabase.from('loans').select('id', { count: 'exact', head: true }).eq('user_id', userId).is('reservation_id', null).gte('borrowed_at', start),
+    ]);
+    const read = (resa.count || 0) + (counter.count || 0);
+    let goal = initialGoal;
+    const render = () => {
+      document.getElementById('challenge-bar').style.width = Math.min(100, Math.round((read / goal) * 100)) + '%';
+      document.getElementById('challenge-progress').textContent = `${read} / ${goal} livres lus cette année`;
+    };
+    render();
+
+    const backdrop = document.getElementById('goal-backdrop');
+    const close = () => { backdrop.classList.add('hidden'); backdrop.classList.remove('flex'); };
+    document.getElementById('edit-goal-btn').addEventListener('click', () => {
+      document.getElementById('goal-subtitle').textContent = `Combien de livres veux-tu lire en ${year} ?`;
+      document.getElementById('goal-input').value = goal;
+      backdrop.classList.remove('hidden');
+      backdrop.classList.add('flex');
+    });
+    document.getElementById('goal-cancel').addEventListener('click', close);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+    document.getElementById('goal-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const n = parseInt(document.getElementById('goal-input').value, 10);
+      if (!n || n <= 0) return;
+      goal = n;
+      render();
+      close();
+      await supabase.from('profiles').update({ reading_goal: n }).eq('id', userId);
+    });
   }
 
   let openedSheet = null;
