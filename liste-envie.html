@@ -179,7 +179,7 @@
         ? `<img src="${b.cover_url}" alt="" class="w-11 aspect-[2/3] object-cover rounded-md shadow-sm shrink-0">`
         : `<div class="w-11 aspect-[2/3] rounded-md bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${b.cover_initial || b.title[0]}</div>`;
       return `
-        <div class="bg-white shadow-sm rounded-2xl p-3.5 flex items-center gap-3">
+        <div data-book-id="${b.id}" class="wishlist-card cursor-pointer bg-white shadow-sm rounded-2xl p-3.5 flex items-center gap-3 active:scale-[0.99] transition">
           ${cov}
           <div class="flex-1 min-w-0">
             ${b.category ? `<p class="text-[9.5px] font-bold uppercase tracking-wide text-mango-600 leading-tight mb-0.5">${({ BD: 'BD & Mangas', Thriller: 'Policier & Thriller' })[b.category] || b.category}</p>` : ''}
@@ -193,7 +193,12 @@
         </div>`;
     }).join('');
     list.querySelectorAll('.wishlist-remove-btn').forEach(btn => {
-      btn.addEventListener('click', () => removeFromWishlist(Number(btn.dataset.bookId)));
+      btn.addEventListener('click', (e) => { e.stopPropagation(); removeFromWishlist(Number(btn.dataset.bookId)); });
+    });
+    // Toucher un livre ouvre sa fiche (résumé, avis, Commander), comme dans le
+    // catalogue ; on revient ici en la fermant (16/10/2026).
+    list.querySelectorAll('.wishlist-card').forEach(card => {
+      card.addEventListener('click', () => { window.location.href = `accueil.html?livre=${card.dataset.bookId}&depuis=envie`; });
     });
   }
 

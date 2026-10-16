@@ -880,6 +880,7 @@
     if (modalBtn) {
       modalBtn.addEventListener('click', async () => {
         await reserveBook(b.id, modalBtn);
+        openedFromWishlist = false;
         closeBookModal();
       });
     }
@@ -982,7 +983,21 @@
     if (event && event.target.id !== 'book-modal-backdrop') return;
     document.getElementById('book-modal-backdrop').classList.add('hidden');
     document.getElementById('book-modal-backdrop').classList.remove('flex');
+    // Fiche ouverte depuis la liste d'envie : on y retourne en la fermant.
+    if (openedFromWishlist) window.location.href = 'liste-envie.html';
   };
+
+  // Fiche d'un livre ouverte directement (?livre=ID), par exemple depuis la
+  // liste d'envie (16/10/2026) : même fenêtre que dans le catalogue.
+  let openedFromWishlist = false;
+  function openBookFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const id = Number(params.get('livre'));
+    if (!id || !books.some(b => b.id === id)) return;
+    openedFromWishlist = params.get('depuis') === 'envie';
+    history.replaceState(null, '', 'accueil.html');
+    openBookModal(id);
+  }
 
   window.showAppAlert = function (message) {
     document.getElementById('app-alert-message').textContent = message;
@@ -1260,6 +1275,7 @@
 
     await Promise.all([loadBooks(), loadWishlist(), loadHolds(), loadMemberships()]);
     renderBooks();
+    openBookFromUrl();
   }
 
   window.logout = async function () {
