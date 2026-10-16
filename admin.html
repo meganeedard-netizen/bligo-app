@@ -1095,6 +1095,19 @@
           <button onclick="saveMembershipSettings()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
         </div>
 
+        <!-- File d'attente (16/10/2026) : toutes les médiathèques n'en proposent pas. -->
+        <h2 class="text-lg font-bold text-ink mb-1 mt-6">Livres déjà empruntés</h2>
+        <p class="text-sm text-ink/55 mb-4">Ce que l'usager peut faire dans l'appli quand un livre n'est pas disponible.</p>
+        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
+          <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">File d'attente</label>
+          <select id="holds-enabled" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+            <option value="true">Activée : l'usager s'inscrit dans la file, le livre lui est mis de côté à son retour</option>
+            <option value="false">Désactivée : l'usager peut seulement l'ajouter à sa liste d'envies</option>
+          </select>
+          <p class="text-[11px] text-ink/45 mb-3">En désactivant, les usagers déjà inscrits dans une file y restent jusqu'au retour du livre.</p>
+          <button onclick="saveHoldsSetting()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+        </div>
+
         </div>
         </div>
           </div>
@@ -5017,7 +5030,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         state: l.returned_at ? 'rendu' : (new Date(l.due_at) <= now ? 'retard' : 'en_cours'),
         dueAt: l.due_at,
       })),
-      ...resa.filter(r => r.status !== 'preparation').map(r => ({
+      ...resa.filter(r => r.status !== 'preparation' && r.status !== 'panier').map(r => ({
         title: r.books?.title || 'Livre supprimé',
         author: r.books?.author || '',
         shelf_location: r.books?.shelf_location || null,
@@ -5870,6 +5883,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         document.getElementById('non-resident-fee').value = ((commune.non_resident_fee_cents || 0) / 100).toFixed(2);
         document.getElementById('non-resident-fee-wrap').classList.toggle('hidden', commune.non_resident_policy !== 'paid');
       }
+      document.getElementById('holds-enabled').value = String(commune.holds_enabled !== false);
       document.getElementById('tariff-updated-label').textContent = commune.tariff_updated_at
         ? `Dernière modification le ${formatDateShortAdmin(commune.tariff_updated_at)}`
         : 'Jamais modifiés.';
@@ -5919,6 +5933,15 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) { alert('Erreur : ' + error.message); return; }
     alert('Réglages enregistrés.');
     await loadTeamAndTariffs();
+  };
+
+  window.saveHoldsSetting = async function () {
+    const { error } = await supabase.rpc('update_commune_holds_setting', {
+      p_commune_id: myCommuneId,
+      p_enabled: document.getElementById('holds-enabled').value === 'true',
+    });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    alert('Réglage enregistré.');
   };
 
   window.saveOpeningHours = async function () {
@@ -7166,7 +7189,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   async function loadReservations() {
     const { data: resa, error } = await supabase
       .from('reservations')
-      .select('id, status, created_at, ready_at, reshelved, user_id, book_id, books ( title, author, shelf_location, isbn, cover_url, cover_initial, book_copies ( barcode ) )')
+      .select('id, status, created_at, ordered_at, ready_at, reshelved, user_id, book_id, books ( title, author, shelf_location, isbn, cover_url, cover_initial, book_copies ( barcode ) )')
+      .neq('status', 'panier')
       .order('created_at', { ascending: true });
     if (error) { console.error(error); return; }
 
@@ -7233,7 +7257,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   const RESERVATION_GRACE_PERIOD_MS = 30 * 60 * 1000;
   function isVisibleToStaff(r) {
     if (r.status !== 'preparation') return true;
-    return (Date.now() - new Date(r.created_at).getTime()) >= RESERVATION_GRACE_PERIOD_MS;
+    // Depuis le panier (16/10/2026), les 30 minutes partent de la validation
+    // de la commande (ordered_at), pas de l'ajout du livre.
+    return (Date.now() - new Date(r.ordered_at || r.created_at).getTime()) >= RESERVATION_GRACE_PERIOD_MS;
   }
 
   function renderReservations() {

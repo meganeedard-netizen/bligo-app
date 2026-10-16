@@ -74,12 +74,12 @@
       <button type="button" onclick="openQrModal()" class="bg-white rounded-xl p-3 w-fit relative active:scale-95 transition" aria-label="Agrandir le QR code">
         <canvas id="card-qr-canvas" width="160" height="160"></canvas>
       </button>
-      <p class="text-[10px] text-white/60 mt-2 relative">Présente ce code à l'accueil pour récupérer tes réservations. Appuie dessus pour l'agrandir.</p>
+      <p class="text-[10px] text-white/60 mt-2 relative">Présente ce code à l'accueil pour récupérer tes commandes. Appuie dessus pour l'agrandir.</p>
     </div>
     <div id="card-pending-block" class="hidden bg-white/15 border border-white/25 rounded-xl px-4 py-6 relative flex flex-col items-center text-center gap-2">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-white/85"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
       <p class="text-xs font-bold">Carte en attente d'activation</p>
-      <p class="text-[11px] text-white/75">Ton QR code apparaîtra ici une fois ton inscription validée, au moment du retrait de ta première réservation.</p>
+      <p class="text-[11px] text-white/75">Ton QR code apparaîtra ici une fois ton inscription validée, au moment du retrait de ta première commande.</p>
     </div>
   </div>
 
@@ -193,7 +193,7 @@
     <button onclick="closePendingPopup()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
     <svg class="w-8 h-8 text-mango-600 mb-3" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
     <p class="text-base font-bold text-ink mb-2">Pré-inscription en attente de validation</p>
-    <p id="pending-popup-text" class="text-sm text-ink/60 leading-relaxed">Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là. Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.</p>
+    <p id="pending-popup-text" class="text-sm text-ink/60 leading-relaxed">Tu peux dès maintenant commander des livres. Lors du retrait de ta première commande à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là. Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.</p>
     <button onclick="closePendingPopup()" class="w-full mt-5 bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">J'ai compris</button>
   </div>
 </div>
@@ -216,10 +216,10 @@
   </a>
   <a href="reservations.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
     <span class="relative">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 1 1 12 0c0 3.8 1.3 5.2 1.3 5.2H4.7S6 13.3 6 9.5Z"/><path d="M10 17.7a2 2 0 0 0 4 0"/></svg>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17.5" cy="19.5" r="1.4"/><path d="M2.8 4h2.4l2.4 11.2h10.6l2-7.7H6.4"/></svg>
       <span id="nav-resa-badge" class="hidden absolute -top-1 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-mango-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">0</span>
     </span>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Réservation</span>
+    <span class="text-[10.5px] font-semibold whitespace-nowrap" id="nav-resa-label">Mon panier</span>
   </a>
   <a href="liste-envie.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>

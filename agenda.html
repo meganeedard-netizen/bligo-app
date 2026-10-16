@@ -67,10 +67,10 @@
   </a>
   <a href="reservations.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
     <span class="relative">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 1 1 12 0c0 3.8 1.3 5.2 1.3 5.2H4.7S6 13.3 6 9.5Z"/><path d="M10 17.7a2 2 0 0 0 4 0"/></svg>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17.5" cy="19.5" r="1.4"/><path d="M2.8 4h2.4l2.4 11.2h10.6l2-7.7H6.4"/></svg>
       <span id="nav-resa-badge" class="hidden absolute -top-1 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-mango-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">0</span>
     </span>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Réservation</span>
+    <span class="text-[10.5px] font-semibold whitespace-nowrap" id="nav-resa-label">Mon panier</span>
   </a>
   <a href="liste-envie.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
@@ -92,6 +92,7 @@
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js';
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js';
+  import { showSnackbar, showDialog } from './js/ui.js';
 
 
 
@@ -261,9 +262,10 @@
             <p class="text-[11px] text-ink/45 mt-0.5">${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
             ${e.description ? `<p class="text-xs text-ink/60 leading-relaxed mt-2">${e.description}</p>` : ''}
             <div class="flex items-center gap-2 mt-3 flex-wrap">
-              <button data-event-id="${e.id}" ${full ? 'disabled' : ''} class="rsvp-btn text-sm font-semibold rounded-xl px-4 py-2 ${attending ? 'bg-mango-50 text-mango-700' : full ? 'bg-[#EEEDF2] text-ink/35' : 'bg-mango-500 text-white shadow-sm'}">
-                ${attending ? 'Inscription validée ✓' : full ? 'Complet' : "Je souhaite m'inscrire"}
-              </button>
+              ${attending
+                ? `<span class="text-sm font-semibold rounded-xl px-4 py-2 bg-mango-50 text-mango-700">Je suis inscrit ✓</span>
+                   <button data-event-id="${e.id}" class="unrsvp-btn text-sm font-semibold rounded-xl px-4 py-2 bg-[#EEEDF2] text-ink/70">Me désinscrire</button>`
+                : `<button data-event-id="${e.id}" ${full ? 'disabled' : ''} class="rsvp-btn text-sm font-semibold rounded-xl px-4 py-2 ${full ? 'bg-[#EEEDF2] text-ink/35' : 'bg-mango-500 text-white shadow-sm'}">${full ? 'Complet' : "Je souhaite m'inscrire"}</button>`}
               ${attending ? `<button data-event-id="${e.id}" class="ics-btn text-sm font-semibold rounded-xl px-4 py-2 bg-[#EEEDF2] text-ink/70">＋ Ajouter à mon calendrier</button>` : ''}
               <span class="text-[10.5px] text-ink/40">${seatsLabel}</span>
             </div>
@@ -271,7 +273,7 @@
         </div>`;
     }).join('');
 
-    list.querySelectorAll('.rsvp-btn:not(:disabled)').forEach(btn => {
+    list.querySelectorAll('.rsvp-btn:not(:disabled), .unrsvp-btn').forEach(btn => {
       btn.addEventListener('click', (ev) => { ev.stopPropagation(); toggleRsvp(Number(btn.dataset.eventId)); });
     });
     list.querySelectorAll('.ics-btn').forEach(btn => {
@@ -391,12 +393,21 @@
       if (ev && !(await confirmRsvp(ev))) return;
     }
     if (myRsvps.has(eventId)) {
+      // Désinscription confirmée (16/10/2026) : avant, recliquer désinscrivait
+      // sans aucun message.
+      const choice = await showDialog({
+        title: 'Tu es sûr de vouloir annuler ta place ?',
+        buttons: [{ label: 'Je me désinscris', value: true, primary: true }, { label: 'Je reste inscrit', value: false }],
+      });
+      if (choice !== true) return;
       await supabase.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', currentUser.id);
+      showSnackbar('Ta place est annulée.');
     } else {
       // La jauge est aussi vérifiée côté base (trigger), au cas où deux usagers
       // se disputeraient la dernière place en même temps.
       const { error } = await supabase.from('event_rsvps').insert({ event_id: eventId, user_id: currentUser.id });
-      if (error) alert(error.message);
+      if (error) showDialog({ message: error.message });
+      else showSnackbar('Inscription confirmée !');
     }
     await loadEvents();
   }

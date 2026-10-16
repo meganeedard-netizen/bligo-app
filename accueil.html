@@ -30,9 +30,22 @@
   .font-logo { font-family: 'Poppins', sans-serif; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { scrollbar-width: none; }
-  .category-chip svg, .category-chip img { width: 100%; height: 100%; }
-  /* Catégorie sélectionnée : icône en blanc sur le fond vert (12/10/2026). */
-  .category-chip.bg-brand img { filter: brightness(0) invert(1); }
+  /* Catégories façon Gaspiz (16/10/2026) : tuiles blanches surélevées, une
+     couleur par catégorie (pastille + icône), tuile pleine quand choisie. */
+  .cat-tile { width: 84px; flex-shrink: 0; scroll-snap-align: start; }
+  .cat-tile .cat-bubble { background-color: color-mix(in srgb, var(--cat) 14%, white); }
+  .cat-tile .cat-icon { background-color: var(--cat); -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+  .cat-tile .cat-svg { color: var(--cat); }
+  .cat-tile.is-active { background-color: var(--cat); box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--cat) 60%, transparent); }
+  .cat-tile.is-active .cat-bubble { background-color: rgba(255,255,255,0.22); }
+  .cat-tile.is-active .cat-icon { background-color: #fff; }
+  .cat-tile.is-active .cat-svg, .cat-tile.is-active .cat-label { color: #fff; }
+  #category-filters { scroll-snap-type: x proximity; cursor: grab; }
+  #category-filters.is-dragging { cursor: grabbing; scroll-snap-type: none; }
+  #category-filters.is-dragging .cat-tile { pointer-events: none; }
+  /* Flèches seulement avec une souris (ordinateur) : au doigt, on glisse. */
+  .cat-arrow { display: none; }
+  @media (hover: hover) and (pointer: fine) { .cat-arrow { display: flex; } }
   @media (max-width: 640px) {
     input, select, textarea { font-size: 16px !important; }
   }
@@ -67,7 +80,7 @@
       <!-- Bulle d'explication, une seule fois (première connexion) -->
       <div id="points-tip" class="hidden absolute right-0 top-full mt-2.5 z-30 w-56 bg-brand text-white rounded-xl shadow-lg p-3 pr-8">
         <span class="absolute -top-1.5 right-6 w-3 h-3 bg-brand rotate-45"></span>
-        <p class="text-xs leading-relaxed relative">Gagne des points à chaque réservation et débloque des badges.</p>
+        <p class="text-xs leading-relaxed relative">Gagne des points à chaque commande et débloque des badges.</p>
         <button type="button" onclick="closePointsTip()" aria-label="Fermer" class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full text-white/80 hover:text-white flex items-center justify-center text-sm font-bold">✕</button>
       </div>
     </div>
@@ -99,7 +112,11 @@
     <span id="catalogue-status" class="text-xs text-ink/40"></span>
     <div id="catalogue-switch" class="hidden flex items-center mb-2"></div>
     <div id="type-filters" class="hidden flex gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-1"></div>
-    <div id="category-filters" class="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-1"></div>
+    <div class="relative -mx-5 mb-2">
+      <button type="button" id="cat-prev" aria-label="Catégories précédentes" class="cat-arrow absolute left-1 top-[46px] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md text-ink/60 hover:text-ink items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div id="category-filters" class="flex gap-2.5 overflow-x-auto no-scrollbar px-5 pt-1 pb-4 scroll-px-5"></div>
+      <button type="button" id="cat-next" aria-label="Catégories suivantes" class="cat-arrow absolute right-1 top-[46px] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md text-ink/60 hover:text-ink items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
     <p id="staff-pick-caption" class="hidden text-xs text-stone-400 mb-3">La sélection coup de cœur de ta médiathèque</p>
     <div id="book-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
   </section>
@@ -121,7 +138,7 @@
     <button onclick="closePendingPopup()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
     <svg class="w-8 h-8 text-mango-600 mb-3" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
     <p class="text-base font-bold text-ink mb-2">Pré-inscription en attente de validation</p>
-    <p class="text-sm text-ink/60 leading-relaxed">Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là. Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.</p>
+    <p class="text-sm text-ink/60 leading-relaxed">Tu peux dès maintenant commander des livres. Lors du retrait de ta première commande à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là. Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.</p>
     <button onclick="closePendingPopup()" class="w-full mt-5 bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">J'ai compris</button>
   </div>
 </div>
@@ -179,10 +196,10 @@
   </a>
   <a href="reservations.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
     <span class="relative">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 1 1 12 0c0 3.8 1.3 5.2 1.3 5.2H4.7S6 13.3 6 9.5Z"/><path d="M10 17.7a2 2 0 0 0 4 0"/></svg>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17.5" cy="19.5" r="1.4"/><path d="M2.8 4h2.4l2.4 11.2h10.6l2-7.7H6.4"/></svg>
       <span id="nav-resa-badge" class="hidden absolute -top-1 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-mango-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">0</span>
     </span>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Réservation</span>
+    <span class="text-[10.5px] font-semibold whitespace-nowrap" id="nav-resa-label">Mon panier</span>
   </a>
   <a href="liste-envie.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
@@ -209,6 +226,7 @@
   applyCachedTheme();
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js';
   import { updateReservationBadge } from './js/navBadge.js';
+  import { showSnackbar, showDialog, confirmDialog } from './js/ui.js';
 
   let currentUser = null;
   let isLibreAccount = false;
@@ -231,9 +249,11 @@
 
   // Logo, couleurs et horaires de la médiathèque consultée.
   async function applyBrowsedCommune(communeId) {
+    // select('*') : holds_enabled n'existe qu'après add_panier_commande.sql.
     const { data: commune } = await supabase.from('communes')
-      .select('name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url').eq('id', communeId).single();
+      .select('*').eq('id', communeId).single();
     myCommuneName = commune?.name || '';
+    holdsEnabled = commune?.holds_enabled !== false;
     myOpeningHours = commune?.opening_hours || null;
     applyCommuneTheme(commune);
     document.getElementById('opening-hours-link').classList.toggle('hidden', !myOpeningHours || !Object.values(myOpeningHours).some(Boolean));
@@ -251,6 +271,9 @@
   }
   // File d'attente (09/10/2026) : livre emprunté → book_id → { hold_id, position }.
   let myHolds = {};
+  // File d'attente désactivable par la médiathèque (16/10/2026) : sinon on
+  // ne propose que la liste d'envies pour un livre emprunté.
+  let holdsEnabled = true;
   // Non-résidents : catalogue d'une autre médiathèque où l'usager est inscrit.
   let catalogueCommuneId = null;
   let myMemberships = [];
@@ -265,7 +288,7 @@
     backdrop.innerHTML = `
       <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
         <p class="text-lg font-bold text-ink mb-2">Oups</p>
-        <p class="text-sm text-ink/70 leading-relaxed">Il nous manque ton prénom et ton nom. Ils sont indispensables pour ta réservation. Ouvrir ton profil ?</p>
+        <p class="text-sm text-ink/70 leading-relaxed">Il nous manque ton prénom et ton nom. Ils sont indispensables pour ta commande. Ouvrir ton profil ?</p>
         <div class="flex justify-end gap-6 mt-6">
           <button data-a="cancel" class="text-sm font-semibold text-mango-700">Annuler</button>
           <a href="infos.html" class="text-sm font-semibold text-mango-700">Ouvrir mon profil</a>
@@ -295,27 +318,35 @@
   // médiathèque (books.is_staff_pick), pas un genre du livre.
   const STAFF_PICK_FILTER = '__coup_de_coeur__';
 
+  // Icône (masque coloré) et couleur de chaque catégorie (16/10/2026).
   const CATEGORY_ICONS = {
-    'Tous': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
-    'Favoris': '<img src="img/categories/favoris.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Fonds local': '<img src="img/categories/local.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Roman': '<img src="img/categories/roman.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Thriller': '<img src="img/categories/thriller.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Fantasy': '<img src="img/categories/science-fiction.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Jeunesse': '<img src="img/categories/jeunesse.png?v=4" alt="" class="w-full h-full object-contain">',
-    'BD': '<img src="img/categories/bd-mangas.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Bien-être': '<img src="img/categories/bien-etre.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Maison': '<img src="img/categories/maison.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Histoire': '<img src="img/categories/histoire.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Culture': '<img src="img/categories/culture.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Autres': '<img src="img/categories/autres.png?v=4" alt="" class="w-full h-full object-contain">',
-    'Jeux': '<img src="img/categories/jeux.png?v=1" alt="" class="w-full h-full object-contain">',
-    'Documentaire': '<img src="img/categories/documentaire.png?v=5" alt="" class="w-full h-full object-contain">',
-    'Sciences & nature': '<img src="img/categories/sciences-nature.png?v=5" alt="" class="w-full h-full object-contain">',
-    'Voyages': '<img src="img/categories/voyages.png?v=5" alt="" class="w-full h-full object-contain">',
-    'Sports & loisirs': '<img src="img/categories/sports-loisirs.png?v=5" alt="" class="w-full h-full object-contain">',
-    'Poésie & théâtre': '<img src="img/categories/poesie-theatre.png?v=4" alt="" class="w-full h-full object-contain">'
+    'Favoris': 'img/categories/favoris.png?v=4',
+    'Fonds local': 'img/categories/local.png?v=4',
+    'Roman': 'img/categories/roman.png?v=4',
+    'Thriller': 'img/categories/thriller.png?v=4',
+    'Fantasy': 'img/categories/science-fiction.png?v=4',
+    'Jeunesse': 'img/categories/jeunesse.png?v=4',
+    'BD': 'img/categories/bd-mangas.png?v=4',
+    'Bien-être': 'img/categories/bien-etre.png?v=4',
+    'Maison': 'img/categories/maison.png?v=4',
+    'Histoire': 'img/categories/histoire.png?v=4',
+    'Culture': 'img/categories/culture.png?v=4',
+    'Autres': 'img/categories/autres.png?v=4',
+    'Jeux': 'img/categories/jeux.png?v=1',
+    'Documentaire': 'img/categories/documentaire.png?v=5',
+    'Sciences & nature': 'img/categories/sciences-nature.png?v=5',
+    'Voyages': 'img/categories/voyages.png?v=5',
+    'Sports & loisirs': 'img/categories/sports-loisirs.png?v=5',
+    'Poésie & théâtre': 'img/categories/poesie-theatre.png?v=4',
   };
+  const CATEGORY_COLORS = {
+    'Tous': '#1B4B43', 'Favoris': '#E8437A', 'Fonds local': '#0E9F6E', 'Roman': '#8B5CF6',
+    'Thriller': '#DC2626', 'Fantasy': '#4F46E5', 'Poésie & théâtre': '#DB2777', 'Jeunesse': '#F59E0B',
+    'BD': '#0EA5E9', 'Documentaire': '#64748B', 'Sciences & nature': '#16A34A', 'Histoire': '#B45309',
+    'Voyages': '#0891B2', 'Culture': '#C026D3', 'Sports & loisirs': '#EA580C', 'Bien-être': '#F43F5E',
+    'Maison': '#CA8A04', 'Jeux': '#2563EB', 'Autres': '#6B7280',
+  };
+  const ALL_ICON_SVG = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cat-svg"><rect x="3" y="3" width="7" height="7" rx="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.8"/></svg>';
 
   // Filtre par type de document (07/10/2026) : regroupe books.format selon
   // le « kind » de la table document_types. Affiché seulement si la
@@ -389,19 +420,70 @@
       { label: 'Favoris', value: STAFF_PICK_FILTER },
       ...CATEGORIES.map(c => ({ label: c, value: c })),
     ];
-    el.innerHTML = chips.map(c => `
-      <button data-value="${c.value ?? ''}" class="category-chip shrink-0 flex flex-col items-center justify-start gap-1 w-20 py-2.5 px-1 rounded-xl transition ${
-        activeCategory === c.value ? 'bg-brand text-white' : 'bg-white text-ink/60'
-      }"><span class="w-10 h-10 shrink-0">${CATEGORY_ICONS[c.label] || ''}</span><span class="text-[11.5px] font-semibold leading-tight text-center whitespace-nowrap">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span></button>
-    `).join('');
+    el.innerHTML = chips.map(c => {
+      const icon = CATEGORY_ICONS[c.label]
+        ? `<span class="cat-icon block w-7 h-7" style="--icon: url('${CATEGORY_ICONS[c.label]}')"></span>`
+        : ALL_ICON_SVG;
+      return `
+      <button data-value="${c.value ?? ''}" style="--cat: ${CATEGORY_COLORS[c.label] || '#1B4B43'}" class="category-chip cat-tile ${activeCategory === c.value ? 'is-active' : ''} flex flex-col items-center gap-1.5 pt-3 pb-2.5 px-1 rounded-2xl bg-white shadow-[0_3px_12px_rgba(16,24,40,0.08)] transition active:scale-95">
+        <span class="cat-bubble w-12 h-12 rounded-full flex items-center justify-center">${icon}</span>
+        <span class="cat-label text-[11.5px] font-semibold leading-tight text-center whitespace-nowrap text-ink/70">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span>
+      </button>`;
+    }).join('');
     el.querySelectorAll('.category-chip').forEach(btn => {
       btn.addEventListener('click', () => {
+        if (categoryDragMoved) return;
         activeCategory = btn.dataset.value || null;
         renderCategoryFilters();
         renderBooks();
       });
     });
+    updateCategoryArrows();
   }
+
+  // Défilement des catégories (16/10/2026) : au doigt c'est natif ; à la
+  // souris on ajoute le glisser, la molette et les flèches, sinon la rangée
+  // restait bloquée sur ordinateur.
+  let categoryDragMoved = false;
+  function updateCategoryArrows() {
+    const el = document.getElementById('category-filters');
+    document.getElementById('cat-prev').style.visibility = el.scrollLeft < 8 ? 'hidden' : 'visible';
+    document.getElementById('cat-next').style.visibility = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8 ? 'hidden' : 'visible';
+  }
+  function setupCategoryScroll() {
+    const el = document.getElementById('category-filters');
+    el.addEventListener('scroll', updateCategoryArrows, { passive: true });
+    window.addEventListener('resize', updateCategoryArrows);
+    document.getElementById('cat-prev').onclick = () => el.scrollBy({ left: -el.clientWidth * 0.8, behavior: 'smooth' });
+    document.getElementById('cat-next').onclick = () => el.scrollBy({ left: el.clientWidth * 0.8, behavior: 'smooth' });
+    el.addEventListener('wheel', e => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+        const atStart = el.scrollLeft <= 0 && e.deltaY < 0;
+        const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1 && e.deltaY > 0;
+        if (atStart || atEnd) return;
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+    let startX = 0, startScroll = 0, down = false;
+    el.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'mouse') return;
+      down = true; categoryDragMoved = false; startX = e.clientX; startScroll = el.scrollLeft;
+    });
+    window.addEventListener('pointermove', e => {
+      if (!down) return;
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > 5) { categoryDragMoved = true; el.classList.add('is-dragging'); }
+      if (categoryDragMoved) el.scrollLeft = startScroll - dx;
+    });
+    window.addEventListener('pointerup', () => {
+      if (!down) return;
+      down = false;
+      el.classList.remove('is-dragging');
+      setTimeout(() => { categoryDragMoved = false; }, 0);
+    });
+  }
+  setupCategoryScroll();
 
   async function loadBooks() {
     const statusEl = document.getElementById('catalogue-status');
@@ -453,25 +535,40 @@
     if (!requireAccount('reserve')) return;
     const { data, error } = await supabase.rpc('join_hold', { p_book_id: bookId });
     if (error) { showAppAlert(error.message); return; }
-    showAppAlert(data.message);
+    if (data && data.ok === false) { showAppAlert(data.message); return; }
+    showSnackbar('Ce livre est indisponible pour le moment. Tu seras prévenu par notification et mail dès son retour.', { duration: 5000 });
     await loadHolds();
     renderBooks();
   };
 
   window.leaveHold = async function (bookId) {
     const hold = myHolds[bookId];
-    if (!hold || !confirm('Quitter la file d\'attente pour ce livre ?')) return;
+    if (!hold) return;
+    const ok = await confirmDialog({ title: 'Quitter la file d\'attente ?', message: 'Tu ne seras plus prévenu au retour de ce livre.', confirmLabel: 'Je quitte la file', cancelLabel: 'Je reste dans la file' });
+    if (!ok) return;
     await supabase.rpc('leave_hold', { p_hold_id: hold.hold_id });
     await loadHolds();
     renderBooks();
   };
 
+  // Boutons secondaires sur fond gris clair (16/10/2026) : le vert reste
+  // réservé à « Ajouter au panier ».
+  const GREY_BTN = 'bg-[#EEEDF2] text-ink/75 active:scale-[0.97] transition';
+
+  function wishlistButtonHtml(bookId, big) {
+    const size = big ? 'mt-2 text-sm py-3 rounded-2xl' : 'mt-2 text-[11px] py-1.5 rounded-lg';
+    return wishlist.includes(bookId)
+      ? `<button data-book-id="${bookId}" class="wishlist-btn w-full ${size} font-semibold ${GREY_BTN}">♥ Dans ma liste d'envies</button>`
+      : `<button data-book-id="${bookId}" class="wishlist-btn w-full ${size} font-semibold ${GREY_BTN}">Ajouter à ma liste d'envies</button>`;
+  }
+
   function holdButtonHtml(bookId, big) {
+    if (!holdsEnabled) return big ? '' : wishlistButtonHtml(bookId, false);
     const hold = myHolds[bookId];
-    const size = big ? 'mt-4 text-sm py-2.5' : 'mt-2 text-[11px] py-1.5';
+    const size = big ? 'mt-4 text-sm py-3 rounded-2xl' : 'mt-2 text-[11px] py-1.5 rounded-lg';
     return hold
-      ? `<button data-book-id="${bookId}" class="leave-hold-btn w-full ${size} font-semibold rounded-lg bg-mango-50 text-mango-700 border border-mango-200">⏳ File d'attente · n° ${hold.position}</button>`
-      : `<button data-book-id="${bookId}" class="join-hold-btn w-full ${size} font-semibold rounded-lg bg-brand text-white active:scale-[0.97] transition">Réserver · file d'attente</button>`;
+      ? `<button data-book-id="${bookId}" class="leave-hold-btn w-full ${size} font-semibold ${GREY_BTN}">⏳ File d'attente · n° ${hold.position}</button>`
+      : `<button data-book-id="${bookId}" class="join-hold-btn w-full ${size} font-semibold ${GREY_BTN}">Ajouter à la file d'attente</button>`;
   }
 
   // Inscriptions non-résident actives : choix du catalogue affiché.
@@ -522,10 +619,12 @@
       ({ error } = await supabase.from('wishlist').insert({ user_id: currentUser.id, book_id: bookId }));
     }
     if (error) {
-      alert('Erreur liste d\'envie : ' + error.message);
+      showAppAlert('Erreur liste d\'envies : ' + error.message);
       return;
     }
+    const added = !wishlist.includes(bookId);
     await loadWishlist();
+    showSnackbar(added ? 'Ajouté à ta liste d\'envies' : 'Retiré de ta liste d\'envies');
     renderBooks();
   }
 
@@ -561,7 +660,7 @@
   // (l'usager peut l'emprunter à nouveau). Sans cette distinction, un livre
   // encore chez l'usager réapparaissait comme réservable dans le catalogue.
   function isActiveReservation(r) {
-    if (r.status === 'preparation' || r.status === 'pret') return true;
+    if (r.status === 'panier' || r.status === 'preparation' || r.status === 'pret') return true;
     return r.status === 'recupere' && r.return_due_at && new Date(r.return_due_at) > new Date();
   }
 
@@ -621,9 +720,9 @@
       } else if (!b.available) {
         btnHtml = holdButtonHtml(b.id, false);
       } else if (reservedBookIds.has(b.id)) {
-        btnHtml = `<button disabled class="w-full mt-2 text-[11px] font-semibold bg-mango-100 text-mango-700 rounded-lg py-1.5">Réservé</button>`;
+        btnHtml = `<button disabled class="w-full mt-2 text-[11px] font-semibold bg-mango-100 text-mango-700 rounded-lg py-1.5">${activeStatusLabel(b.id)}</button>`;
       } else {
-        btnHtml = `<button data-book-id="${b.id}" class="reserve-btn w-full mt-2 text-[11px] font-semibold bg-brand text-white rounded-lg py-1.5 active:scale-[0.97] transition">Réserver</button>`;
+        btnHtml = `<button data-book-id="${b.id}" class="reserve-btn w-full mt-2 text-[11px] font-semibold bg-brand text-white rounded-lg py-1.5 active:scale-[0.97] transition">Ajouter au panier</button>`;
       }
       const cov = b.cover_url
         ? `<img id="cover-${b.id}" src="${b.cover_url}" alt="" class="aspect-[2/3] w-full object-cover rounded-lg bg-mango-50 shadow-sm">`
@@ -646,6 +745,12 @@
       });
     });
 
+    list.querySelectorAll('.wishlist-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleWishlist(Number(btn.dataset.bookId));
+      });
+    });
     list.querySelectorAll('.join-hold-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -673,40 +778,64 @@
     });
   }
 
+  // « Dans ton panier » / « Commandé » / « Emprunté » selon où en est le livre.
+  function activeStatusLabel(bookId) {
+    const r = reservations.find(x => x.books?.id === bookId && isActiveReservation(x));
+    if (!r) return 'Dans ton panier';
+    if (r.status === 'panier') return 'Dans ton panier ✓';
+    if (r.status === 'recupere') return 'Emprunté';
+    return 'Commandé';
+  }
+
+  // Ajouter au panier (16/10/2026) : le livre n'est plus réservé directement,
+  // la commande part seulement avec « Valider ma commande » (Mon panier).
   async function reserveBook(bookId, btn) {
     if (!requireAccount('reserve')) return;
     if (!hasFullName) { askForName(); return; }
     const alreadyRead = reservations.some(r => r.status === 'recupere' && r.books?.id === bookId);
     if (alreadyRead) {
-      const confirmed = confirm('Tu as déjà lu ce livre. Es-tu sûr(e) de vouloir l\'ajouter à tes réservations ?');
+      const confirmed = await confirmDialog({ title: 'Déjà lu', message: 'Tu as déjà lu ce livre. Tu veux quand même l\'ajouter à ton panier ?', confirmLabel: 'Ajouter au panier', cancelLabel: 'Annuler' });
       if (!confirmed) return;
     }
     btn.disabled = true;
-    btn.textContent = 'Réservation…';
+    btn.textContent = 'Ajout…';
     const otherLibrary = catalogueCommuneId && catalogueCommuneId !== myCommuneId;
     const { error } = await supabase.from('reservations').insert({
       user_id: currentUser.id,
       book_id: bookId,
-      status: 'preparation',
+      status: 'panier',
       ...(otherLibrary ? { pickup_commune_id: catalogueCommuneId } : {}),
     });
     if (error) {
       btn.disabled = false;
-      btn.textContent = 'Réserver';
+      btn.textContent = 'Ajouter au panier';
       // Médiathèque indépendante où l'usager n'a pas encore de carte (12/10/2026) :
       // on lui propose d'en ajouter une à son compte.
       if (/pas inscrit dans cette médiathèque/i.test(error.message) && otherLibrary) {
-        if (confirm(`Tu n'as pas encore de carte pour la médiathèque de ${myCommuneName}.\n\nDemander ton inscription ? Elle sera validée par la médiathèque, selon ses conditions pour les non-résidents.`)) {
+        const ask = await confirmDialog({ title: 'Pas encore de carte ici', message: `Tu n'as pas encore de carte pour la médiathèque de ${myCommuneName}. Demander ton inscription ? Elle sera validée par la médiathèque, selon ses conditions pour les non-résidents.`, confirmLabel: 'Demander mon inscription', cancelLabel: 'Annuler' });
+        if (ask) {
           const { data, error: reqError } = await supabase.rpc('request_membership', { p_commune_id: catalogueCommuneId });
           showAppAlert(reqError ? reqError.message : data.message);
         }
         return;
       }
+      // Panier plein : livres du panier + commandes + emprunts en cours.
+      if (/limite atteinte|quota/i.test(error.message)) {
+        showDialog({
+          title: 'Ton panier est plein !',
+          message: 'Tu as atteint le nombre maximum de livres pour ta médiathèque. Retire un livre si tu veux en ajouter un autre.',
+          buttons: [{ label: 'Voir mon panier', value: 'cart', primary: true }, { label: 'Fermer', value: null }],
+        }).then(v => { if (v === 'cart') window.location.href = 'reservations.html'; });
+        return;
+      }
       showAppAlert(error.message);
       return;
     }
+    const b = books.find(x => x.id === bookId);
+    showSnackbar(`${b?.title || 'Le livre'}${b?.author ? ' de ' + b.author : ''} a été ajouté à ton panier`);
     await loadReservations();
     renderBooks();
+    updateReservationBadge(currentUser.id);
   }
 
   window.openBookModal = async function (bookId) {
@@ -720,13 +849,13 @@
     if (b.on_site_only) {
       btnHtml = `<p class="w-full mt-4 text-center text-sm font-semibold bg-brand/5 text-ink/50 rounded-2xl py-3">📍 Consultation sur place uniquement</p>`;
     } else if (isLibreAccount) {
-      btnHtml = `<a href="profil.html" class="block w-full mt-4 text-center text-sm font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-2.5">Réservé aux usagers d'une commune — rattache ton compte</a>`;
+      btnHtml = `<a href="profil.html" class="block w-full mt-4 text-center text-sm font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-2.5">Ouvert aux usagers d'une commune : rattache ton compte</a>`;
     } else if (!b.available) {
-      btnHtml = holdButtonHtml(b.id, true);
+      btnHtml = holdButtonHtml(b.id, true) + `<div class="${holdsEnabled ? '' : 'mt-4'}">${wishlistButtonHtml(b.id, true)}</div>`;
     } else if (reserved) {
-      btnHtml = `<button disabled class="w-full mt-4 text-sm font-semibold bg-mango-100 text-mango-700 rounded-2xl py-3">Déjà réservé</button>`;
+      btnHtml = `<button disabled class="w-full mt-4 text-sm font-semibold bg-mango-100 text-mango-700 rounded-2xl py-3">${activeStatusLabel(b.id)}</button>` + wishlistButtonHtml(b.id, true);
     } else {
-      btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-base font-semibold bg-brand text-white rounded-2xl py-3.5 shadow-md active:scale-[0.98] transition">Réserver</button>`;
+      btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-base font-semibold bg-brand text-white rounded-2xl py-3.5 shadow-md active:scale-[0.98] transition">Ajouter au panier</button>` + wishlistButtonHtml(b.id, true);
     }
 
     const existingCover = document.getElementById('cover-' + b.id);
@@ -755,10 +884,10 @@
       ${btnHtml}
     `;
 
-    document.getElementById('modal-wishlist-btn')?.addEventListener('click', async () => {
+    document.querySelectorAll('#modal-wishlist-btn, #book-modal-content .wishlist-btn').forEach(el => el.addEventListener('click', async () => {
       await toggleWishlist(b.id);
       openBookModal(b.id);
-    });
+    }));
     document.querySelector('#book-modal-content .join-hold-btn, #book-modal-backdrop .join-hold-btn')?.addEventListener('click', async () => {
       await joinHold(b.id);
       openBookModal(b.id);
@@ -986,8 +1115,8 @@
     const date = exp.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     document.getElementById('membership-popup-title').textContent = days <= 0 ? 'Ton adhésion a expiré' : 'Ton adhésion arrive bientôt à échéance';
     document.getElementById('membership-popup-text').textContent = days <= 0
-      ? `Ton adhésion a expiré le ${date}. Les emprunts et les réservations sont bloqués jusqu'à son renouvellement à l'accueil de ta Médiathèque Municipale.`
-      : `Ton adhésion expire le ${date} (dans ${days} jour${days > 1 ? 's' : ''}). Pense à la renouveler à l'accueil de ta Médiathèque Municipale pour continuer à emprunter et réserver.`;
+      ? `Ton adhésion a expiré le ${date}. Les emprunts et les commandes sont bloqués jusqu'à son renouvellement à l'accueil de ta Médiathèque Municipale.`
+      : `Ton adhésion expire le ${date} (dans ${days} jour${days > 1 ? 's' : ''}). Pense à la renouveler à l'accueil de ta Médiathèque Municipale pour continuer à emprunter et commander.`;
     const popup = document.getElementById('membership-popup-backdrop');
     popup.classList.remove('hidden');
     popup.classList.add('flex');
