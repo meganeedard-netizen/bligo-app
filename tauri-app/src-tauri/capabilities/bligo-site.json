@@ -1,13 +1,27 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "bligo-site",
-  "description": "Pages de bligo.app affichées dans le logiciel : seulement ouvrir un lien dans le navigateur (bouton Appli usagers).",
-  "windows": ["main"],
-  "remote": { "urls": ["https://bligo.app/*"] },
+  "description": "Pages de bligo.app affichées dans le logiciel : ouvrir un lien dans le navigateur (Appli usagers) et imprimer sur Mac (étiquettes, tickets).",
+  "windows": [
+    "main"
+  ],
+  "remote": {
+    "urls": [
+      "https://bligo.app/*"
+    ]
+  },
   "permissions": [
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "https://bligo.app/*" }, { "url": "https://bligo.app" }]
-    }
+      "allow": [
+        {
+          "url": "https://bligo.app/*"
+        },
+        {
+          "url": "https://bligo.app"
+        }
+      ]
+    },
+    "core:webview:allow-print"
   ]
 }

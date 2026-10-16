@@ -576,7 +576,6 @@
               Préinscriptions
               <span class="bg-white text-hibiscus-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full" id="preregistrations-count">0</span>
             </button>
-            <button onclick="exportUnpaidDebts()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Exporter les impayés</button>
             <button onclick="openAddInscritForm()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un inscrit</button>
           </div>
         </div>
@@ -1225,6 +1224,14 @@
       <!-- STATISTIQUES SIGB (direction uniquement) -->
       <section id="screen-sigb-stats" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Statistiques</h2>
+        <!-- Impayés (16/10/2026) : déplacés de l'écran Inscrits, réservés à la direction. -->
+        <div class="bg-white border border-[#E5E7EB] rounded-xl p-4 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-3xl">
+          <div>
+            <p class="text-sm font-bold text-ink">Impayés à transmettre (régie)</p>
+            <p id="unpaid-summary" class="text-xs text-ink/55 mt-0.5">Documents perdus ou abîmés pas encore réglés, pour la régie ou un titre de recette.</p>
+          </div>
+          <button onclick="exportUnpaidDebts()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition shrink-0">Télécharger la liste (Excel)</button>
+        </div>
         <div class="flex items-center gap-2 mb-4">
           <label class="text-xs font-semibold text-ink/60">Année</label>
           <select id="sigb-stats-year" onchange="loadSigbStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white"></select>
@@ -1855,7 +1862,7 @@
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
     if (screen === 'reservations') { awaitedOnly = false; switchPrTab('preparation'); refreshVisitorCount(); loadActiveLoans(); }
     if (screen === 'stats') switchStatsTab('emprunts');
-    if (screen === 'sigb-stats') initSigbStatsYearSelect();
+    if (screen === 'sigb-stats') { initSigbStatsYearSelect(); loadUnpaidSummary(); }
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
     if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
     if (screen === 'catalogue') { closeScanView(); }
@@ -4698,6 +4705,16 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (fresh) await loadFicheFor(fresh);
   };
 
+  async function loadUnpaidSummary() {
+    const el = document.getElementById('unpaid-summary');
+    const { data, error } = await supabase.from('document_debts').select('amount_cents').eq('status', 'open').eq('commune_id', myCommuneId);
+    if (error) return;
+    const total = (data || []).reduce((sum, d) => sum + (d.amount_cents || 0), 0);
+    el.textContent = data?.length
+      ? `${data.length} impayé${data.length > 1 ? 's' : ''} en cours, ${(total / 100).toFixed(2).replace('.', ',')} € au total. Documents perdus ou abîmés pas encore réglés.`
+      : 'Aucun impayé en cours.';
+  }
+
   // Impayés de la médiathèque, pour la régie ou un titre de recette.
   window.exportUnpaidDebts = async function () {
     const { data, error } = await supabase.from('document_debts').select('kind, amount_cents, created_at, automatic, user_id, books ( title, isbn )')
@@ -5663,6 +5680,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // Logiciel (16/10/2026) : le fichier part sans rien afficher sur Mac.
+    if (window.BLIGO_AGENT_APP) setTimeout(() => alert(`Fichier enregistré dans ton dossier Téléchargements :\n${filename}`), 400);
   }
 
   function buildCatalogueCsv({ exportBooks, copiesByBook, communeName }) {
