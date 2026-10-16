@@ -420,10 +420,9 @@
     if (session) {
       currentUser = session.user;
       updateReservationBadge(currentUser.id);
-      if (!stored) {
-        const { data: profile } = await supabase.from('profiles').select('commune_id').eq('id', currentUser.id).single();
-        stored = profile?.commune_id || null;
-      }
+      // Usager connecté : toujours l'agenda de sa médiathèque (16/10/2026).
+      const { data: profile } = await supabase.from('profiles').select('commune_id').eq('id', currentUser.id).single();
+      if (profile?.commune_id) stored = profile.commune_id;
     }
     if (!stored) { window.location.href = 'index.html'; return; }
     browseCommuneId = stored;
