@@ -111,7 +111,7 @@
 
       <!-- LOGIN -->
       <form id="form-login" class="flex flex-col gap-4">
-        <p class="text-3xl font-bold text-ink text-center mb-2">👋 De retour ?</p>
+        <p id="login-welcome-title" class="text-3xl font-bold text-ink text-center mb-2">👋 De retour ?</p>
         <input required type="email" id="login-email" autocomplete="email" placeholder="E-mail" class="auth-input">
         <div class="relative">
           <input required type="password" id="login-password" autocomplete="current-password" placeholder="Mot de passe" class="auth-input pr-12">
@@ -774,6 +774,8 @@
   // comptes agents) ; un compte usager qui se connecte est refusé.
   if (window.BLIGO_AGENT_APP) {
     document.getElementById('landing-choice')?.classList.add('hidden');
+    // « De retour ? » : seulement pour l'appli usagers (16/10/2026).
+    document.getElementById('login-welcome-title')?.classList.add('hidden');
     document.getElementById('auth-card')?.classList.remove('hidden');
     document.getElementById('auth-card')?.classList.add('flex');
     document.querySelector('#form-login [onclick="switchTab(\'signup\')"]')?.parentElement.classList.add('hidden');

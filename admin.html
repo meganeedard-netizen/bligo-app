@@ -1666,7 +1666,7 @@
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      window.location.href = 'index.html';
+      window.location.href = window.BLIGO_AGENT_APP ? 'index.html?t=' + Date.now() : 'index.html';
       return;
     }
     currentUser = session.user;
@@ -1678,7 +1678,7 @@
       accessMessage.textContent = "Cette page est réservée au personnel de la médiathèque.";
       if (window.BLIGO_AGENT_APP) {
         await supabase.auth.signOut();
-        window.location.href = 'index.html?not_agent=1';
+        window.location.href = 'index.html?not_agent=1&t=' + Date.now();
       } else {
         window.location.href = 'accueil.html';
       }
@@ -7187,11 +7187,15 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   async function loadReservations() {
-    const { data: resa, error } = await supabase
+    // Seulement les réservations de cette médiathèque (16/10/2026) : un compte
+    // super admin voyait aussi celles des autres médiathèques.
+    let resaQuery = supabase
       .from('reservations')
-      .select('id, status, created_at, ordered_at, ready_at, reshelved, user_id, book_id, books ( title, author, shelf_location, isbn, cover_url, cover_initial, book_copies ( barcode ) )')
+      .select('id, status, created_at, ordered_at, ready_at, reshelved, user_id, book_id, books!inner ( title, author, shelf_location, isbn, cover_url, cover_initial, commune_id, book_copies ( barcode ) )')
       .neq('status', 'panier')
       .order('created_at', { ascending: true });
+    if (myCommuneId) resaQuery = resaQuery.eq('books.commune_id', myCommuneId);
+    const { data: resa, error } = await resaQuery;
     if (error) { console.error(error); return; }
 
     const userIds = [...new Set(resa.map(r => r.user_id))];
@@ -8412,7 +8416,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   window.logout = async function () {
     await supabase.auth.signOut();
-    window.location.href = 'index.html';
+    window.location.href = window.BLIGO_AGENT_APP ? 'index.html?t=' + Date.now() : 'index.html';
   };
 
   init();
