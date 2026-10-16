@@ -650,8 +650,12 @@
         <h2 class="text-lg font-bold text-ink mb-1">Prêts &amp; réservations</h2>
 
         <div class="flex items-center gap-6 border-b border-mango-100 mb-5 flex-wrap">
-          <button id="pr-tab-reservations-btn" type="button" onclick="switchPrTab('reservations')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-brand text-ink">
-            Réservations (<span id="reservations-open-count">0</span>)
+          <!-- Une seule barre (16/10/2026) : les deux filtres de commandes sont devenus des onglets. -->
+          <button id="pr-tab-preparation-btn" type="button" onclick="switchPrTab('preparation')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-brand text-ink">
+            Commandes à préparer (<span id="resa-count-preparation">0</span>)<span id="reservations-open-count" class="hidden">0</span>
+          </button>
+          <button id="pr-tab-pret-btn" type="button" onclick="switchPrTab('pret')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
+            Commandes prêtes (<span id="resa-count-pret">0</span>)
           </button>
           <button id="pr-tab-active-btn" type="button" onclick="switchPrTab('active')" style="touch-action: manipulation;" class="text-sm font-bold pb-3 border-b-2 -mb-px whitespace-nowrap border-transparent text-ink/40">
             Prêts en cours (<span id="loan-active-count">0</span>)<span id="late-tab-badge" class="hidden ml-1.5 text-[11px] font-bold text-white bg-red-600 rounded-full px-2 py-0.5"></span>
@@ -665,15 +669,6 @@
         </div>
 
         <div id="pr-panel-reservations">
-          <div class="flex items-center gap-2 mb-5 flex-wrap">
-            <span class="text-[10px] font-bold text-ink/35 uppercase tracking-wide mr-0.5">Filtrer</span>
-            <button id="resa-tab-preparation-btn" type="button" onclick="switchReservationTab('preparation')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-brand text-white border-brand">
-              À préparer (<span id="resa-count-preparation">0</span>)
-            </button>
-            <button id="resa-tab-pret-btn" type="button" onclick="switchReservationTab('pret')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-ink/55 border-mango-100">
-              Commandes prêtes à récupérer (<span id="resa-count-pret">0</span>)
-            </button>
-          </div>
 
           <div id="pickup-scan-block" class="hidden bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl mb-5">
             <p class="text-sm font-bold text-ink mb-1">Remettre une commande à un usager</p>
@@ -1855,7 +1850,7 @@
     });
     // Prêt à scanner dès l'arrivée sur l'écran, sans avoir à cliquer dans le
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
-    if (screen === 'reservations') { awaitedOnly = false; switchPrTab('reservations'); refreshVisitorCount(); loadActiveLoans(); }
+    if (screen === 'reservations') { awaitedOnly = false; switchPrTab('preparation'); refreshVisitorCount(); loadActiveLoans(); }
     if (screen === 'stats') switchStatsTab('emprunts');
     if (screen === 'sigb-stats') initSigbStatsYearSelect();
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
@@ -4488,8 +4483,13 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // « Prêts & réservations » (17/09/2026) : 3 onglets de haut niveau au lieu
   // de deux écrans de menu séparés.
   window.switchPrTab = function (tab) {
+    if (tab === 'reservations') tab = reservationTab || 'preparation';
+    const isOrders = tab === 'preparation' || tab === 'pret';
+    const panel = isOrders ? 'reservations' : tab;
     ['reservations', 'active', 'retours', 'rayon'].forEach(t => {
-      document.getElementById(`pr-panel-${t}`).classList.toggle('hidden', t !== tab);
+      document.getElementById(`pr-panel-${t}`).classList.toggle('hidden', t !== panel);
+    });
+    ['preparation', 'pret', 'active', 'retours', 'rayon'].forEach(t => {
       const btn = document.getElementById(`pr-tab-${t}-btn`);
       const active = tab === t;
       btn.classList.toggle('border-brand', active);
@@ -4497,6 +4497,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       btn.classList.toggle('border-transparent', !active);
       btn.classList.toggle('text-ink/40', !active);
     });
+    if (isOrders) {
+      reservationTab = tab;
+      // Le scan de la carte usager sert seulement à remettre une commande prête.
+      document.getElementById('pickup-scan-block').classList.toggle('hidden', tab !== 'pret');
+      renderReservations();
+    }
     if (tab === 'active') loadActiveLoans();
     if (tab === 'rayon') loadReshelveLoans();
     if (tab === 'retours') document.getElementById('loan-barcode-input')?.focus();
@@ -7190,23 +7196,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   let reservationTab = 'preparation';
 
-  window.switchReservationTab = function (tab) {
-    reservationTab = tab;
-    ['preparation', 'pret'].forEach(t => {
-      const btn = document.getElementById(`resa-tab-${t}-btn`);
-      const active = tab === t;
-      btn.classList.toggle('bg-brand', active);
-      btn.classList.toggle('text-white', active);
-      btn.classList.toggle('border-brand', active);
-      btn.classList.toggle('bg-white', !active);
-      btn.classList.toggle('text-ink/55', !active);
-      btn.classList.toggle('border-mango-100', !active);
-    });
-    // Le scan carte usager ne sert à confirmer une remise que pour les
-    // réservations déjà prêtes — pas de sens dans l'autre filtre.
-    document.getElementById('pickup-scan-block').classList.toggle('hidden', tab !== 'pret');
-    renderReservations();
-  };
+  window.switchReservationTab = function (tab) { switchPrTab(tab); };
 
   async function loadReservations() {
     // Seulement les réservations de cette médiathèque (16/10/2026) : un compte
