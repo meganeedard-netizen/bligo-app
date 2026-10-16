@@ -147,8 +147,18 @@
   }
 
   // Ne garde que les horaires d'ouverture, sans la mention des jours de fermeture.
+  // Les horaires sont enregistrés jour par jour ({ lundi: '9h-12h', … }) depuis
+  // la page Réglages ; avant c'était une phrase. Sans ce cas, la page plantait
+  // dès qu'une commande était prête et n'affichait plus rien en dessous (16/10/2026).
+  const WEEK_DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
   function openingHoursOnly(hours) {
-    return hours.split('·').map(s => s.trim()).filter(s => !/^fermé/i.test(s)).join(' · ');
+    if (hours && typeof hours === 'object') {
+      return WEEK_DAYS
+        .filter(day => hours[day] && !/^\s*fermé/i.test(hours[day]))
+        .map(day => `${day[0].toUpperCase()}${day.slice(1)} ${hours[day]}`)
+        .join(' · ');
+    }
+    return String(hours || '').split('·').map(s => s.trim()).filter(s => !/^fermé/i.test(s)).join(' · ');
   }
 
   async function init() {
@@ -637,13 +647,16 @@
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     document.getElementById('empty-state').classList.toggle('hidden', !!combined.length || !!myHolds.length);
-    renderHoldsList();
-    renderOverdueList(overdue);
-    renderBorrowedList(borrowed);
-    renderReadyList(ready);
-    renderPreparingList(preparing);
-    renderHistoryList(history);
-    renderExpiredList(expired);
+    // Chaque rubrique est affichée séparément : une erreur dans l'une ne doit
+    // plus faire disparaître toutes les suivantes (16/10/2026).
+    const safely = fn => { try { fn(); } catch (e) { console.error(e); } };
+    safely(renderHoldsList);
+    safely(() => renderOverdueList(overdue));
+    safely(() => renderBorrowedList(borrowed));
+    safely(() => renderReadyList(ready));
+    safely(() => renderPreparingList(preparing));
+    safely(() => renderHistoryList(history));
+    safely(() => renderExpiredList(expired));
   }
 
   // Le décompte des 30 minutes se met à jour tout seul.
