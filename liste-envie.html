@@ -143,7 +143,7 @@
   async function loadWishlist() {
     const { data, error } = await supabase
       .from('wishlist')
-      .select('book_id, books ( id, title, author, cover_initial, cover_url, available )')
+      .select('book_id, books ( id, title, author, cover_initial, cover_url, available, category )')
       .eq('user_id', currentUser.id);
     if (error) {
       console.error(error);
@@ -182,6 +182,7 @@
         <div class="bg-white shadow-sm rounded-2xl p-3.5 flex items-center gap-3">
           ${cov}
           <div class="flex-1 min-w-0">
+            ${b.category ? `<p class="text-[9.5px] font-bold uppercase tracking-wide text-mango-600 leading-tight mb-0.5">${({ BD: 'BD & Mangas', Thriller: 'Policier & Thriller' })[b.category] || b.category}</p>` : ''}
             <p class="text-sm font-bold text-ink">${b.title}</p>
             <p class="text-[11px] text-ink/50">${b.author}</p>
             <span class="mt-1 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${b.available ? 'bg-mango-50 text-mango-700' : 'bg-brand/5 text-ink/40'}">
