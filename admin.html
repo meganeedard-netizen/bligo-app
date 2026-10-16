@@ -1353,9 +1353,11 @@
     'Documentaire', 'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
     'Bien-être', 'Maison', 'Jeux', 'Autres',
   ];
-  // Nom affiché d'une catégorie (16/10/2026) : « BD » s'affiche « BD & Mangas »,
-  // la valeur enregistrée reste « BD » (contrainte en base, règles de cote).
-  const categoryLabel = c => c === 'BD' ? 'BD & Mangas' : c;
+  // Nom affiché d'une catégorie (16/10/2026) : « BD » s'affiche « BD & Mangas »
+  // et « Thriller » « Policier & Thriller » ; la valeur enregistrée ne change
+  // pas (contrainte en base, règles de cote).
+  const CATEGORY_DISPLAY = { 'BD': 'BD & Mangas', 'Thriller': 'Policier & Thriller' };
+  const categoryLabel = c => CATEGORY_DISPLAY[c] || c;
 
   const CATEGORY_KEYWORDS = [
     ['BD', ['manga', 'comic', 'graphic novel', 'bande dessinée']],
