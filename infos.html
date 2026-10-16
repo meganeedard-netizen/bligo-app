@@ -126,7 +126,7 @@
 
   function renderChoices() {
     document.getElementById('categories').innerHTML = CATEGORIES.map(c =>
-      `<button type="button" data-cat="${c}" class="${chip(selectedCategories.has(c))}">${c}</button>`).join('');
+      `<button type="button" data-cat="${c}" class="${chip(selectedCategories.has(c))}">${c === 'BD' ? 'BD & Mangas' : c}</button>`).join('');
     document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => {
       const c = b.dataset.cat;
       selectedCategories.has(c) ? selectedCategories.delete(c) : selectedCategories.add(c);

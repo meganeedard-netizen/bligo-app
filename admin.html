@@ -1353,6 +1353,9 @@
     'Documentaire', 'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
     'Bien-être', 'Maison', 'Jeux', 'Autres',
   ];
+  // Nom affiché d'une catégorie (16/10/2026) : « BD » s'affiche « BD & Mangas »,
+  // la valeur enregistrée reste « BD » (contrainte en base, règles de cote).
+  const categoryLabel = c => c === 'BD' ? 'BD & Mangas' : c;
 
   const CATEGORY_KEYWORDS = [
     ['BD', ['manga', 'comic', 'graphic novel', 'bande dessinée']],
@@ -1386,7 +1389,7 @@
   }
 
   function categoryOptionsHtml(selected) {
-    return CATEGORIES.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`).join('');
+    return CATEGORIES.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${categoryLabel(c)}</option>`).join('');
   }
 
   // ---------- Cotation automatique ----------
@@ -6126,7 +6129,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     rows.innerHTML = CATEGORIES.map(cat => {
       const rule = coteRuleFor(cat);
       return `<div class="grid grid-cols-[1.3fr_1fr_1.2fr] gap-2 items-center">
-        <span class="text-xs font-semibold text-ink">${escapeHtml(cat)}</span>
+        <span class="text-xs font-semibold text-ink">${escapeHtml(categoryLabel(cat))}</span>
         <input data-cote-cat="${escapeHtml(cat)}" data-field="prefix" value="${escapeHtml(rule.prefix || '')}" oninput="refreshCotePreview()" placeholder="—" class="border border-mango-100 rounded-lg px-2 py-1.5 text-sm uppercase">
         <select data-cote-cat="${escapeHtml(cat)}" data-field="mode" oninput="refreshCotePreview()" class="border border-mango-100 rounded-lg px-1.5 py-1.5 text-xs bg-white">
           ${Object.entries(COTE_MODE_LABEL).map(([v, l]) => `<option value="${v}" ${rule.mode === v ? 'selected' : ''}>${l}</option>`).join('')}

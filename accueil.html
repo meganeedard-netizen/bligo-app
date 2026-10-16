@@ -390,13 +390,11 @@
 
   // ==================== CATALOGUE (fonds officiel + hors condition) ====================
 
-  // Noms affichés sur les tuiles (16/10/2026, demande de Mégane) : en entier
-  // avec « et », sur deux lignes si besoin. La valeur en base ne change pas.
+  // Noms affichés (16/10/2026, demande de Mégane) : les mêmes que dans le
+  // back-office ; la catégorie « BD » s'affiche « BD & Mangas » (la valeur en
+  // base reste « BD »).
   const CATEGORY_SHORT_LABELS = {
-    'Poésie & théâtre': 'Poésie et théâtre',
-    'Sports & loisirs': 'Sports et loisirs',
-    'Sciences & nature': 'Sciences et nature',
-    'Thriller': 'Policiers et thriller',
+    'BD': 'BD & Mangas',
   };
 
   // Languette de catégorie sur la couverture de chaque livre (16/10/2026),
@@ -857,7 +855,7 @@
           <p class="text-base font-bold text-ink leading-snug">${b.title}</p>
           <p class="text-sm text-ink/55 mt-0.5">${b.author}</p>
           <div class="flex items-center gap-2 mt-2 flex-wrap">
-            ${b.category ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-hibiscus-50 text-hibiscus-700">${b.category}</span>` : '<span></span>'}
+            ${b.category ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-hibiscus-50 text-hibiscus-700">${CATEGORY_SHORT_LABELS[b.category] || b.category}</span>` : '<span></span>'}
             ${b.age_range ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-mango-50 text-mango-700">${b.age_range}</span>` : ''}
             <button id="modal-wishlist-btn" class="ml-auto w-7 h-7 shrink-0 ${inWishlist ? 'text-hibiscus-600' : 'text-ink/25 hover:text-hibiscus-400'}">${heartIcon(inWishlist)}</button>
           </div>
@@ -1011,7 +1009,7 @@
 
     const categoriesBox = document.getElementById('onboarding-categories');
     categoriesBox.innerHTML = CATEGORIES.map(c => `
-      <button type="button" data-value="${c}" class="onboarding-category-chip text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-ink/60 border-mango-100 hover:border-mango-300">${c}</button>
+      <button type="button" data-value="${c}" class="onboarding-category-chip text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-ink/60 border-mango-100 hover:border-mango-300">${CATEGORY_SHORT_LABELS[c] || c}</button>
     `).join('');
     categoriesBox.querySelectorAll('.onboarding-category-chip').forEach(btn => {
       btn.addEventListener('click', () => {
