@@ -10,13 +10,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    # Depuis le 16/10/2026, le logiciel affiche les pages de bligo.app : une
+    # modification des pages n'a plus besoin d'une nouvelle fabrication, seul
+    # un changement du logiciel lui-même (tauri-app/) en demande une.
     paths:
-      - 'admin.html'
-      - 'superadmin.html'
-      - 'index.html'
-      - 'js/**'
-      - 'css/**'
-      - 'img/**'
       - 'tauri-app/**'
       - '.github/workflows/build-windows.yml'
 

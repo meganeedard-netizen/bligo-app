@@ -51,7 +51,7 @@
       <p class="text-sm font-bold text-ink mb-1">Adresse confirmée ! ✓</p>
       <p class="text-xs text-ink/55 mb-4">Ton compte BliGO est prêt.</p>
       <a href="bligo://open" class="block w-full bg-brand text-white rounded-xl py-3 text-sm font-semibold active:scale-[0.98] transition">Retourner sur l'application</a>
-      <button type="button" onclick="document.getElementById('reopen-app-banner').classList.add('hidden'); window.location.href = 'accueil.html';" class="w-full mt-3 text-xs font-semibold text-ink/50 hover:text-ink/80">Continuer sur le site</button>
+      <button type="button" onclick="document.getElementById('reopen-app-banner').classList.add('hidden'); goAfterLogin();" class="w-full mt-3 text-xs font-semibold text-ink/50 hover:text-ink/80">Continuer sur le site</button>
     </div>
   </div>
 
@@ -372,7 +372,7 @@
       return;
     }
     try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
-    window.location.href = 'accueil.html';
+    goAfterLogin();
   });
 
   window.switchTab = function (tab) {
@@ -410,7 +410,7 @@
     }
     // À la connexion, on repart de la médiathèque de l'usager (12/10/2026).
     try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
-    window.location.href = 'accueil.html';
+    goAfterLogin();
   });
 
   document.getElementById('form-signup').addEventListener('submit', async (e) => {
@@ -514,7 +514,7 @@
     if (session) {
       await supabase.from('profiles').update({ notifications_enabled: enable }).eq('id', session.user.id);
     }
-    window.location.href = 'accueil.html';
+    goAfterLogin();
   };
 
   // Supabase n'accepte qu'un envoi par minute environ : bouton grisé 60 s.
@@ -650,7 +650,7 @@
     const communeId = select.value;
     if (!communeId) return;
     localStorage.setItem('bligo_guest_commune_id', communeId);
-    window.location.href = 'accueil.html';
+    goAfterLogin();
   };
 
   window.showAuthCard = function () {
@@ -753,8 +753,38 @@
       document.getElementById('reopen-app-banner').classList.remove('hidden');
       return;
     }
-    window.location.href = 'accueil.html';
+    goAfterLogin();
   });
+
+  // Après connexion : appli usagers sur le site, back-office dans le logiciel
+  // agent (16/10/2026, ancien remplacement fait par tauri-app/sync-web.mjs).
+  window.goAfterLogin = function () {
+    if (window.BLIGO_AGENT_APP) { redirectAfterLogin(); return; }
+    window.location.href = 'accueil.html';
+  };
+  window.redirectAfterLogin = async function () {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+    // ?t= : toujours la dernière version mise en ligne, jamais une copie en cache.
+    window.location.href = (profile?.role === 'super_admin' && (session.user.email || '').toLowerCase() === 'megane@bligo.fr' ? 'superadmin.html' : 'admin.html') + '?t=' + Date.now();
+  };
+  // Logiciel réservé aux agents (12/10/2026) : connexion seulement. Pas de
+  // choix de médiathèque ni de création de compte (c'est Mégane qui crée les
+  // comptes agents) ; un compte usager qui se connecte est refusé.
+  if (window.BLIGO_AGENT_APP) {
+    document.getElementById('landing-choice')?.classList.add('hidden');
+    document.getElementById('auth-card')?.classList.remove('hidden');
+    document.getElementById('auth-card')?.classList.add('flex');
+    document.querySelector('#form-login [onclick="switchTab(\'signup\')"]')?.parentElement.classList.add('hidden');
+    document.getElementById('tab-login')?.parentElement.classList.add('hidden');
+    document.querySelector('#auth-card > button[onclick="backToBrowsing()"]')?.classList.add('hidden');
+    switchTab('login');
+    if (new URLSearchParams(location.search).get('not_agent')) {
+      messageEl.textContent = 'Ce compte n\'a pas accès au back-office.';
+      messageEl.className = 'text-xs text-center mt-3 text-red-600';
+    }
+  }
 </script>
 </body>
 </html>

@@ -26,6 +26,44 @@
     input, select, textarea { font-size: 16px; }
   }
 </style>
+<script>
+    // Logiciel agent (16/10/2026) : window.alert() et window.confirm() ne
+    // marchent pas dans la fenêtre du logiciel. On les remplace par de vraies
+    // boîtes HTML, seulement dans le logiciel. confirmDialog() renvoie une
+    // promesse partout (boîte native du navigateur sur le site).
+    window.BLIGO_AGENT_APP = (() => { try { return sessionStorage.getItem('bligo_agent_app') === '1'; } catch (e) { return false; } })();
+    window.confirmDialog = function (message) { return Promise.resolve(window.confirm(message)); };
+    if (window.BLIGO_AGENT_APP) {
+      const bligoDialogBackdrop = function () {
+        const backdrop = document.createElement('div');
+        backdrop.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(27,75,67,.4);display:flex;align-items:center;justify-content:center;padding:16px;';
+        return backdrop;
+      };
+      const bligoEscapeHtml = function (s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      };
+      window.alert = function (message) {
+        const backdrop = bligoDialogBackdrop();
+        backdrop.innerHTML = '<div style="background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.2);max-width:380px;width:100%;padding:20px;">' +
+          '<p style="font-size:14px;color:#1B4B43;white-space:pre-wrap;line-height:1.5;margin:0 0 16px;">' + bligoEscapeHtml(message) + '</p>' +
+          '<button style="width:100%;background:#1B4B43;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">OK</button></div>';
+        backdrop.querySelector('button').onclick = () => backdrop.remove();
+        document.body.appendChild(backdrop);
+      };
+      window.confirmDialog = function (message) {
+        return new Promise((resolve) => {
+          const backdrop = bligoDialogBackdrop();
+          backdrop.innerHTML = '<div style="background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.2);max-width:380px;width:100%;padding:20px;">' +
+            '<p style="font-size:14px;color:#1B4B43;white-space:pre-wrap;line-height:1.5;margin:0 0 16px;">' + bligoEscapeHtml(message) + '</p>' +
+            '<div style="display:flex;gap:8px;"><button data-a="cancel" style="flex:1;background:#f4f4f4;color:#1B4B43;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">Annuler</button>' +
+            '<button data-a="ok" style="flex:1;background:#F07F14;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">Confirmer</button></div></div>';
+          backdrop.querySelector('[data-a="cancel"]').onclick = () => { backdrop.remove(); resolve(false); };
+          backdrop.querySelector('[data-a="ok"]').onclick = () => { backdrop.remove(); resolve(true); };
+          document.body.appendChild(backdrop);
+        });
+      };
+    }
+  </script>
 </head>
 <body class="bg-white text-ink min-h-screen">
 
@@ -419,7 +457,7 @@
   };
 
   window.deleteCommune = async function (id, name) {
-    if (!confirm(`Supprimer la commune « ${name} » ?`)) return;
+    if (!await confirmDialog(`Supprimer la commune « ${name} » ?`)) return;
     const { error } = await supabase.from('communes').delete().eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadCommunes();
@@ -486,7 +524,7 @@
 
   window.revokeAgentAccess = async function (userId) {
     const name = lastTeam.find(t => t.id === userId)?.full_name || 'cette personne';
-    if (!confirm(`Retirer l'accès au back-office à ${name} ? Son compte redevient un compte usager.`)) return;
+    if (!await confirmDialog(`Retirer l'accès au back-office à ${name} ? Son compte redevient un compte usager.`)) return;
     const { error } = await supabase.rpc('revoke_agent_access', { p_user_id: userId });
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadTeamForCommune();

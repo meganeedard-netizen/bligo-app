@@ -23,3 +23,9 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.6", features = ["devtools"] }
 tauri-plugin-log = "2"
+# « Appli usagers » ouvre bligo.app dans le navigateur (16/10/2026).
+tauri-plugin-opener = "2"
+
+# Autorisation caméra dans WebView2 (voir src/lib.rs), même version que wry.
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"

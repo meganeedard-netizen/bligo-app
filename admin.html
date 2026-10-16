@@ -68,6 +68,44 @@
   #app-main .bg-mango-50 { background-color: #F7F8FA; }
   #app-main .bg-mango-50\/50, #app-main .bg-mango-50\/60 { background-color: #F7F8FA; }
 </style>
+<script>
+    // Logiciel agent (16/10/2026) : window.alert() et window.confirm() ne
+    // marchent pas dans la fenêtre du logiciel. On les remplace par de vraies
+    // boîtes HTML, seulement dans le logiciel. confirmDialog() renvoie une
+    // promesse partout (boîte native du navigateur sur le site).
+    window.BLIGO_AGENT_APP = (() => { try { return sessionStorage.getItem('bligo_agent_app') === '1'; } catch (e) { return false; } })();
+    window.confirmDialog = function (message) { return Promise.resolve(window.confirm(message)); };
+    if (window.BLIGO_AGENT_APP) {
+      const bligoDialogBackdrop = function () {
+        const backdrop = document.createElement('div');
+        backdrop.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(27,75,67,.4);display:flex;align-items:center;justify-content:center;padding:16px;';
+        return backdrop;
+      };
+      const bligoEscapeHtml = function (s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      };
+      window.alert = function (message) {
+        const backdrop = bligoDialogBackdrop();
+        backdrop.innerHTML = '<div style="background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.2);max-width:380px;width:100%;padding:20px;">' +
+          '<p style="font-size:14px;color:#1B4B43;white-space:pre-wrap;line-height:1.5;margin:0 0 16px;">' + bligoEscapeHtml(message) + '</p>' +
+          '<button style="width:100%;background:#1B4B43;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">OK</button></div>';
+        backdrop.querySelector('button').onclick = () => backdrop.remove();
+        document.body.appendChild(backdrop);
+      };
+      window.confirmDialog = function (message) {
+        return new Promise((resolve) => {
+          const backdrop = bligoDialogBackdrop();
+          backdrop.innerHTML = '<div style="background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.2);max-width:380px;width:100%;padding:20px;">' +
+            '<p style="font-size:14px;color:#1B4B43;white-space:pre-wrap;line-height:1.5;margin:0 0 16px;">' + bligoEscapeHtml(message) + '</p>' +
+            '<div style="display:flex;gap:8px;"><button data-a="cancel" style="flex:1;background:#f4f4f4;color:#1B4B43;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">Annuler</button>' +
+            '<button data-a="ok" style="flex:1;background:#F07F14;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">Confirmer</button></div></div>';
+          backdrop.querySelector('[data-a="cancel"]').onclick = () => { backdrop.remove(); resolve(false); };
+          backdrop.querySelector('[data-a="ok"]').onclick = () => { backdrop.remove(); resolve(true); };
+          document.body.appendChild(backdrop);
+        });
+      };
+    }
+  </script>
 </head>
 <body class="text-ink min-h-screen">
 
@@ -86,6 +124,7 @@
     <div class="flex items-center gap-2">
       <div id="header-visitor-widget" class="hidden items-center gap-1 border border-[#E5E7EB] rounded-lg pl-3 pr-1 py-1 bg-white">
         <span class="text-xs text-ink/55 whitespace-nowrap mr-1">Visiteurs aujourd'hui : <strong id="visitor-today-count" class="text-ink">0</strong></span>
+        <button onclick="removeVisitorEntry()" style="touch-action: manipulation;" class="bo-btn-sm" title="Retirer un visiteur compté par erreur">−1</button>
         <button onclick="addVisitorEntry(1)" style="touch-action: manipulation;" class="bo-btn-sm">+1</button>
         <button onclick="addVisitorGroup()" style="touch-action: manipulation;" class="bo-btn-sm whitespace-nowrap">+ Groupe</button>
       </div>
@@ -134,6 +173,10 @@
         <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>
         Catalogage
       </button>
+      <button onclick="switchScreen('collections')" style="touch-action: manipulation;" class="agent-nav-btn" data-screen="collections">
+        <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3"/><path d="M9 12l2 2 4-4"/></svg>
+        Gestion des collections
+      </button>
       <button onclick="switchScreen('agenda')" style="touch-action: manipulation;" class="agent-nav-btn" data-screen="agenda">
         <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>
         Agenda culturel
@@ -149,10 +192,6 @@
         Statistiques
       </button>
       <p class="bo-nav-group" id="nav-group-admin">Administration</p>
-      <button id="nav-team-btn" onclick="switchScreen('team')" style="touch-action: manipulation;" class="hidden agent-nav-btn" data-screen="team">
-        <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
-        Tarifs médiathèque
-      </button>
       <button id="nav-settings-btn" onclick="switchScreen('settings')" style="touch-action: manipulation;" class="hidden agent-nav-btn" data-screen="settings">
         <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
         Réglages
@@ -172,50 +211,54 @@
         <p class="text-sm text-ink/55 mb-5">Ce qui t'attend à la médiathèque. Clique sur un chiffre pour ouvrir la liste.</p>
         <div class="grid grid-cols-2 xl:grid-cols-3 gap-3 mb-8">
             <button type="button" onclick="switchScreen('reservations'); switchReservationTab('preparation')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <p class="text-xs font-semibold text-ink/55">Réservations à préparer</p>
+              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Réservations à préparer</p><span class="w-9 h-9 rounded-lg bg-mango-50 text-mango-700 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6M9 7h3"/></svg></span></div>
               <p id="kpi-prep" class="text-3xl font-bold mt-1 text-ink">–</p>
               <p class="text-[11px] text-ink/45 mt-1">À mettre de côté pour les usagers</p>
             </button>
             <button type="button" onclick="switchScreen('reservations'); switchReservationTab('pret')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <p class="text-xs font-semibold text-ink/55">Prêtes à récupérer</p>
+              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Commandes prêtes à récupérer</p><span class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/><path d="M9.5 13.5l2 2 3.5-3.5"/></svg></span></div>
               <p id="kpi-ready" class="text-3xl font-bold mt-1 text-ink">–</p>
               <p class="text-[11px] text-ink/45 mt-1">En attente du passage de l'usager</p>
             </button>
             <button type="button" onclick="switchScreen('reservations'); switchPrTab('active')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <p class="text-xs font-semibold text-ink/55">Prêts en cours</p>
+              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Prêts en cours</p><span class="w-9 h-9 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg></span></div>
               <p id="kpi-loans" class="text-3xl font-bold mt-1 text-ink">–</p>
               <p class="text-[11px] text-ink/45 mt-1">Documents chez les usagers</p>
             </button>
             <button type="button" onclick="switchScreen('reservations'); switchPrTab('active')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <p class="text-xs font-semibold text-ink/55">En retard</p>
+              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">En retard</p><span class="w-9 h-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M5 3L2 6M19 3l3 3"/></svg></span></div>
               <p id="kpi-late" class="text-3xl font-bold mt-1 text-red-600">–</p>
               <p class="text-[11px] text-ink/45 mt-1">Date de retour dépassée</p>
             </button>
             <button type="button" onclick="showAwaitedLoans()" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <p class="text-xs font-semibold text-ink/55">Livres attendus</p>
+              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Livres attendus</p><span class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10M7 21h10"/><path d="M8 3c0 5 8 5 8 9s-8 4-8 9"/><path d="M16 3c0 5-8 5-8 9s8 4 8 9"/></svg></span></div>
               <p id="kpi-awaited" class="text-3xl font-bold mt-1 text-amber-600">–</p>
               <p class="text-[11px] text-ink/45 mt-1">Empruntés, avec une file d'attente</p>
             </button>
             <button type="button" onclick="switchScreen('reservations'); switchPrTab('rayon')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <p class="text-xs font-semibold text-ink/55">À remettre en rayon</p>
+              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">À remettre en rayon</p><span class="w-9 h-9 rounded-lg bg-violet-50 text-violet-700 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V4h3v17M10 21V7h3v14"/><path d="M15.5 8.5l3-.8 3.4 12.6-3 .8z"/></svg></span></div>
               <p id="kpi-reshelve" class="text-3xl font-bold mt-1 text-ink">–</p>
               <p class="text-[11px] text-ink/45 mt-1">Documents rendus à ranger</p>
             </button>
             <button type="button" onclick="switchScreen('users'); openPreregistrationsView()" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <p class="text-xs font-semibold text-ink/55">Préinscriptions</p>
+              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Préinscriptions</p><span class="w-9 h-9 rounded-lg bg-hibiscus-50 text-hibiscus-700 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M19 8v6M16 11h6"/></svg></span></div>
               <p id="kpi-prereg" class="text-3xl font-bold mt-1 text-ink">–</p>
               <p class="text-[11px] text-ink/45 mt-1">Comptes à valider à l'accueil</p>
             </button>
             <button type="button" onclick="switchScreen('logistics')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <p class="text-xs font-semibold text-ink/55">Transferts</p>
+              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Transferts</p><span class="w-9 h-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="12" height="10" rx="1"/><path d="M14 10h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></span></div>
               <p id="kpi-transfers" class="text-3xl font-bold mt-1 text-ink">–</p>
               <p class="text-[11px] text-ink/45 mt-1">À envoyer ou à recevoir</p>
             </button>
-            <button type="button" onclick="addVisitorEntry(1)" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <p class="text-xs font-semibold text-ink/55">Visiteurs aujourd'hui</p>
-              <p id="kpi-visitors" class="text-3xl font-bold mt-1 text-ink">–</p>
-              <p class="text-[11px] text-ink/45 mt-1">Appuie pour ajouter un visiteur</p>
-            </button>
+            <div class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4">
+              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Visiteurs aujourd'hui</p><span class="w-9 h-9 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 0 1 4.5 6"/></svg></span></div>
+              <div class="flex items-center gap-2 mt-1">
+                <button type="button" onclick="removeVisitorEntry()" title="Retirer un visiteur compté par erreur" aria-label="Retirer un visiteur" class="w-9 h-9 rounded-lg border border-[#E5E7EB] text-ink/60 hover:border-red-300 hover:text-red-600 text-xl font-bold leading-none transition">−</button>
+                <p id="kpi-visitors" class="text-3xl font-bold text-ink min-w-[2ch] text-center">–</p>
+                <button type="button" onclick="addVisitorEntry(1)" title="Ajouter un visiteur" aria-label="Ajouter un visiteur" class="w-9 h-9 rounded-lg bg-brand text-white text-xl font-bold leading-none hover:opacity-90 transition">+</button>
+              </div>
+              <p class="text-[11px] text-ink/45 mt-1">+ pour ajouter, − en cas d'erreur</p>
+            </div>
         </div>
         <p class="text-sm font-bold text-ink mb-3">Actions rapides</p>
         <div class="flex flex-wrap gap-2">
@@ -223,6 +266,86 @@
           <button type="button" data-direction-only onclick="switchScreen('catalogue'); openScanView()" class="bo-quick">+ Ajouter un document</button>
           <button type="button" data-direction-only onclick="switchScreen('agenda'); openEventForm()" class="bo-quick">+ Ajouter un événement</button>
           <button type="button" onclick="switchScreen('reservations'); switchPrTab('retours')" class="bo-quick">Enregistrer un retour</button>
+        </div>
+      </section>
+
+      <!-- GESTION DES COLLECTIONS (16/10/2026) : récolement et désherbage,
+           sortis de Catalogage (ce n'est pas du catalogage). -->
+      <section id="screen-collections" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Gestion des collections</h2>
+        <p class="text-sm text-ink/55 mb-4">Récolement (inventaire des rayons) et désherbage (retrait des documents usés ou peu empruntés).</p>
+        <div class="flex items-center gap-2 mb-5 flex-wrap">
+          <button id="coll-tab-inv" type="button" onclick="openCollectionsView('inv')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border">Récolement</button>
+          <button id="coll-tab-weed" type="button" onclick="openCollectionsView('weed')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border">Désherbage</button>
+        </div>
+        <div id="catalogue-inv-view" class="hidden">
+          <div id="inv-content" class="max-w-3xl"></div>
+          <div id="inv-scan-block" class="hidden max-w-3xl">
+            <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm mb-3">
+              <div id="inv-camera-slot" class="mb-2"></div>
+              <button type="button" id="inv-camera-btn" onclick="toggleCamera('inventory')" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-1">Scanner avec la caméra</button>
+              <p id="inv-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>
+              <input id="inv-barcode-input" type="text" autocomplete="off" placeholder="Ou scanne à la douchette, livre par livre" style="font-size: 16px;"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); addInventoryScan(this.value); this.value='';}"
+                class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+            </div>
+            <div id="inv-last-scans" class="flex flex-col gap-1.5"></div>
+          </div>
+        </div>
+        <div id="catalogue-weed-view" class="hidden">
+          <div class="flex flex-col lg:flex-row gap-6 items-start">
+            <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm w-full lg:max-w-sm lg:shrink-0">
+              <p class="text-sm font-bold text-ink mb-1">Retirer des documents du fonds</p>
+              <p class="text-xs text-ink/55 mb-3">Choisis le motif et la destination, puis scanne les exemplaires un par un. Rien n'est retiré avant la validation.</p>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Motif (méthode IOUPI)</label>
+              <select id="weed-reason" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-2">
+                <option value="use">U · Usé, abîmé</option>
+                <option value="perime">P · Périmé (information dépassée)</option>
+                <option value="incorrect">I · Incorrect (informations fausses)</option>
+                <option value="ordinaire">O · Ordinaire (médiocre, sans intérêt)</option>
+                <option value="inadequat">I · Inadéquat (hors du fonds, du public)</option>
+                <option value="autre">Autre</option>
+              </select>
+              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Destination</label>
+              <select id="weed-destination" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+                <option value="don">Don (association, école, boîte à livres…)</option>
+                <option value="pilon">Pilon (recyclage)</option>
+                <option value="vente">Vente (braderie de la médiathèque)</option>
+                <option value="autre_structure">Autre médiathèque ou structure</option>
+                <option value="autre">Autre</option>
+              </select>
+              <div id="weed-camera-slot" class="mb-2"></div>
+              <button type="button" id="weed-camera-btn" onclick="toggleCamera('weed')" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-1">Scanner avec la caméra</button>
+              <p id="weed-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>
+              <input id="weed-barcode-input" type="text" autocomplete="off" placeholder="Ou scanne à la douchette (code-barres de la médiathèque)" style="font-size: 16px;"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); addWeedBarcode(this.value); this.value='';}"
+                class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
+              <p id="weed-message" class="text-xs text-red-600 font-semibold mt-2 min-h-[16px]"></p>
+            </div>
+            <div class="flex-1 min-w-0 w-full">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">À retirer (<span id="weed-count">0</span>)</p>
+                <button onclick="validateWeeding()" class="text-xs font-semibold bg-red-600 text-white rounded-full px-3.5 py-1.5">Retirer du fonds</button>
+              </div>
+              <div id="weed-list" class="flex flex-col gap-2 mb-6"></div>
+              <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm mb-4">
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                  <p class="text-sm font-bold text-ink mr-auto">Candidats au désherbage</p>
+                  <select id="weed-years" class="border border-mango-100 rounded-full px-2.5 py-1 text-xs bg-white">
+                    <option value="2">Pas empruntés depuis 2 ans</option>
+                    <option value="3" selected>Pas empruntés depuis 3 ans</option>
+                    <option value="5">Pas empruntés depuis 5 ans</option>
+                  </select>
+                  <button onclick="loadWeedingCandidates()" class="text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1">Afficher</button>
+                </div>
+                <div id="weed-candidates" class="flex flex-col gap-1.5 max-h-80 overflow-y-auto"><p class="text-xs text-ink/40">Exemplaires disponibles en rayon que personne n'a empruntés depuis longtemps.</p></div>
+              </div>
+              <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+                <p class="text-sm font-bold text-ink mb-2">Désherbage de l'année</p>
+                <div id="weed-stats" class="text-xs text-ink/70"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -235,11 +358,9 @@
           <!-- Ordre validé par Mégane le 09/10/2026 : actions du quotidien (don,
                ajout), gestion du fonds, puis impressions et exports. -->
           <div class="flex flex-wrap items-center gap-2">
-            <button onclick="openInscritScanModal()" style="touch-action: manipulation;" class="border border-hibiscus-200 text-hibiscus-700 bg-hibiscus-50 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M7 11h2"/><path d="M15 9h3v3h-3z"/></svg>Scanner la carte de l'inscrit (don)</button>
+            <button onclick="openInscritScanModal()" style="touch-action: manipulation;" class="border border-hibiscus-200 text-hibiscus-700 bg-hibiscus-50 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M7 11h2"/><path d="M15 9h3v3h-3z"/></svg>Don de livre</button>
             <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M12 5v14M5 12h14"/></svg>Ajouter un document</button>
             <button onclick="openCatalogueView('subs')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M18 8h2v10a2 2 0 0 1-2 2"/><path d="M8 8h6M8 12h6M8 16h4"/></svg>Abonnements périodiques <span id="subs-late-badge" class="hidden text-[10px] font-bold bg-red-600 text-white rounded-full px-1.5 py-0.5"></span></button>
-            <button onclick="openCatalogueView('inv')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3"/><path d="M9 12l2 2 4-4"/></svg>Récolement</button>
-            <button onclick="openCatalogueView('weed')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>Désherbage</button>
             <button onclick="printToEquipLabels()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>Étiquettes à imprimer</button>
             <button id="export-catalogue-btn" onclick="openExportModal()" style="touch-action: manipulation;" class="hidden border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>Exporter le catalogue</button>
           </div>
@@ -314,80 +435,9 @@
           </div>
         </div>
 
-        <!-- Désherbage (09/10/2026) -->
-        <div id="catalogue-weed-view" class="hidden mt-4">
-          <button onclick="closeCatalogueView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
-          <div class="flex flex-col lg:flex-row gap-6 items-start">
-            <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm w-full lg:max-w-sm lg:shrink-0">
-              <p class="text-sm font-bold text-ink mb-1">Retirer des documents du fonds</p>
-              <p class="text-xs text-ink/55 mb-3">Choisis le motif et la destination, puis scanne les exemplaires un par un. Rien n'est retiré avant la validation.</p>
-              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Motif (méthode IOUPI)</label>
-              <select id="weed-reason" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-2">
-                <option value="use">U · Usé, abîmé</option>
-                <option value="perime">P · Périmé (information dépassée)</option>
-                <option value="incorrect">I · Incorrect (informations fausses)</option>
-                <option value="ordinaire">O · Ordinaire (médiocre, sans intérêt)</option>
-                <option value="inadequat">I · Inadéquat (hors du fonds, du public)</option>
-                <option value="autre">Autre</option>
-              </select>
-              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Destination</label>
-              <select id="weed-destination" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
-                <option value="don">Don (association, école, boîte à livres…)</option>
-                <option value="pilon">Pilon (recyclage)</option>
-                <option value="vente">Vente (braderie de la médiathèque)</option>
-                <option value="autre_structure">Autre médiathèque ou structure</option>
-                <option value="autre">Autre</option>
-              </select>
-              <div id="weed-camera-slot" class="mb-2"></div>
-              <button type="button" id="weed-camera-btn" onclick="toggleCamera('weed')" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-1">Scanner avec la caméra</button>
-              <p id="weed-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>
-              <input id="weed-barcode-input" type="text" autocomplete="off" placeholder="Ou scanne à la douchette (code-barres de la médiathèque)" style="font-size: 16px;"
-                onkeydown="if(event.key==='Enter'){event.preventDefault(); addWeedBarcode(this.value); this.value='';}"
-                class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
-              <p id="weed-message" class="text-xs text-red-600 font-semibold mt-2 min-h-[16px]"></p>
-            </div>
-            <div class="flex-1 min-w-0 w-full">
-              <div class="flex items-center justify-between mb-2">
-                <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">À retirer (<span id="weed-count">0</span>)</p>
-                <button onclick="validateWeeding()" class="text-xs font-semibold bg-red-600 text-white rounded-full px-3.5 py-1.5">Retirer du fonds</button>
-              </div>
-              <div id="weed-list" class="flex flex-col gap-2 mb-6"></div>
-              <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm mb-4">
-                <div class="flex flex-wrap items-center gap-2 mb-2">
-                  <p class="text-sm font-bold text-ink mr-auto">Candidats au désherbage</p>
-                  <select id="weed-years" class="border border-mango-100 rounded-full px-2.5 py-1 text-xs bg-white">
-                    <option value="2">Pas empruntés depuis 2 ans</option>
-                    <option value="3" selected>Pas empruntés depuis 3 ans</option>
-                    <option value="5">Pas empruntés depuis 5 ans</option>
-                  </select>
-                  <button onclick="loadWeedingCandidates()" class="text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1">Afficher</button>
-                </div>
-                <div id="weed-candidates" class="flex flex-col gap-1.5 max-h-80 overflow-y-auto"><p class="text-xs text-ink/40">Exemplaires disponibles en rayon que personne n'a empruntés depuis longtemps.</p></div>
-              </div>
-              <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
-                <p class="text-sm font-bold text-ink mb-2">Désherbage de l'année</p>
-                <div id="weed-stats" class="text-xs text-ink/70"></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        
 
-        <!-- Récolement (09/10/2026) -->
-        <div id="catalogue-inv-view" class="hidden mt-4">
-          <button onclick="closeCatalogueView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
-          <div id="inv-content" class="max-w-3xl"></div>
-          <div id="inv-scan-block" class="hidden max-w-3xl">
-            <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm mb-3">
-              <div id="inv-camera-slot" class="mb-2"></div>
-              <button type="button" id="inv-camera-btn" onclick="toggleCamera('inventory')" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition mb-1">Scanner avec la caméra</button>
-              <p id="inv-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>
-              <input id="inv-barcode-input" type="text" autocomplete="off" placeholder="Ou scanne à la douchette, livre par livre" style="font-size: 16px;"
-                onkeydown="if(event.key==='Enter'){event.preventDefault(); addInventoryScan(this.value); this.value='';}"
-                class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
-            </div>
-            <div id="inv-last-scans" class="flex flex-col gap-1.5"></div>
-          </div>
-        </div>
+        
 
         <!-- Abonnements aux magazines / bulletinage (09/10/2026) -->
         <div id="catalogue-subs-view" class="hidden mt-4">
@@ -463,7 +513,7 @@
         <div id="inscrit-scan-backdrop" onclick="closeInscritScanModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
           <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
             <button onclick="closeInscritScanModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
-            <p class="text-base font-bold text-ink mb-1">Scanner la carte de l'inscrit</p>
+            <p class="text-base font-bold text-ink mb-1">Don de livre : scanne la carte de l'inscrit</p>
             <p class="text-xs text-ink/55 mb-4">Pour créditer ses points de fidélité sur les documents donnés à la suite.</p>
 
             <div id="donor-camera-slot" class="mb-2"></div>
@@ -599,7 +649,7 @@
               À préparer (<span id="resa-count-preparation">0</span>)
             </button>
             <button id="resa-tab-pret-btn" type="button" onclick="switchReservationTab('pret')" style="touch-action: manipulation;" class="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-ink/55 border-mango-100">
-              Prêtes à récupérer (<span id="resa-count-pret">0</span>)
+              Commandes prêtes à récupérer (<span id="resa-count-pret">0</span>)
             </button>
           </div>
 
@@ -617,6 +667,11 @@
             <div id="pickup-result" class="mt-3"></div>
           </div>
 
+          <div class="relative max-w-xl mb-4">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-ink/35 pointer-events-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input id="resa-search" type="search" autocomplete="off" oninput="renderReservations()" placeholder="Rechercher une commande : nom, numéro d'abonné ou titre"
+              style="font-size: 16px;" class="w-full border border-mango-100 rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300 bg-white">
+          </div>
           <div id="reservations-list" class="flex flex-col gap-3"></div>
         </div>
 
@@ -849,7 +904,7 @@
         <div id="agenda-list-view" class="mt-4">
           <div id="agenda-empty-state" class="hidden text-center py-14">
             <p class="text-sm text-ink/50 mb-4">Aucun événement pour l'instant dans l'agenda.</p>
-            <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer votre 1er évènement</button>
+            <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer ton 1er événement</button>
           </div>
           <div id="agenda-list-content">
             <div class="relative max-w-xl mb-4">
@@ -916,9 +971,47 @@
 
       </section>
 
-      <!-- TARIFS MÉDIATHÈQUE (direction uniquement) -->
-      <section id="screen-team" class="agent-screen hidden">
-        <div class="grid xl:grid-cols-2 gap-x-8 gap-y-8 items-start">
+
+      <!-- RÉGLAGES : personnalisation de l'apparence (direction uniquement) -->
+      <section id="screen-settings" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Réglages</h2>
+        <p class="text-sm text-ink/55 mb-6">Réservé à la direction. Apparence, tarifs, horaires et règles de ta médiathèque.</p>
+
+        <div class="grid lg:grid-cols-[200px_1fr] gap-6 items-start">
+          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('tarifs')" data-settings-tab="tarifs" class="settings-tab-btn">Tarifs</button><button type="button" onclick="showSettingsTab('horaires')" data-settings-tab="horaires" class="settings-tab-btn">Horaires d'ouverture</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button></nav>
+          <div class="max-w-3xl min-w-0">
+          <div data-settings-pane="apparence" class="bg-white border border-[#E5E7EB] rounded-xl p-6">
+        <h3 class="text-base font-bold text-ink mb-2">Logo</h3>
+        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm  mb-8">
+          <div class="flex items-center gap-4 mb-3">
+            <img id="settings-logo-preview" alt="" class="hidden w-16 h-16 rounded-full object-contain bg-mango-50 border border-mango-100">
+            <p id="settings-logo-empty" class="text-xs text-ink/45">Aucun logo envoyé pour l'instant : celui de BliGO s'affiche par défaut.</p>
+          </div>
+          <input id="settings-logo-file" type="file" accept="image/*" class="hidden" onchange="previewSettingsLogo(event)">
+          <button type="button" onclick="document.getElementById('settings-logo-file').click()" class="w-full border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2.5 text-sm font-semibold">Choisir un logo</button>
+          <p id="settings-logo-status" class="text-[11px] text-ink/45 mt-2 min-h-[16px]">Le logo est enregistré dès que tu le choisis.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h3 class="text-base font-bold text-ink">Couleur principale</h3>
+          <button onclick="resetCommuneTheme()" class="text-xs font-semibold text-ink/70 hover:text-ink border border-[#D1D5DB] hover:border-brand/40 rounded-lg px-3 py-1.5 shrink-0">↺ Réinitialiser les couleurs d'origine BliGO</button>
+        </div>
+        <p class="text-xs text-ink/55 mb-3">Remplace le vert des boutons et encadrés colorés (jamais le texte, qui reste toujours lisible). Clique à nouveau sur la couleur choisie pour revenir au vert par défaut.</p>
+        <div id="settings-ink-palette" class="grid grid-cols-6 gap-2 max-w-sm  mb-8"></div>
+
+        <h3 class="text-base font-bold text-ink mb-2">Couleur dégradé</h3>
+        <p class="text-xs text-ink/55 mb-3">Remplace le dégradé orange/hibiscus par un dégradé dans cette seule couleur. Clique à nouveau sur la couleur choisie pour revenir au dégradé par défaut.</p>
+        <div id="settings-accent-palette" class="grid grid-cols-6 gap-2 max-w-sm  mb-6"></div>
+
+        <div class=" flex gap-2">
+          <button onclick="saveCommuneTheme()" class="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les modifications</button>
+        </div>
+        <p id="settings-save-status" class="text-[11px] text-ink/45 mt-2 h-4"></p>
+
+          </div>
+          <div data-settings-pane="tarifs" class="hidden">
+            <!-- Tarifs (16/10/2026) : déplacés de l'ancien écran « Tarifs médiathèque » vers Réglages. -->
+        <div class="grid gap-y-8 items-start">
         <div>
         <h2 class="text-lg font-bold text-ink mb-1">Tarifs de la médiathèque</h2>
         <p class="text-sm text-ink/55 mb-4">Modifiable uniquement par la direction. Un montant à 0 € n'est pas affiché comme un tarif gratuit officiel tant qu'il n'a pas été confirmé ici.</p>
@@ -1004,41 +1097,6 @@
 
         </div>
         </div>
-      </section>
-
-      <!-- RÉGLAGES : personnalisation de l'apparence (direction uniquement) -->
-      <section id="screen-settings" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Réglages</h2>
-        <p class="text-sm text-ink/55 mb-6">Réservé à la direction. Personnalise l'apparence de l'appli usager et de ce logiciel agent pour ta médiathèque.</p>
-
-        <div class="grid lg:grid-cols-[200px_1fr] gap-6 items-start">
-          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('horaires')" data-settings-tab="horaires" class="settings-tab-btn">Horaires d'ouverture</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button></nav>
-          <div class="max-w-3xl min-w-0">
-          <div data-settings-pane="apparence" class="bg-white border border-[#E5E7EB] rounded-xl p-6">
-        <h3 class="text-base font-bold text-ink mb-2">Logo</h3>
-        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm  mb-8">
-          <div class="flex items-center gap-4 mb-3">
-            <img id="settings-logo-preview" alt="" class="hidden w-16 h-16 rounded-full object-contain bg-mango-50 border border-mango-100">
-            <p id="settings-logo-empty" class="text-xs text-ink/45">Aucun logo envoyé pour l'instant : celui de BliGO s'affiche par défaut.</p>
-          </div>
-          <input id="settings-logo-file" type="file" accept="image/png,image/jpeg,image/svg+xml" class="hidden" onchange="previewSettingsLogo(event)">
-          <button type="button" onclick="document.getElementById('settings-logo-file').click()" class="w-full border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2.5 text-sm font-semibold">Choisir un logo</button>
-        </div>
-
-        <h3 class="text-base font-bold text-ink mb-2">Couleur principale</h3>
-        <p class="text-xs text-ink/55 mb-3">Remplace le vert des boutons et encadrés colorés (jamais le texte, qui reste toujours lisible). Clique à nouveau sur la couleur choisie pour revenir au vert par défaut.</p>
-        <div id="settings-ink-palette" class="grid grid-cols-6 gap-2 max-w-sm  mb-8"></div>
-
-        <h3 class="text-base font-bold text-ink mb-2">Couleur dégradé</h3>
-        <p class="text-xs text-ink/55 mb-3">Remplace le dégradé orange/hibiscus par un dégradé dans cette seule couleur. Clique à nouveau sur la couleur choisie pour revenir au dégradé par défaut.</p>
-        <div id="settings-accent-palette" class="grid grid-cols-6 gap-2 max-w-sm  mb-6"></div>
-
-        <div class=" flex gap-2">
-          <button onclick="saveCommuneTheme()" class="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer l'apparence</button>
-          <button onclick="resetCommuneTheme()" class="text-xs font-semibold text-ink/50 hover:text-ink border border-mango-100 rounded-lg px-3 shrink-0">Réinitialiser les couleurs d'origine</button>
-        </div>
-        <p id="settings-save-status" class="text-[11px] text-ink/45 mt-2 h-4"></p>
-
           </div>
           <div data-settings-pane="horaires" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
             <h3 class="text-base font-bold text-ink mb-1">Horaires d'ouverture</h3>
@@ -1554,7 +1612,7 @@
     if (!mismatches.length) return;
 
     const list = mismatches.map(m => `• ${m.title} : ${m.old} → ${m.new}`).join('\n');
-    if (!confirm(`${mismatches.length} cote(s) à corriger pour rester cohérente(s) avec la catégorie actuelle :\n\n${list}\n\nAppliquer ces changements ?`)) return;
+    if (!await confirmDialog(`${mismatches.length} cote(s) à corriger pour rester cohérente(s) avec la catégorie actuelle :\n\n${list}\n\nAppliquer ces changements ?`)) return;
 
     for (const m of mismatches) {
       await supabase.from('books').update({ shelf_location: m.new }).eq('id', m.id);
@@ -1571,7 +1629,7 @@
   window.detectMissingCoverColors = async function () {
     const targets = books.filter(b => b.cover_url && !b.cover_color);
     if (!targets.length) return;
-    if (!confirm(`Analyser automatiquement la couverture de ${targets.length} livre(s) pour détecter couleur / noir et blanc ?`)) return;
+    if (!await confirmDialog(`Analyser automatiquement la couverture de ${targets.length} livre(s) pour détecter couleur / noir et blanc ?`)) return;
 
     const badge = document.getElementById('covercolor-badge');
     let done = 0, failed = 0;
@@ -1615,7 +1673,6 @@
     }
     myCommuneId = profile.commune_id || null;
     myIsDirection = profile.role === 'super_admin' || (profile.role === 'agent' && profile.agent_level === 'direction');
-    document.getElementById('nav-team-btn').classList.toggle('hidden', !myIsDirection);
     document.getElementById('nav-sigb-stats-btn').classList.toggle('hidden', !myIsDirection);
     document.getElementById('export-catalogue-btn').classList.toggle('hidden', !myIsDirection);
     document.getElementById('nav-settings-btn').classList.toggle('hidden', !myIsDirection);
@@ -1641,8 +1698,18 @@
 
     const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     document.getElementById('bo-today').textContent = today;
-    // Logiciel agents : pas d'appli usagers embarquée.
-    if (window.BLIGO_AGENT_APP) document.querySelectorAll('a[href="accueil.html"]').forEach(a => a.classList.add('hidden'));
+    // Logiciel agents (16/10/2026) : « Appli usagers » ouvre bligo.app dans le
+    // navigateur de l'ordinateur, à côté du logiciel, pour voir le catalogue
+    // comme un usager sans quitter le back-office.
+    if (window.BLIGO_AGENT_APP) document.querySelectorAll('a[href="accueil.html"]').forEach(a => {
+      a.href = 'https://bligo.app/';
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const invoke = window.__TAURI_INTERNALS__?.invoke;
+        if (invoke) invoke('plugin:opener|open_url', { url: 'https://bligo.app/' }).catch(() => alert('Ouvre https://bligo.app dans ton navigateur pour voir l\'appli usagers.'));
+        else window.open('https://bligo.app/', '_blank');
+      });
+    });
     // Groupes du menu sans aucun bouton visible : on masque leur titre.
     const hideEmptyGroups = window.hideEmptyNavGroups = () => document.querySelectorAll('#bo-sidebar .bo-nav-group').forEach(g => {
       let el = g.nextElementSibling, visible = false;
@@ -1705,7 +1772,7 @@
     set('prep', prep); set('ready', ready); set('loans', active); set('late', late); set('reshelve', reshelve); set('prereg', pre);
     countAwaitedLoans().then(n => { document.getElementById('kpi-awaited').textContent = n ?? '–'; });
     document.getElementById('kpi-transfers').textContent = document.getElementById('logistics-badge')?.textContent || '0';
-    document.getElementById('kpi-visitors').textContent = document.getElementById('visitor-today-count')?.textContent || '0';
+    refreshVisitorCount();
   }
 
   // Files d'attente de la médiathèque : book_id -> nombre d'usagers qui attendent.
@@ -1759,6 +1826,7 @@
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
     if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
     if (screen === 'catalogue') { closeScanView(); }
+    if (screen === 'collections') openCollectionsView('inv');
     if (screen === 'logistics') loadTransfers();
     if (screen === 'home') loadDashboard();
     if (screen === 'settings') { showSettingsTab('apparence'); loadCommuneSettings(); loadDocumentTypes().then(renderDocumentTypesSettings); loadCoteRules().then(renderCoteRulesSettings); loadDigitalResources(); loadOpeningHours(); }
@@ -1771,8 +1839,22 @@
   async function refreshVisitorCount() {
     const { data, error } = await supabase.rpc('visitor_count_today');
     if (error) { console.error(error); return; }
-    document.getElementById('visitor-today-count').textContent = data ?? 0;
+    setVisitorCount(data);
   }
+
+  // Le compteur de l'en-tête et la case « Visiteurs aujourd'hui » de l'écran
+  // Aujourd'hui affichent toujours le même chiffre.
+  function setVisitorCount(n) {
+    document.getElementById('visitor-today-count').textContent = n ?? 0;
+    const kpi = document.getElementById('kpi-visitors');
+    if (kpi) kpi.textContent = n ?? 0;
+  }
+
+  window.removeVisitorEntry = async function () {
+    const { data, error } = await supabase.rpc('remove_visitor_entry');
+    if (error) { alert(error.message.includes('Aucun visiteur') ? 'Aucun visiteur à retirer aujourd\'hui.' : 'Erreur : ' + error.message); return; }
+    setVisitorCount(data);
+  };
 
   window.addVisitorEntry = async function (count, motif) {
     const { error } = await supabase.rpc('record_visitor_entry', { p_count: count, p_motif: motif || null });
@@ -2078,7 +2160,16 @@
       scanStartTime = Date.now();
       scanLoop();
     } catch (e) {
-      hint.textContent = "Impossible d'accéder à la caméra : " + e.message;
+      // Échec (16/10/2026) : on referme proprement, sinon le bouton restait
+      // sur « Fermer la caméra » sans rien fermer.
+      stopCamera();
+      hint.textContent = e?.name === 'NotAllowedError'
+        ? "Caméra refusée. Sur Windows : Paramètres › Confidentialité et sécurité › Caméra, active « Autoriser les applications de bureau à accéder à la caméra », puis réessaie."
+        : e?.name === 'NotFoundError'
+          ? "Aucune caméra trouvée sur cet ordinateur. Branche une webcam ou utilise la douchette."
+          : e?.name === 'NotReadableError'
+            ? "La caméra est déjà utilisée par une autre application (Teams, Zoom…). Ferme-la puis réessaie."
+            : "Impossible d'accéder à la caméra : " + e.message;
     } finally {
       cameraOpening = false;
     }
@@ -2588,7 +2679,13 @@
   async function fetchPeriodicalByEan(barcode, forcedGenre) {
     const issn = issnFromEan(barcode);
     if (!issn) return null;
-    const meta = await fetchPeriodicalByIssn(issn, forcedGenre);
+    // Magazine déjà catalogué (16/10/2026) : le code-barres identifie le titre
+    // (ISSN), la fiche du dernier numéro sert de modèle. Rien à ressaisir,
+    // l'agent vérifie seulement le numéro.
+    const known = books
+      .filter(b => documentTypeKind(b.format) === 'periodique' && /^977\d{10}/.test(String(b.isbn || '')) && issnFromEan(b.isbn) === issn)
+      .sort((a, b) => b.id - a.id)[0];
+    const meta = known ? { ...metaFromCataloguedPeriodical(known), issn, fromCatalogue: true } : await fetchPeriodicalByIssn(issn, forcedGenre);
     if (!meta) return null;
     meta.isbn = barcode.slice(0, 13);
     meta.issue = barcode.length === 15 ? String(Number(barcode.slice(13))) : '';
@@ -2780,10 +2877,10 @@
     });
   }
 
-  function addDraftFromIsbn(rawCode) {
+  async function addDraftFromIsbn(rawCode) {
     const isbn = rawCode.replace(/-/g, '');
     if (draftBooks.some(d => d.isbn === isbn)) {
-      const isSecondCopy = confirm(`Ce document (code ${isbn}) est déjà dans les brouillons.\n\nAppuie sur OK si c'est un 2ᵉ exemplaire à ajouter quand même.\nAnnuler si c'est une erreur de scan.`);
+      const isSecondCopy = await confirmDialog(`Ce document (code ${isbn}) est déjà dans les brouillons.\n\nAppuie sur OK si c'est un 2ᵉ exemplaire à ajouter quand même.\nAnnuler si c'est une erreur de scan.`);
       if (!isSecondCopy) return;
     }
     const localId = `${Date.now()}-${Math.random()}`;
@@ -3179,7 +3276,7 @@
 
   function ISSUE_FIELD_MANUAL(d) {
     if (documentTypeKind(d.format) !== 'periodique') return '';
-    return `<label class="text-xs font-semibold text-ink/60 block mb-1">Numéro du magazine</label>
+    return `<label class="text-xs font-semibold text-ink/60 block mb-1">Numéro du magazine</label>${d.meta?.fromCatalogue ? `<p class="text-[11px] text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 mb-1.5">Magazine déjà au catalogue : la fiche est remplie, vérifie juste le numéro${d.issue ? '' : ' (tape-le ou scanne le petit code à côté du code-barres)'}.</p>` : ''}
       <input id="draft-issue-${d.localId}" value="${escapeHtml(d.issue || '')}" oninput="updateDraftField('${d.localId}', 'issue', this.value)" placeholder="Ex. 630, octobre 2026, ou le code L" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">`;
   }
 
@@ -3306,7 +3403,7 @@
           <button type="button" onclick="document.getElementById('back-photo-input-${d.localId}').click()" class="w-full mt-3 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">📷 Aucun résumé trouvé : photo du verso pour le remplir</button>
           <p id="cover-ocr-status-${d.localId}" class="text-[11px] text-ink/45 text-center mt-1 min-h-[16px]"></p>`}
 ${documentTypeKind(d.format) === 'periodique' ? `
-          <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Numéro du magazine</label>
+          <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Numéro du magazine</label>${d.meta?.fromCatalogue ? `<p class="text-[11px] text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 mb-1.5">Magazine déjà au catalogue : la fiche est remplie, vérifie juste le numéro${d.issue ? '' : ' (tape-le ou scanne le petit code à côté du code-barres)'}.</p>` : ''}
           <input id="draft-issue-${d.localId}" value="${escapeHtml(d.issue || '')}" oninput="updateDraftField('${d.localId}', 'issue', this.value)" placeholder="Ex. 630, octobre 2026, ou le code L" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
           <p class="text-[10.5px] text-ink/45 mt-1">Tu peux coller le code L de la couverture (« L 13834-630H-F ») : le numéro est extrait tout seul.</p>` : ''}
           <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">Nombre d'exemplaires</label>
@@ -3420,7 +3517,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <button type="button" onclick="document.getElementById('back-photo-input-${d.localId}').click()" class="w-full -mt-1 mb-1 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">📷 Photo du verso pour remplir le résumé</button>
         <p id="cover-ocr-status-${d.localId}" class="text-[11px] text-ink/45 text-center mb-2 min-h-[16px]"></p>`}
 ${documentTypeKind(d.format) === 'periodique' ? `
-          <label class="text-xs font-semibold text-ink/60 block mb-1">Numéro du magazine</label>
+          <label class="text-xs font-semibold text-ink/60 block mb-1">Numéro du magazine</label>${d.meta?.fromCatalogue ? `<p class="text-[11px] text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5 mb-1.5">Magazine déjà au catalogue : la fiche est remplie, vérifie juste le numéro${d.issue ? '' : ' (tape-le ou scanne le petit code à côté du code-barres)'}.</p>` : ''}
           <input id="draft-issue-${d.localId}" value="${escapeHtml(d.issue || '')}" oninput="updateDraftField('${d.localId}', 'issue', this.value)" placeholder="Ex. 630, octobre 2026, ou le code L" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
           <p class="text-[10.5px] text-ink/45 mt-1 mb-2">Tu peux coller le code L de la couverture (« L 13834-630H-F ») : le numéro est extrait tout seul.</p>` : ''}
         <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre d'exemplaires</label>
@@ -4547,7 +4644,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   window.settleDebt = async function (debtId, status, userId) {
     const labels = { paid: 'Confirmer le paiement ?', replaced: 'Confirmer le remplacement à l\'identique ? (ajoute ensuite le nouvel exemplaire au catalogue)', cancelled: 'Annuler cette dette ?' };
-    if (!confirm(labels[status])) return;
+    if (!await confirmDialog(labels[status])) return;
     const { error } = await supabase.rpc('settle_debt', { p_debt_id: debtId, p_status: status, p_note: null });
     if (error) { alert('Erreur : ' + error.message); return; }
     const fresh = inscritsList.find(p => p.id === userId);
@@ -4596,7 +4693,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.quickReturnFromList = async function (barcode) {
-    const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode });
+    const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode, p_condition: null });
     if (error) { alert('Erreur : ' + error.message); return; }
     if (!data.ok) { alert(data.message); return; }
     playBeep();
@@ -4786,7 +4883,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     let reason = null;
     if (flag) {
       reason = prompt('Raison du fichage (facultatif) :') || null;
-    } else if (!confirm('Retirer le fichage de cet usager ?')) {
+    } else if (!await confirmDialog('Retirer le fichage de cet usager ?')) {
       return;
     }
     const { error } = await supabase.rpc('set_user_flagged', { p_user_id: userId, p_flagged: flag, p_reason: reason });
@@ -4888,7 +4985,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.renewMembership = async function (userId, communeId = null) {
-    if (!confirm('Renouveler l\'adhésion de cet usager ? Encaisse d\'abord le tarif correspondant s\'il y en a un.')) return;
+    if (!await confirmDialog('Renouveler l\'adhésion de cet usager ? Encaisse d\'abord le tarif correspondant s\'il y en a un.')) return;
     const { data, error } = await supabase.rpc('renew_membership', { p_user_id: userId, p_commune_id: communeId });
     if (error) { alert('Erreur : ' + error.message); return; }
     alert(data.message);
@@ -5075,6 +5172,16 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (which === 'subs') loadSubscriptions();
   };
 
+  window.openCollectionsView = function (which) {
+    stopCamera();
+    ['inv', 'weed'].forEach(w => {
+      document.getElementById(`catalogue-${w}-view`).classList.toggle('hidden', w !== which);
+      document.getElementById(`coll-tab-${w}`).className = `text-xs font-semibold px-3 py-1.5 rounded-full border ${w === which ? 'bg-brand text-white border-brand' : 'bg-white text-ink/55 border-mango-100'}`;
+    });
+    if (which === 'inv') loadInventory();
+    if (which === 'weed') { renderWeedList(); loadWeedingStats(); document.getElementById('weed-barcode-input').focus(); }
+  };
+
   window.closeCatalogueView = function () {
     stopCamera();
     ['catalogue-scan-view', 'catalogue-weed-view', 'catalogue-subs-view', 'catalogue-inv-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -5191,7 +5298,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.finishInventory = async function () {
-    if (!confirm('Terminer ce récolement et calculer le bilan ?')) return;
+    if (!await confirmDialog('Terminer ce récolement et calculer le bilan ?')) return;
     stopCamera();
     const { error } = await supabase.rpc('finish_inventory', { p_inventory_id: currentInventory.id });
     if (error) { alert('Erreur : ' + error.message); return; }
@@ -5199,7 +5306,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.abandonInventory = async function () {
-    if (!confirm('Abandonner ce récolement ? Les scans déjà faits seront perdus.')) return;
+    if (!await confirmDialog('Abandonner ce récolement ? Les scans déjà faits seront perdus.')) return;
     stopCamera();
     await supabase.from('inventories').delete().eq('id', currentInventory.id);
     await loadInventory();
@@ -5230,7 +5337,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.markInventoryMissingLost = async function (inventoryId, n) {
-    if (!confirm(`Passer ${n} exemplaire(s) manquant(s) en « perdu » ? À faire seulement après les avoir cherchés.`)) return;
+    if (!await confirmDialog(`Passer ${n} exemplaire(s) manquant(s) en « perdu » ? À faire seulement après les avoir cherchés.`)) return;
     const { data, error } = await supabase.rpc('mark_inventory_missing_lost', { p_inventory_id: inventoryId });
     if (error) { alert('Erreur : ' + error.message); return; }
     alert(`${data} exemplaire(s) passé(s) en « perdu ».`);
@@ -5282,7 +5389,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!weedList.length) return;
     const reason = document.getElementById('weed-reason').value;
     const destination = document.getElementById('weed-destination').value;
-    if (!confirm(`Retirer ${weedList.length} exemplaire(s) du fonds ?\nMotif : ${WEED_REASON_LABEL[reason]} · Destination : ${WEED_DEST_LABEL[destination]}`)) return;
+    if (!await confirmDialog(`Retirer ${weedList.length} exemplaire(s) du fonds ?\nMotif : ${WEED_REASON_LABEL[reason]} · Destination : ${WEED_DEST_LABEL[destination]}`)) return;
     const { data, error } = await supabase.rpc('weed_copies', { p_copy_ids: weedList.map(w => w.id), p_reason: reason, p_destination: destination });
     if (error) { alert('Erreur : ' + error.message); return; }
     alert(data.message);
@@ -5400,7 +5507,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.removeSubscription = async function (id) {
-    if (!confirm('Retirer cet abonnement de la liste ?')) return;
+    if (!await confirmDialog('Retirer cet abonnement de la liste ?')) return;
     const { error } = await supabase.from('periodical_subscriptions').delete().eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadSubscriptions();
@@ -5906,7 +6013,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.removeDigitalResource = async function (id) {
-    if (!confirm('Retirer cette ressource numérique ?')) return;
+    if (!await confirmDialog('Retirer cette ressource numérique ?')) return;
     const { error } = await supabase.from('digital_resources').delete().eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadDigitalResources();
@@ -5979,7 +6086,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.resetCoteRules = async function () {
-    if (!confirm('Remettre les règles BliGO par défaut dans le formulaire ? (Pense à enregistrer ensuite.)')) return;
+    if (!await confirmDialog('Remettre les règles BliGO par défaut dans le formulaire ? (Pense à enregistrer ensuite.)')) return;
     const saved = coteRules;
     coteRules = DEFAULT_COTE_RULES;
     renderCoteRulesSettings();
@@ -6019,7 +6126,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   window.removeDocumentType = async function (id) {
     const t = documentTypes.find(x => x.id === id);
-    if (!t || !confirm(`Retirer « ${t.label} » de la liste ? Les documents déjà catalogués avec ce type le gardent.`)) return;
+    if (!t || !await confirmDialog(`Retirer « ${t.label} » de la liste ? Les documents déjà catalogués avec ce type le gardent.`)) return;
     const { error } = await supabase.from('document_types').delete().eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadDocumentTypes();
@@ -6049,14 +6156,58 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     renderThemePalette('settings-accent-palette', selectedAccentHex, 'pickAccentColor');
   }
 
-  window.previewSettingsLogo = function (event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    pendingLogoFile = file;
+  // Logo (16/10/2026) : enregistré dès qu'il est choisi, sans attendre le
+  // bouton du bas (le logo choisi n'était pas pris en compte). L'image est
+  // redimensionnée en PNG 512 px : une photo lourde ou un format exotique
+  // (WebP…) passe aussi, et le logo de l'en-tête change tout de suite.
+  function logoFileToPng(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 512 / Math.max(img.naturalWidth || 512, img.naturalHeight || 512));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round((img.naturalWidth || 512) * scale));
+        canvas.height = Math.max(1, Math.round((img.naturalHeight || 512) * scale));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('conversion')), 'image/png');
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('format')); };
+      img.src = url;
+    });
+  }
+
+  window.previewSettingsLogo = async function (event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    input.value = ''; // pour pouvoir rechoisir le même fichier
+    if (!file || !myCommuneId) return;
+    const status = document.getElementById('settings-logo-status');
+    status.className = 'text-[11px] text-ink/45 mt-2 min-h-[16px]';
+    status.textContent = 'Envoi du logo…';
+    let png;
+    try { png = await logoFileToPng(file); }
+    catch { status.className = 'text-[11px] text-red-600 mt-2 min-h-[16px]'; status.textContent = 'Image illisible : choisis un fichier PNG ou JPEG.'; return; }
+    const path = `${myCommuneId}/logo.png`;
+    const { error: upErr } = await supabase.storage.from('commune-logos').upload(path, png, { upsert: true, contentType: 'image/png' });
+    if (upErr) { status.className = 'text-[11px] text-red-600 mt-2 min-h-[16px]'; status.textContent = 'Erreur d\'envoi du logo : ' + upErr.message; return; }
+    const { data: pub } = supabase.storage.from('commune-logos').getPublicUrl(path);
+    const logo_url = pub.publicUrl + '?t=' + Date.now(); // même nom de fichier : évite l'ancien logo en cache
+    const { error } = await supabase.rpc('update_commune_theme', {
+      p_commune_id: myCommuneId, p_ink_hex: selectedInkHex, p_accent_hex: selectedAccentHex, p_logo_url: logo_url,
+    });
+    if (error) { status.className = 'text-[11px] text-red-600 mt-2 min-h-[16px]'; status.textContent = 'Erreur : ' + error.message; return; }
     const preview = document.getElementById('settings-logo-preview');
     document.getElementById('settings-logo-empty').classList.add('hidden');
-    preview.src = URL.createObjectURL(file);
+    preview.src = logo_url;
     preview.classList.remove('hidden');
+    for (const id of ['header-commune-logo', 'sidebar-commune-logo']) {
+      const el = document.getElementById(id);
+      if (el) { el.src = logo_url; el.classList.remove('hidden'); }
+    }
+    status.className = 'text-[11px] text-emerald-700 mt-2 min-h-[16px]';
+    status.textContent = '✓ Nouveau logo enregistré.';
   };
 
   window.saveCommuneTheme = async function () {
@@ -6079,7 +6230,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     });
     if (error) { status.textContent = ''; alert('Erreur : ' + error.message); return; }
     pendingLogoFile = null;
-    status.textContent = '✓ Apparence enregistrée.';
+    status.textContent = '✓ Modifications enregistrées.';
     // Applique tout de suite dans cette fenêtre, sans attendre un rechargement.
     applyCommuneTheme({ theme_ink_hex: selectedInkHex, theme_accent_hex: selectedAccentHex });
     await loadCommuneSettings();
@@ -6430,7 +6581,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.deleteBook = async function (id, title) {
-    if (!confirm(`Es-tu sûr de vouloir supprimer le livre « ${title} » ?`)) return;
+    if (!await confirmDialog(`Es-tu sûr de vouloir supprimer le livre « ${title} » ?`)) return;
     const { data, error } = await supabase.from('books').delete().eq('id', id).select();
     if (error) { alert('Erreur : ' + error.message); return; }
     if (!data || data.length === 0) {
@@ -6628,7 +6779,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const b = books.find(x => x.id === bookId);
     const c = (b?.copies || []).find(x => x.id === copyId);
     closeBookModal();
-    openCatalogueView('weed');
+    switchScreen('collections'); openCollectionsView('weed');
     addWeedBarcode(null, { id: copyId, barcode: c?.barcode || '', status: c?.status, title: b?.title, author: b?.author, cote: b?.shelf_location });
   };
 
@@ -6924,7 +7075,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.decideMembership = async function (id, accept) {
-    if (accept && !confirm('Valider cette inscription ? Encaisse d\'abord le supplément non-résident s\'il y en a un.')) return;
+    if (accept && !await confirmDialog('Valider cette inscription ? Encaisse d\'abord le supplément non-résident s\'il y en a un.')) return;
     const { error } = await supabase.rpc('decide_membership', { p_membership_id: id, p_accept: accept });
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadNonResidents();
@@ -6980,7 +7131,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const tariffSelect = document.getElementById('prereg-tariff-' + id);
     const tariff_category = tariffSelect?.value;
     if (!tariff_category) { alert('Choisis la catégorie tarifaire (mineur / majeur / gratuité / famille) avant de valider.'); return; }
-    if (!confirm(`Confirmer la validation de l'inscription de ${name} ? Vérifie bien sa pièce d'identité et son justificatif de domicile (et son autorisation parentale si mineur) avant de continuer.`)) return;
+    if (!await confirmDialog(`Confirmer la validation de l'inscription de ${name} ? Vérifie bien sa pièce d'identité et son justificatif de domicile (et son autorisation parentale si mineur) avant de continuer.`)) return;
 
     const { error: tariffError } = await supabase.rpc('set_tariff_category', { p_user_id: id, p_category: tariff_category });
     if (tariffError) { alert('Erreur : ' + tariffError.message); return; }
@@ -7058,7 +7209,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   const statusMap = {
     preparation: { label: 'En préparation', classes: 'bg-amber-50 text-amber-700' },
-    pret: { label: 'Prêt à récupérer', classes: 'bg-mango-50 text-mango-700' },
+    pret: { label: 'Commande prête à récupérer', classes: 'bg-mango-50 text-mango-700' },
     recupere: { label: 'Récupéré', classes: 'bg-brand/5 text-ink/45' },
     expiree: { label: 'Expirée — remise en circulation', classes: 'bg-red-50 text-red-600' },
   };
@@ -7097,10 +7248,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     renderReshelveList();
 
-    const filtered = reservations.filter(r => r.status === reservationTab && isVisibleToStaff(r));
+    // Recherche d'une commande (16/10/2026) : nom, numéro d'abonné ou titre.
+    const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const query = norm(document.getElementById('resa-search')?.value.trim());
+    const filtered = reservations.filter(r => r.status === reservationTab && isVisibleToStaff(r)
+      && (!query || [r.profile?.full_name, r.profile?.subscriber_number, r.books?.title, r.books?.author].some(v => norm(v).includes(query))));
 
     if (!filtered.length) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">${reservationTab === 'preparation' ? 'Aucune commande à préparer.' : 'Aucune réservation prête en attente.'}</p>`;
+      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">${query ? 'Aucune commande ne correspond à ta recherche.' : reservationTab === 'preparation' ? 'Aucune commande à préparer.' : 'Aucune commande prête en attente.'}</p>`;
       return;
     }
 
@@ -7116,8 +7271,6 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         let actionHtml = '';
         if (r.status === 'preparation') {
           actionHtml = `<button onclick="prepareReservation(${r.id})" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Marquer prêt</button>`;
-        } else if (r.status === 'pret') {
-          actionHtml = `<button onclick="setStatus(${r.id}, 'recupere')" style="touch-action: manipulation;" title="Si l'usager n'a pas sa carte : valide la remise sans scanner" class="w-full sm:w-auto text-[12.5px] font-semibold bg-white text-ink/70 border border-[#D1D5DB] hover:border-brand/40 rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Remettre sans la carte</button>`;
         }
         let countdownHtml = '';
         if (r.status === 'pret' && r.ready_at) {
@@ -7161,14 +7314,19 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
       return `
         <div class="${idx % 2 === 1 ? 'bg-mango-50/40' : 'bg-white'} border border-mango-100 rounded-xl p-4 shadow-sm">
-          <div class="mb-1">
-            <p class="text-sm font-bold text-ink truncate">${escapeHtml(group.profile?.full_name || 'Usager inconnu')}</p>
-            <p class="text-[11px] text-ink/45">${escapeHtml(group.profile?.subscriber_number || '')} · ${group.items.length} livre${group.items.length > 1 ? 's' : ''}</p>
+          <div class="mb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-ink truncate">${escapeHtml(group.profile?.full_name || 'Usager inconnu')}</p>
+              <p class="text-[11px] text-ink/45">${escapeHtml(group.profile?.subscriber_number || '')} · ${group.items.length} livre${group.items.length > 1 ? 's' : ''}</p>
+            </div>
+            ${reservationTab === 'pret' ? `<button onclick="handOverWithoutCard('${escapeJsAttr(group.items[0].user_id)}')" style="touch-action: manipulation;" title="Si l'usager n'a pas sa carte : remet toute la commande sans scanner" class="w-full sm:w-auto text-[12.5px] font-semibold bg-white text-ink/70 border border-[#D1D5DB] hover:border-brand/40 rounded-full px-4 py-2.5 sm:py-1.5 shrink-0">Remettre sans la carte${group.items.length > 1 ? ` (${group.items.length})` : ''}</button>` : ''}
           </div>
           ${itemsHtml}
         </div>`;
     }).join('');
   }
+
+  window.renderReservations = renderReservations;
 
   window.zoomCover = function (url) {
     document.getElementById('cover-zoom-img').src = url;
@@ -7310,6 +7468,22 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { error } = await supabase.from('reservations').update(payload).eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadReservations();
+  };
+
+  // « Remettre sans la carte » (16/10/2026) : un seul bouton par commande,
+  // qui remet tous les documents prêts de l'usager (un vrai prêt par document).
+  window.handOverWithoutCard = async function (userId) {
+    const items = reservations.filter(r => r.status === 'pret' && r.user_id === userId);
+    if (!items.length) return;
+    const name = items[0].profile?.full_name || 'cet usager';
+    if (!await confirmDialog(`Remettre ${items.length > 1 ? `les ${items.length} documents` : 'le document'} de la commande à ${name}, sans scanner sa carte ?`)) return;
+    const errors = [];
+    for (const r of items) {
+      const { data, error } = await supabase.rpc('mark_reservation_picked_up', { p_reservation_id: r.id });
+      if (error || !data?.ok) errors.push(`${r.books?.title || 'Document'} : ${error?.message || data?.message}`);
+    }
+    if (errors.length) alert('Certains documents n\'ont pas pu être remis :\n' + errors.join('\n'));
+    await Promise.all([loadReservations(), loadActiveLoans()]);
   };
 
   window.markReshelved = async function (id) {
@@ -7929,7 +8103,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.deleteEvent = async function (id, title) {
-    if (!confirm(`Supprimer l'événement « ${title} » ?`)) return;
+    if (!await confirmDialog(`Supprimer l'événement « ${title} » ?`)) return;
     const { error } = await supabase.from('events').delete().eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadEvents();

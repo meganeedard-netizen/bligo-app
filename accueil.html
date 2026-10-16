@@ -126,6 +126,17 @@
   </div>
 </div>
 
+<!-- Adhésion bientôt expirée (16/10/2026) : prévenu une fois par jour dans les 30 derniers jours -->
+<div id="membership-popup-backdrop" onclick="closeMembershipPopup(event)" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+    <button onclick="closeMembershipPopup()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+    <svg class="w-8 h-8 text-mango-600 mb-3" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg>
+    <p id="membership-popup-title" class="text-base font-bold text-ink mb-2"></p>
+    <p id="membership-popup-text" class="text-sm text-ink/60 leading-relaxed"></p>
+    <button onclick="closeMembershipPopup()" class="w-full mt-5 bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">J'ai compris</button>
+  </div>
+</div>
+
 <!-- Horaires d'ouverture -->
 <div id="opening-hours-backdrop" onclick="closeOpeningHoursModal(event)" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
@@ -962,6 +973,32 @@
     });
   }
 
+  // Adhésion qui arrive à échéance (16/10/2026) : pop-up une fois par jour
+  // dans les 30 derniers jours, et tant qu'elle est expirée.
+  async function showMembershipPopupIfNeeded(userId) {
+    const { data: me, error } = await supabase.from('profiles').select('membership_expires_at').eq('id', userId).single();
+    if (error || !me?.membership_expires_at) return;
+    const exp = new Date(me.membership_expires_at);
+    const days = Math.ceil((exp - Date.now()) / 86400000);
+    if (days > 30) return;
+    const key = 'bligo_membership_popup_' + new Date().toISOString().slice(0, 10);
+    try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) {}
+    const date = exp.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    document.getElementById('membership-popup-title').textContent = days <= 0 ? 'Ton adhésion a expiré' : 'Ton adhésion arrive bientôt à échéance';
+    document.getElementById('membership-popup-text').textContent = days <= 0
+      ? `Ton adhésion a expiré le ${date}. Les emprunts et les réservations sont bloqués jusqu'à son renouvellement à l'accueil de ta Médiathèque Municipale.`
+      : `Ton adhésion expire le ${date} (dans ${days} jour${days > 1 ? 's' : ''}). Pense à la renouveler à l'accueil de ta Médiathèque Municipale pour continuer à emprunter et réserver.`;
+    const popup = document.getElementById('membership-popup-backdrop');
+    popup.classList.remove('hidden');
+    popup.classList.add('flex');
+  }
+
+  window.closeMembershipPopup = function (event) {
+    if (event && event.target.id !== 'membership-popup-backdrop') return;
+    document.getElementById('membership-popup-backdrop').classList.add('hidden');
+    document.getElementById('membership-popup-backdrop').classList.remove('flex');
+  };
+
   window.closePendingPopup = function (event) {
     if (event && event.target.id !== 'pending-popup-backdrop') return;
     document.getElementById('pending-popup-backdrop').classList.add('hidden');
@@ -1095,7 +1132,7 @@
       const popup = document.getElementById('pending-popup-backdrop');
       popup.classList.remove('hidden');
       popup.classList.add('flex');
-    }
+    } else if (profile?.registration_status === 'valide') showMembershipPopupIfNeeded(currentUser.id);
 
     const name = profile?.full_name || currentUser.email;
     // Prénom saisi à l'inscription (12/10/2026) ; anciens comptes : premier mot du nom.

@@ -10,7 +10,7 @@
   "app": {
     "windows": [
       {
-        "title": "BliGO — Back-office agent",
+        "title": "BliGO Back-office",
         "width": 1280,
         "height": 800,
         "minWidth": 960,
