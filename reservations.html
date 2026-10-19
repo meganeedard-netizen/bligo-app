@@ -388,8 +388,8 @@
     return `
       <div class="rounded-2xl p-3.5 text-white shadow-md bg-gradient-to-br from-brand to-brand/80 relative overflow-hidden">
         <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
-        <div class="relative flex mb-2.5">
-          <span class="w-fit bg-white text-ink text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm">📅 Pense à ramener le livre le ${formatDateShort(nearestDue)}</span>
+        <div class="relative flex justify-end mb-2.5">
+          <span class="w-fit bg-white text-ink text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm text-right">📅 Pense à ramener le livre le ${formatDateShort(nearestDue)}</span>
         </div>
         <div class="relative flex flex-col gap-2.5 divide-y divide-white/15">
           ${rowsHtml}
@@ -408,8 +408,8 @@
     const rowsHtml = items.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { hideMeta: true })}</div>`).join('');
     return `
       <div class="bg-red-50 rounded-2xl p-3.5 shadow-sm">
-        <div class="flex mb-2.5">
-          <span class="w-fit bg-red-600 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm">⚠️ En retard depuis ${daysLate} jour${daysLate > 1 ? 's' : ''}, à rapporter à la Médiathèque Municipale</span>
+        <div class="flex justify-end mb-2.5">
+          <span class="w-fit bg-red-600 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm text-right">⚠️ En retard depuis ${daysLate} jour${daysLate > 1 ? 's' : ''}, à rapporter à la Médiathèque Municipale</span>
         </div>
         <div class="flex flex-col gap-2.5 divide-y divide-red-100">
           ${rowsHtml}
@@ -433,8 +433,8 @@
       const pillText = hoursLeft <= 0 ? '⏳ Délai dépassé : contacte la médiathèque' : `⏳ Il te reste ${hoursLeft}h avant remise en rayon`;
       return `
         <div class="bg-red-50 rounded-2xl p-3.5 shadow-sm">
-          <div class="flex mb-2.5">
-            <span class="w-fit bg-white text-red-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm">${pillText}</span>
+          <div class="flex justify-end mb-2.5">
+            <span class="w-fit bg-white text-red-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm text-right">${pillText}</span>
           </div>
           <div class="flex flex-col gap-2.5 divide-y divide-red-100">
             ${group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { hideMeta: true })}</div>`).join('')}
@@ -449,8 +449,8 @@
     return `
       <div class="rounded-2xl p-3.5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden">
         <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
-        <div class="relative flex mb-2.5">
-          <span class="w-fit bg-white text-mango-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm">⏳ Il te reste ${hoursLeft}h avant remise en rayon</span>
+        <div class="relative flex justify-end mb-2.5">
+          <span class="w-fit bg-white text-mango-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm text-right">⏳ Il te reste ${hoursLeft}h avant remise en rayon</span>
         </div>
         <div class="relative flex flex-col gap-2.5 divide-y divide-white/15">
           ${rowsHtml}
