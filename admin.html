@@ -4772,6 +4772,15 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   async function holdAlertForBarcode(barcode) {
     const { data: copy } = await supabase.from('book_copies').select('book_id, status').eq('barcode', barcode).maybeSingle();
     if (!copy || copy.status !== 'reserved') return null;
+    // Depuis le 19/10/2026, le livre reste de côté sans être attribué : c'est
+    // l'agent qui prépare la commande depuis « À remettre en rayon ».
+    const { data: waiting } = await supabase.from('holds').select('user_id')
+      .eq('book_id', copy.book_id).eq('status', 'waiting').order('created_at').limit(1).maybeSingle();
+    if (waiting) {
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', waiting.user_id).maybeSingle();
+      const name = profile?.full_name || 'un usager';
+      return `Ce livre est attendu par ${name} : ne le range pas. Dans « À remettre en rayon », clique sur « Préparer pour ${name} ».`;
+    }
     const since = new Date(Date.now() - 5 * 60000).toISOString();
     const { data: hold } = await supabase.from('holds').select('user_id, promoted_at')
       .eq('book_id', copy.book_id).eq('status', 'promoted').gte('promoted_at', since)
@@ -7277,25 +7286,20 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     renderReservations();
   }
 
-  // Une réservation « prête » non récupérée sous 48h remet le livre en circulation
-  // (relance sa disponibilité, la réservation passe en « expirée »). Vérifié à
-  // chaque ouverture de cet écran — pas un vrai cron en tâche de fond, mais
-  // suffisant tant que le back-office est consulté régulièrement. reshelved=false
-  // garde le livre visible dans l'onglet « À remettre en rayon » jusqu'à ce qu'un
-  // agent confirme l'avoir physiquement fait — pas juste une alerte qui disparaît.
+  // Une réservation « prête » non récupérée sous 48h passe en « expirée » (la
+  // tâche automatique de Supabase le fait aussi, toutes les 15 min). Le livre
+  // reste hors ligne et apparaît dans « À remettre en rayon » : c'est le clic
+  // de l'agent qui le remet en ligne ou le prépare pour le suivant de la file
+  // d'attente (19/10/2026, sql/file_attente_remise_en_rayon.sql).
   async function expireStaleReservations() {
     const now = Date.now();
     const stale = reservations.filter(r => r.status === 'pret' && r.ready_at && (now - new Date(r.ready_at).getTime()) > 48 * 3600 * 1000);
     if (!stale.length) return;
 
     for (const r of stale) {
-      // expire_reservation (09/10/2026) remet aussi l'exemplaire mis de côté
-      // au suivant de la file d'attente ; ancien comportement en secours tant
-      // que la migration add_renewal_holds_membership.sql n'est pas passée.
       const { error } = await supabase.rpc('expire_reservation', { p_reservation_id: r.id });
       if (error) {
         await supabase.from('reservations').update({ status: 'expiree', reshelved: false }).eq('id', r.id);
-        if (r.book_id) await supabase.from('books').update({ available: true }).eq('id', r.book_id);
       }
       r.status = 'expiree';
       r.reshelved = false;
@@ -7306,7 +7310,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     preparation: { label: 'En préparation', classes: 'bg-amber-50 text-amber-700' },
     pret: { label: 'Commande prête à récupérer', classes: 'bg-mango-50 text-mango-700' },
     recupere: { label: 'Récupéré', classes: 'bg-brand/5 text-ink/45' },
-    expiree: { label: 'Expirée — remise en circulation', classes: 'bg-red-50 text-red-600' },
+    expiree: { label: 'Expirée, à remettre en rayon', classes: 'bg-red-50 text-red-600' },
   };
 
   function formatRemaining(readyAt) {
@@ -7628,12 +7632,6 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     await Promise.all([loadReservations(), loadActiveLoans()]);
   };
 
-  window.markReshelved = async function (id) {
-    const { error } = await supabase.from('reservations').update({ reshelved: true }).eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
-    await loadReservations();
-  };
-
   // ---------- À remettre en rayon (onglet Retours, 07/10/2026) ----------
   // Sortie de l'onglet Réservations pour devenir un onglet à part, à droite
   // de Retours : c'est là que le livre revient physiquement. Deux sources dans une seule checklist :
@@ -7646,7 +7644,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   async function loadReshelveLoans() {
     let query = supabase
       .from('loans')
-      .select('id, returned_at, user_id, book_copies ( barcode, shelf_location, books ( title, author, shelf_location, isbn, cover_url, cover_initial ) )')
+      .select('id, returned_at, user_id, book_copies ( book_id, barcode, shelf_location, books ( title, author, shelf_location, isbn, cover_url, cover_initial ) )')
       .not('returned_at', 'is', null)
       .eq('reshelved', false)
       .order('returned_at', { ascending: true });
@@ -7665,7 +7663,24 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     renderReshelveList();
   }
 
-  function reshelveRowHtml({ book, barcode, shelf, subtitle, onclick }) {
+  // Premier usager en file d'attente pour chaque livre à ranger (19/10/2026) :
+  // la ligne affiche « Attendu par X » et le bouton « Préparer pour X ».
+  let reshelveHoldsByBook = {};
+  async function loadReshelveHolds(bookIds) {
+    if (!bookIds.length) { reshelveHoldsByBook = {}; return; }
+    const { data: holds } = await supabase.from('holds').select('book_id, user_id, created_at')
+      .in('book_id', bookIds).eq('status', 'waiting').order('created_at');
+    const first = {};
+    (holds || []).forEach(h => { if (!first[h.book_id]) first[h.book_id] = h; });
+    const ids = [...new Set(Object.values(first).map(h => h.user_id))];
+    const { data: profiles } = ids.length
+      ? await supabase.from('profiles').select('id, full_name, subscriber_number').in('id', ids)
+      : { data: [] };
+    const byId = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    reshelveHoldsByBook = Object.fromEntries(Object.entries(first).map(([bookId, h]) => [bookId, byId[h.user_id] || { full_name: 'un usager' }]));
+  }
+
+  function reshelveRowHtml({ book, barcode, shelf, subtitle, onclick, waitingFor }) {
     const coverHtml = book?.cover_url
       ? `<img src="${escapeHtml(book.cover_url)}" alt="" onclick="zoomCover('${escapeJsAttr(book.cover_url)}')" class="w-10 h-14 object-cover rounded shrink-0 bg-mango-50 cursor-pointer hover:opacity-80">`
       : `<div class="w-10 h-14 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${escapeHtml((book?.cover_initial || book?.title?.[0] || '?'))}</div>`;
@@ -7682,16 +7697,23 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <p class="text-sm font-semibold text-ink truncate">${escapeHtml(book?.title || 'Livre supprimé')}</p>
             <p class="text-[11px] text-ink/45">${escapeHtml(book?.author || '')} · ${subtitle}</p>
             <p class="text-[11px] mt-0.5 flex flex-wrap gap-x-2">${shelfHtml}${codeHtml}${isbnHtml}</p>
+            ${waitingFor ? `<p class="text-[11px] font-bold text-hibiscus-700 mt-1">⏳ Attendu par ${escapeHtml(waitingFor.full_name || 'un usager')}${waitingFor.subscriber_number ? ` (n° ${escapeHtml(waitingFor.subscriber_number)})` : ''}</p>` : ''}
           </div>
         </div>
-        <button onclick="${onclick}" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">✓ Remis en rayon</button>
+        ${waitingFor
+          ? `<button onclick="${onclick}" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-hibiscus-600 text-white rounded-full px-4 py-2.5 sm:py-1.5">Préparer pour ${escapeHtml(waitingFor.full_name || 'cet usager')}</button>`
+          : `<button onclick="${onclick}" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">✓ Remis en rayon</button>`}
       </div>`;
   }
 
-  function renderReshelveList() {
+  async function renderReshelveList() {
     const list = document.getElementById('reshelve-list');
     if (!list) return;
     const unclaimed = reservations.filter(r => r.status === 'expiree' && !r.reshelved);
+    await loadReshelveHolds([...new Set([
+      ...reshelveLoans.map(l => l.book_copies?.book_id),
+      ...unclaimed.map(r => r.book_id),
+    ].filter(Boolean))]);
     const total = reshelveLoans.length + unclaimed.length;
 
     document.getElementById('reshelve-count').textContent = total;
@@ -7708,7 +7730,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         barcode: l.book_copies?.barcode,
         shelf: l.book_copies?.shelf_location || book?.shelf_location,
         subtitle: `rendu par ${escapeHtml(l.profile?.full_name || 'usager inconnu')} le ${formatDateShortAdmin(l.returned_at)}`,
-        onclick: `markLoanReshelved(${l.id})`,
+        onclick: `finishReshelve('loan', ${l.id})`,
+        waitingFor: reshelveHoldsByBook[l.book_copies?.book_id],
       });
     });
     const resaRows = unclaimed.map(r => reshelveRowHtml({
@@ -7716,15 +7739,27 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       barcode: r.books?.book_copies?.[0]?.barcode,
       shelf: r.books?.shelf_location,
       subtitle: `réservation non récupérée par ${escapeHtml(r.profile?.full_name || 'usager inconnu')}`,
-      onclick: `markReshelved(${r.id})`,
+      onclick: `finishReshelve('reservation', ${r.id})`,
+      waitingFor: reshelveHoldsByBook[r.book_id],
     }));
     list.innerHTML = [...loanRows, ...resaRows].join('');
   }
 
-  window.markLoanReshelved = async function (id) {
-    const { error } = await supabase.from('loans').update({ reshelved: true }).eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
-    await loadReshelveLoans();
+  // Un clic : si quelqu'un attend le livre, sa commande passe « prête » (il est
+  // prévenu dans l'appli et par e-mail) ; sinon le livre revient en ligne.
+  window.finishReshelve = async function (kind, id) {
+    const { data, error } = await supabase.rpc('finish_reshelve', kind === 'loan' ? { p_loan_id: id } : { p_reservation_id: id });
+    if (error) {
+      // Tant que sql/file_attente_remise_en_rayon.sql n'est pas passé : ancien fonctionnement.
+      if (!/finish_reshelve/.test(error.message)) { alert('Erreur : ' + error.message); return; }
+      const { error: updateError } = await supabase.from(kind === 'loan' ? 'loans' : 'reservations').update({ reshelved: true }).eq('id', id);
+      if (updateError) { alert('Erreur : ' + updateError.message); return; }
+    } else if (!data.ok) {
+      alert(data.message); return;
+    } else if (data.prepared_for) {
+      alert(data.message);
+    }
+    await Promise.all([loadReshelveLoans(), loadReservations()]);
   };
 
   // Accueil visiteurs et Agenda culturel retirés du back-office pour
