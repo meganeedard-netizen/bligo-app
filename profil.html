@@ -269,6 +269,7 @@
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
+  import { showDialog } from './js/ui.js?v=20261016d';
 
   let currentSubscriberNumber = null;
   let currentUserId = null;
@@ -385,7 +386,22 @@
         : 'https://bligo.app/';
       const shareText = 'Rejoins-moi sur BliGO, la médiathèque numérique gratuite !';
       const msg = document.getElementById('share-message');
-      if (navigator.share) {
+      // WhatsApp proposé en premier (19/10/2026), puis le partage du téléphone.
+      const choice = await showDialog({
+        title: "Partager l'appli à un ami",
+        message: 'Comment veux-tu lui envoyer le lien ?',
+        buttons: [
+          { label: 'WhatsApp', value: 'whatsapp', primary: true },
+          ...(navigator.share ? [{ label: 'Autres applis', value: 'share', primary: true }] : []),
+          { label: 'Copier le lien', value: 'copy', primary: true },
+          { label: 'Annuler', value: null },
+        ],
+      });
+      if (!choice) return;
+      if (choice === 'whatsapp') {
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
+        if (!window.open(waUrl, '_blank')) window.location.href = waUrl;
+      } else if (choice === 'share') {
         try {
           await navigator.share({ title: 'BliGO', text: shareText, url: shareUrl });
         } catch (e) {
