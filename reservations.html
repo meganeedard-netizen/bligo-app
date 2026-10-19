@@ -155,8 +155,32 @@
     return communes.find(c => c.id === communeId)?.name || '?';
   }
 
+  // Adresse remise en forme quelle que soit la saisie de l'agent (19/10/2026) :
+  // « RUE OWEL SOLVET 97190 SAINTE ANNE » → « rue Owel Solvet 97190 Sainte Anne ».
+  // Mots de liaison et type de voie en minuscules, le reste avec une majuscule.
+  const ADDRESS_SMALL_WORDS = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'à', 'au', 'aux', 'et', 'en', 'sur', 'sous',
+    'rue', 'avenue', 'av', 'boulevard', 'bd', 'chemin', 'impasse', 'allée', 'place', 'route', 'lotissement', 'résidence',
+    'quartier', 'cité', 'section', 'lieu-dit', 'bp', 'cs']);
+  function formatAddressWord(word, index) {
+    return word.split('-').map((part, j) => {
+      const elided = part.match(/^([ld]['’])(.+)$/);
+      if (elided) return elided[1] + elided[2].charAt(0).toUpperCase() + elided[2].slice(1);
+      if ((index > 0 || j > 0) && ADDRESS_SMALL_WORDS.has(part)) return part;
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    }).join('-');
+  }
+  function formatAddress(raw) {
+    const clean = String(raw || '').trim().replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ');
+    const match = clean.match(/^(.*?)(\d{5})\s*(.*)$/);
+    const formatPart = (text, isTown) => text.toLowerCase().split(' ').filter(Boolean)
+      .map((w, i) => isTown ? formatAddressWord(w, i) : formatAddressWord(w, i === 0 || /^\d/.test(w) ? 1 : i))
+      .join(' ');
+    if (!match) return formatPart(clean, false);
+    return [formatPart(match[1], false), match[2], formatPart(match[3], true)].filter(Boolean).join(' ').replace(/\s+,/g, ',');
+  }
+
   function communeAddressFor(communeId) {
-    return String(communes.find(c => c.id === communeId)?.address || '').trim();
+    return formatAddress(communes.find(c => c.id === communeId)?.address);
   }
 
   const escapeHtml = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -169,8 +193,7 @@
     const hours = communes.find(c => c.id === communeId)?.opening_hours;
     const hasHours = hours && typeof hours === 'object' && Object.values(hours).some(Boolean);
     return `
-      <p class="text-xs font-bold ${nameClass}">📍 Médiathèque de ${communeNameFor(communeId)}</p>
-      ${address ? `<button type="button" onclick="openNavigation(${communeId})" class="block mx-auto text-[11px] font-semibold underline underline-offset-2 mt-0.5 ${subClass}">${escapeHtml(address)}</button>` : ''}
+      <p class="text-xs ${nameClass}"><span class="font-bold">📍 Médiathèque de ${communeNameFor(communeId)}</span>${address ? `, <button type="button" onclick="openNavigation(${communeId})" class="inline font-semibold underline underline-offset-2">${escapeHtml(address)}</button>` : ''}</p>
       ${hasHours ? `<button type="button" onclick="openOpeningHoursModal(${communeId})" class="block mx-auto text-[11px] font-semibold underline underline-offset-2 mt-0.5 ${subClass}">Horaires</button>` : ''}`;
   }
 
