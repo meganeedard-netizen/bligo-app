@@ -92,6 +92,15 @@
   </div>
 </main>
 
+<!-- Horaires d'ouverture : même pop-up que sur l'accueil (19/10/2026) -->
+<div id="opening-hours-backdrop" onclick="closeOpeningHoursModal(event)" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+    <button onclick="closeOpeningHoursModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+    <p class="text-base font-bold text-ink mb-4">Horaires d'ouverture</p>
+    <div id="opening-hours-list" class="flex flex-col gap-1.5"></div>
+  </div>
+</div>
+
 <nav class="fixed bottom-0 inset-x-0 z-30 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)]" style="transform: translateZ(0); padding-bottom: env(safe-area-inset-bottom);">
   <div class="max-w-4xl mx-auto w-full flex items-center py-2 px-5">
   <a href="accueil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
@@ -134,8 +143,6 @@
   let myRatings = {};
   let myComments = {};
 
-  const OPENING_HOURS = "Mardi-Vendredi 10h-18h · Samedi 10h-13h · Fermé dimanche et lundi";
-
   function formatDate(iso) {
     return new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   }
@@ -156,13 +163,35 @@
 
   // Médiathèque, adresse et horaires, centrés sous les livres (19/10/2026).
   // Toucher l'adresse propose de lancer la navigation dans l'appli GPS choisie.
-  function communeFooterHtml(communeId, { hours = '', nameClass = '', subClass = '' } = {}) {
+  // « Horaires » ouvre le pop-up des horaires jour par jour (19/10/2026).
+  function communeFooterHtml(communeId, { nameClass = '', subClass = '' } = {}) {
     const address = communeAddressFor(communeId);
+    const hours = communes.find(c => c.id === communeId)?.opening_hours;
+    const hasHours = hours && typeof hours === 'object' && Object.values(hours).some(Boolean);
     return `
       <p class="text-xs font-bold ${nameClass}">📍 Médiathèque de ${communeNameFor(communeId)}</p>
-      ${address ? `<button type="button" onclick="openNavigation(${communeId})" class="text-[11px] font-semibold underline underline-offset-2 mt-0.5 ${subClass}">${escapeHtml(address)}</button>` : ''}
-      ${hours ? `<p class="text-[10px] mt-0.5 ${subClass}">${hours}</p>` : ''}`;
+      ${address ? `<button type="button" onclick="openNavigation(${communeId})" class="block mx-auto text-[11px] font-semibold underline underline-offset-2 mt-0.5 ${subClass}">${escapeHtml(address)}</button>` : ''}
+      ${hasHours ? `<button type="button" onclick="openOpeningHoursModal(${communeId})" class="block mx-auto text-[11px] font-semibold underline underline-offset-2 mt-0.5 ${subClass}">Horaires</button>` : ''}`;
   }
+
+  window.openOpeningHoursModal = function (communeId) {
+    const hours = communes.find(c => c.id === communeId)?.opening_hours || {};
+    // getDay() : 0 = dimanche ; on décale pour que 0 = lundi.
+    const todayIndex = (new Date().getDay() + 6) % 7;
+    document.getElementById('opening-hours-list').innerHTML = WEEK_DAYS.map((day, i) => `
+      <div class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg ${i === todayIndex ? 'bg-mango-50' : ''}">
+        <span class="text-sm capitalize ${i === todayIndex ? 'font-bold text-ink' : 'text-ink/70'}">${day}</span>
+        <span class="text-sm ${i === todayIndex ? 'font-bold text-ink' : 'text-ink/60'}">${escapeHtml(hours[day] || 'Fermé')}</span>
+      </div>`).join('');
+    document.getElementById('opening-hours-backdrop').classList.remove('hidden');
+    document.getElementById('opening-hours-backdrop').classList.add('flex');
+  };
+
+  window.closeOpeningHoursModal = function (event) {
+    if (event && event.target.id !== 'opening-hours-backdrop') return;
+    document.getElementById('opening-hours-backdrop').classList.add('hidden');
+    document.getElementById('opening-hours-backdrop').classList.remove('flex');
+  };
 
   // Plans n'existe que sur iPhone, iPad et Mac (l'iPad se présente comme un Mac).
   const IS_APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
@@ -184,24 +213,8 @@
     if (!window.open(url, '_blank')) window.location.href = url;
   };
 
-  function communeHoursFor(communeId) {
-    return communes.find(c => c.id === communeId)?.opening_hours || OPENING_HOURS;
-  }
-
-  // Ne garde que les horaires d'ouverture, sans la mention des jours de fermeture.
-  // Les horaires sont enregistrés jour par jour ({ lundi: '9h-12h', … }) depuis
-  // la page Réglages ; avant c'était une phrase. Sans ce cas, la page plantait
-  // dès qu'une commande était prête et n'affichait plus rien en dessous (16/10/2026).
+  // Horaires enregistrés jour par jour ({ lundi: '9h-12h', … }) depuis Réglages.
   const WEEK_DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-  function openingHoursOnly(hours) {
-    if (hours && typeof hours === 'object') {
-      return WEEK_DAYS
-        .filter(day => hours[day] && !/^\s*fermé/i.test(hours[day]))
-        .map(day => `${day[0].toUpperCase()}${day.slice(1)} ${hours[day]}`)
-        .join(' · ');
-    }
-    return String(hours || '').split('·').map(s => s.trim()).filter(s => !/^fermé/i.test(s)).join(' · ');
-  }
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -468,7 +481,6 @@
     const deadline = new Date(new Date(earliestReady).getTime() + 48 * 3600 * 1000);
     const hoursLeft = Math.max(0, Math.round((deadline - new Date()) / 3600000));
     const urgent = hoursLeft <= 24;
-    const hours = openingHoursOnly(communeHoursFor(communeId));
     const rowsHtml = group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { light: true, hideMeta: true })}</div>`).join('');
 
     if (urgent) {
@@ -482,7 +494,7 @@
             ${group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { hideMeta: true })}</div>`).join('')}
           </div>
           <div class="mt-2.5 pt-2.5 border-t border-red-100 text-center">
-            ${communeFooterHtml(communeId, { hours, nameClass: 'text-red-700', subClass: 'text-red-500/80' })}
+            ${communeFooterHtml(communeId, { nameClass: 'text-red-700', subClass: 'text-red-500/80' })}
           </div>
         </div>`;
     }
@@ -497,7 +509,7 @@
           ${rowsHtml}
         </div>
         <div class="relative mt-2.5 pt-2.5 border-t border-white/15 text-center">
-          ${communeFooterHtml(communeId, { hours, subClass: 'text-white/80' })}
+          ${communeFooterHtml(communeId, { subClass: 'text-white/80' })}
         </div>
       </div>`;
   }
