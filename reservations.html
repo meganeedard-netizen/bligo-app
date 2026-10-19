@@ -69,7 +69,7 @@
   </div>
 
   <div id="ready-section" class="hidden mb-8">
-    <h2 class="text-base font-bold text-ink mb-3">Prêt à récupérer</h2>
+    <h2 class="text-base font-bold text-ink mb-3">Commande prête</h2>
     <div id="ready-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start"></div>
   </div>
 
@@ -194,7 +194,7 @@
     const hours = communes.find(c => c.id === communeId)?.opening_hours;
     const hasHours = hours && typeof hours === 'object' && Object.values(hours).some(Boolean);
     return `
-      <p class="text-xs ${nameClass}"><span class="font-bold">📍 Médiathèque de ${communeNameFor(communeId)}</span>${address ? `, <button type="button" onclick="openNavigation(${communeId})" class="inline font-semibold underline underline-offset-2">${escapeHtml(address)}</button>` : ''}</p>
+      <p class="text-xs ${nameClass}"><span class="font-bold">📍 Médiathèque de ${communeNameFor(communeId)}</span>${address ? `, <button type="button" onclick="openNavigation(${communeId})" class="inline font-semibold">${escapeHtml(address)}</button>` : ''}</p>
       ${hasHours ? `<button type="button" onclick="openOpeningHoursModal(${communeId})" class="block mx-auto text-[11px] font-semibold underline underline-offset-2 mt-0.5 ${subClass}">Horaires</button>` : ''}`;
   }
 
