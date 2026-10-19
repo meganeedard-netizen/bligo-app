@@ -508,7 +508,7 @@
     const rowsHtml = group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { light: true, hideMeta: true })}</div>`).join('');
 
     if (urgent) {
-      const pillText = hoursLeft <= 0 ? '⏳ Délai dépassé : contacte la médiathèque' : `⏳ Il te reste ${hoursLeft}h pour récupérer ta commande`;
+      const pillText = hoursLeft <= 0 ? '⏳ Délai dépassé : contacte la Médiathèque Municipale' : `⏳ Il te reste ${hoursLeft}h pour récupérer ta commande`;
       return `
         <div class="bg-red-50 rounded-2xl p-3.5 shadow-sm">
           <div class="flex justify-end mb-2.5">
