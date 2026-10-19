@@ -30,6 +30,9 @@
   .font-logo { font-family: 'Poppins', sans-serif; }
   @media (max-width: 640px) {
     input, select, textarea { font-size: 16px !important; }
+    /* Texte d'exemple de l'avis plus petit (19/10/2026) ; le champ reste à
+       16px, sinon l'iPhone zoome la page quand on le touche. */
+    #history-list textarea::placeholder { font-size: 12px; }
   }
 </style>
 </head>
@@ -142,6 +145,42 @@
     return communes.find(c => c.id === communeId)?.name || '?';
   }
 
+  function communeAddressFor(communeId) {
+    return String(communes.find(c => c.id === communeId)?.address || '').trim();
+  }
+
+  const escapeHtml = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // Médiathèque, adresse et horaires, centrés sous les livres (19/10/2026).
+  // Toucher l'adresse propose de lancer la navigation dans l'appli GPS choisie.
+  function communeFooterHtml(communeId, { hours = '', nameClass = '', subClass = '' } = {}) {
+    const address = communeAddressFor(communeId);
+    return `
+      <p class="text-xs font-bold ${nameClass}">📍 Médiathèque de ${communeNameFor(communeId)}</p>
+      ${address ? `<button type="button" onclick="openNavigation(${communeId})" class="text-[11px] font-semibold underline underline-offset-2 mt-0.5 ${subClass}">${escapeHtml(address)}</button>` : ''}
+      ${hours ? `<p class="text-[10px] mt-0.5 ${subClass}">${hours}</p>` : ''}`;
+  }
+
+  // Plans n'existe que sur iPhone, iPad et Mac (l'iPad se présente comme un Mac).
+  const IS_APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+  window.openNavigation = async function (communeId) {
+    const address = communeAddressFor(communeId);
+    if (!address) return;
+    const destination = encodeURIComponent(address);
+    const apps = [
+      ...(IS_APPLE ? [{ label: 'Plans', value: `https://maps.apple.com/?daddr=${destination}` }] : []),
+      { label: 'Google Maps', value: `https://www.google.com/maps/dir/?api=1&destination=${destination}` },
+      { label: 'Waze', value: `https://waze.com/ul?q=${destination}&navigate=yes` },
+    ];
+    const url = await showDialog({
+      title: 'Veux-tu lancer la navigation ?',
+      message: `Médiathèque de ${communeNameFor(communeId)}, ${address}`,
+      buttons: [...apps.map(app => ({ ...app, primary: true })), { label: 'Annuler', value: null }],
+    });
+    if (!url) return;
+    if (!window.open(url, '_blank')) window.location.href = url;
+  };
+
   function communeHoursFor(communeId) {
     return communes.find(c => c.id === communeId)?.opening_hours || OPENING_HOURS;
   }
@@ -179,7 +218,7 @@
     currentUser = session.user;
     updateReservationBadge(currentUser.id);
 
-    const { data: communesData } = await supabase.from('communes').select('id, name, opening_hours');
+    const { data: communesData } = await supabase.from('communes').select('*');
     communes = communesData || [];
 
     await Promise.all([loadReservations(), loadLoans(), loadMyRatings(), loadHolds()]);
@@ -394,8 +433,8 @@
         <div class="relative flex flex-col gap-2.5 divide-y divide-white/15">
           ${rowsHtml}
         </div>
-        <div class="relative mt-2.5 pt-2.5 border-t border-white/15">
-          <p class="text-xs font-bold">📍 Médiathèque de ${communeNameFor(communeId)}</p>
+        <div class="relative mt-2.5 pt-2.5 border-t border-white/15 text-center">
+          ${communeFooterHtml(communeId, { subClass: 'text-white/80' })}
         </div>
       </div>`;
   }
@@ -414,8 +453,8 @@
         <div class="flex flex-col gap-2.5 divide-y divide-red-100">
           ${rowsHtml}
         </div>
-        <div class="mt-2.5 pt-2.5 border-t border-red-100">
-          <p class="text-xs font-bold text-red-700">📍 Médiathèque de ${communeNameFor(communeId)}</p>
+        <div class="mt-2.5 pt-2.5 border-t border-red-100 text-center">
+          ${communeFooterHtml(communeId, { nameClass: 'text-red-700', subClass: 'text-red-600/80' })}
         </div>
       </div>`;
   }
@@ -439,9 +478,8 @@
           <div class="flex flex-col gap-2.5 divide-y divide-red-100">
             ${group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { hideMeta: true })}</div>`).join('')}
           </div>
-          <div class="mt-2.5 pt-2.5 border-t border-red-100">
-            <p class="text-xs font-bold text-red-700">📍 Médiathèque de ${communeNameFor(communeId)}</p>
-            <p class="text-[10px] text-red-500/80 mt-0.5">${hours}</p>
+          <div class="mt-2.5 pt-2.5 border-t border-red-100 text-center">
+            ${communeFooterHtml(communeId, { hours, nameClass: 'text-red-700', subClass: 'text-red-500/80' })}
           </div>
         </div>`;
     }
@@ -455,9 +493,8 @@
         <div class="relative flex flex-col gap-2.5 divide-y divide-white/15">
           ${rowsHtml}
         </div>
-        <div class="relative mt-2.5 pt-2.5 border-t border-white/15">
-          <p class="text-xs font-bold">📍 Médiathèque de ${communeNameFor(communeId)}</p>
-          <p class="text-[10px] text-white/70 mt-0.5">${hours}</p>
+        <div class="relative mt-2.5 pt-2.5 border-t border-white/15 text-center">
+          ${communeFooterHtml(communeId, { hours, subClass: 'text-white/80' })}
         </div>
       </div>`;
   }

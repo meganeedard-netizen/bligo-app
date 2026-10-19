@@ -1003,7 +1003,7 @@
         <p class="text-sm text-ink/55 mb-6">Réservé à la direction. Apparence, tarifs, horaires et règles de ta médiathèque.</p>
 
         <div class="grid lg:grid-cols-[200px_1fr] gap-6 items-start">
-          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('tarifs')" data-settings-tab="tarifs" class="settings-tab-btn">Tarifs</button><button type="button" onclick="showSettingsTab('horaires')" data-settings-tab="horaires" class="settings-tab-btn">Horaires d'ouverture</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button><button type="button" onclick="showSettingsTab('donnees')" data-settings-tab="donnees" class="settings-tab-btn">Données et export</button></nav>
+          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('tarifs')" data-settings-tab="tarifs" class="settings-tab-btn">Tarifs</button><button type="button" onclick="showSettingsTab('horaires')" data-settings-tab="horaires" class="settings-tab-btn">Adresse et horaires</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button><button type="button" onclick="showSettingsTab('donnees')" data-settings-tab="donnees" class="settings-tab-btn">Données et export</button></nav>
           <div class="max-w-3xl min-w-0">
           <div data-settings-pane="apparence" class="bg-white border border-[#E5E7EB] rounded-xl p-6">
         <h3 class="text-base font-bold text-ink mb-2">Logo</h3>
@@ -1137,10 +1137,13 @@
         </div>
           </div>
           <div data-settings-pane="horaires" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
+            <h3 class="text-base font-bold text-ink mb-1">Adresse</h3>
+            <p class="text-sm text-ink/55 mb-3">Affichée aux usagers dans Mes réservations : en la touchant, ils lancent la navigation (Plans, Google Maps ou Waze).</p>
+            <input id="commune-address" placeholder="Ex. 12 rue de la République, 97180 Sainte-Anne" class="w-full max-w-md border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm mb-6">
             <h3 class="text-base font-bold text-ink mb-1">Horaires d'ouverture</h3>
             <p class="text-sm text-ink/55 mb-4">Affichés aux usagers depuis l'accueil de l'appli. Laisse vide ou écris « Fermé » pour un jour de fermeture.</p>
             <div id="opening-hours-fields" class="flex flex-col gap-2 mb-4 max-w-md"></div>
-            <button onclick="saveOpeningHours()" class="bg-brand text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les horaires</button>
+            <button onclick="saveOpeningHours()" class="bg-brand text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer l'adresse et les horaires</button>
           </div>
           <div data-settings-pane="ressources" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
         <h3 class="text-base font-bold text-ink mb-2">Ressources numériques</h3>
@@ -5920,8 +5923,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // Horaires d'ouverture : rubrique de l'écran Réglages.
   async function loadOpeningHours() {
     if (!myCommuneId) return;
-    const { data: commune } = await supabase.from('communes').select('opening_hours').eq('id', myCommuneId).single();
+    const { data: commune } = await supabase.from('communes').select('*').eq('id', myCommuneId).single();
     const hours = commune?.opening_hours || {};
+    document.getElementById('commune-address').value = commune?.address || '';
     document.getElementById('opening-hours-fields').innerHTML = WEEKDAYS.map(day => `
         <div class="grid grid-cols-[110px_1fr] items-center gap-2">
           <label class="text-xs font-semibold text-ink/60 capitalize">${day}</label>
@@ -6027,7 +6031,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       p_commune_id: myCommuneId, p_opening_hours: hours,
     });
     if (error) { alert('Erreur : ' + error.message); return; }
-    alert('Horaires enregistrés.');
+    const { error: addressError } = await supabase.rpc('update_commune_address', {
+      p_commune_id: myCommuneId, p_address: document.getElementById('commune-address').value.trim(),
+    });
+    if (addressError) { alert('Erreur : ' + addressError.message); return; }
+    alert('Adresse et horaires enregistrés.');
   };
 
   // ---------- Réglages : personnalisation de l'apparence (22/09/2026) ----------
