@@ -49,40 +49,41 @@
     <a href="accueil.html" class="inline-block bg-mango-500 text-white text-base font-semibold rounded-2xl px-8 py-3.5 shadow-md active:scale-[0.98] transition">Réserver mon premier livre</a>
   </div>
 
-  <!-- Ordinateur (16/10/2026) : rubriques côte à côte, historique en pleine largeur. -->
-  <div class="md:grid md:grid-cols-2 md:gap-x-6 md:items-start">
+  <!-- Ordinateur (19/10/2026) : chaque rubrique en pleine largeur, cartes sur
+       deux colonnes, alignées avec l'historique. -->
+  <div>
   <div id="overdue-section" class="hidden mb-8">
     <h2 class="text-base font-bold text-red-600 mb-3">En retard</h2>
-    <div id="overdue-list" class="flex flex-col gap-3"></div>
+    <div id="overdue-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start"></div>
   </div>
 
   <div id="borrowed-section" class="hidden mb-8">
     <h2 class="text-base font-bold text-ink mb-3">Emprunté</h2>
-    <div id="borrowed-list" class="flex flex-col gap-3"></div>
+    <div id="borrowed-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start"></div>
   </div>
 
   <div id="holds-section" class="hidden mb-8">
     <h2 class="text-base font-bold text-ink mb-1">Mes files d'attente</h2>
     <p class="text-xs text-ink/50 mb-3">Dès que le livre revient, il est mis de côté pour toi et tu as 48 h pour venir le chercher.</p>
-    <div id="holds-list" class="flex flex-col gap-3"></div>
+    <div id="holds-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start"></div>
   </div>
 
   <div id="ready-section" class="hidden mb-8">
     <h2 class="text-base font-bold text-ink mb-3">Prêt à récupérer</h2>
-    <div id="ready-list" class="flex flex-col gap-3"></div>
+    <div id="ready-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start"></div>
   </div>
 
   <div id="preparing-section" class="hidden mb-8">
     <h2 class="text-base font-bold text-ink mb-3">En préparation</h2>
-    <div id="preparing-list" class="flex flex-col gap-3"></div>
+    <div id="preparing-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start"></div>
   </div>
 
-  <div id="history-section" class="hidden md:col-span-2">
+  <div id="history-section" class="hidden">
     <h2 class="text-base font-bold text-ink mb-3">Historique</h2>
     <div id="history-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start"></div>
   </div>
 
-  <div id="expired-section" class="hidden mt-4 md:col-span-2">
+  <div id="expired-section" class="hidden mt-4">
     <button type="button" onclick="toggleExpiredList()" class="w-full flex items-center justify-between text-left bg-red-50 rounded-2xl px-4 py-3">
       <span class="text-[13px] font-bold text-red-600">⏳ Expirés, remis en rayon (<span id="expired-count">0</span>)</span>
       <svg id="expired-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 shrink-0 transition-transform"><path d="M6 9l6 6 6-6"/></svg>
