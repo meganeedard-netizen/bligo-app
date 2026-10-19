@@ -504,30 +504,15 @@
     const earliestReady = group.reduce((min, it) => new Date(it.readyAt) < new Date(min) ? it.readyAt : min, group[0].readyAt);
     const deadline = new Date(new Date(earliestReady).getTime() + 48 * 3600 * 1000);
     const hoursLeft = Math.max(0, Math.round((deadline - new Date()) / 3600000));
-    const urgent = hoursLeft <= 24;
     const rowsHtml = group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { light: true, hideMeta: true })}</div>`).join('');
-
-    if (urgent) {
-      const pillText = hoursLeft <= 0 ? '⏳ Délai dépassé : contacte la Médiathèque Municipale' : `⏳ Il te reste ${hoursLeft}h pour récupérer ta commande`;
-      return `
-        <div class="bg-red-50 rounded-2xl p-3.5 shadow-sm">
-          <div class="flex justify-end mb-2.5">
-            <span class="w-fit bg-white text-red-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm text-right">${pillText}</span>
-          </div>
-          <div class="flex flex-col gap-2.5 divide-y divide-red-100">
-            ${group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { hideMeta: true })}</div>`).join('')}
-          </div>
-          <div class="mt-2.5 pt-2.5 border-t border-red-100 text-center">
-            ${communeFooterHtml(communeId, { nameClass: 'text-red-700', subClass: 'text-red-500/80' })}
-          </div>
-        </div>`;
-    }
+    // Carte toujours orange hibiscus, même sous 24 h (19/10/2026, demande de Mégane).
+    const pillText = hoursLeft <= 0 ? '⏳ Délai dépassé : contacte la Médiathèque Municipale' : `⏳ Il te reste ${hoursLeft}h pour récupérer ta commande`;
 
     return `
       <div class="rounded-2xl p-3.5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden">
         <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10"></div>
         <div class="relative flex justify-end mb-2.5">
-          <span class="w-fit bg-white text-mango-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm text-right">⏳ Il te reste ${hoursLeft}h pour récupérer ta commande</span>
+          <span class="w-fit bg-white text-mango-700 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-sm text-right">${pillText}</span>
         </div>
         <div class="relative flex flex-col gap-2.5 divide-y divide-white/15">
           ${rowsHtml}
