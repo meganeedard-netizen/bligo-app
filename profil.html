@@ -48,14 +48,8 @@
   </div>
 </header>
 
-<main class="max-w-md mx-auto px-4 py-5">
-
-  <!-- Vu sans compte -->
-  <div id="guest-profile-view" class="hidden">
-    <p class="profile-section-title">Mes informations personnelles</p>
-    <a href="index.html?signup=1" class="profile-row">Créer mon compte<span class="profile-chevron">›</span></a>
-    <a href="index.html?login=1" class="profile-row">Se connecter<span class="profile-chevron">›</span></a>
-  </div>
+<main id="profile-main" class="max-w-4xl mx-auto px-5 py-5 md:grid md:grid-cols-2 md:gap-8 md:items-start">
+  <!-- Ordinateur (16/10/2026) : carte et défi à gauche, rubriques à droite. -->
 
   <div id="profile-content">
 
@@ -137,6 +131,18 @@
     <p id="attach-commune-message" class="text-xs text-center mt-2"></p>
   </div>
 
+  </div>
+
+  <div>
+  <!-- Vu sans compte -->
+  <div id="guest-profile-view" class="hidden">
+    <p class="profile-section-title">Mes informations personnelles</p>
+    <a href="index.html?signup=1" class="profile-row">Créer mon compte<span class="profile-chevron">›</span></a>
+    <a href="index.html?login=1" class="profile-row">Se connecter<span class="profile-chevron">›</span></a>
+  </div>
+
+  <div id="profile-content-right">
+
   <!-- Mes informations personnelles -->
   <p class="profile-section-title">Mes informations personnelles</p>
   <a href="infos.html" class="profile-row">Modifier mon profil<span class="profile-chevron">›</span></a>
@@ -173,6 +179,7 @@
     <button onclick="logout()" class="border-2 border-mango-100 text-ink/70 rounded-xl px-6 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Se déconnecter</button>
   </div>
   <p class="text-xs text-ink/40 text-center mt-6 mb-4">BliGO - v1.0</p>
+  </div>
 </main>
 
 <!-- Fenêtres du profil (feuilles qui montent du bas) -->
@@ -420,6 +427,8 @@
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       document.getElementById('profile-content').classList.add('hidden');
+      document.getElementById('profile-content-right').classList.add('hidden');
+      document.getElementById('profile-main').classList.remove('md:grid');
       document.getElementById('guest-profile-view').classList.remove('hidden');
       document.getElementById('logout-block').classList.add('hidden');
       return;

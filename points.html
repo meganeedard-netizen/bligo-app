@@ -41,7 +41,10 @@
   </div>
 </header>
 
-<main class="max-w-4xl mx-auto px-5 py-6 max-w-sm">
+<main class="max-w-4xl mx-auto px-5 py-6">
+  <!-- Ordinateur (16/10/2026) : points à gauche, comment en gagner à droite. -->
+  <div class="md:grid md:grid-cols-2 md:gap-6 md:items-start">
+  <div>
 
   <div class="rounded-2xl p-6 text-white shadow-xl bg-gradient-to-br from-hibiscus-700 via-hibiscus-600 to-mango-600 relative overflow-hidden mb-5 text-center">
     <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
@@ -65,6 +68,8 @@
     <a href="accueil.html" class="inline-block mt-4 bg-brand text-white text-sm font-semibold rounded-full px-6 py-3 active:scale-[0.98] transition">Voir le catalogue</a>
   </div>
 
+  </div>
+  <div>
   <!-- Comment gagner des points : tuiles visuelles (12/10/2026) -->
   <p class="text-base font-bold text-ink mb-3">Gagne des points</p>
   <div class="grid grid-cols-2 gap-2.5 mb-2.5">
@@ -90,13 +95,15 @@
     <span class="flex-1 text-sm text-ink/70"><strong class="text-hibiscus-600">Bonus</strong> en réussissant tes défis</span>
     <span class="text-ink/40 text-xl">›</span>
   </a>
+  </div>
+  </div>
 
   <p class="text-base font-bold text-ink mb-0.5">Mes badges</p>
   <p class="text-xs text-ink/50 mb-3">Tes points débloquent tes badges de lecteur, du « Premier Chapitre » à « Légende BliGO ».</p>
-  <div id="badges-grid" class="grid grid-cols-3 gap-2.5 mb-8"></div>
+  <div id="badges-grid" class="grid grid-cols-3 md:grid-cols-5 gap-2.5 mb-8"></div>
 
   <p class="text-base font-bold text-ink mb-3">Mes défis</p>
-  <div id="defis-list" class="flex flex-col gap-2.5 mb-8"></div>
+  <div id="defis-list" class="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-8"></div>
 
 </main>
 
