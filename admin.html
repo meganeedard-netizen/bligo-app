@@ -296,7 +296,7 @@
 
       <section id="screen-home" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Aujourd'hui</h2>
-        <p class="text-sm text-ink/55 mb-5">Ce qui t'attend à la médiathèque. Clique sur un chiffre pour ouvrir la liste.</p>
+        <p class="text-sm text-ink/55 mb-5">Ce qu'il y a à faire aujourd'hui. Clique sur un chiffre pour ouvrir la liste.</p>
         <div class="grid grid-cols-2 xl:grid-cols-3 gap-3 mb-8">
             <button type="button" onclick="switchScreen('reservations'); switchReservationTab('preparation')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Commandes à préparer</p><span class="text-mango-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6M9 7h3"/></svg></span></div>
@@ -309,51 +309,32 @@
               <p class="text-[11px] text-ink/45 mt-1">En attente du passage de l'usager</p>
             </button>
             <button type="button" onclick="switchScreen('reservations'); switchPrTab('active')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Prêts en cours</p><span class="text-sky-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg></span></div>
-              <p id="kpi-loans" class="text-3xl font-bold mt-1 text-ink">–</p>
-              <p class="text-[11px] text-ink/45 mt-1">Documents chez les usagers</p>
-            </button>
-            <button type="button" onclick="switchScreen('reservations'); switchPrTab('active')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">En retard</p><span class="text-red-600 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M5 3L2 6M19 3l3 3"/></svg></span></div>
               <p id="kpi-late" class="text-3xl font-bold mt-1 text-red-600">–</p>
               <p class="text-[11px] text-ink/45 mt-1">Date de retour dépassée</p>
             </button>
-            <button type="button" onclick="showAwaitedLoans()" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
-              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Livres attendus</p><span class="text-amber-600 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10M7 21h10"/><path d="M8 3c0 5 8 5 8 9s-8 4-8 9"/><path d="M16 3c0 5-8 5-8 9s8 4 8 9"/></svg></span></div>
-              <p id="kpi-awaited" class="text-3xl font-bold mt-1 text-amber-600">–</p>
-              <p class="text-[11px] text-ink/45 mt-1">Empruntés, avec une file d'attente</p>
-            </button>
             <button type="button" onclick="switchScreen('reservations'); switchPrTab('rayon')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">À remettre en rayon</p><span class="text-violet-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V4h3v17M10 21V7h3v14"/><path d="M15.5 8.5l3-.8 3.4 12.6-3 .8z"/></svg></span></div>
               <p id="kpi-reshelve" class="text-3xl font-bold mt-1 text-ink">–</p>
-              <p class="text-[11px] text-ink/45 mt-1">Documents rendus à ranger</p>
+              <p class="text-[11px] text-ink/45 mt-1">Rendus ou commandes non récupérées</p>
             </button>
             <button type="button" onclick="switchScreen('users'); openPreregistrationsView()" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Préinscriptions</p><span class="text-hibiscus-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M19 8v6M16 11h6"/></svg></span></div>
               <p id="kpi-prereg" class="text-3xl font-bold mt-1 text-ink">–</p>
               <p class="text-[11px] text-ink/45 mt-1">Comptes à valider à l'accueil</p>
             </button>
-            <button type="button" onclick="switchScreen('logistics')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
+            <button type="button" id="kpi-transfers-tile" onclick="switchScreen('logistics')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Transferts</p><span class="text-teal-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="12" height="10" rx="1"/><path d="M14 10h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></span></div>
               <p id="kpi-transfers" class="text-3xl font-bold mt-1 text-ink">–</p>
               <p class="text-[11px] text-ink/45 mt-1">À envoyer ou à recevoir</p>
             </button>
-            <div class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4">
-              <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Visiteurs aujourd'hui</p><span class="text-brand flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 0 1 4.5 6"/></svg></span></div>
-              <div class="flex items-center gap-2 mt-1">
-                <button type="button" onclick="removeVisitorEntry()" title="Retirer un visiteur compté par erreur" aria-label="Retirer un visiteur" class="w-9 h-9 rounded-lg border border-[#E5E7EB] text-ink/60 hover:border-red-300 hover:text-red-600 text-xl font-bold leading-none transition">−</button>
-                <p id="kpi-visitors" class="text-3xl font-bold text-ink min-w-[2ch] text-center">–</p>
-                <button type="button" onclick="addVisitorEntry(1)" title="Ajouter un visiteur" aria-label="Ajouter un visiteur" class="w-9 h-9 rounded-lg bg-brand text-white text-xl font-bold leading-none hover:opacity-90 transition">+</button>
-              </div>
-              <p class="text-[11px] text-ink/45 mt-1">+ pour ajouter, − en cas d'erreur</p>
-            </div>
         </div>
         <p class="text-sm font-bold text-ink mb-3">Actions rapides</p>
         <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="switchScreen('counter'); switchCounterTab('loan')" class="bo-quick">Comptoir : prêter / rendre</button>
           <button type="button" onclick="switchScreen('users'); openAddInscritForm()" class="bo-quick">+ Ajouter un inscrit</button>
           <button type="button" data-direction-only onclick="switchScreen('catalogue'); openScanView()" class="bo-quick">+ Ajouter un document</button>
           <button type="button" data-direction-only onclick="switchScreen('agenda'); openEventForm()" class="bo-quick">+ Ajouter un événement</button>
-          <button type="button" onclick="switchScreen('counter'); switchCounterTab('return')" class="bo-quick">Enregistrer un retour</button>
         </div>
       </section>
 
@@ -1875,18 +1856,30 @@
     };
     let prereg = supabase.from('profiles').select('id', head).eq('registration_status', 'pre_inscrit');
     if (myCommuneId) prereg = prereg.eq('commune_id', myCommuneId);
-    const [prep, ready, active, late, reshelve, pre] = await Promise.all([
+    // Commandes expirées pas encore rangées : elles sont aussi dans « À remettre en rayon ».
+    let expired = supabase.from('reservations').select('id, books!inner(commune_id)', head).eq('status', 'expiree').eq('reshelved', false);
+    if (myCommuneId) expired = expired.eq('books.commune_id', myCommuneId);
+    const [prep, ready, late, reshelve, expiredResa, pre] = await Promise.all([
       resa('preparation'), resa('pret'),
-      loans().is('returned_at', null),
       loans().is('returned_at', null).lt('due_at', nowIso),
       loans().not('returned_at', 'is', null).eq('reshelved', false),
+      expired,
       prereg,
     ]);
-    const set = (key, r) => { document.getElementById(`kpi-${key}`).textContent = r?.error ? '–' : (r?.count ?? 0); };
-    set('prep', prep); set('ready', ready); set('loans', active); set('late', late); set('reshelve', reshelve); set('prereg', pre);
-    countAwaitedLoans().then(n => { document.getElementById('kpi-awaited').textContent = n ?? '–'; });
-    document.getElementById('kpi-transfers').textContent = document.getElementById('logistics-badge')?.textContent || '0';
-    refreshVisitorCount();
+    // Écran allégé (21/10/2026) : uniquement ce qu'il y a à faire ; une case à
+    // 0 passe en gris clair pour que l'œil aille à ce qui demande une action.
+    const set = (key, value) => {
+      const el = document.getElementById(`kpi-${key}`);
+      el.textContent = value ?? '–';
+      el.closest('.bo-kpi')?.classList.toggle('opacity-50', value === 0);
+    };
+    const count = r => r?.error ? null : (r?.count ?? 0);
+    set('prep', count(prep)); set('ready', count(ready)); set('late', count(late)); set('prereg', count(pre));
+    set('reshelve', count(reshelve) === null ? null : count(reshelve) + (count(expiredResa) || 0));
+    // Transferts : la case n'apparaît que s'il y en a.
+    const transfers = Number(document.getElementById('logistics-badge')?.textContent || 0);
+    set('transfers', transfers);
+    document.getElementById('kpi-transfers-tile').classList.toggle('hidden', !transfers);
   }
 
   // Files d'attente de la médiathèque : book_id -> nombre d'usagers qui attendent.
@@ -1899,25 +1892,6 @@
     (data || []).forEach(x => { counts[x.book_id] = (counts[x.book_id] || 0) + 1; });
     return counts;
   }
-
-  // « Livres attendus » : prêts en cours dont le livre a une file d'attente.
-  async function countAwaitedLoans() {
-    const counts = await loadWaitingHoldCounts();
-    if (!counts) return null;
-    const bookIds = Object.keys(counts).map(Number);
-    if (!bookIds.length) return 0;
-    let q = supabase.from('loans').select('id, book_copies!inner(book_id)', { count: 'exact', head: true })
-      .is('returned_at', null).in('book_copies.book_id', bookIds);
-    if (myCommuneId) q = q.eq('borrowed_at_commune_id', myCommuneId);
-    const { count, error } = await q;
-    return error ? null : (count ?? 0);
-  }
-
-  window.showAwaitedLoans = function () {
-    switchScreen('reservations');
-    awaitedOnly = true;
-    switchPrTab('active');
-  };
 
   window.showSettingsTab = function (tab) {
     document.querySelectorAll('[data-settings-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.settingsPane !== tab));
@@ -1957,12 +1931,10 @@
     setVisitorCount(data);
   }
 
-  // Le compteur de l'en-tête et la case « Visiteurs aujourd'hui » de l'écran
-  // Aujourd'hui affichent toujours le même chiffre.
+  // Compteur de visiteurs de l'en-tête (la case de l'écran Aujourd'hui, en
+  // double, a été retirée le 21/10/2026).
   function setVisitorCount(n) {
     document.getElementById('visitor-today-count').textContent = n ?? 0;
-    const kpi = document.getElementById('kpi-visitors');
-    if (kpi) kpi.textContent = n ?? 0;
   }
 
   window.removeVisitorEntry = async function () {
