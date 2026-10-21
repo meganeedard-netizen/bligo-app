@@ -250,11 +250,13 @@
             <button type="button" id="counter-card-camera-btn" onclick="toggleCamera('counterCard'); document.getElementById('counter-card-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">Scanner la carte de l'usager</button>
             <p id="counter-card-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
             <div id="counter-card-camera-slot" class="mb-2"></div>
-            <label for="counter-card-input" class="text-xs font-semibold text-ink/60 block mb-1">Ou taper le numéro d'abonné</label>
-            <input id="counter-card-input" type="text" autocomplete="off" placeholder="Ex. VF-2026-00012"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupCounterUser(this.value);}"
+            <label for="counter-card-input" class="text-xs font-semibold text-ink/60 block mb-1">Ou chercher par nom, prénom ou numéro d'abonné</label>
+            <input id="counter-card-input" type="text" autocomplete="off" placeholder="Ex. Prieto, Mégane ou VF-2026-00012"
+              oninput="renderCounterSuggestions(this.value)"
+              onkeydown="if(event.key==='Enter'){event.preventDefault(); counterCardEnter(this.value);}"
               style="font-size: 16px;"
               class="w-full border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
+            <div id="counter-card-suggestions" class="flex flex-col mt-2 divide-y divide-mango-50 border border-mango-100 rounded-lg overflow-hidden empty:hidden"></div>
             <p id="counter-card-message" class="text-xs text-red-600 mt-2 min-h-[16px]"></p>
           </div>
 
@@ -4337,6 +4339,59 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     else document.getElementById(counterUser ? 'counter-book-input' : 'counter-card-input')?.focus();
   };
 
+  // Recherche par nom au comptoir (21/10/2026) : le lecteur donne son nom, pas
+  // son numéro. Inscrits de la médiathèque chargés une fois ; chaque mot tapé
+  // doit commencer un mot du nom (« prie » trouve Prieto-Blanco), sans tenir
+  // compte des accents ni des majuscules. Le numéro d'abonné marche aussi.
+  let counterPeople = null;
+  async function loadCounterPeople() {
+    if (counterPeople) return counterPeople;
+    let q = supabase.from('profiles').select('id, full_name, subscriber_number, registration_status').order('full_name').limit(5000);
+    if (myCommuneId) q = q.eq('commune_id', myCommuneId);
+    const { data } = await q;
+    counterPeople = (data || []).filter(p => p.subscriber_number).map(p => ({
+      ...p,
+      words: searchNormalize(p.full_name || '').split(/[\s\-']+/).filter(Boolean),
+      number: searchNormalize(p.subscriber_number),
+    }));
+    return counterPeople;
+  }
+
+  function matchCounterPeople(raw) {
+    const query = searchNormalize(raw || '');
+    if (query.length < 2 || !counterPeople) return [];
+    const tokens = query.split(/[\s\-']+/).filter(Boolean);
+    return counterPeople.filter(p =>
+      p.number.includes(query) || tokens.every(t => p.words.some(w => w.startsWith(t)))
+    ).slice(0, 8);
+  }
+
+  window.renderCounterSuggestions = async function (raw) {
+    await loadCounterPeople();
+    const box = document.getElementById('counter-card-suggestions');
+    const found = matchCounterPeople(raw);
+    const query = searchNormalize(raw || '');
+    box.innerHTML = found.length
+      ? found.map(p => `
+        <button type="button" onclick="lookupCounterUser('${escapeJsAttr(p.subscriber_number)}')" style="touch-action: manipulation;" class="text-left px-3 py-2.5 bg-white hover:bg-mango-50 flex items-center justify-between gap-3">
+          <span class="text-sm font-semibold text-ink">${escapeHtml(p.full_name || 'Sans nom')}</span>
+          <span class="text-[11px] text-ink/45 shrink-0">${escapeHtml(p.subscriber_number)}${p.registration_status === 'pre_inscrit' ? ' · préinscrit' : ''}</span>
+        </button>`).join('')
+      : (query.length >= 2 ? `<p class="px-3 py-2.5 text-xs text-ink/45 bg-white">Aucun inscrit ne correspond.</p>` : '');
+  };
+
+  // Entrée : numéro exact (douchette, carte) ou un seul nom trouvé → on le prend.
+  window.counterCardEnter = async function (raw) {
+    await loadCounterPeople();
+    const query = searchNormalize(raw || '');
+    const exact = counterPeople.find(p => p.number === query);
+    const found = matchCounterPeople(raw);
+    if (exact) return lookupCounterUser(exact.subscriber_number);
+    if (found.length === 1) return lookupCounterUser(found[0].subscriber_number);
+    if (!found.length) return lookupCounterUser(raw);
+    renderCounterSuggestions(raw);
+  };
+
   window.lookupCounterUser = async function (raw) {
     const code = String(raw || '').trim();
     const msg = document.getElementById('counter-card-message');
@@ -4350,6 +4405,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const late = (loans || []).filter(l => new Date(l.due_at) < new Date()).length;
     counterUser = profile;
     counterResults = [];
+    document.getElementById('counter-card-suggestions').innerHTML = '';
     stopCamera();
     document.getElementById('counter-card-step').classList.add('hidden');
     document.getElementById('counter-books-step').classList.remove('hidden');
@@ -4370,6 +4426,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('counter-books-step').classList.add('hidden');
     document.getElementById('counter-card-step').classList.remove('hidden');
     document.getElementById('counter-card-message').textContent = '';
+    document.getElementById('counter-card-suggestions').innerHTML = '';
     const input = document.getElementById('counter-card-input');
     input.value = '';
     input.focus();
