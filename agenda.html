@@ -427,6 +427,12 @@
     if (!stored) { window.location.href = 'index.html'; return; }
     browseCommuneId = stored;
     const { data: commune } = await supabase.from('communes').select('name, theme_ink_hex, theme_accent_hex').eq('id', browseCommuneId).single();
+    // Médiathèque qui n'existe plus (Sainte-Anne, retirée le 21/10/2026).
+    if (!commune) {
+      try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
+      window.location.href = 'index.html';
+      return;
+    }
     applyCommuneTheme(commune);
 
     await loadEvents();

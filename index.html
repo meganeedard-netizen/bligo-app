@@ -694,6 +694,13 @@
   const wantSignup = urlParams.has('signup');
   await loadCommuneOptions();
 
+  // Médiathèque mémorisée qui n'existe plus (Sainte-Anne, retirée le
+  // 21/10/2026) : on l'oublie, sinon catalogue vide et inscription refusée.
+  try {
+    const storedGuest = localStorage.getItem('bligo_guest_commune_id');
+    if (storedGuest && !landingOptions().some(o => o.value === storedGuest)) localStorage.removeItem('bligo_guest_commune_id');
+  } catch (e) {}
+
   const guestCommuneIdOnLoad = localStorage.getItem('bligo_guest_commune_id');
   if (!guestCommuneIdOnLoad && landingOptions().length) {
     document.getElementById('landing-commune').value = landingOptions()[0].value;

@@ -244,6 +244,13 @@
     // select('*') : holds_enabled n'existe qu'après add_panier_commande.sql.
     const { data: commune } = await supabase.from('communes')
       .select('*').eq('id', communeId).single();
+    // Médiathèque qui n'existe plus (Sainte-Anne, retirée le 21/10/2026) :
+    // on l'oublie et on repasse par le choix de médiathèque.
+    if (!commune) {
+      try { localStorage.removeItem(BROWSE_KEY); } catch {}
+      window.location.href = 'index.html';
+      return;
+    }
     myCommuneName = commune?.name || '';
     holdsEnabled = commune?.holds_enabled !== false;
     myOpeningHours = commune?.opening_hours || null;
