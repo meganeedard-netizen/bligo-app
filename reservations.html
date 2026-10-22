@@ -263,10 +263,36 @@
 
     await Promise.all([loadReservations(), loadLoans(), loadMyRatings(), loadHolds()]);
     renderAll();
+    watchMyChanges();
 
     if (window.location.hash === '#history-section') {
       document.getElementById('history-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  }
+
+  // Mise à jour instantanée (22/10/2026) : quand l'agent prépare, remet un
+  // livre ou enregistre un retour, la page se rafraîchit seule (temps réel
+  // Supabase, sql/add_realtime_reservations.sql), et aussi quand on revient
+  // sur l'appli (téléphone sorti de veille, autre onglet).
+  let refreshTimer = null;
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(async () => {
+      await Promise.all([loadReservations(), loadLoans(), loadHolds()]);
+      renderAll();
+      updateReservationBadge(currentUser.id);
+    }, 400);
+  }
+
+  function watchMyChanges() {
+    ['reservations', 'loans', 'holds']
+      .reduce((channel, table) => channel.on('postgres_changes',
+        { event: '*', schema: 'public', table, filter: `user_id=eq.${currentUser.id}` }, scheduleRefresh),
+        supabase.channel('mes-reservations'))
+      .subscribe();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') scheduleRefresh();
+    });
   }
 
   // Avis déjà donnés par l'usager sur ses livres empruntés et rendus, pour les
