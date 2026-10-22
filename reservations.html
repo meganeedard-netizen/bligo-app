@@ -532,7 +532,7 @@
     const hoursLeft = Math.max(0, Math.round((deadline - new Date()) / 3600000));
     const rowsHtml = group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { light: true, hideMeta: true })}</div>`).join('');
     // Carte toujours orange hibiscus, même sous 24 h (19/10/2026, demande de Mégane).
-    const pillText = hoursLeft <= 0 ? '⏳ Délai dépassé : contacte la Médiathèque Municipale' : `⏳ Il te reste ${hoursLeft}h pour récupérer ta commande`;
+    const pillText = hoursLeft <= 0 ? '⏰ Délai dépassé : contacte la Médiathèque Municipale' : `⏰ Il te reste ${hoursLeft}h pour récupérer ta commande`;
 
     return `
       <div class="rounded-2xl p-3.5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden">
