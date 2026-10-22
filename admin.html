@@ -689,7 +689,7 @@
           </div>
 
           <h3 class="text-base font-bold text-ink mt-8 mb-1">Non-résidents</h3>
-          <p class="text-sm text-ink/55 mb-3">Usagers d'une autre commune qui demandent à emprunter ici. Encaisse le supplément non-résident s'il y en a un, puis valide.</p>
+          <p class="text-sm text-ink/55 mb-3">Usagers d'une autre commune qui demandent à emprunter ici. Encaisse le tarif non-résident s'il y en a un, puis valide.</p>
           <div id="nonresidents-list" class="flex flex-col gap-2 max-w-2xl"></div>
         </div>
 
@@ -1204,11 +1204,11 @@
           <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Usagers d'une autre commune (non-résidents)</label>
           <select id="non-resident-policy" onchange="document.getElementById('non-resident-fee-wrap').classList.toggle('hidden', this.value !== 'paid')" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
             <option value="free">Acceptés gratuitement</option>
-            <option value="paid">Acceptés avec un supplément</option>
+            <option value="paid">Acceptés avec un tarif non-résident</option>
             <option value="refuse">Non acceptés</option>
           </select>
           <div id="non-resident-fee-wrap" class="hidden mb-3">
-            <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Supplément non-résident (€ par an)</label>
+            <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Tarif non-résident (€ par an)</label>
             <input id="non-resident-fee" type="number" min="0" step="0.5" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
           </div>
           <p class="text-[11px] text-ink/45 mb-3">Une nouvelle durée de validité s'applique aux inscriptions validées ou renouvelées à partir de maintenant.</p>
@@ -7780,7 +7780,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.decideMembership = async function (id, accept) {
-    if (accept && !await confirmDialog('Valider cette inscription ? Encaisse d\'abord le supplément non-résident s\'il y en a un.')) return;
+    if (accept && !await confirmDialog('Valider cette inscription ? Encaisse d\'abord le tarif non-résident s\'il y en a un.')) return;
     const { error } = await supabase.rpc('decide_membership', { p_membership_id: id, p_accept: accept });
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadNonResidents();

@@ -366,7 +366,7 @@
       const c = others.find(x => x.id === Number(select.value));
       document.getElementById('membership-commune-info').textContent = !c ? ''
         : c.non_resident_policy === 'paid' && c.non_resident_fee_cents > 0
-          ? `Supplément non-résident : ${(c.non_resident_fee_cents / 100).toFixed(2).replace('.', ',')} € par an, à régler à l'accueil.`
+          ? `Tarif non-résident : ${(c.non_resident_fee_cents / 100).toFixed(2).replace('.', ',')} € par an, à régler à l'accueil.`
           : 'Inscription gratuite pour les non-résidents.';
     };
     document.getElementById('membership-request-btn').onclick = async () => {
