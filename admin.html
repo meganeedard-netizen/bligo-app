@@ -4453,7 +4453,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const euros = c => ((c || 0) / 100).toFixed(2).replace('.', ',') + ' €';
 
     const alerts = [];
-    if (profile.flagged) alerts.push(`<p class="text-xs font-bold text-red-700">● Usager fiché${profile.flagged_reason ? ` : ${escapeHtml(profile.flagged_reason)}` : ''}</p>`);
+    if (profile.flagged) alerts.push(`<p class="text-xs font-bold text-red-700">Usager fiché${profile.flagged_reason ? ` : ${escapeHtml(profile.flagged_reason)}` : ''}</p>`);
     openDebts.forEach(d => alerts.push(`<p class="text-xs text-red-700"><span class="font-bold">${d.kind === 'perdu' ? 'Perdu' : 'Rendu abîmé'}, non réglé :</span> ${escapeHtml(d.books?.title || 'Document')} · ${euros(d.amount_cents)}</p>`));
 
     const activeHtml = active.length
@@ -4479,7 +4479,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <div class="bg-red-50 rounded-xl p-3.5 mb-4">
           ${alerts.join('')}
           ${active.length ? `<p class="text-xs font-bold text-red-700 ${alerts.length ? 'mt-2' : ''} mb-1">Non rendus (${active.length})</p>${activeHtml}` : ''}
-        </div>` : `<p class="text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl px-3.5 py-2.5 mb-4">✓ Aucun livre à rendre, aucun document abîmé ou perdu.</p>`}
+        </div>` : `<p class="text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl px-3.5 py-2.5 mb-4">Aucun livre à rendre, aucun document abîmé ou perdu.</p>`}
       <p class="text-xs font-bold text-ink/50 uppercase tracking-wide mb-1">Historique (${returned.length})</p>
       <div class="max-h-56 overflow-y-auto">${historyHtml}</div>`;
     const modal = document.getElementById('counter-user-modal');
@@ -4517,7 +4517,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <div>
           <p class="text-base font-bold">${escapeHtml(profile.full_name || 'Usager')}</p>
           <p class="text-xs text-white/70">N° ${escapeHtml(profile.subscriber_number)} · ${active.length} prêt${active.length > 1 ? 's' : ''} en cours</p>
-          ${late ? `<p class="text-xs font-bold bg-red-600 text-white rounded-full px-2.5 py-1 mt-2 w-fit">⚠️ ${late} livre${late > 1 ? 's' : ''} en retard</p>` : ''}
+          ${late ? `<p class="text-xs font-bold bg-red-600 text-white rounded-full px-2.5 py-1 mt-2 w-fit">${late} livre${late > 1 ? 's' : ''} en retard</p>` : ''}
         </div>
         <button type="button" onclick="resetCounterUser()" style="touch-action: manipulation;" class="shrink-0 text-xs font-semibold bg-white/15 hover:bg-white/25 rounded-full px-3 py-1.5">← Changer d'usager</button>
       </div>`;
@@ -4585,29 +4585,38 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     } else {
       row.title = copy.books?.title || barcode;
       row.book = { ...copy.books, shelf: copy.shelf_location || copy.books?.shelf_location, barcode };
-      if (copy.status === 'available') {
-        Object.assign(row, { state: 'ready', message: 'Disponible' });
-      } else if (copy.status === 'reserved' || copy.status === 'borrowed') {
-        const { data: mine } = copy.status === 'reserved'
-          ? await supabase.from('reservations').select('id').eq('book_id', copy.book_id).eq('user_id', counterUser.id).in('status', ['preparation', 'pret']).limit(1).maybeSingle()
-          : { data: null };
-        if (mine) {
-          Object.assign(row, { state: 'mine', message: 'Sa commande : à lui remettre' });
+      // Commandes de l'appli sur ce livre (en préparation ou prêtes) : un
+      // exemplaire en rayon peut être promis à quelqu'un d'autre (22/10/2026).
+      const { data: orders } = await supabase.from('reservations').select('user_id')
+        .eq('book_id', copy.book_id).in('status', ['preparation', 'pret']);
+      const mine = (orders || []).some(o => o.user_id === counterUser.id);
+      if (mine) {
+        Object.assign(row, { state: 'mine', message: 'Sa commande : à lui remettre' });
+      } else if (copy.status === 'available') {
+        const othersOrders = (orders || []).length;
+        const [{ count: free }, { count: reservedCopies }] = await Promise.all([
+          supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'available'),
+          supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'reserved'),
+        ]);
+        if (othersOrders - (reservedCopies || 0) >= (free || 0) && othersOrders > 0) {
+          Object.assign(row, { state: 'blocked', message: 'Commandé dans l\'appli par un autre usager (commande en préparation ou prête) : ne peut pas être prêté.' });
         } else {
-          const [{ count: availableCount }, { data: nextLoan }] = await Promise.all([
-            supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'available'),
-            supabase.from('loans').select('due_at, book_copies!inner ( book_id )').eq('book_copies.book_id', copy.book_id)
-              .is('returned_at', null).order('due_at').limit(1).maybeSingle(),
-          ]);
-          row.state = 'blocked';
-          if (availableCount) {
-            row.message = 'Cet exemplaire n\'est pas disponible, mais un autre est en rayon : va le chercher et scanne-le.';
-          } else {
-            row.message = copy.status === 'borrowed'
-              ? `Déjà emprunté${nextLoan?.due_at ? `, retour prévu le ${formatDateShortAdmin(nextLoan.due_at)}` : ''}.`
-              : 'Mis de côté pour la commande d\'un autre usager.';
-            row.holdBookId = copy.book_id;
-          }
+          Object.assign(row, { state: 'ready', message: 'Disponible' });
+        }
+      } else if (copy.status === 'reserved' || copy.status === 'borrowed') {
+        const [{ count: availableCount }, { data: nextLoan }] = await Promise.all([
+          supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'available'),
+          supabase.from('loans').select('due_at, book_copies!inner ( book_id )').eq('book_copies.book_id', copy.book_id)
+            .is('returned_at', null).order('due_at').limit(1).maybeSingle(),
+        ]);
+        row.state = 'blocked';
+        if (availableCount) {
+          row.message = 'Cet exemplaire n\'est pas disponible, mais un autre est en rayon : va le chercher et scanne-le.';
+        } else {
+          row.message = copy.status === 'borrowed'
+            ? `Déjà emprunté${nextLoan?.due_at ? `, retour prévu le ${formatDateShortAdmin(nextLoan.due_at)}` : ''}.`
+            : 'Mis de côté pour la commande d\'un autre usager.';
+          row.holdBookId = copy.book_id;
         }
       } else {
         Object.assign(row, { state: 'blocked', message: 'Pas empruntable pour le moment (en traitement, perdu ou retiré).' });
@@ -4633,7 +4642,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     btn.textContent = 'Enregistrement…';
     stopCamera();
     for (const row of toLend) {
-      const { data, error } = await supabase.rpc('scan_checkout', { p_barcode: row.barcode, p_subscriber_number: counterUser.subscriber_number });
+      // counter_checkout (sql/add_counter_checkout.sql) tient compte des
+      // commandes ; scan_checkout en secours tant que le SQL n'est pas passé.
+      const args = { p_barcode: row.barcode, p_subscriber_number: counterUser.subscriber_number };
+      let { data, error } = await supabase.rpc('counter_checkout', args);
+      if (error && /counter_checkout/.test(error.message)) ({ data, error } = await supabase.rpc('scan_checkout', args));
       if (error) Object.assign(row, { state: 'error', message: 'Erreur : ' + error.message });
       else if (!data.ok) Object.assign(row, { state: 'error', message: data.message });
       else Object.assign(row, { state: 'done', message: data.from_reservation ? `Commande récupérée. ${data.message}` : data.message });
@@ -4665,24 +4678,25 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   function renderCounterCart() {
     const name = counterUser?.full_name || 'l\'usager';
     const lendable = counterCart.filter(r => r.state === 'ready' || r.state === 'mine').length;
+    // Sans emoji (22/10/2026, demande de Mégane) : la couleur porte l'état.
     const style = {
-      checking: ['bg-white border-[#E5E7EB]', 'text-ink/60', '…'],
-      ready: ['bg-white border-mango-100', 'text-ink', '📖'],
-      mine: ['bg-white border-mango-100', 'text-ink', '📦'],
-      done: ['bg-mango-50 border-mango-100', 'text-mango-700', '✓'],
-      blocked: ['bg-red-50 border-red-100', 'text-red-700', '✕'],
-      error: ['bg-red-50 border-red-100', 'text-red-700', '✕'],
+      checking: ['bg-white border-[#E5E7EB]', 'text-ink/60'],
+      ready: ['bg-white border-mango-100', 'text-emerald-700'],
+      mine: ['bg-white border-mango-100', 'text-emerald-700'],
+      done: ['bg-mango-50 border-mango-100', 'text-mango-700'],
+      blocked: ['bg-red-50 border-red-100', 'text-red-700'],
+      error: ['bg-red-50 border-red-100', 'text-red-700'],
     };
     document.getElementById('counter-cart-count').textContent = counterCart.length;
     document.getElementById('counter-cart-empty').classList.toggle('hidden', counterCart.length > 0);
     document.getElementById('counter-cart-list').innerHTML = counterCart.map((r, i) => {
-      const [box, text, icon] = r.held ? ['bg-white border-[#E5E7EB]', 'text-ink', '⏳'] : style[r.state];
+      const [box, text] = r.held ? ['bg-white border-[#E5E7EB]', 'text-ink'] : style[r.state];
       const removable = !counterValidated && r.state !== 'checking';
       return `
       <div class="rounded-xl p-3.5 border ${box} flex items-start gap-3">
         <div class="flex-1 min-w-0">
           ${r.book ? counterBookHtml(r.book) : `<p class="text-sm font-bold text-ink">${escapeHtml(r.title || '')}</p>`}
-          <p class="text-xs font-semibold ${text} mt-2">${icon} ${escapeHtml(r.message || '')}</p>
+          <p class="text-xs font-semibold ${text} mt-2">${escapeHtml(r.message || '')}</p>
           ${r.holdBookId ? `<button onclick="counterJoinHold(${i})" style="touch-action: manipulation;" class="mt-2 bg-hibiscus-600 text-white rounded-full px-4 py-2 text-xs font-bold active:scale-[0.98] transition">Mettre ${escapeHtml(name)} en file d'attente</button>` : ''}
         </div>
         ${removable ? `<button onclick="removeCounterItem(${i})" aria-label="Retirer de la liste" title="Retirer de la liste" class="shrink-0 w-7 h-7 rounded-full text-ink/35 hover:text-ink hover:bg-mango-50 text-sm">✕</button>` : ''}
@@ -8122,12 +8136,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <p class="text-sm font-semibold text-ink truncate">${escapeHtml(book?.title || 'Livre supprimé')}</p>
             <p class="text-[11px] text-ink/45">${escapeHtml(book?.author || '')} · ${subtitle}</p>
             <p class="text-[11px] mt-0.5 flex flex-wrap gap-x-2">${shelfHtml}${codeHtml}${isbnHtml}</p>
-            ${waitingFor ? `<p class="text-[11px] font-bold text-hibiscus-700 mt-1">⏳ Attendu par ${escapeHtml(waitingFor.full_name || 'un usager')}${waitingFor.subscriber_number ? ` (n° ${escapeHtml(waitingFor.subscriber_number)})` : ''}</p>` : ''}
+            ${waitingFor ? `<p class="text-[11px] font-bold text-hibiscus-700 mt-1">Attendu par ${escapeHtml(waitingFor.full_name || 'un usager')}${waitingFor.subscriber_number ? ` (n° ${escapeHtml(waitingFor.subscriber_number)})` : ''}</p>` : ''}
           </div>
         </div>
         ${waitingFor
           ? `<button onclick="${onclick}" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-hibiscus-600 text-white rounded-full px-4 py-2.5 sm:py-1.5">Préparer pour ${escapeHtml(waitingFor.full_name || 'cet usager')}</button>`
-          : `<button onclick="${onclick}" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">✓ Remis en rayon</button>`}
+          : `<button onclick="${onclick}" style="touch-action: manipulation;" class="w-full sm:w-auto shrink-0 text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">Remis en rayon</button>`}
       </div>`;
   }
 
