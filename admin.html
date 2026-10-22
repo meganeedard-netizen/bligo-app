@@ -1895,7 +1895,8 @@
     let expired = supabase.from('reservations').select('id, books!inner(commune_id)', head).eq('status', 'expiree').eq('reshelved', false);
     if (myCommuneId) expired = expired.eq('books.commune_id', myCommuneId);
     const [prep, ready, late, reshelve, expiredResa, pre] = await Promise.all([
-      resa('preparation'), resa('pret'),
+      // Comme la liste : sans les commandes encore modifiables par l'usager (30 min).
+      resa('preparation').lte('created_at', new Date(Date.now() - RESERVATION_GRACE_PERIOD_MS).toISOString()), resa('pret'),
       loans().is('returned_at', null).lt('due_at', nowIso),
       loans().not('returned_at', 'is', null).eq('reshelved', false),
       expired,
@@ -7894,8 +7895,18 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const filtered = reservations.filter(r => r.status === reservationTab && isVisibleToStaff(r)
       && (!query || [r.profile?.full_name, r.profile?.subscriber_number, r.books?.title, r.books?.author].some(v => norm(v).includes(query))));
 
+    // Commandes encore modifiables par l'usager (30 min) : cachées, mais
+    // signalées, pour que le chiffre de l'écran Aujourd'hui ne surprenne pas.
+    const pending = reservationTab === 'preparation' && !query
+      ? reservations.filter(r => r.status === 'preparation' && !isVisibleToStaff(r)) : [];
+    const pendingMinutes = pending.length
+      ? Math.max(1, Math.ceil(Math.min(...pending.map(r => new Date(r.created_at).getTime() + RESERVATION_GRACE_PERIOD_MS - Date.now())) / 60000)) : 0;
+    const pendingHtml = pending.length
+      ? `<p class="text-xs text-ink/55 bg-[#EEEDF2] rounded-lg px-3 py-2 mb-3">${pending.length} commande${pending.length > 1 ? 's' : ''} en cours de modification par l'usager : visible${pending.length > 1 ? 's' : ''} ici dans ${pendingMinutes} min.</p>`
+      : '';
+
     if (!filtered.length) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">${query ? 'Aucune commande ne correspond à ta recherche.' : reservationTab === 'preparation' ? 'Aucune commande à préparer.' : 'Aucune commande prête en attente.'}</p>`;
+      list.innerHTML = pendingHtml + `<p class="text-sm text-ink/40 text-center py-10">${query ? 'Aucune commande ne correspond à ta recherche.' : reservationTab === 'preparation' ? 'Aucune commande à préparer.' : 'Aucune commande prête en attente.'}</p>`;
       return;
     }
 
@@ -7906,7 +7917,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       byUser.get(r.user_id).items.push(r);
     });
 
-    list.innerHTML = [...byUser.values()].map((group, idx) => {
+    list.innerHTML = pendingHtml + [...byUser.values()].map((group, idx) => {
       const itemsHtml = group.items.map(r => {
         let actionHtml = '';
         if (r.status === 'preparation') {
