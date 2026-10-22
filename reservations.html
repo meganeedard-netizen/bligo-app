@@ -359,7 +359,7 @@
 
   function renewButtonHtml(it) {
     if (it.renewalCount >= 1) return `<p class="text-[11px] text-white/60 mt-1.5">Déjà prolongé une fois</p>`;
-    return `<button onclick="renewMyLoan('${it.id}')" class="mt-2 text-[11px] font-semibold bg-white/15 border border-white/25 text-white rounded-full px-3 py-1.5 active:scale-[0.97] transition">⏩ Prolonger d'1 semaine</button>`;
+    return `<button onclick="renewMyLoan('${it.id}')" class="mt-2 text-[11px] font-semibold bg-white/15 border border-white/25 text-white rounded-full px-3 py-1.5 active:scale-[0.97] transition">Prolonger d'1 semaine</button>`;
   }
 
   window.renewMyLoan = async function (itemId) {
