@@ -166,7 +166,7 @@
     const list = document.getElementById('wishlist-list');
     if (wishlistRows.length === 0) {
       list.innerHTML = `
-        <div class="text-center py-10 px-4">
+        <div class="md:col-span-2 text-center py-10 px-4 max-w-md mx-auto">
           <p class="text-sm text-ink/55 leading-relaxed">Ta liste d'envie est vide. Sur la fiche d'un livre, appuie sur le cœur pour l'ajouter ici. S'il est emprunté, tu seras prévenu dès son retour.</p>
           <a href="accueil.html" class="inline-block mt-6 bg-mango-500 text-white text-base font-semibold rounded-2xl px-8 py-3.5 shadow-md active:scale-[0.98] transition">Voir le catalogue</a>
         </div>`;
