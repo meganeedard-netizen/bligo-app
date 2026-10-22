@@ -565,9 +565,9 @@
         ${editMinutesLeft(it) > 0 ? `<button type="button" onclick="cancelPreparingReservation(${it.id})" class="shrink-0 text-[11px] font-semibold text-red-500/75 hover:text-red-600 border border-red-100 bg-white rounded-full px-2.5 py-1.5">Retirer</button>` : ''}
       </div>`).join('');
     const message = editable
-      ? `<p class="text-xs text-amber-900/80 leading-relaxed">Tu as 30 min pour modifier ta commande. Tu recevras ensuite un message avec le jour où tu pourras venir la récupérer.</p>
+      ? `<p class="text-xs text-amber-900/80 leading-relaxed">Tu peux encore modifier ta commande. On te prévient dès qu'elle est prête.</p>
          <p class="text-[11px] font-bold text-amber-700 mt-1.5">⏱ Encore ${minutesLeft} min pour la modifier</p>`
-      : `<p class="text-xs text-amber-900/80 leading-relaxed">Ta commande est en cours de préparation. Tu recevras un message avec le jour où tu pourras venir la récupérer.</p>`;
+      : `<p class="text-xs text-amber-900/80 leading-relaxed">Ta commande est en préparation. On te prévient dès qu'elle est prête.</p>`;
     return `
       <div class="bg-amber-50 rounded-2xl p-3.5 shadow-sm">
         <div class="mb-3">${message}</div>
