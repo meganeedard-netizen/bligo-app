@@ -5211,7 +5211,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           ${barcode ? `<button onclick="quickReturnFromList('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="text-[12px] font-semibold text-ink border border-mango-100 rounded-full px-3 py-1.5 hover:bg-mango-50">Marquer rendu</button>` : ''}
           ${loan.renewal_count >= 1
             ? `<span class="text-[10.5px] font-semibold text-ink/40">Déjà prolongé</span>`
-            : (!isLate && !loan.waiting ? `<button onclick="renewLoanFromList(${loan.id})" style="touch-action: manipulation;" class="text-[12px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-3 py-1.5">Prolonger +7 j</button>` : '')}
+            : (!isLate && !loan.waiting ? `<button onclick="renewLoanFromList(${loan.id})" style="touch-action: manipulation;" class="text-[12px] font-bold text-white bg-[#7AC943] hover:bg-[#6AB536] rounded-full px-3.5 py-1.5 shadow-sm active:scale-[0.98] transition">Prolonger +7 j</button>` : '')}
           <button onclick="declareLost(${loan.id}, '${escapeJsAttr(book?.title || '')}')" style="touch-action: manipulation;" class="text-[11px] font-semibold text-red-600/80 hover:text-red-700 underline">Déclarer perdu</button>
         </div>
       </div>`;
