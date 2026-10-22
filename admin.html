@@ -1133,12 +1133,35 @@
               <label class="text-[11px] font-semibold text-ink/60 block mb-1">Famille (€)</label>
               <input id="tariff-famille" type="number" min="0" step="0.5" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
             </div>
+          </div>
+          <!-- Limites d'emprunt (22/10/2026) : appliquées au comptoir et aux commandes de l'appli. -->
+          <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Nombre de documents à la fois, par usager</label>
+          <div class="grid grid-cols-3 gap-2 mb-2">
             <div>
-              <label class="text-[11px] font-semibold text-ink/60 block mb-1">Quota famille</label>
-              <input id="family-max-loans" type="number" min="1" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+              <label class="text-[11px] text-ink/55 block mb-1">Adultes</label>
+              <input id="limit-general" type="number" min="1" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="text-[11px] text-ink/55 block mb-1">Jeunesse</label>
+              <input id="limit-jeunesse" type="number" min="0" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="text-[11px] text-ink/55 block mb-1">Dont nouveautés</label>
+              <input id="limit-new" type="number" min="0" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
             </div>
           </div>
-          <p class="text-[10.5px] text-ink/45 -mt-1 mb-3">Carte famille : un seul compte partagé par toute la famille. Quota famille = nombre de documents en cours (prêts + réservations) sur ce compte.</p>
+          <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Carte famille, à la fois</label>
+          <div class="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <label class="text-[11px] text-ink/55 block mb-1">Documents adultes</label>
+              <input id="family-limit-general" type="number" min="1" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="text-[11px] text-ink/55 block mb-1">Documents jeunesse</label>
+              <input id="family-limit-jeunesse" type="number" min="0" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+          </div>
+          <p class="text-[10.5px] text-ink/45 mb-3">Prêts non rendus et commandes en cours comptent ensemble. Appliqué au comptoir et dans l'appli. Carte famille : un seul compte partagé par toute la famille.</p>
           <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Moyens de paiement acceptés</label>
           <div class="flex gap-4 mb-3">
             <label class="flex items-center gap-1.5 text-sm text-ink"><input id="tariff-accepts-card" type="checkbox" class="accent-mango-600 w-4 h-4">Carte bancaire</label>
@@ -6508,8 +6531,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       document.getElementById('tariff-accepts-cash').checked = commune.accepts_cash;
       if (commune.family_max_loans != null) {
         document.getElementById('tariff-famille').value = ((commune.tariff_famille_cents || 0) / 100).toFixed(2);
-        document.getElementById('family-max-loans').value = commune.family_max_loans;
       }
+      document.getElementById('limit-general').value = commune.max_loans_general ?? 3;
+      document.getElementById('limit-jeunesse').value = commune.max_loans_jeunesse ?? 3;
+      document.getElementById('limit-new').value = commune.max_loans_new_releases ?? 1;
+      document.getElementById('family-limit-general').value = commune.family_max_general ?? 10;
+      document.getElementById('family-limit-jeunesse').value = commune.family_max_jeunesse ?? 10;
       if (commune.lost_default_fee_cents != null) {
         document.getElementById('lost-default-fee').value = (commune.lost_default_fee_cents / 100).toFixed(2);
         document.getElementById('presumed-lost-days').value = commune.presumed_lost_days || 0;
@@ -6544,9 +6571,23 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { error: familyError } = await supabase.rpc('update_commune_family_settings', {
       p_commune_id: myCommuneId,
       p_tariff_cents: Math.round(Number(document.getElementById('tariff-famille').value || 0) * 100),
-      p_max_loans: Number(document.getElementById('family-max-loans').value || 15),
+      p_max_loans: Number(document.getElementById('family-limit-general').value || 10) + Number(document.getElementById('family-limit-jeunesse').value || 0),
     });
     if (familyError && !/update_commune_family_settings/.test(familyError.message)) { alert('Erreur : ' + familyError.message); return; }
+    const { error: limitsError } = await supabase.rpc('update_commune_loan_limits', {
+      p_commune_id: myCommuneId,
+      p_max_general: Number(document.getElementById('limit-general').value || 3),
+      p_max_jeunesse: Number(document.getElementById('limit-jeunesse').value || 0),
+      p_max_new: Number(document.getElementById('limit-new').value || 0),
+      p_family_general: Number(document.getElementById('family-limit-general').value || 10),
+      p_family_jeunesse: Number(document.getElementById('family-limit-jeunesse').value || 0),
+    });
+    if (limitsError) {
+      alert(/update_commune_loan_limits/.test(limitsError.message)
+        ? 'Limites non enregistrées : le SQL add_limites_emprunt_famille.sql doit d\'abord être exécuté.'
+        : 'Erreur : ' + limitsError.message);
+      return;
+    }
     await loadTeamAndTariffs();
   };
 
