@@ -289,6 +289,18 @@
           </div>
         </div>
 
+        <!-- Livre déjà réservé par un autre usager (22/10/2026) -->
+        <div id="counter-reserved-modal" onclick="if(event.target===this) closeCounterReservedModal()" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+            <button type="button" onclick="closeCounterReservedModal()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+            <div id="counter-reserved-body"></div>
+            <div class="flex flex-col gap-2 mt-5">
+              <button type="button" id="counter-reserved-hold-btn" onclick="counterReservedJoinHold()" style="touch-action: manipulation;" class="w-full bg-[#F28C28] text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition"></button>
+              <button type="button" id="counter-reserved-refuse-btn" onclick="closeCounterReservedModal()" style="touch-action: manipulation;" class="w-full border-2 border-mango-100 text-ink/70 rounded-lg py-3 text-sm font-semibold">Ne pas prêter ce livre</button>
+            </div>
+          </div>
+        </div>
+
         <div id="counter-user-modal" onclick="if(event.target===this) cancelCounterUser()" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-4">
           <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 relative max-h-[90vh] overflow-y-auto">
             <button type="button" onclick="cancelCounterUser()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
@@ -2117,6 +2129,28 @@
       osc.stop(audioCtx.currentTime + 0.12);
     } catch {}
     try { navigator.vibrate?.(80); } catch {}
+  }
+
+  // Son de refus (22/10/2026) : deux notes graves descendantes, pour qu'on
+  // entende tout de suite au comptoir qu'un livre ne peut pas être prêté.
+  function playRefuse() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      [[330, 0], [220, 0.18]].forEach(([freq, delay]) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq;
+        const t = audioCtx.currentTime + delay;
+        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + 0.16);
+      });
+    } catch {}
+    try { navigator.vibrate?.([60, 60, 60]); } catch {}
   }
 
   const SCAN_UI = {
@@ -4574,7 +4608,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (counterValidated) { counterCart = []; counterValidated = false; }
     if (counterCart.some(r => r.barcode === barcode)) return;
 
-    const row = { barcode, title: barcode, state: 'checking', message: 'Vérification…' };
+    const row = { barcode, title: barcode, state: 'checking', message: '' };
     counterCart.unshift(row);
     renderCounterCart();
 
@@ -4587,22 +4621,35 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       row.book = { ...copy.books, shelf: copy.shelf_location || copy.books?.shelf_location, barcode };
       // Commandes de l'appli sur ce livre (en préparation ou prêtes) : un
       // exemplaire en rayon peut être promis à quelqu'un d'autre (22/10/2026).
-      const { data: orders } = await supabase.from('reservations').select('user_id')
-        .eq('book_id', copy.book_id).in('status', ['preparation', 'pret']);
+      const { data: orders } = await supabase.from('reservations').select('user_id, status, created_at')
+        .eq('book_id', copy.book_id).in('status', ['preparation', 'pret']).order('created_at');
       const mine = (orders || []).some(o => o.user_id === counterUser.id);
-      if (mine) {
-        Object.assign(row, { state: 'mine', message: 'Sa commande : à lui remettre' });
-      } else if (copy.status === 'available') {
-        const othersOrders = (orders || []).length;
-        const [{ count: free }, { count: reservedCopies }] = await Promise.all([
-          supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'available'),
-          supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'reserved'),
-        ]);
-        if (othersOrders - (reservedCopies || 0) >= (free || 0) && othersOrders > 0) {
-          Object.assign(row, { state: 'blocked', message: 'Commandé dans l\'appli par un autre usager (commande en préparation ou prête) : ne peut pas être prêté.' });
-        } else {
-          Object.assign(row, { state: 'ready', message: 'Disponible' });
+      const others = (orders || []).filter(o => o.user_id !== counterUser.id);
+      let promisedToOther = false;
+      if (!mine && others.length) {
+        if (copy.status === 'reserved') {
+          promisedToOther = true;
+        } else if (copy.status === 'available') {
+          const [{ count: free }, { count: reservedCopies }] = await Promise.all([
+            supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'available'),
+            supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'reserved'),
+          ]);
+          promisedToOther = others.length - (reservedCopies || 0) >= (free || 0);
         }
+      }
+      if (promisedToOther) {
+        // Livre réservé par un autre usager : pop-up et son de refus, le livre
+        // n'est pas ajouté à la liste (22/10/2026, demande de Mégane).
+        counterCart.splice(counterCart.indexOf(row), 1);
+        renderCounterCart();
+        playRefuse();
+        openCounterReservedModal({ bookId: copy.book_id, book: row.book, order: others[0] });
+        return;
+      }
+      if (mine) {
+        Object.assign(row, { state: 'mine', message: 'À lui remettre' });
+      } else if (copy.status === 'available') {
+        Object.assign(row, { state: 'ready', message: 'Disponible' });
       } else if (copy.status === 'reserved' || copy.status === 'borrowed') {
         const [{ count: availableCount }, { data: nextLoan }] = await Promise.all([
           supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'available'),
@@ -4623,7 +4670,58 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       }
     }
     if (row.state === 'ready' || row.state === 'mine') playBeep();
+    else playRefuse();
     renderCounterCart();
+  };
+
+  let counterReserved = null;
+
+  async function openCounterReservedModal({ bookId, book, order }) {
+    counterReserved = { bookId };
+    const { data: who } = await supabase.from('profiles').select('full_name').eq('id', order.user_id).maybeSingle();
+    const orderedAt = new Date(order.created_at);
+    const when = `${orderedAt.toLocaleDateString('fr-FR')} à ${orderedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+    const where = order.status === 'pret' ? 'Commandes prêtes' : 'Commandes à préparer';
+    const name = counterUser?.full_name || 'l\'usager';
+    document.getElementById('counter-reserved-body').innerHTML = `
+      <p class="text-xs font-bold text-orange-700 uppercase tracking-wide mb-1">Livre non ajouté au prêt</p>
+      <p class="text-lg font-bold text-ink pr-8 mb-4">Ce livre est déjà réservé par un autre usager</p>
+      ${book ? `<div class="bg-mango-50/60 rounded-xl p-3 mb-4">${counterBookHtml(book)}</div>` : ''}
+      <div class="text-sm text-ink/80 space-y-1 mb-4">
+        <p>Réservé par <span class="font-semibold text-ink">${escapeHtml(who?.full_name || 'un usager')}</span></p>
+        <p>Le ${when}</p>
+        <p>Il se trouve dans <span class="font-semibold text-ink">${where}</span>.</p>
+      </div>
+      <p class="text-sm text-ink/60">Propose à ${escapeHtml(name)} de rejoindre la file d'attente : il sera prévenu dès que le livre sera mis de côté pour lui.</p>
+      <p id="counter-reserved-result" class="text-sm font-semibold mt-3 min-h-[20px]"></p>`;
+    const holdBtn = document.getElementById('counter-reserved-hold-btn');
+    holdBtn.textContent = `Ajouter ${name} à la file d'attente`;
+    holdBtn.classList.remove('hidden');
+    document.getElementById('counter-reserved-refuse-btn').textContent = 'Ne pas prêter ce livre';
+    const modal = document.getElementById('counter-reserved-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  window.closeCounterReservedModal = function () {
+    counterReserved = null;
+    const modal = document.getElementById('counter-reserved-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.getElementById('counter-book-input')?.focus();
+  };
+
+  window.counterReservedJoinHold = async function () {
+    if (!counterReserved || !counterUser) return;
+    const result = document.getElementById('counter-reserved-result');
+    const { data, error } = await supabase.rpc('agent_join_hold', { p_book_id: counterReserved.bookId, p_subscriber_number: counterUser.subscriber_number });
+    const ok = !error && data?.ok;
+    result.className = `text-sm font-semibold mt-3 min-h-[20px] ${ok ? 'text-[#4E9A1E]' : 'text-orange-700'}`;
+    result.textContent = error ? 'Erreur : ' + error.message : data.message;
+    if (ok) {
+      document.getElementById('counter-reserved-hold-btn').classList.add('hidden');
+      document.getElementById('counter-reserved-refuse-btn').textContent = 'Fermer';
+    }
   };
 
   window.removeCounterItem = function (index) {
@@ -4678,26 +4776,30 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   function renderCounterCart() {
     const name = counterUser?.full_name || 'l\'usager';
     const lendable = counterCart.filter(r => r.state === 'ready' || r.state === 'mine').length;
-    // Sans emoji (22/10/2026, demande de Mégane) : la couleur porte l'état.
+    // Sans emoji (22/10/2026, demande de Mégane) : une étiquette de couleur
+    // porte l'état, vert pomme si prêtable, orange si impossible.
     const style = {
-      checking: ['bg-white border-[#E5E7EB]', 'text-ink/60'],
-      ready: ['bg-white border-mango-100', 'text-emerald-700'],
-      mine: ['bg-white border-mango-100', 'text-emerald-700'],
-      done: ['bg-mango-50 border-mango-100', 'text-mango-700'],
-      blocked: ['bg-red-50 border-red-100', 'text-red-700'],
-      error: ['bg-red-50 border-red-100', 'text-red-700'],
+      checking: ['bg-white border-[#E5E7EB]', 'bg-[#EEEDF2] text-ink/60', 'Vérification'],
+      ready: ['bg-white border-[#CDEBB5]', 'bg-[#7AC943] text-white', 'Disponible'],
+      mine: ['bg-white border-[#CDEBB5]', 'bg-[#7AC943] text-white', 'Sa commande'],
+      done: ['bg-[#F3FAEE] border-[#CDEBB5]', 'bg-brand text-white', 'Prêté'],
+      blocked: ['bg-orange-50 border-orange-200', 'bg-[#F28C28] text-white', 'Indisponible'],
+      error: ['bg-orange-50 border-orange-200', 'bg-[#F28C28] text-white', 'Refusé'],
     };
     document.getElementById('counter-cart-count').textContent = counterCart.length;
     document.getElementById('counter-cart-empty').classList.toggle('hidden', counterCart.length > 0);
     document.getElementById('counter-cart-list').innerHTML = counterCart.map((r, i) => {
-      const [box, text] = r.held ? ['bg-white border-[#E5E7EB]', 'text-ink'] : style[r.state];
+      const [box, pill, label] = r.held ? ['bg-orange-50 border-orange-200', 'bg-[#F28C28] text-white', 'File d\'attente'] : style[r.state];
       const removable = !counterValidated && r.state !== 'checking';
       return `
       <div class="rounded-xl p-3.5 border ${box} flex items-start gap-3">
         <div class="flex-1 min-w-0">
           ${r.book ? counterBookHtml(r.book) : `<p class="text-sm font-bold text-ink">${escapeHtml(r.title || '')}</p>`}
-          <p class="text-xs font-semibold ${text} mt-2">${escapeHtml(r.message || '')}</p>
-          ${r.holdBookId ? `<button onclick="counterJoinHold(${i})" style="touch-action: manipulation;" class="mt-2 bg-hibiscus-600 text-white rounded-full px-4 py-2 text-xs font-bold active:scale-[0.98] transition">Mettre ${escapeHtml(name)} en file d'attente</button>` : ''}
+          <div class="flex flex-wrap items-center gap-2 mt-2">
+            <span class="text-[11px] font-bold rounded-full px-2.5 py-1 ${pill}">${label}</span>
+            ${r.message && r.message !== label ? `<span class="text-xs text-ink/70">${escapeHtml(r.message)}</span>` : ''}
+          </div>
+          ${r.holdBookId ? `<button onclick="counterJoinHold(${i})" style="touch-action: manipulation;" class="mt-2 bg-[#F28C28] text-white rounded-full px-4 py-2 text-xs font-bold active:scale-[0.98] transition">Mettre ${escapeHtml(name)} en file d'attente</button>` : ''}
         </div>
         ${removable ? `<button onclick="removeCounterItem(${i})" aria-label="Retirer de la liste" title="Retirer de la liste" class="shrink-0 w-7 h-7 rounded-full text-ink/35 hover:text-ink hover:bg-mango-50 text-sm">✕</button>` : ''}
       </div>`;
