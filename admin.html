@@ -4543,6 +4543,26 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     input.focus();
   };
 
+  // Livre au comptoir (prêt et retour, 22/10/2026) : mêmes infos que dans
+  // Commandes à préparer (couverture, titre, auteur, cote, code, ISBN).
+  function counterBookHtml(b) {
+    const cover = b.cover_url
+      ? `<img src="${escapeHtml(b.cover_url)}" alt="" onclick="zoomCover('${escapeJsAttr(b.cover_url)}')" class="w-12 h-[68px] object-cover rounded shrink-0 bg-mango-50 cursor-pointer hover:opacity-80">`
+      : `<div class="w-12 h-[68px] rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-base shrink-0">${escapeHtml(b.cover_initial || b.title?.[0] || '?')}</div>`;
+    const shelf = b.shelf
+      ? `<span class="text-mango-700 font-semibold">${escapeHtml(b.shelf)}</span>`
+      : `<span class="text-ink/35 italic">Cote à définir</span>`;
+    return `
+      <div class="flex gap-3 min-w-0">
+        ${cover}
+        <div class="min-w-0">
+          <p class="text-sm font-bold text-ink">${escapeHtml(b.title || '')}</p>
+          <p class="text-[11px] text-ink/45">${escapeHtml(b.author || '')}</p>
+          <p class="text-[11px] mt-0.5 flex flex-wrap gap-x-2">${shelf}${b.barcode ? `<span class="text-ink/45">Code ${escapeHtml(b.barcode)}</span>` : ''}${b.isbn ? `<span class="text-ink/45">ISBN ${escapeHtml(b.isbn)}</span>` : ''}</p>
+        </div>
+      </div>`;
+  }
+
   // Scan d'un livre : il rejoint la liste de droite avec son état, sans être
   // prêté. Le prêt se fait d'un coup avec « Valider le prêt ».
   window.counterAddBook = async function (raw) {
@@ -4559,11 +4579,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     renderCounterCart();
 
     const { data: copy } = await supabase.from('book_copies')
-      .select('id, book_id, status, books ( title )').eq('barcode', barcode).maybeSingle();
+      .select('id, book_id, status, shelf_location, books ( title, author, isbn, cover_url, cover_initial, shelf_location )').eq('barcode', barcode).maybeSingle();
     if (!copy) {
       Object.assign(row, { state: 'blocked', message: 'Code-barres inconnu.' });
     } else {
       row.title = copy.books?.title || barcode;
+      row.book = { ...copy.books, shelf: copy.shelf_location || copy.books?.shelf_location, barcode };
       if (copy.status === 'available') {
         Object.assign(row, { state: 'ready', message: 'Disponible' });
       } else if (copy.status === 'reserved' || copy.status === 'borrowed') {
@@ -4660,8 +4681,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       return `
       <div class="rounded-xl p-3.5 border ${box} flex items-start gap-3">
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-bold ${text}">${icon} ${escapeHtml(r.title || '')}</p>
-          <p class="text-xs text-ink/60 mt-0.5">${escapeHtml(r.message || '')}</p>
+          ${r.book ? counterBookHtml(r.book) : `<p class="text-sm font-bold text-ink">${escapeHtml(r.title || '')}</p>`}
+          <p class="text-xs font-semibold ${text} mt-2">${icon} ${escapeHtml(r.message || '')}</p>
           ${r.holdBookId ? `<button onclick="counterJoinHold(${i})" style="touch-action: manipulation;" class="mt-2 bg-hibiscus-600 text-white rounded-full px-4 py-2 text-xs font-bold active:scale-[0.98] transition">Mettre ${escapeHtml(name)} en file d'attente</button>` : ''}
         </div>
         ${removable ? `<button onclick="removeCounterItem(${i})" aria-label="Retirer de la liste" title="Retirer de la liste" class="shrink-0 w-7 h-7 rounded-full text-ink/35 hover:text-ink hover:bg-mango-50 text-sm">✕</button>` : ''}
@@ -4729,6 +4750,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <div class="flex-1 min-w-0">
             <p class="text-sm font-bold text-ink">${escapeHtml(info.title || '')}</p>
             <p class="text-xs text-ink/55">${escapeHtml(info.author || '')}</p>
+            <p class="text-[11px] mt-0.5 flex flex-wrap gap-x-2">${info.shelf_location ? `<span class="text-mango-700 font-semibold">${escapeHtml(info.shelf_location)}</span>` : '<span class="text-ink/35 italic">Cote à définir</span>'}<span class="text-ink/45">Code ${escapeHtml(barcode)}</span>${info.isbn ? `<span class="text-ink/45">ISBN ${escapeHtml(info.isbn)}</span>` : ''}</p>
             <div class="mt-1.5">${badgeHtml}</div>
             ${info.is_away_from_home ? `<p class="text-[10.5px] text-hibiscus-700 font-semibold mt-1">Appartient à ${escapeHtml(info.owner_commune || '')}</p>` : ''}
           </div>
