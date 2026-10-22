@@ -279,6 +279,17 @@
           </div>
         </div>
 
+        <div id="counter-user-modal" onclick="if(event.target===this) cancelCounterUser()" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 relative max-h-[90vh] overflow-y-auto">
+            <button type="button" onclick="cancelCounterUser()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+            <div id="counter-user-modal-body"></div>
+            <div class="flex flex-col sm:flex-row gap-2 mt-5">
+              <button type="button" onclick="cancelCounterUser()" style="touch-action: manipulation;" class="flex-1 border-2 border-mango-100 text-ink/70 rounded-lg py-3 text-sm font-semibold">Ce n'est pas la bonne personne</button>
+              <button type="button" id="counter-user-confirm-btn" onclick="confirmCounterUser()" style="touch-action: manipulation;" class="flex-1 bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition">Continuer · scanner les livres</button>
+            </div>
+          </div>
+        </div>
+
         <div id="counter-panel-return" class="hidden">
           <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
             <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan'); document.getElementById('loan-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">Faire un retour</button>
@@ -4392,27 +4403,110 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     renderCounterSuggestions(raw);
   };
 
+  // Fiche de l'usager en pop-up avant de prêter (21/10/2026, demande de
+  // Mégane) : vérifier que c'est la bonne personne, voir d'abord ses livres
+  // non rendus et ses documents abîmés ou perdus, puis son historique.
+  // « Ce n'est pas la bonne personne » ramène à la recherche.
+  let counterPending = null;
+
   window.lookupCounterUser = async function (raw) {
     const code = String(raw || '').trim();
     const msg = document.getElementById('counter-card-message');
     if (!code) return;
     msg.textContent = '';
     const { data: profile, error } = await supabase.from('profiles')
-      .select('id, full_name, subscriber_number').eq('subscriber_number', code).maybeSingle();
+      .select('*').eq('subscriber_number', code).maybeSingle();
     if (error || !profile) { msg.textContent = 'Aucun usager ne porte ce numéro.'; return; }
+    stopCamera();
 
-    const { data: loans } = await supabase.from('loans').select('due_at').eq('user_id', profile.id).is('returned_at', null);
-    const late = (loans || []).filter(l => new Date(l.due_at) < new Date()).length;
+    const [{ data: loans }, { data: debts }] = await Promise.all([
+      supabase.from('loans').select('id, borrowed_at, due_at, returned_at, lost, book_copies ( books ( title, author ) )')
+        .eq('user_id', profile.id).order('borrowed_at', { ascending: false }).limit(100),
+      supabase.from('document_debts').select('loan_id, kind, amount_cents, status, books ( title )').eq('user_id', profile.id),
+    ]);
+    counterPending = { profile, loans: loans || [], debts: debts || [] };
+    renderCounterUserModal();
+  };
+
+  function renderCounterUserModal() {
+    const { profile, loans, debts } = counterPending;
+    const now = new Date();
+    const active = loans.filter(l => !l.returned_at);
+    const returned = loans.filter(l => l.returned_at);
+    const openDebts = debts.filter(d => d.status === 'open');
+    const damagedLoanIds = new Set(debts.filter(d => d.kind === 'abime').map(d => d.loan_id));
+    const titleOf = l => l.book_copies?.books?.title || 'Document supprimé';
+    const daysLate = due => Math.ceil((now - new Date(due)) / 86400000);
+    const euros = c => ((c || 0) / 100).toFixed(2).replace('.', ',') + ' €';
+
+    const alerts = [];
+    if (profile.flagged) alerts.push(`<p class="text-xs font-bold text-red-700">● Usager fiché${profile.flagged_reason ? ` : ${escapeHtml(profile.flagged_reason)}` : ''}</p>`);
+    openDebts.forEach(d => alerts.push(`<p class="text-xs text-red-700"><span class="font-bold">${d.kind === 'perdu' ? 'Perdu' : 'Rendu abîmé'}, non réglé :</span> ${escapeHtml(d.books?.title || 'Document')} · ${euros(d.amount_cents)}</p>`));
+
+    const activeHtml = active.length
+      ? active.map(l => {
+          const late = new Date(l.due_at) < now;
+          return `<div class="flex items-start justify-between gap-3 py-2 border-t border-red-100 first:border-0">
+            <span class="text-sm text-ink">${escapeHtml(titleOf(l))}</span>
+            <span class="text-[11px] shrink-0 ${late ? 'font-bold text-red-700' : 'text-ink/50'}">${late ? `En retard depuis ${daysLate(l.due_at)} j` : `À rendre le ${formatDateShortAdmin(l.due_at)}`}</span>
+          </div>`;
+        }).join('')
+      : '';
+    const historyHtml = returned.length
+      ? returned.map(l => `<div class="flex items-start justify-between gap-3 py-2 border-t border-mango-50 first:border-0">
+          <span class="text-sm text-ink/80">${escapeHtml(titleOf(l))}${damagedLoanIds.has(l.id) ? ' <span class="text-[10px] font-bold text-red-600 bg-red-50 rounded-full px-1.5 py-0.5">abîmé</span>' : ''}</span>
+          <span class="text-[11px] text-ink/45 shrink-0">${formatDateShortAdmin(l.borrowed_at)} → ${formatDateShortAdmin(l.returned_at)}</span>
+        </div>`).join('')
+      : '<p class="text-xs text-ink/40 py-2">Aucun emprunt rendu pour le moment.</p>';
+
+    document.getElementById('counter-user-modal-body').innerHTML = `
+      <p class="text-lg font-bold text-ink pr-8">${escapeHtml(profile.full_name || 'Usager')}</p>
+      <p class="text-xs text-ink/50 mb-4">N° ${escapeHtml(profile.subscriber_number)}</p>
+      ${alerts.length || active.length ? `
+        <div class="bg-red-50 rounded-xl p-3.5 mb-4">
+          ${alerts.join('')}
+          ${active.length ? `<p class="text-xs font-bold text-red-700 ${alerts.length ? 'mt-2' : ''} mb-1">Non rendus (${active.length})</p>${activeHtml}` : ''}
+        </div>` : `<p class="text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl px-3.5 py-2.5 mb-4">✓ Aucun livre à rendre, aucun document abîmé ou perdu.</p>`}
+      <p class="text-xs font-bold text-ink/50 uppercase tracking-wide mb-1">Historique (${returned.length})</p>
+      <div class="max-h-56 overflow-y-auto">${historyHtml}</div>`;
+    const modal = document.getElementById('counter-user-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.getElementById('counter-user-confirm-btn').focus();
+  }
+
+  window.cancelCounterUser = function () {
+    counterPending = null;
+    const modal = document.getElementById('counter-user-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.getElementById('counter-card-input')?.focus();
+  };
+
+  window.confirmCounterUser = function () {
+    if (!counterPending) return;
+    const { profile, loans } = counterPending;
+    const active = loans.filter(l => !l.returned_at);
+    const late = active.filter(l => new Date(l.due_at) < new Date()).length;
+    counterPending = null;
+    const modal = document.getElementById('counter-user-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+
     counterUser = profile;
     counterResults = [];
     document.getElementById('counter-card-suggestions').innerHTML = '';
-    stopCamera();
     document.getElementById('counter-card-step').classList.add('hidden');
     document.getElementById('counter-books-step').classList.remove('hidden');
     document.getElementById('counter-user-banner').innerHTML = `
-      <p class="text-base font-bold">${escapeHtml(profile.full_name || 'Usager')}</p>
-      <p class="text-xs text-white/70">N° ${escapeHtml(profile.subscriber_number)} · ${(loans || []).length} prêt${(loans || []).length > 1 ? 's' : ''} en cours</p>
-      ${late ? `<p class="text-xs font-bold bg-red-600 text-white rounded-full px-2.5 py-1 mt-2 w-fit">⚠️ ${late} livre${late > 1 ? 's' : ''} en retard</p>` : ''}`;
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-base font-bold">${escapeHtml(profile.full_name || 'Usager')}</p>
+          <p class="text-xs text-white/70">N° ${escapeHtml(profile.subscriber_number)} · ${active.length} prêt${active.length > 1 ? 's' : ''} en cours</p>
+          ${late ? `<p class="text-xs font-bold bg-red-600 text-white rounded-full px-2.5 py-1 mt-2 w-fit">⚠️ ${late} livre${late > 1 ? 's' : ''} en retard</p>` : ''}
+        </div>
+        <button type="button" onclick="resetCounterUser()" style="touch-action: manipulation;" class="shrink-0 text-xs font-semibold bg-white/15 hover:bg-white/25 rounded-full px-3 py-1.5">← Changer d'usager</button>
+      </div>`;
     renderCounterResults();
     const input = document.getElementById('counter-book-input');
     input.value = '';
