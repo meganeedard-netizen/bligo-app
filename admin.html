@@ -243,7 +243,10 @@
           <button type="button" id="counter-tab-return-btn" onclick="switchCounterTab('return')" style="touch-action: manipulation;" class="rounded-full px-6 py-2.5 text-sm font-bold transition">Retour</button>
         </div>
 
-        <div id="counter-panel-loan" class="max-w-xl">
+        <!-- Prêter (21/10/2026) : à gauche l'usager et le scan, à droite les livres
+             scannés, puis un seul bouton « Valider le prêt ». -->
+        <div id="counter-panel-loan" class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div>
           <!-- 1. Carte de l'usager -->
           <div id="counter-card-step" class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm">
             <p class="text-xs font-bold text-ink/50 uppercase tracking-wide mb-2">1. Carte de l'usager</p>
@@ -270,12 +273,19 @@
               <div id="counter-book-camera-slot" class="mb-2"></div>
               <label for="counter-book-input" class="text-xs font-semibold text-ink/60 block mb-1">Ou taper le code-barres de la bibliothèque</label>
               <input id="counter-book-input" type="text" autocomplete="off" placeholder="Ex. 7180020158"
-                onkeydown="if(event.key==='Enter'){event.preventDefault(); counterCheckoutBook(this.value);}"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); counterAddBook(this.value);}"
                 style="font-size: 16px;"
                 class="w-full border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
             </div>
-            <div id="counter-loan-results" class="flex flex-col gap-2 mt-3"></div>
-            <button type="button" onclick="resetCounterUser()" style="touch-action: manipulation;" class="w-full mt-4 border-2 border-brand text-ink rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition">Terminer · usager suivant</button>
+          </div>
+          </div>
+
+          <div id="counter-cart" class="hidden bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm lg:sticky lg:top-20">
+            <p class="text-xs font-bold text-ink/50 uppercase tracking-wide mb-3">Livres scannés (<span id="counter-cart-count">0</span>)</p>
+            <div id="counter-cart-list" class="flex flex-col gap-2"></div>
+            <p id="counter-cart-empty" class="text-sm text-ink/40 text-center py-8">Scanne ou tape le code-barres des livres : ils s'affichent ici.</p>
+            <button type="button" id="counter-validate-btn" onclick="validateCounterLoans()" style="touch-action: manipulation;" class="hidden w-full mt-4 bg-brand text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition">Valider le prêt</button>
+            <button type="button" id="counter-next-btn" onclick="resetCounterUser()" style="touch-action: manipulation;" class="hidden w-full mt-4 bg-brand text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition">Usager suivant</button>
           </div>
         </div>
 
@@ -2187,7 +2197,7 @@
       defaultLabel: 'Scanner les livres',
       hint: 'Vise le code-barres de la bibliothèque : la caméra reste ouverte pour enchaîner les livres.',
       // Pas de onResult : mode en rafale (BURST_SCAN_MODES), chaque livre
-      // part directement en prêt via counterCheckoutBook().
+      // s'ajoute à la liste des livres à prêter via counterAddBook().
     },
     loan: {
       slotId: 'loan-camera-slot',
@@ -2370,7 +2380,7 @@
         if (scanState.mode === 'counterBook') {
           lastBatchCode = code;
           lastBatchCodeTime = Date.now();
-          counterCheckoutBook(code);
+          counterAddBook(code);
           scanTimeoutId = setTimeout(scanLoop, 700);
           return;
         }
@@ -4329,7 +4339,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   let counterTab = 'loan';
   let counterUser = null;
-  let counterResults = [];
+  // Livres scannés pour l'usager en cours : { barcode, title, state, message, holdBookId, held }
+  // state : ready (prêtable), mine (sa commande), blocked (indisponible), done, error.
+  let counterCart = [];
+  let counterValidated = false;
 
   window.switchCounterTab = function (tab) {
     stopCamera();
@@ -4494,7 +4507,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     modal.classList.remove('flex');
 
     counterUser = profile;
-    counterResults = [];
+    counterCart = [];
+    counterValidated = false;
     document.getElementById('counter-card-suggestions').innerHTML = '';
     document.getElementById('counter-card-step').classList.add('hidden');
     document.getElementById('counter-books-step').classList.remove('hidden');
@@ -4507,7 +4521,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         </div>
         <button type="button" onclick="resetCounterUser()" style="touch-action: manipulation;" class="shrink-0 text-xs font-semibold bg-white/15 hover:bg-white/25 rounded-full px-3 py-1.5">← Changer d'usager</button>
       </div>`;
-    renderCounterResults();
+    renderCounterCart();
+    document.getElementById('counter-cart').classList.remove('hidden');
     const input = document.getElementById('counter-book-input');
     input.value = '';
     input.focus();
@@ -4516,7 +4531,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.resetCounterUser = function () {
     stopCamera();
     counterUser = null;
-    counterResults = [];
+    counterCart = [];
+    counterValidated = false;
+    document.getElementById('counter-cart').classList.add('hidden');
     document.getElementById('counter-books-step').classList.add('hidden');
     document.getElementById('counter-card-step').classList.remove('hidden');
     document.getElementById('counter-card-message').textContent = '';
@@ -4526,50 +4543,89 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     input.focus();
   };
 
-  window.counterCheckoutBook = async function (raw) {
+  // Scan d'un livre : il rejoint la liste de droite avec son état, sans être
+  // prêté. Le prêt se fait d'un coup avec « Valider le prêt ».
+  window.counterAddBook = async function (raw) {
     const barcode = String(raw || '').trim();
     const input = document.getElementById('counter-book-input');
     input.value = '';
     input.focus();
     if (!barcode || !counterUser) return;
+    if (counterValidated) { counterCart = []; counterValidated = false; }
+    if (counterCart.some(r => r.barcode === barcode)) return;
 
-    const { data, error } = await supabase.rpc('scan_checkout', { p_barcode: barcode, p_subscriber_number: counterUser.subscriber_number });
-    if (error) { counterResults.unshift({ ok: false, title: barcode, message: 'Erreur : ' + error.message }); renderCounterResults(); return; }
-    if (data.ok) {
-      playBeep();
-      counterResults.unshift({ ok: true, title: data.title, message: data.from_reservation ? `Commande récupérée. ${data.message}` : data.message });
-      renderCounterResults();
-      loadActiveLoans();
-      return;
-    }
+    const row = { barcode, title: barcode, state: 'checking', message: 'Vérification…' };
+    counterCart.unshift(row);
+    renderCounterCart();
 
-    // Prêt refusé : si le livre est emprunté ou mis de côté pour quelqu'un
-    // d'autre (et qu'aucun autre exemplaire n'est en rayon), proposer la
-    // file d'attente avec la date de retour prévue.
     const { data: copy } = await supabase.from('book_copies')
-      .select('book_id, status, books ( title )').eq('barcode', barcode).maybeSingle();
-    const row = { ok: false, title: copy?.books?.title || barcode, message: data.message };
-    if (copy && ['borrowed', 'reserved'].includes(copy.status)) {
-      const [{ count: availableCount }, { data: nextLoan }] = await Promise.all([
-        supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'available'),
-        supabase.from('loans').select('due_at, book_copies!inner ( book_id )').eq('book_copies.book_id', copy.book_id)
-          .is('returned_at', null).order('due_at').limit(1).maybeSingle(),
-      ]);
-      if (availableCount) {
-        row.message = 'Cet exemplaire n\'est pas disponible, mais un autre est en rayon : va le chercher et scanne-le.';
+      .select('id, book_id, status, books ( title )').eq('barcode', barcode).maybeSingle();
+    if (!copy) {
+      Object.assign(row, { state: 'blocked', message: 'Code-barres inconnu.' });
+    } else {
+      row.title = copy.books?.title || barcode;
+      if (copy.status === 'available') {
+        Object.assign(row, { state: 'ready', message: 'Disponible' });
+      } else if (copy.status === 'reserved' || copy.status === 'borrowed') {
+        const { data: mine } = copy.status === 'reserved'
+          ? await supabase.from('reservations').select('id').eq('book_id', copy.book_id).eq('user_id', counterUser.id).in('status', ['preparation', 'pret']).limit(1).maybeSingle()
+          : { data: null };
+        if (mine) {
+          Object.assign(row, { state: 'mine', message: 'Sa commande : à lui remettre' });
+        } else {
+          const [{ count: availableCount }, { data: nextLoan }] = await Promise.all([
+            supabase.from('book_copies').select('id', { count: 'exact', head: true }).eq('book_id', copy.book_id).eq('status', 'available'),
+            supabase.from('loans').select('due_at, book_copies!inner ( book_id )').eq('book_copies.book_id', copy.book_id)
+              .is('returned_at', null).order('due_at').limit(1).maybeSingle(),
+          ]);
+          row.state = 'blocked';
+          if (availableCount) {
+            row.message = 'Cet exemplaire n\'est pas disponible, mais un autre est en rayon : va le chercher et scanne-le.';
+          } else {
+            row.message = copy.status === 'borrowed'
+              ? `Déjà emprunté${nextLoan?.due_at ? `, retour prévu le ${formatDateShortAdmin(nextLoan.due_at)}` : ''}.`
+              : 'Mis de côté pour la commande d\'un autre usager.';
+            row.holdBookId = copy.book_id;
+          }
+        }
       } else {
-        row.message = copy.status === 'borrowed'
-          ? `Déjà emprunté${nextLoan?.due_at ? `, retour prévu le ${formatDateShortAdmin(nextLoan.due_at)}` : ''}.`
-          : 'Mis de côté pour la commande d\'un autre usager.';
-        row.holdBookId = copy.book_id;
+        Object.assign(row, { state: 'blocked', message: 'Pas empruntable pour le moment (en traitement, perdu ou retiré).' });
       }
     }
-    counterResults.unshift(row);
-    renderCounterResults();
+    if (row.state === 'ready' || row.state === 'mine') playBeep();
+    renderCounterCart();
+  };
+
+  window.removeCounterItem = function (index) {
+    counterCart.splice(index, 1);
+    renderCounterCart();
+    document.getElementById('counter-book-input')?.focus();
+  };
+
+  // Valider le prêt : chaque livre prêtable est enregistré ; un refus (quota,
+  // adhésion, document non réglé…) s'affiche sur sa ligne.
+  window.validateCounterLoans = async function () {
+    const btn = document.getElementById('counter-validate-btn');
+    const toLend = counterCart.filter(r => r.state === 'ready' || r.state === 'mine');
+    if (!toLend.length || !counterUser) return;
+    btn.disabled = true;
+    btn.textContent = 'Enregistrement…';
+    stopCamera();
+    for (const row of toLend) {
+      const { data, error } = await supabase.rpc('scan_checkout', { p_barcode: row.barcode, p_subscriber_number: counterUser.subscriber_number });
+      if (error) Object.assign(row, { state: 'error', message: 'Erreur : ' + error.message });
+      else if (!data.ok) Object.assign(row, { state: 'error', message: data.message });
+      else Object.assign(row, { state: 'done', message: data.from_reservation ? `Commande récupérée. ${data.message}` : data.message });
+    }
+    counterValidated = true;
+    btn.disabled = false;
+    if (counterCart.some(r => r.state === 'done')) playBeep();
+    renderCounterCart();
+    loadActiveLoans();
   };
 
   window.counterJoinHold = async function (index) {
-    const row = counterResults[index];
+    const row = counterCart[index];
     if (!row?.holdBookId || !counterUser) return;
     const { data, error } = await supabase.rpc('agent_join_hold', { p_book_id: row.holdBookId, p_subscriber_number: counterUser.subscriber_number });
     if (error) {
@@ -4581,18 +4637,40 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       if (data.ok) row.held = true;
     }
     row.holdBookId = null;
-    renderCounterResults();
+    renderCounterCart();
     document.getElementById('counter-book-input')?.focus();
   };
 
-  function renderCounterResults() {
+  function renderCounterCart() {
     const name = counterUser?.full_name || 'l\'usager';
-    document.getElementById('counter-loan-results').innerHTML = counterResults.map((r, i) => `
-      <div class="rounded-xl p-3.5 border ${r.ok ? 'bg-mango-50 border-mango-100' : r.held ? 'bg-white border-[#E5E7EB]' : 'bg-red-50 border-red-100'}">
-        <p class="text-sm font-bold ${r.ok ? 'text-mango-700' : r.held ? 'text-ink' : 'text-red-700'}">${r.ok ? '✓' : r.held ? '⏳' : '✕'} ${escapeHtml(r.title || '')}</p>
-        <p class="text-xs ${r.ok ? 'text-ink/60' : r.held ? 'text-ink/60' : 'text-red-600/90'} mt-0.5">${escapeHtml(r.message || '')}</p>
-        ${r.holdBookId ? `<button onclick="counterJoinHold(${i})" style="touch-action: manipulation;" class="mt-2 bg-hibiscus-600 text-white rounded-full px-4 py-2 text-xs font-bold active:scale-[0.98] transition">Mettre ${escapeHtml(name)} en file d'attente</button>` : ''}
-      </div>`).join('');
+    const lendable = counterCart.filter(r => r.state === 'ready' || r.state === 'mine').length;
+    const style = {
+      checking: ['bg-white border-[#E5E7EB]', 'text-ink/60', '…'],
+      ready: ['bg-white border-mango-100', 'text-ink', '📖'],
+      mine: ['bg-white border-mango-100', 'text-ink', '📦'],
+      done: ['bg-mango-50 border-mango-100', 'text-mango-700', '✓'],
+      blocked: ['bg-red-50 border-red-100', 'text-red-700', '✕'],
+      error: ['bg-red-50 border-red-100', 'text-red-700', '✕'],
+    };
+    document.getElementById('counter-cart-count').textContent = counterCart.length;
+    document.getElementById('counter-cart-empty').classList.toggle('hidden', counterCart.length > 0);
+    document.getElementById('counter-cart-list').innerHTML = counterCart.map((r, i) => {
+      const [box, text, icon] = r.held ? ['bg-white border-[#E5E7EB]', 'text-ink', '⏳'] : style[r.state];
+      const removable = !counterValidated && r.state !== 'checking';
+      return `
+      <div class="rounded-xl p-3.5 border ${box} flex items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold ${text}">${icon} ${escapeHtml(r.title || '')}</p>
+          <p class="text-xs text-ink/60 mt-0.5">${escapeHtml(r.message || '')}</p>
+          ${r.holdBookId ? `<button onclick="counterJoinHold(${i})" style="touch-action: manipulation;" class="mt-2 bg-hibiscus-600 text-white rounded-full px-4 py-2 text-xs font-bold active:scale-[0.98] transition">Mettre ${escapeHtml(name)} en file d'attente</button>` : ''}
+        </div>
+        ${removable ? `<button onclick="removeCounterItem(${i})" aria-label="Retirer de la liste" title="Retirer de la liste" class="shrink-0 w-7 h-7 rounded-full text-ink/35 hover:text-ink hover:bg-mango-50 text-sm">✕</button>` : ''}
+      </div>`;
+    }).join('');
+    const validateBtn = document.getElementById('counter-validate-btn');
+    validateBtn.classList.toggle('hidden', counterValidated || !lendable);
+    validateBtn.textContent = `Valider le prêt (${lendable} livre${lendable > 1 ? 's' : ''})`;
+    document.getElementById('counter-next-btn').classList.toggle('hidden', !counterValidated);
   }
 
   window.lookupLoanBarcode = async function () {
