@@ -524,6 +524,19 @@
     if (!requireAccount('reserve')) return;
     const { data, error } = await supabase.rpc('join_hold', { p_book_id: bookId });
     if (error) { showAppAlert(error.message); return; }
+    // Déjà à son maximum (22/10/2026) : la liste d'envie plutôt que la file.
+    if (data && data.ok === false && data.limit_reached) {
+      const choice = await showDialog({
+        title: 'Maximum atteint',
+        message: data.message,
+        buttons: [
+          ...(wishlist.includes(bookId) ? [] : [{ label: 'Ajouter à ma liste d\'envie', value: 'wish', primary: true }]),
+          { label: 'Fermer', value: null },
+        ],
+      });
+      if (choice === 'wish') await toggleWishlist(bookId);
+      return;
+    }
     if (data && data.ok === false) { showAppAlert(data.message); return; }
     showSnackbar('Ce livre est indisponible pour le moment. Tu seras prévenu par notification et mail dès son retour.', { duration: 5000 });
     await loadHolds();
