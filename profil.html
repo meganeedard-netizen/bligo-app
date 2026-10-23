@@ -39,6 +39,7 @@
     box-shadow: -28px 0 0 var(--color-mango-200, #FFD4A3), 28px 0 0 var(--color-mango-200, #FFD4A3);
     animation: bligo-dots-in 0.2s 0.25s forwards, bligo-dots 1.2s 0.25s infinite;
   }
+  html.has-snapshot::after { display: none; }
   @keyframes bligo-dots-in { to { opacity: 1; } }
   @keyframes bligo-dots {
     0%, 100% { box-shadow: -28px 0 0 var(--color-mango-500, #FF9B2E), 28px 0 0 var(--color-mango-200, #FFD4A3); background: var(--color-mango-200, #FFD4A3); }
@@ -46,7 +47,7 @@
     66% { box-shadow: -28px 0 0 var(--color-mango-200, #FFD4A3), 28px 0 0 var(--color-mango-500, #FF9B2E); background: var(--color-mango-200, #FFD4A3); }
   }
 </style>
-<script>document.documentElement.classList.add('page-loading'); setTimeout(function () { document.documentElement.classList.remove('page-loading'); }, 2500);</script>
+<script>document.documentElement.classList.add('page-loading'); setTimeout(function () { if (window.bligoPageReady) window.bligoPageReady(); else document.documentElement.classList.remove('page-loading'); }, 2500);</script>
 </head>
 <body class="bg-white text-ink min-h-screen pb-24">
 
@@ -190,6 +191,7 @@
   <p class="text-xs text-ink/40 text-center mt-6 mb-4">BliGO - v1.0</p>
   </div>
 </main>
+<script src="js/snapshot.js?v=20261023"></script>
 
 <!-- Fenêtres du profil (feuilles qui montent du bas) -->
 <div id="sheet-password" onclick="closeSheet(event, this)" class="hidden fixed inset-0 z-50 bg-black/40 items-end sm:items-center justify-center">
@@ -770,7 +772,7 @@
     window.location.href = 'index.html';
   };
 
-  init().finally(() => document.documentElement.classList.remove('page-loading'));
+  init().finally(() => window.bligoPageReady ? window.bligoPageReady() : document.documentElement.classList.remove('page-loading'));
 </script>
 </body>
 </html>

@@ -31,6 +31,7 @@
     box-shadow: -28px 0 0 var(--color-mango-200, #FFD4A3), 28px 0 0 var(--color-mango-200, #FFD4A3);
     animation: bligo-dots-in 0.2s 0.25s forwards, bligo-dots 1.2s 0.25s infinite;
   }
+  html.has-snapshot::after { display: none; }
   @keyframes bligo-dots-in { to { opacity: 1; } }
   @keyframes bligo-dots {
     0%, 100% { box-shadow: -28px 0 0 var(--color-mango-500, #FF9B2E), 28px 0 0 var(--color-mango-200, #FFD4A3); background: var(--color-mango-200, #FFD4A3); }
@@ -38,7 +39,7 @@
     66% { box-shadow: -28px 0 0 var(--color-mango-200, #FFD4A3), 28px 0 0 var(--color-mango-500, #FF9B2E); background: var(--color-mango-200, #FFD4A3); }
   }
 </style>
-<script>document.documentElement.classList.add('page-loading'); setTimeout(function () { document.documentElement.classList.remove('page-loading'); }, 2500);</script>
+<script>document.documentElement.classList.add('page-loading'); setTimeout(function () { if (window.bligoPageReady) window.bligoPageReady(); else document.documentElement.classList.remove('page-loading'); }, 2500);</script>
 </head>
 <body class="bg-white text-ink min-h-screen pb-24">
 
@@ -116,6 +117,7 @@
   <div id="defis-list" class="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-8"></div>
 
 </main>
+<script src="js/snapshot.js?v=20261023"></script>
 
 <!-- Détail d'un badge -->
 <div id="badge-modal-backdrop" class="hidden fixed inset-0 z-40 bg-black/50 items-center justify-center p-5" onclick="closeBadgeModal(event)">
@@ -371,7 +373,7 @@
     await Promise.all([renderBadges(profile), renderDefis(currentUser.id)]);
   }
 
-  init().finally(() => document.documentElement.classList.remove('page-loading'));
+  init().finally(() => window.bligoPageReady ? window.bligoPageReady() : document.documentElement.classList.remove('page-loading'));
 </script>
 </body>
 </html>

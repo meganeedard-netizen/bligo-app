@@ -40,6 +40,10 @@
       var q = new URLSearchParams(location.search);
       if (q.has('gate') || q.has('signup') || q.has('login') || q.has('ref')) document.documentElement.classList.add('start-auth');
       else if (Object.keys(localStorage).some(function (k) { return /^sb-.*-auth-token$/.test(k); })) document.documentElement.classList.add('start-blank');
+      // Pas connecté : on efface les pages mémorisées du compte précédent (js/snapshot.js).
+      if (!Object.keys(localStorage).some(function (k) { return /^sb-.*-auth-token$/.test(k); })) {
+        Object.keys(localStorage).forEach(function (k) { if (k.indexOf('bligo_snap_') === 0) localStorage.removeItem(k); });
+      }
     } catch (e) {}
   })();
 </script>
