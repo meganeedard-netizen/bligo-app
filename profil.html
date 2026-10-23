@@ -658,6 +658,39 @@
 
   // Suppression immédiate du compte (23/10/2026), si tout est rendu et réglé
   // (vérifié côté serveur par delete_my_account).
+  // Écran de chargement pendant une suppression (23/10/2026) : l'action est
+  // très rapide, on montre quand même les étapes (au moins ~3 s), puis un
+  // message de fin, avant de revenir au premier écran.
+  function showProgressScreen(steps) {
+    const el = document.createElement('div');
+    el.className = 'fixed inset-0 z-[70] bg-white flex flex-col items-center justify-center px-8 text-center';
+    el.innerHTML = `
+      <div data-spin class="w-14 h-14 rounded-full border-4 border-mango-100 border-t-mango-500 animate-spin"></div>
+      <div data-done class="hidden w-14 h-14 rounded-full bg-brand text-white flex items-center justify-center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      </div>
+      <p data-title class="text-lg font-bold text-ink mt-6"></p>
+      <p data-step class="text-sm text-ink/60 mt-2 min-h-[20px]"></p>`;
+    document.body.appendChild(el);
+    el.querySelector('[data-title]').textContent = steps.title;
+    let i = 0;
+    const stepEl = el.querySelector('[data-step]');
+    stepEl.textContent = steps.list[0];
+    const timer = setInterval(() => { i = Math.min(i + 1, steps.list.length - 1); stepEl.textContent = steps.list[i]; }, 900);
+    const minDelay = new Promise(r => setTimeout(r, steps.list.length * 900 + 300));
+    return {
+      minDelay,
+      done(title, text) {
+        clearInterval(timer);
+        el.querySelector('[data-spin]').classList.add('hidden');
+        el.querySelector('[data-done]').classList.remove('hidden');
+        el.querySelector('[data-title]').textContent = title;
+        stepEl.textContent = text;
+      },
+      close() { clearInterval(timer); el.remove(); },
+    };
+  }
+
   window.deleteMyAccount = async function () {
     // Dernière confirmation avant de tout effacer (23/10/2026).
     const confirmed = await showDialog({
@@ -669,20 +702,21 @@
       ],
     });
     if (confirmed !== true) return;
-    const btn = document.getElementById('delete-account-btn');
     const msg = document.getElementById('delete-message');
-    btn.disabled = true;
-    btn.textContent = 'Suppression…';
-    const { data, error } = await supabase.rpc('delete_my_account');
+    const screen = showProgressScreen({
+      title: 'Suppression de ton compte…',
+      list: ["Suppression de ta liste d'envie…", 'Suppression de tes points et badges…', 'Suppression de ton historique…', 'Suppression de ta carte…'],
+    });
+    const [{ data, error }] = await Promise.all([supabase.rpc('delete_my_account'), screen.minDelay]);
     if (error || !data?.ok) {
+      screen.close();
       msg.textContent = error ? "La suppression n'a pas pu se faire. Réessaie dans un instant." : data.message;
       msg.classList.remove('hidden');
-      btn.disabled = false;
-      btn.textContent = 'Tout supprimer';
       return;
     }
+    screen.done('Ton compte a été supprimé', 'Toutes tes données ont été effacées. Merci d\'avoir utilisé BliGO.');
     try { localStorage.clear(); } catch (e) {}
-    await supabase.auth.signOut();
+    await Promise.all([supabase.auth.signOut(), new Promise(r => setTimeout(r, 2500))]);
     window.location.href = 'index.html';
   };
 
@@ -697,20 +731,21 @@
       ],
     });
     if (confirmed !== true) return;
-    const btn = document.getElementById('leave-app-btn');
     const msg = document.getElementById('delete-message');
-    btn.disabled = true;
-    btn.textContent = 'Fermeture…';
-    const { data, error } = await supabase.rpc('leave_app');
+    const screen = showProgressScreen({
+      title: "Suppression de ton accès à l'appli…",
+      list: ["Suppression de ta liste d'envie…", 'Suppression de tes points et badges…', 'Suppression de tes avis…', 'Fermeture de ton accès…'],
+    });
+    const [{ data, error }] = await Promise.all([supabase.rpc('leave_app'), screen.minDelay]);
     if (error || !data?.ok) {
+      screen.close();
       msg.textContent = error ? "La fermeture n'a pas pu se faire. Réessaie dans un instant." : data.message;
       msg.classList.remove('hidden');
-      btn.disabled = false;
-      btn.textContent = "Supprimer mon accès à l'appli";
       return;
     }
+    screen.done("Ton accès à l'appli est fermé", 'Tu restes inscrit à ta médiathèque : tu peux continuer à emprunter au comptoir.');
     try { localStorage.clear(); } catch (e) {}
-    await supabase.auth.signOut();
+    await Promise.all([supabase.auth.signOut(), new Promise(r => setTimeout(r, 3000))]);
     window.location.href = 'index.html';
   };
 
