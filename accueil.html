@@ -298,7 +298,7 @@
   // Icônes en couleur (16/10/2026), sources dans BliGO/BliGO-19-icones-transparentes.
   const CATEGORY_ICONS = {
     'Tous': 'img/categories/v2/tous-livres.png',
-    'Favoris': 'img/categories/v2/favoris.png',
+    'Coups de cœur': 'img/categories/v2/favoris.png',
     'Fonds local': 'img/categories/v2/fonds-local.png',
     'Roman': 'img/categories/v2/roman.png',
     'Thriller': 'img/categories/v2/thriller-chapeau.png',
@@ -394,7 +394,7 @@
     const el = document.getElementById('category-filters');
     const chips = [
       { label: 'Tous', value: null },
-      { label: 'Favoris', value: STAFF_PICK_FILTER },
+      { label: 'Coups de cœur', value: STAFF_PICK_FILTER },
       ...CATEGORIES.map(c => ({ label: c, value: c })),
     ];
     el.innerHTML = chips.map(c => {
