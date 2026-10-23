@@ -754,7 +754,7 @@
       const gateMsg = document.getElementById('gate-message');
       gateMsg.dataset.text = gateReason === 'event'
         ? "Crée ton compte pour t'inscrire à un événement !"
-        : "Crée ton compte pour commander tes livres !";
+        : "Crée ton compte pour commander !";
       document.getElementById('gate-message-text').textContent = gateMsg.dataset.text;
       gateMsg.classList.remove('hidden');
       // Déjà choisie en parcourant sans compte : pas besoin de la redemander.
