@@ -686,7 +686,8 @@
     filtered = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     if (filtered.length === 0) {
-      list.innerHTML = `<p class="col-span-full text-sm text-ink/40 text-center py-10">Aucun livre ne correspond à ta recherche.</p>`;
+      const emptyText = q ? 'Aucun livre ne correspond à ta recherche.' : 'Aucun livre dans cette catégorie.';
+      list.innerHTML = `<p class="col-span-full text-sm text-ink/40 text-center py-10">${emptyText}</p>`;
       return;
     }
 
