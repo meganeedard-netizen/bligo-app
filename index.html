@@ -330,7 +330,7 @@
     messageEl.className = 'text-xs text-center mt-3 text-ink/50';
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     if (error) {
-      messageEl.textContent = error.message;
+      messageEl.textContent = frError(error);
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }
@@ -358,7 +358,7 @@
     const email = document.getElementById('reset-email').textContent;
     setResetMessage('Envoi en cours…', 'text-ink/50');
     const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) { setResetMessage(error.message, 'text-red-600'); return; }
+    if (error) { setResetMessage(frError(error), 'text-red-600'); return; }
     setResetMessage('Nouveau code envoyé !', 'text-mango-700');
     startCooldown('reset-resend-btn', 'Renvoyer le code');
   };
@@ -376,7 +376,7 @@
     setResetMessage('Vérification…', 'text-ink/50');
     const { error } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
     if (error) {
-      setResetMessage(/expired|invalid/i.test(error.message) ? 'Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.' : error.message, 'text-red-600');
+      setResetMessage(/expired|invalid/i.test(error.message) ? 'Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.' : frError(error), 'text-red-600');
       return;
     }
     const { error: updError } = await supabase.auth.updateUser({ password });
@@ -387,6 +387,23 @@
     try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
     goAfterLogin();
   });
+
+  // Messages d'erreur en français (23/10/2026) : Supabase et le navigateur
+  // répondent en anglais (« Invalid login credentials », « Load failed »…).
+  function frError(error) {
+    const m = String(error?.message || error || '');
+    if (/banned/i.test(m)) return "Ton accès à l'appli est fermé. Demande à ta médiathèque de le rouvrir.";
+    if (/invalid login credentials/i.test(m)) return 'E-mail ou mot de passe incorrect.';
+    if (/load failed|failed to fetch|networkerror|network request failed/i.test(m)) return 'Connexion au serveur impossible. Vérifie ta connexion internet et réessaie.';
+    if (/already registered|already been registered|already exists/i.test(m)) return 'Un compte existe déjà avec cet e-mail. Connecte-toi ou utilise « Mot de passe oublié ? ».';
+    if (/password should be at least|weak password|password is too short/i.test(m)) return 'Le mot de passe doit contenir au moins 6 caractères.';
+    if (/invalid email|unable to validate email|email address .* is invalid/i.test(m)) return "L'adresse e-mail n'est pas valide.";
+    if (/rate limit|too many requests|security purposes|after \d+ seconds/i.test(m)) return 'Trop de tentatives. Patiente une minute puis réessaie.';
+    if (/expired|token has expired|otp/i.test(m)) return 'Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.';
+    if (/same password|different from the old/i.test(m)) return "Le nouveau mot de passe doit être différent de l'ancien.";
+    if (/^[\x00-\x7F]*$/.test(m) && m) return "Une erreur est survenue. Réessaie dans un instant.";
+    return m;
+  }
 
   window.switchTab = function (tab) {
     document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
@@ -421,11 +438,7 @@
     }
     if (error) {
       // Messages en français (23/10/2026) : Supabase répond en anglais.
-      messageEl.textContent = /banned/i.test(error.message)
-        ? "Ton accès à l'appli est fermé. Demande à ta médiathèque de le rouvrir."
-        : /invalid login credentials/i.test(error.message)
-          ? 'E-mail ou mot de passe incorrect.'
-          : error.message;
+      messageEl.textContent = frError(error);
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }
@@ -470,7 +483,7 @@
       first_name: firstName, last_name: lastName, full_name: `${firstName} ${lastName}`,
     } } });
     if (error) {
-      messageEl.textContent = error.message;
+      messageEl.textContent = frError(error);
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }
@@ -561,7 +574,7 @@
     if (!lastSignup) return;
     setCodeMessage('Envoi en cours…', 'text-ink/50');
     const { error } = await supabase.auth.resend({ type: 'signup', email: lastSignup.email });
-    if (error) { setCodeMessage(error.message, 'text-red-600'); return; }
+    if (error) { setCodeMessage(frError(error), 'text-red-600'); return; }
     setCodeMessage('Nouveau code envoyé !', 'text-mango-700');
     startResendCooldown();
   };
@@ -579,7 +592,7 @@
     if (error) {
       setCodeMessage(/expired|invalid/i.test(error.message)
         ? 'Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.'
-        : error.message, 'text-red-600');
+        : frError(error), 'text-red-600');
       return;
     }
     await showWelcome();
