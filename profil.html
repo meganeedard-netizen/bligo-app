@@ -688,7 +688,8 @@
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
       </div>
       <p data-title class="text-lg font-bold text-ink mt-6"></p>
-      <p data-step class="text-sm text-ink/60 mt-2 min-h-[20px]"></p>`;
+      <p data-step class="text-sm text-ink/60 mt-2 min-h-[20px]"></p>
+      <p data-thanks class="hidden text-base font-bold text-mango-600 mt-4 whitespace-nowrap">Merci d'avoir utilisé BliGO.</p>`;
     document.body.appendChild(el);
     el.querySelector('[data-title]').textContent = steps.title;
     let i = 0;
@@ -704,6 +705,7 @@
         el.querySelector('[data-done]').classList.remove('hidden');
         el.querySelector('[data-title]').textContent = title;
         stepEl.textContent = text;
+        el.querySelector('[data-thanks]').classList.remove('hidden');
       },
       close() { clearInterval(timer); el.remove(); },
     };
@@ -732,7 +734,7 @@
       msg.classList.remove('hidden');
       return;
     }
-    screen.done('Ton compte a été supprimé', 'Toutes tes données ont été effacées. Merci d\'avoir utilisé BliGO.');
+    screen.done('Ton compte a été supprimé', 'Toutes tes données ont été effacées.');
     try { localStorage.clear(); } catch (e) {}
     await Promise.all([supabase.auth.signOut(), new Promise(r => setTimeout(r, 2500))]);
     window.location.href = 'index.html';
