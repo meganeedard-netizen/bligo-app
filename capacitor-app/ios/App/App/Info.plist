@@ -75,5 +75,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCalendarsUsageDescription</key>
+	<string>BliGO ajoute les événements de ta médiathèque auxquels tu es inscrit à ton calendrier.</string>
 </dict>
 </plist>

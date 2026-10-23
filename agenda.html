@@ -320,6 +320,20 @@
     // et le navigateur système refuse un fichier « data: » (23/10/2026). On
     // ouvre donc bligo.app/calendrier.php dans Safari/Chrome, qui renvoie le
     // fichier et propose directement « Ajouter au calendrier ».
+    // iPhone (23/10/2026) : fenêtre d'agenda d'Apple par-dessus l'appli,
+    // l'usager choisit son agenda, touche « Ajouter » et reste dans BliGO.
+    if (window.Capacitor?.getPlatform?.() === 'ios' && window.Capacitor.registerPlugin) {
+      const BligoCalendar = window.Capacitor.registerPlugin('BligoCalendar');
+      BligoCalendar.addEvent({
+        title: e.event_type ? (e.event_type + (e.title ? ' : ' + e.title : '')) : e.title,
+        location,
+        notes: e.description || '',
+        start: start.getTime(),
+        end: end.getTime(),
+      }).then(r => { if (r?.added) showSnackbar('Événement ajouté à ton calendrier.'); })
+        .catch(() => showSnackbar("Impossible d'ouvrir le calendrier. Vérifie l'accès au calendrier dans les Réglages."));
+      return;
+    }
     if (window.Capacitor?.isNativePlatform?.()) {
       const base64 = btoa(unescape(encodeURIComponent(ics))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
       window.open(`https://bligo.app/calendrier.php?ics=${base64}`, '_system');
