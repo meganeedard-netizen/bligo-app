@@ -56,3 +56,31 @@ export async function confirmDialog({ title, message, confirmLabel, cancelLabel 
   });
   return value === true;
 }
+
+// Messages d'erreur en français (23/10/2026) : Supabase, la base et le
+// navigateur répondent souvent en anglais (« Invalid login credentials »,
+// « Load failed », « duplicate key »…). Un message déjà en français est gardé.
+export function frError(error) {
+  const m = String(error?.message || error || '');
+  if (!m) return 'Une erreur est survenue. Réessaie dans un instant.';
+  if (/banned/i.test(m)) return "Ton accès à l'appli est fermé. Demande à ta médiathèque de le rouvrir.";
+  if (/invalid login credentials/i.test(m)) return 'E-mail ou mot de passe incorrect.';
+  if (/load failed|failed to fetch|networkerror|network request failed|fetch failed/i.test(m)) return 'Connexion au serveur impossible. Vérifie ta connexion internet et réessaie.';
+  if (/already registered|already been registered|user already exists/i.test(m)) return 'Un compte existe déjà avec cet e-mail.';
+  if (/password should be at least|weak password|password is too short/i.test(m)) return 'Le mot de passe doit contenir au moins 6 caractères.';
+  if (/same password|different from the old/i.test(m)) return "Le nouveau mot de passe doit être différent de l'ancien.";
+  if (/invalid email|unable to validate email|email address .* is invalid/i.test(m)) return "L'adresse e-mail n'est pas valide.";
+  if (/rate limit|too many requests|security purposes|after \d+ seconds/i.test(m)) return 'Trop de tentatives. Patiente une minute puis réessaie.';
+  if (/token has expired|otp.*(expired|invalid)|expired or is invalid/i.test(m)) return 'Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.';
+  if (/jwt expired|session.*(missing|expired|not found)|refresh token/i.test(m)) return 'Ta session a expiré. Reconnecte-toi.';
+  if (/duplicate key|already exists|unique constraint/i.test(m)) return 'Cet élément existe déjà.';
+  if (/violates foreign key/i.test(m)) return 'Impossible : cet élément est encore utilisé ailleurs.';
+  if (/violates check constraint|invalid input (syntax|value)|out of range/i.test(m)) return "Une valeur saisie n'est pas valide. Vérifie les champs.";
+  if (/violates not-null/i.test(m)) return 'Un champ obligatoire est vide.';
+  if (/row-level security|permission denied|not authorized|unauthorized|forbidden/i.test(m)) return "Action non autorisée pour ce compte.";
+  if (/payload too large|file size|exceeded the maximum/i.test(m)) return 'Le fichier est trop lourd.';
+  if (/timeout|timed out/i.test(m)) return 'Le serveur met trop de temps à répondre. Réessaie dans un instant.';
+  if (/[àâäçéèêëîïôöùûüÿœ]/i.test(m)) return m;
+  if (/\b(the|is|not|of|to|for|with|failed|error|invalid|could|does|exist|cannot|unable|unexpected|column|relation|function)\b/i.test(m)) return 'Une erreur est survenue. Réessaie dans un instant.';
+  return m;
+}

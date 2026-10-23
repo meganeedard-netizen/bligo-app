@@ -130,7 +130,7 @@
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
-  import { showSnackbar, showDialog, confirmDialog } from './js/ui.js?v=20261016d';
+  import { showSnackbar, showDialog, confirmDialog, frError } from './js/ui.js?v=20261023';
 
   let currentUser = null;
   let reservations = [];
@@ -359,7 +359,7 @@
     const isLoan = String(itemId).startsWith('loan-');
     const params = isLoan ? { p_loan_id: Number(String(itemId).slice(5)) } : { p_reservation_id: Number(itemId) };
     const { data, error } = await supabase.rpc('renew_loan', params);
-    if (error || data?.ok === false) showDialog({ message: error ? error.message : data.message });
+    if (error || data?.ok === false) showDialog({ message: error ? frError(error) : data.message });
     else showSnackbar(data?.message || 'Prêt prolongé d\'une semaine.');
     await Promise.all([loadReservations(), loadLoans()]);
     renderAll();
@@ -580,7 +580,7 @@
     });
     if (!ok) return;
     const { data, error } = await supabase.from('reservations').delete().eq('id', reservationId).select();
-    if (error) { showDialog({ message: 'Erreur : ' + error.message }); return; }
+    if (error) { showDialog({ message: 'Erreur : ' + frError(error) }); return; }
     if (!data || !data.length) {
       showDialog({ title: 'Trop tard', message: 'Les 30 minutes sont passées : ta commande est déjà en préparation à la médiathèque, il n\'est plus possible de la modifier.' });
     } else {
@@ -695,7 +695,7 @@
   // interdits (message du filtre, déjà rédigé pour l'usager).
   function reviewErrorMessage(error) {
     if (error.code === '42501') return 'Tu ne peux plus publier d\'avis. Rapproche-toi de ta médiathèque.';
-    return error.message;
+    return frError(error);
   }
 
   window.rateBookFromHistory = async function (bookId, rating) {

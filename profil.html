@@ -267,7 +267,7 @@
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
-  import { showDialog } from './js/ui.js?v=20261023';
+  import { showDialog, frError } from './js/ui.js?v=20261023';
 
   let currentSubscriberNumber = null;
   let currentUserId = null;
@@ -291,7 +291,7 @@
     document.querySelectorAll('.category-choice').forEach(btn => btn.onclick = async () => {
       const { error } = await supabase.rpc('declare_my_category', { p_category: btn.dataset.cat });
       const msg = document.getElementById('category-message');
-      if (error) { msg.textContent = error.message; return; }
+      if (error) { msg.textContent = frError(error); return; }
       paint(btn.dataset.cat);
       msg.textContent = btn.dataset.cat === 'famille'
         ? 'Noté ! Ce compte deviendra ta carte famille, partagée par toute ta famille avec la même adresse e-mail.'
@@ -546,7 +546,7 @@
       message.className = 'text-xs text-center mt-2 text-ink/50';
       const { error } = await supabase.rpc('request_commune_attachment', { p_commune_id: communeId });
       if (error) {
-        message.textContent = 'Erreur : ' + error.message;
+        message.textContent = 'Erreur : ' + frError(error);
         message.className = 'text-xs text-center mt-2 text-red-600';
         return;
       }
@@ -633,7 +633,7 @@
     msg.className = 'text-xs text-center min-h-[16px] text-ink/50';
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      msg.textContent = /different from the old/i.test(error.message) ? 'Choisis un mot de passe différent de l\'ancien.' : error.message;
+      msg.textContent = /different from the old/i.test(error.message) ? 'Choisis un mot de passe différent de l\'ancien.' : frError(error);
       msg.className = 'text-xs text-center min-h-[16px] text-red-600';
       return;
     }

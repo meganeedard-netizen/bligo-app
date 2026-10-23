@@ -286,6 +286,7 @@
 
 <script type="module">
   import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { frError } from './js/ui.js?v=20261023';
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
 
@@ -381,29 +382,12 @@
     }
     const { error: updError } = await supabase.auth.updateUser({ password });
     if (updError) {
-      setResetMessage(/different from the old/i.test(updError.message) ? 'Choisis un mot de passe différent de l\'ancien.' : updError.message, 'text-red-600');
+      setResetMessage(/different from the old/i.test(updError.message) ? 'Choisis un mot de passe différent de l\'ancien.' : frError(updError), 'text-red-600');
       return;
     }
     try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
     goAfterLogin();
   });
-
-  // Messages d'erreur en français (23/10/2026) : Supabase et le navigateur
-  // répondent en anglais (« Invalid login credentials », « Load failed »…).
-  function frError(error) {
-    const m = String(error?.message || error || '');
-    if (/banned/i.test(m)) return "Ton accès à l'appli est fermé. Demande à ta médiathèque de le rouvrir.";
-    if (/invalid login credentials/i.test(m)) return 'E-mail ou mot de passe incorrect.';
-    if (/load failed|failed to fetch|networkerror|network request failed/i.test(m)) return 'Connexion au serveur impossible. Vérifie ta connexion internet et réessaie.';
-    if (/already registered|already been registered|already exists/i.test(m)) return 'Un compte existe déjà avec cet e-mail. Connecte-toi ou utilise « Mot de passe oublié ? ».';
-    if (/password should be at least|weak password|password is too short/i.test(m)) return 'Le mot de passe doit contenir au moins 6 caractères.';
-    if (/invalid email|unable to validate email|email address .* is invalid/i.test(m)) return "L'adresse e-mail n'est pas valide.";
-    if (/rate limit|too many requests|security purposes|after \d+ seconds/i.test(m)) return 'Trop de tentatives. Patiente une minute puis réessaie.';
-    if (/expired|token has expired|otp/i.test(m)) return 'Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.';
-    if (/same password|different from the old/i.test(m)) return "Le nouveau mot de passe doit être différent de l'ancien.";
-    if (/^[\x00-\x7F]*$/.test(m) && m) return "Une erreur est survenue. Réessaie dans un instant.";
-    return m;
-  }
 
   window.switchTab = function (tab) {
     document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');

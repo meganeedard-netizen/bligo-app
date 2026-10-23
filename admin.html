@@ -1428,6 +1428,7 @@
 
 <script type="module">
   import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { frError } from './js/ui.js?v=20261023';
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
@@ -2002,7 +2003,7 @@
     const { data, error } = await supabase.rpc('reported_reviews');
     const badge = document.getElementById('reviews-badge');
     if (error) {
-      list.innerHTML = `<p class="text-sm text-red-600">Impossible de charger les avis signalés : ${escapeHtml(error.message)}</p>`;
+      list.innerHTML = `<p class="text-sm text-red-600">Impossible de charger les avis signalés : ${escapeHtml(frError(error))}</p>`;
       return;
     }
     const rows = data || [];
@@ -2031,14 +2032,14 @@
   window.moderateReview = async function (reviewId, action) {
     if (action === 'supprimer' && !(await confirmDialog('Supprimer cet avis ? Il disparaîtra de l\'appli pour tous les usagers.'))) return;
     const { error } = await supabase.rpc('moderate_review', { p_review_id: reviewId, p_action: action });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     loadReportedReviews();
   };
 
   window.blockReviewAuthor = async function (userId) {
     if (!(await confirmDialog('Bloquer cet auteur ? Il ne pourra plus publier d\'avis et tous ses avis seront supprimés.'))) return;
     const { error } = await supabase.rpc('set_review_author_blocked', { p_user_id: userId, p_blocked: true });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     loadReportedReviews();
   };
 
@@ -2060,13 +2061,13 @@
 
   window.removeVisitorEntry = async function () {
     const { data, error } = await supabase.rpc('remove_visitor_entry');
-    if (error) { alert(error.message.includes('Aucun visiteur') ? 'Aucun visiteur à retirer aujourd\'hui.' : 'Erreur : ' + error.message); return; }
+    if (error) { alert(error.message.includes('Aucun visiteur') ? 'Aucun visiteur à retirer aujourd\'hui.' : 'Erreur : ' + frError(error)); return; }
     setVisitorCount(data);
   };
 
   window.addVisitorEntry = async function (count, motif) {
     const { error } = await supabase.rpc('record_visitor_entry', { p_count: count, p_motif: motif || null });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await refreshVisitorCount();
   };
 
@@ -4430,7 +4431,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const value = barcode.trim();
     if (!value) return;
     const { error } = await supabase.from('book_copies').update({ barcode: value }).eq('id', copyId);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadBooks();
     openBookDetail(bookId);
   };
@@ -4803,7 +4804,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data, error } = await supabase.rpc('agent_join_hold', { p_book_id: counterReserved.bookId, p_subscriber_number: counterUser.subscriber_number });
     const ok = !error && data?.ok;
     result.className = `text-sm font-semibold mt-3 min-h-[20px] ${ok ? 'text-[#4E9A1E]' : 'text-orange-700'}`;
-    result.textContent = error ? 'Erreur : ' + error.message : data.message;
+    result.textContent = error ? 'Erreur : ' + frError(error) : data.message;
     if (ok) {
       document.getElementById('counter-reserved-hold-btn').classList.add('hidden');
       document.getElementById('counter-reserved-refuse-btn').textContent = 'Fermer';
@@ -4831,7 +4832,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const args = { p_barcode: row.barcode, p_subscriber_number: counterUser.subscriber_number };
       let { data, error } = await supabase.rpc('counter_checkout', args);
       if (error && /counter_checkout/.test(error.message)) ({ data, error } = await supabase.rpc('scan_checkout', args));
-      if (error) Object.assign(row, { state: 'error', message: 'Erreur : ' + error.message });
+      if (error) Object.assign(row, { state: 'error', message: 'Erreur : ' + frError(error) });
       else if (!data.ok) Object.assign(row, { state: 'error', message: data.message });
       else Object.assign(row, { state: 'done', message: data.from_reservation ? `Commande récupérée. ${data.message}` : data.message });
     }
@@ -4849,7 +4850,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) {
       row.message += /agent_join_hold/.test(error.message)
         ? ' (File d\'attente au comptoir pas encore activée : passe le SQL add_agent_join_hold.sql.)'
-        : ` (Erreur : ${error.message})`;
+        : ` (Erreur : ${frError(error)})`;
     } else {
       row.message = data.message;
       if (data.ok) row.held = true;
@@ -4904,7 +4905,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     resultBox.innerHTML = `<p class="text-sm text-ink/50">Recherche…</p>`;
 
     const { data, error } = await supabase.rpc('scan_lookup', { p_barcode: barcode });
-    if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
     renderLoanResult(barcode, data);
   };
 
@@ -4966,7 +4967,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const condition = conditionInput ? conditionInput.value : null;
 
     const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode, p_condition: condition });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     if (!data.ok) { alert(data.message); return; }
 
     playBeep();
@@ -5001,7 +5002,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!barcode) return;
 
     const { data, error } = await supabase.rpc('transfer_send', { p_barcode: barcode });
-    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
     if (!data.ok) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(data.message)}</p>`; return; }
 
     playBeep();
@@ -5018,7 +5019,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!barcode) return;
 
     const { data, error } = await supabase.rpc('transfer_receive', { p_barcode: barcode });
-    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
     if (!data.ok) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(data.message)}</p>`; return; }
 
     playBeep();
@@ -5204,7 +5205,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       if (myCommuneId) fallback = fallback.eq('borrowed_at_commune_id', myCommuneId);
       ({ data, error } = await fallback);
     }
-    if (error) { list.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (error) { list.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
 
     const userIds = [...new Set((data || []).map(l => l.user_id).filter(Boolean))];
     let profilesById = {};
@@ -5311,7 +5312,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const amount = await promptDialog(`Déclarer « ${title} » perdu ?\n\nMontant à demander en € (laisse vide pour le prix du document, ou le forfait de la médiathèque) :`, '');
     if (amount === null) return;
     const { data, error } = await supabase.rpc('declare_lost', { p_loan_id: loanId, p_amount_cents: parsePriceCents(amount) });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     alert(data.message);
     await loadActiveLoans();
   };
@@ -5323,7 +5324,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const amount = await promptDialog(`Facturer « ${copy.books?.title || ''} » rendu abîmé ?\n\nMontant en € (vide = prix du document ou forfait) :`, price);
     if (amount === null) return;
     const { data, error } = await supabase.rpc('declare_damaged', { p_copy_id: copy.id, p_amount_cents: parsePriceCents(amount), p_note: null });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     alert(data.message);
   };
 
@@ -5352,7 +5353,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const labels = { paid: 'Confirmer le paiement ?', replaced: 'Confirmer le remplacement à l\'identique ? (ajoute ensuite le nouvel exemplaire au catalogue)', cancelled: 'Annuler cette dette ?' };
     if (!await confirmDialog(labels[status])) return;
     const { error } = await supabase.rpc('settle_debt', { p_debt_id: debtId, p_status: status, p_note: null });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     const fresh = inscritsList.find(p => p.id === userId);
     if (fresh) await loadFicheFor(fresh);
   };
@@ -5371,7 +5372,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.exportUnpaidDebts = async function () {
     const { data, error } = await supabase.from('document_debts').select('kind, amount_cents, created_at, automatic, user_id, books ( title, isbn )')
       .eq('status', 'open').eq('commune_id', myCommuneId).order('created_at');
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     if (!data?.length) { alert('Aucun impayé en cours.'); return; }
     const ids = [...new Set(data.map(d => d.user_id))];
     const { data: profiles } = await supabase.from('profiles').select('id, full_name, subscriber_number').in('id', ids);
@@ -5388,7 +5389,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // si le prêt est en retard ou si quelqu'un attend le livre.
   window.renewLoanFromList = async function (loanId) {
     const { data, error } = await supabase.rpc('renew_loan', { p_loan_id: loanId });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     alert(data.message);
     if (data.ok) await loadActiveLoans();
   };
@@ -5419,7 +5420,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   window.quickReturnFromList = async function (barcode) {
     const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode, p_condition: null });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     if (!data.ok) { alert(data.message); return; }
     playBeep();
     const holdAlert = await holdAlertForBarcode(barcode);
@@ -5480,7 +5481,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       .eq('commune_id', myCommuneId)
       .eq('registration_status', 'valide')
       .order('full_name');
-    if (error) { list.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (error) { list.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
 
     const ids = (profiles || []).map(p => p.id);
     let countsByUser = {};
@@ -5559,7 +5560,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       body: { full_name, email, password, tariff_category, commune_id: myCommuneId },
     });
 
-    if (error || !data?.ok) { alert('Erreur : ' + (data?.message || error?.message || 'échec de la création')); return; }
+    if (error || !data?.ok) { alert('Erreur : ' + (data?.message || frError(error) || 'échec de la création')); return; }
 
     closeAddInscritForm();
     await loadInscritsList();
@@ -5612,7 +5613,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       return;
     }
     const { error } = await supabase.rpc('set_user_flagged', { p_user_id: userId, p_flagged: flag, p_reason: reason });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     const { data: freshProfile } = await supabase
       .from('profiles')
       .select('id, full_name, subscriber_number, account_type, commune_id, flagged, flagged_reason, tariff_category')
@@ -5712,7 +5713,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.renewMembership = async function (userId, communeId = null) {
     if (!await confirmDialog('Renouveler l\'adhésion de cet usager ? Encaisse d\'abord le tarif correspondant s\'il y en a un.')) return;
     const { data, error } = await supabase.rpc('renew_membership', { p_user_id: userId, p_commune_id: communeId });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     alert(data.message);
     if (!data.ok) return;
     if (communeId) { await loadNonResidents(); return; }
@@ -5830,13 +5831,13 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   window.reopenAppAccess = async function (userId) {
     const { error } = await supabase.rpc('reopen_app_access', { p_user_id: userId });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     document.getElementById('fiche-app-access').innerHTML = `<p class="px-4 py-2.5 border-b border-mango-50 text-xs text-mango-700">Accès à l'appli rouvert : l'usager peut se reconnecter avec son e-mail et son mot de passe.</p>`;
   };
 
   window.correctTariffCategory = async function (userId, category) {
     const { error } = await supabase.rpc('set_tariff_category', { p_user_id: userId, p_category: category });
-    if (error) alert('Erreur : ' + error.message);
+    if (error) alert('Erreur : ' + frError(error));
   };
 
   // Correction du nom/prénom depuis la fiche usager - utile si l'usager a
@@ -5846,7 +5847,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const newName = await promptDialog('Corriger le nom et prénom :', currentName);
     if (!newName || !newName.trim() || newName.trim() === currentName) return;
     const { error } = await supabase.rpc('update_usager_name', { p_user_id: userId, p_full_name: newName.trim() });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     const nameEl = document.getElementById('fiche-usager-name');
     if (nameEl) {
       nameEl.textContent = newName.trim();
@@ -5889,7 +5890,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       commune_id: myCommuneId,
     }).select().single();
     if (error) {
-      alert('Erreur : ' + error.message);
+      alert('Erreur : ' + frError(error));
       return null;
     }
     // Certaines médiathèques ont plusieurs exemplaires du même titre : un
@@ -5992,7 +5993,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.startInventory = async function () {
     const zone = document.getElementById('inv-zone').value;
     const { error } = await supabase.from('inventories').insert({ commune_id: myCommuneId, zone, zone_label: inventoryZoneLabel(zone), created_by: currentUser.id });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadInventory();
   };
 
@@ -6038,7 +6039,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data: copy } = await supabase.from('book_copies').select('id, barcode, shelf_location, books ( title, shelf_location )').eq('barcode', barcode).maybeSingle();
     if (!copy) { renderInventoryScans(`Code ${barcode} inconnu : livre à cataloguer ?`); return; }
     const { error } = await supabase.from('inventory_scans').upsert({ inventory_id: currentInventory.id, copy_id: copy.id }, { onConflict: 'inventory_id,copy_id', ignoreDuplicates: true });
-    if (error) { renderInventoryScans('Erreur : ' + error.message); return; }
+    if (error) { renderInventoryScans('Erreur : ' + frError(error)); return; }
     playBeep();
     inventoryScans.unshift({ copyId: copy.id, barcode: copy.barcode, title: copy.books?.title, cote: copy.shelf_location || copy.books?.shelf_location });
     renderInventoryScans();
@@ -6048,7 +6049,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!await confirmDialog('Terminer ce récolement et calculer le bilan ?')) return;
     stopCamera();
     const { error } = await supabase.rpc('finish_inventory', { p_inventory_id: currentInventory.id });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await showInventoryReport(currentInventory.id);
   };
 
@@ -6064,7 +6065,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const box = document.getElementById('inv-content');
     box.innerHTML = '<p class="text-sm text-ink/40">Calcul du bilan…</p>';
     const { data, error } = await supabase.rpc('inventory_report', { p_inventory_id: inventoryId });
-    if (error) { box.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (error) { box.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
     const sections = [
       ['manquant', 'Manquants', 'Attendus en rayon mais pas scannés : à rechercher (mauvais rayon, chariot, bureau…).', 'border-red-200', 'text-red-700'],
       ['mal_range', 'Mal rangés', 'Trouvés dans la zone, mais leur cote appartient à un autre rayon.', 'border-amber-200', 'text-amber-700'],
@@ -6086,7 +6087,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.markInventoryMissingLost = async function (inventoryId, n) {
     if (!await confirmDialog(`Passer ${n} exemplaire(s) manquant(s) en « perdu » ? À faire seulement après les avoir cherchés.`)) return;
     const { data, error } = await supabase.rpc('mark_inventory_missing_lost', { p_inventory_id: inventoryId });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     alert(`${data} exemplaire(s) passé(s) en « perdu ».`);
     await loadBooks();
     await showInventoryReport(inventoryId);
@@ -6138,7 +6139,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const destination = document.getElementById('weed-destination').value;
     if (!await confirmDialog(`Retirer ${weedList.length} exemplaire(s) du fonds ?\nMotif : ${WEED_REASON_LABEL[reason]} · Destination : ${WEED_DEST_LABEL[destination]}`)) return;
     const { data, error } = await supabase.rpc('weed_copies', { p_copy_ids: weedList.map(w => w.id), p_reason: reason, p_destination: destination });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     alert(data.message);
     if (!data.ok) return;
     weedList = [];
@@ -6151,7 +6152,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const box = document.getElementById('weed-candidates');
     box.innerHTML = '<p class="text-xs text-ink/40">Recherche…</p>';
     const { data, error } = await supabase.rpc('weeding_candidates', { p_years: Number(document.getElementById('weed-years').value) });
-    if (error) { box.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (error) { box.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
     window._weedCandidates = data || [];
     box.innerHTML = (data || []).length ? data.map((c, i) => `
       <div class="flex items-center justify-between gap-2 border-t border-mango-50 pt-1.5">
@@ -6240,7 +6241,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       frequency: document.getElementById('sub-frequency').value,
       tolerance_days: Number(document.getElementById('sub-tolerance').value || 7),
     });
-    if (error) { alert('Erreur : ' + (/duplicate|unique/i.test(error.message) ? 'cet ISSN est déjà dans tes abonnements.' : error.message)); return; }
+    if (error) { alert('Erreur : ' + (/duplicate|unique/i.test(error.message) ? 'cet ISSN est déjà dans tes abonnements.' : frError(error))); return; }
     ['sub-search', 'sub-issn', 'sub-publisher'].forEach(id => { document.getElementById(id).value = ''; });
     await loadSubscriptions();
   };
@@ -6249,14 +6250,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const issue = await promptDialog('Numéro reçu (ex. 630, ou « octobre 2026 »), facultatif :', '');
     if (issue === null) return;
     const { data, error } = await supabase.rpc('receive_issue', { p_subscription_id: id, p_issue: parseIssueNumber(issue) });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadSubscriptions();
   };
 
   window.removeSubscription = async function (id) {
     if (!await confirmDialog('Retirer cet abonnement de la liste ?')) return;
     const { error } = await supabase.from('periodical_subscriptions').delete().eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadSubscriptions();
   };
 
@@ -6526,7 +6527,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const titles = selectedBookTitlesList();
 
     const { error } = await supabase.from('books').update({ loan_duration_days_override: days }).in('id', [...selectedBookIds]);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
 
     alert(`Délai de ${weeks} semaine${weeks > 1 ? 's' : ''} appliqué aux ${selectedBookIds.size} livre(s) suivant(s) :\n\n${titles}`);
     await loadBooks();
@@ -6537,7 +6538,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const titles = selectedBookTitlesList();
 
     const { error } = await supabase.from('books').update({ is_new_release: value }).in('id', [...selectedBookIds]);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
 
     alert(`${value ? 'Marqués « Nouveauté »' : 'Retirés de « Nouveauté »'} pour les ${selectedBookIds.size} livre(s) suivant(s) :\n\n${titles}`);
     await loadBooks();
@@ -6564,7 +6565,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     }
 
     const { error } = await supabase.from('books').update({ is_staff_pick: value }).in('id', [...selectedBookIds]);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
 
     alert(`${value ? 'Marqués « Coup de cœur »' : 'Retirés de « Coup de cœur »'} pour les ${selectedBookIds.size} livre(s) suivant(s) :\n\n${titles}`);
     await loadBooks();
@@ -6645,7 +6646,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (limitsError) {
       alert(/update_commune_loan_limits/.test(limitsError.message)
         ? 'Limites non enregistrées : le SQL add_limites_emprunt_famille.sql doit d\'abord être exécuté.'
-        : 'Erreur : ' + limitsError.message);
+        : 'Erreur : ' + frError(limitsError));
       return;
     }
     // Plafond global de la carte famille (encore utilisé par l'affichage du profil).
@@ -6669,13 +6670,13 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       p_commune_id: myCommuneId, p_mineur_cents: mineur, p_majeur_cents: majeur, p_gratuit_cents: gratuit,
       p_accepts_card: acceptsCard, p_accepts_cash: acceptsCash,
     });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     const { error: familyError } = await supabase.rpc('update_commune_family_settings', {
       p_commune_id: myCommuneId,
       p_tariff_cents: Math.round(Number(document.getElementById('tariff-famille').value || 0) * 100),
       p_max_loans: Number(document.getElementById('family-limit-general').value || 10) + Number(document.getElementById('family-limit-jeunesse').value || 0),
     });
-    if (familyError && !/update_commune_family_settings/.test(familyError.message)) { alert('Erreur : ' + familyError.message); return; }
+    if (familyError && !/update_commune_family_settings/.test(familyError.message)) { alert('Erreur : ' + frError(familyError)); return; }
     await loadTeamAndTariffs();
   };
 
@@ -6685,7 +6686,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       p_presumed_lost_days: Number(document.getElementById('presumed-lost-days').value || 0),
       p_default_fee_cents: Math.round(Number(document.getElementById('lost-default-fee').value || 0) * 100),
     });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     alert('Réglages enregistrés.');
   };
 
@@ -6696,7 +6697,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       p_non_resident_policy: document.getElementById('non-resident-policy').value,
       p_non_resident_fee_cents: Math.round(Number(document.getElementById('non-resident-fee').value || 0) * 100),
     });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     alert('Réglages enregistrés.');
     await loadTeamAndTariffs();
   };
@@ -6706,7 +6707,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       p_commune_id: myCommuneId,
       p_enabled: document.getElementById('holds-enabled').value === 'true',
     });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     alert('Réglage enregistré.');
   };
 
@@ -6717,11 +6718,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { error } = await supabase.rpc('update_commune_opening_hours', {
       p_commune_id: myCommuneId, p_opening_hours: hours,
     });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     const { error: addressError } = await supabase.rpc('update_commune_address', {
       p_commune_id: myCommuneId, p_address: document.getElementById('commune-address').value.trim(),
     });
-    if (addressError) { alert('Erreur : ' + addressError.message); return; }
+    if (addressError) { alert('Erreur : ' + frError(addressError)); return; }
     alert('Adresse et horaires enregistrés.');
   };
 
@@ -6800,7 +6801,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       kind: document.getElementById('digital-kind').value,
       description: document.getElementById('digital-description').value.trim() || null,
     });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     ['digital-name', 'digital-url', 'digital-description'].forEach(id => { document.getElementById(id).value = ''; });
     await loadDigitalResources();
   };
@@ -6808,7 +6809,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.removeDigitalResource = async function (id) {
     if (!await confirmDialog('Retirer cette ressource numérique ?')) return;
     const { error } = await supabase.from('digital_resources').delete().eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadDigitalResources();
   };
 
@@ -6872,7 +6873,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.saveCoteRules = async function () {
     const rules = readCoteRulesForm();
     const { error } = await supabase.rpc('update_commune_cote_rules', { p_commune_id: myCommuneId, p_rules: rules });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     coteRules = mergeCoteRules(rules);
     alert('Règles de cote enregistrées. Elles s\'appliquent aux prochains documents catalogués.');
     renderCatalogue();
@@ -6911,7 +6912,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!myCommuneId) { alert('Ton compte n\'est rattaché à aucune médiathèque.'); return; }
     const kind = document.getElementById('settings-doctype-kind').value;
     const { error } = await supabase.from('document_types').insert({ commune_id: myCommuneId, label, kind, sort_order: 200 });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     input.value = '';
     await loadDocumentTypes();
     renderDocumentTypesSettings();
@@ -6921,7 +6922,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const t = documentTypes.find(x => x.id === id);
     if (!t || !await confirmDialog(`Retirer « ${t.label} » de la liste ? Les documents déjà catalogués avec ce type le gardent.`)) return;
     const { error } = await supabase.from('document_types').delete().eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadDocumentTypes();
     renderDocumentTypesSettings();
   };
@@ -6984,13 +6985,13 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     catch { status.className = 'text-[11px] text-red-600 mt-2 min-h-[16px]'; status.textContent = 'Image illisible : choisis un fichier PNG ou JPEG.'; return; }
     const path = `${myCommuneId}/logo.png`;
     const { error: upErr } = await supabase.storage.from('commune-logos').upload(path, png, { upsert: true, contentType: 'image/png' });
-    if (upErr) { status.className = 'text-[11px] text-red-600 mt-2 min-h-[16px]'; status.textContent = 'Erreur d\'envoi du logo : ' + upErr.message; return; }
+    if (upErr) { status.className = 'text-[11px] text-red-600 mt-2 min-h-[16px]'; status.textContent = 'Erreur d\'envoi du logo : ' + frError(upErr); return; }
     const { data: pub } = supabase.storage.from('commune-logos').getPublicUrl(path);
     const logo_url = pub.publicUrl + '?t=' + Date.now(); // même nom de fichier : évite l'ancien logo en cache
     const { error } = await supabase.rpc('update_commune_theme', {
       p_commune_id: myCommuneId, p_ink_hex: selectedInkHex, p_accent_hex: selectedAccentHex, p_logo_url: logo_url,
     });
-    if (error) { status.className = 'text-[11px] text-red-600 mt-2 min-h-[16px]'; status.textContent = 'Erreur : ' + error.message; return; }
+    if (error) { status.className = 'text-[11px] text-red-600 mt-2 min-h-[16px]'; status.textContent = 'Erreur : ' + frError(error); return; }
     const preview = document.getElementById('settings-logo-preview');
     document.getElementById('settings-logo-empty').classList.add('hidden');
     preview.src = logo_url;
@@ -7013,7 +7014,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const ext = (pendingLogoFile.name.split('.').pop() || 'png').toLowerCase();
       const path = `${myCommuneId}/logo.${ext}`;
       const { error: upErr } = await supabase.storage.from('commune-logos').upload(path, pendingLogoFile, { upsert: true });
-      if (upErr) { status.textContent = ''; alert('Erreur upload logo : ' + upErr.message); return; }
+      if (upErr) { status.textContent = ''; alert('Erreur upload logo : ' + frError(upErr)); return; }
       const { data: pub } = supabase.storage.from('commune-logos').getPublicUrl(path);
       logo_url = pub.publicUrl + '?t=' + Date.now(); // le nom de fichier ne change pas, on évite un logo mis en cache après remplacement
     }
@@ -7021,7 +7022,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { error } = await supabase.rpc('update_commune_theme', {
       p_commune_id: myCommuneId, p_ink_hex: selectedInkHex, p_accent_hex: selectedAccentHex, p_logo_url: logo_url,
     });
-    if (error) { status.textContent = ''; alert('Erreur : ' + error.message); return; }
+    if (error) { status.textContent = ''; alert('Erreur : ' + frError(error)); return; }
     pendingLogoFile = null;
     status.textContent = '✓ Modifications enregistrées.';
     // Applique tout de suite dans cette fenêtre, sans attendre un rechargement.
@@ -7240,19 +7241,19 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   window.updateBookCategory = async function (id, category) {
     const { error } = await supabase.from('books').update({ category }).eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadBooks();
   };
 
   window.updateShelfLocation = async function (id, value) {
     const { error } = await supabase.from('books').update({ shelf_location: value.trim() || null }).eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadBooks();
   };
 
   window.updateOnSiteOnly = async function (id, checked) {
     const { error } = await supabase.from('books').update({ on_site_only: checked }).eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadBooks();
   };
 
@@ -7361,7 +7362,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const { error } = await supabase.from('books').update({ equipped: true, available: true }).eq('id', equipBookId);
       if (error) throw error;
     } catch (err) {
-      errorEl.textContent = 'Erreur : ' + err.message;
+      errorEl.textContent = 'Erreur : ' + frError(err);
       btn.disabled = false;
       btn.textContent = '✓ Valider et mettre en ligne';
       return;
@@ -7376,7 +7377,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.deleteBook = async function (id, title) {
     if (!await confirmDialog(`Es-tu sûr de vouloir supprimer le livre « ${title} » ?`)) return;
     const { data, error } = await supabase.from('books').delete().eq('id', id).select();
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     if (!data || data.length === 0) {
       alert(`« ${title} » n'a pas pu être supprimé (0 ligne affectée). Vérifie que le compte utilisé a bien le rôle agent ou super_admin.`);
       return;
@@ -7818,7 +7819,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       summary: val('bd-summary'),
     };
     const { error } = await supabase.from('books').update(payload).eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     closeBookModal();
     await loadBooks();
   };
@@ -7870,7 +7871,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.decideMembership = async function (id, accept) {
     if (accept && !await confirmDialog('Valider cette inscription ? Encaisse d\'abord le tarif non-résident s\'il y en a un.')) return;
     const { error } = await supabase.rpc('decide_membership', { p_membership_id: id, p_accept: accept });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadNonResidents();
   };
 
@@ -7927,10 +7928,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!await confirmDialog(`Confirmer la validation de l'inscription de ${name} ? Vérifie bien sa pièce d'identité et son justificatif de domicile (et son autorisation parentale si mineur) avant de continuer.`)) return;
 
     const { error: tariffError } = await supabase.rpc('set_tariff_category', { p_user_id: id, p_category: tariff_category });
-    if (tariffError) { alert('Erreur : ' + tariffError.message); return; }
+    if (tariffError) { alert('Erreur : ' + frError(tariffError)); return; }
 
     const { error } = await supabase.rpc('validate_registration', { p_user_id: id });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadPreregistrations();
   };
 
@@ -8201,7 +8202,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       .eq('status', 'pret')
       .order('ready_at');
 
-    if (readyError) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(readyError.message)}</p>`; return; }
+    if (readyError) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(readyError))}</p>`; return; }
 
     if (!ready || !ready.length) {
       resultBox.innerHTML = `
@@ -8246,7 +8247,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   async function pickupOne(reservationId) {
     const { data, error } = await supabase.rpc('mark_reservation_picked_up', { p_reservation_id: reservationId });
-    if (error) { alert('Erreur : ' + error.message); return false; }
+    if (error) { alert('Erreur : ' + frError(error)); return false; }
     if (!data.ok) { alert(data.message); return false; }
     const item = pickupState?.items.find(r => r.id === reservationId);
     if (item) { item.done = true; item.message = data.message; }
@@ -8279,7 +8280,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // est là. Voir sql/add_transfer_routes_and_prepare.sql.
   window.prepareReservation = async function (id) {
     const { data, error } = await supabase.rpc('prepare_reservation', { p_reservation_id: id });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     if (!data.ok) { alert(data.message); return; }
     if (data.needs_transfer) alert(data.message);
     await loadReservations();
@@ -8292,7 +8293,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     // sql/fix_reservation_pickup_creates_loan.sql).
     if (status === 'recupere') {
       const { data, error } = await supabase.rpc('mark_reservation_picked_up', { p_reservation_id: id });
-      if (error) { alert('Erreur : ' + error.message); return; }
+      if (error) { alert('Erreur : ' + frError(error)); return; }
       if (!data.ok) { alert(data.message); return; }
       await Promise.all([loadReservations(), loadActiveLoans()]);
       return;
@@ -8300,7 +8301,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const payload = { status };
     if (status === 'pret') payload.ready_at = new Date().toISOString();
     const { error } = await supabase.from('reservations').update(payload).eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadReservations();
   };
 
@@ -8314,7 +8315,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const errors = [];
     for (const r of items) {
       const { data, error } = await supabase.rpc('mark_reservation_picked_up', { p_reservation_id: r.id });
-      if (error || !data?.ok) errors.push(`${r.books?.title || 'Document'} : ${error?.message || data?.message}`);
+      if (error || !data?.ok) errors.push(`${r.books?.title || 'Document'} : ${frError(error) || data?.message}`);
     }
     if (errors.length) alert('Certains documents n\'ont pas pu être remis :\n' + errors.join('\n'));
     await Promise.all([loadReservations(), loadActiveLoans()]);
@@ -8439,9 +8440,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data, error } = await supabase.rpc('finish_reshelve', kind === 'loan' ? { p_loan_id: id } : { p_reservation_id: id });
     if (error) {
       // Tant que sql/file_attente_remise_en_rayon.sql n'est pas passé : ancien fonctionnement.
-      if (!/finish_reshelve/.test(error.message)) { alert('Erreur : ' + error.message); return; }
+      if (!/finish_reshelve/.test(error.message)) { alert('Erreur : ' + frError(error)); return; }
       const { error: updateError } = await supabase.from(kind === 'loan' ? 'loans' : 'reservations').update({ reshelved: true }).eq('id', id);
-      if (updateError) { alert('Erreur : ' + updateError.message); return; }
+      if (updateError) { alert('Erreur : ' + frError(updateError)); return; }
     } else if (!data.ok) {
       alert(data.message); return;
     } else if (data.prepared_for) {
@@ -8750,7 +8751,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     }
 
     const { data: isNew, error } = await supabase.rpc('record_event_checkin', { p_user_id: profile.id, p_event_id: eventId });
-    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
 
     playBeep();
     resultBox.innerHTML = isNew
@@ -8930,7 +8931,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const slug = normalizeKey(event_type + ' ' + title).replace(/[^a-z0-9]+/g, '-').slice(0, 60) || 'evenement';
       const path = `${slug}-${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage.from('event-images').upload(path, pendingEventImageFile);
-      if (upErr) { alert('Erreur upload affiche : ' + upErr.message); return; }
+      if (upErr) { alert('Erreur upload affiche : ' + frError(upErr)); return; }
       const { data: pub } = supabase.storage.from('event-images').getPublicUrl(path);
       image_url = pub.publicUrl;
     }
@@ -8952,7 +8953,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       ? await supabase.from('events').update(payload).eq('id', id).select('*, communes ( name )').single()
       : await supabase.from('events').insert(payload).select('*, communes ( name )').single();
 
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
 
     const wasCreate = !id;
     resetEventForm();
@@ -8970,7 +8971,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.deleteEvent = async function (id, title) {
     if (!await confirmDialog(`Supprimer l'événement « ${title} » ?`)) return;
     const { error } = await supabase.from('events').delete().eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadEvents();
   };
 
@@ -9052,7 +9053,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     content.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Calcul en cours…</p>`;
 
     const { data, error } = await supabase.rpc('sigb_annual_stats', { p_commune_id: myCommuneId, p_year: year });
-    if (error) { content.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
+    if (error) { content.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
 
     content.innerHTML = SIGB_STATS_BLOCKS.map(block => `
       <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">

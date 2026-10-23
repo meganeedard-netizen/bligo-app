@@ -87,7 +87,7 @@
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
-  import { showSnackbar, showDialog } from './js/ui.js?v=20261016d';
+  import { showSnackbar, showDialog, frError } from './js/ui.js?v=20261023';
 
 
 
@@ -426,7 +426,7 @@
       // La jauge est aussi vérifiée côté base (trigger), au cas où deux usagers
       // se disputeraient la dernière place en même temps.
       const { error } = await supabase.from('event_rsvps').insert({ event_id: eventId, user_id: currentUser.id });
-      if (error) showDialog({ message: error.message });
+      if (error) showDialog({ message: frError(error) });
       else showSnackbar('Inscription confirmée !');
     }
     await loadEvents();

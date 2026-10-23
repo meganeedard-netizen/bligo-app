@@ -194,7 +194,7 @@
   applyCachedTheme();
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
   import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
-  import { showSnackbar, showDialog, confirmDialog } from './js/ui.js?v=20261016d';
+  import { showSnackbar, showDialog, confirmDialog, frError } from './js/ui.js?v=20261023';
 
   let currentUser = null;
   let isLibreAccount = false;
@@ -481,7 +481,7 @@
       supabase.from('document_types').select('label, kind'),
     ]);
     if (error) {
-      statusEl.textContent = 'Erreur de chargement : ' + error.message;
+      statusEl.textContent = 'Erreur de chargement : ' + frError(error);
       return;
     }
     books = data;
@@ -515,7 +515,7 @@
   window.joinHold = async function (bookId) {
     if (!requireAccount('reserve')) return;
     const { data, error } = await supabase.rpc('join_hold', { p_book_id: bookId });
-    if (error) { showAppAlert(error.message); return; }
+    if (error) { showAppAlert(frError(error)); return; }
     // Déjà à son maximum (22/10/2026) : la liste d'envie plutôt que la file.
     if (data && data.ok === false && data.limit_reached) {
       const choice = await showDialog({
@@ -613,7 +613,7 @@
       ({ error } = await supabase.from('wishlist').insert({ user_id: currentUser.id, book_id: bookId }));
     }
     if (error) {
-      showAppAlert('Erreur liste d\'envies : ' + error.message);
+      showAppAlert('Erreur liste d\'envies : ' + frError(error));
       return;
     }
     const added = !wishlist.includes(bookId);
@@ -808,7 +808,7 @@
         const ask = await confirmDialog({ title: 'Pas encore de carte ici', message: `Tu n'as pas encore de carte pour la médiathèque de ${myCommuneName}. Demander ton inscription ? Elle sera validée par la médiathèque, selon ses conditions pour les non-résidents.`, confirmLabel: 'Demander mon inscription', cancelLabel: 'Annuler' });
         if (ask) {
           const { data, error: reqError } = await supabase.rpc('request_membership', { p_commune_id: catalogueCommuneId });
-          showAppAlert(reqError ? reqError.message : data.message);
+          showAppAlert(reqError ? frError(reqError) : data.message);
         }
         return;
       }
@@ -821,7 +821,7 @@
         }).then(v => { if (v === 'resa') window.location.href = 'reservations.html'; });
         return;
       }
-      showAppAlert(error.message);
+      showAppAlert(frError(error));
       return;
     }
     const b = books.find(x => x.id === bookId);
@@ -1132,7 +1132,7 @@
         }
         const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
         if (error) {
-          alert('Erreur lors de l\'enregistrement de tes préférences : ' + error.message);
+          alert('Erreur lors de l\'enregistrement de tes préférences : ' + frError(error));
           return;
         }
         backdrop.classList.add('hidden');
@@ -1143,7 +1143,7 @@
       document.getElementById('onboarding-skip-btn').addEventListener('click', async () => {
         const { error } = await supabase.from('profiles').update({ onboarding_completed: true }).eq('id', userId);
         if (error) {
-          alert('Erreur : ' + error.message);
+          alert('Erreur : ' + frError(error));
           return;
         }
         backdrop.classList.add('hidden');

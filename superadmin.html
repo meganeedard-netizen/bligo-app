@@ -295,6 +295,7 @@
 
 <script type="module">
   import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { frError } from './js/ui.js?v=20261023';
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
 
   let currentUser = null;
@@ -451,7 +452,7 @@
       ? await supabase.from('communes').update(payload).eq('id', id)
       : await supabase.from('communes').insert(payload);
 
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     resetCommuneForm();
     await loadCommunes();
   };
@@ -459,7 +460,7 @@
   window.deleteCommune = async function (id, name) {
     if (!await confirmDialog(`Supprimer la commune « ${name} » ?`)) return;
     const { error } = await supabase.from('communes').delete().eq('id', id);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadCommunes();
   };
 
@@ -515,7 +516,7 @@
     if (!communeId) { alert('Choisis d\'abord une médiathèque.'); return; }
     if (!email) { alert('Indique l\'e-mail du compte usager.'); return; }
     const { data: name, error } = await supabase.rpc('promote_user_to_agent', { p_email: email, p_commune_id: Number(communeId), p_level: level });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     document.getElementById('promote-email').value = '';
     document.getElementById('promote-level').value = 'agent';
     alert(`${name} est maintenant ${level === 'direction' ? 'direction' : 'agent'} de cette médiathèque. Le bouton « Back-office » apparaît dans son profil.`);
@@ -526,13 +527,13 @@
     const name = lastTeam.find(t => t.id === userId)?.full_name || 'cette personne';
     if (!await confirmDialog(`Retirer l'accès au back-office à ${name} ? Son compte redevient un compte usager.`)) return;
     const { error } = await supabase.rpc('revoke_agent_access', { p_user_id: userId });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadTeamForCommune();
   };
 
   window.toggleAgentLevel = async function (userId, newLevel) {
     const { error } = await supabase.rpc('set_agent_level', { p_user_id: userId, p_level: newLevel });
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadTeamForCommune();
   };
 
@@ -553,7 +554,7 @@
       body: { full_name, email, password, agent_level, commune_id: Number(commune_id) },
     });
 
-    if (error || !data?.ok) { alert('Erreur : ' + (data?.message || error?.message || 'échec de la création')); return; }
+    if (error || !data?.ok) { alert('Erreur : ' + (data?.message || frError(error) || 'échec de la création')); return; }
 
     document.getElementById('team-full-name').value = '';
     document.getElementById('team-email').value = '';
@@ -608,7 +609,7 @@
     const commune_id = Number(select.value) || null;
     if (!commune_id) { alert('Choisis une commune.'); return; }
     const { error } = await supabase.from('profiles').update({ commune_id, commune_confirmed: true }).eq('id', userId);
-    if (error) { alert('Erreur : ' + error.message); return; }
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadUsers();
   };
 
@@ -763,7 +764,7 @@
     const path = `covers/${slug}-${Date.now()}.${ext}`;
 
     const { error: upErr } = await supabase.storage.from('book-covers').upload(path, file);
-    if (upErr) { alert('Erreur upload : ' + upErr.message); return; }
+    if (upErr) { alert('Erreur upload : ' + frError(upErr)); return; }
     const { data: pub } = supabase.storage.from('book-covers').getPublicUrl(path);
     const image_url = pub.publicUrl;
 
@@ -884,7 +885,7 @@
 
     if (upserts.length) {
       const { error } = await supabase.from('monthly_top_books').upsert(upserts, { onConflict: 'month,rank' });
-      if (error) { alert('Erreur : ' + error.message); return; }
+      if (error) { alert('Erreur : ' + frError(error)); return; }
     }
     if (emptyRanks.length) {
       const { error } = await supabase.from('monthly_top_books').delete().eq('month', monthStart).in('rank', emptyRanks);

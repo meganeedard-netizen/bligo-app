@@ -82,6 +82,7 @@
 
 <script type="module">
   import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { frError } from './js/ui.js?v=20261023';
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
@@ -105,7 +106,7 @@
     if (error) {
       notificationsEnabled = !notificationsEnabled;
       renderNotifToggle();
-      alert('Erreur : ' + error.message);
+      alert('Erreur : ' + frError(error));
     }
   });
 
@@ -149,7 +150,7 @@
   async function removeFromWishlist(bookId) {
     const { error } = await supabase.from('wishlist').delete().eq('user_id', currentUser.id).eq('book_id', bookId);
     if (error) {
-      alert('Erreur liste d\'envie : ' + error.message);
+      alert('Erreur liste d\'envie : ' + frError(error));
       return;
     }
     await loadWishlist();
