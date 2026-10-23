@@ -27,7 +27,23 @@
 </style>
 <!-- Contenu masqué tant que la page n'a pas ses vraies données (23/10/2026) :
      plus de flash de « 0 point » ou de page vide. Sécurité : affiché au bout de 2,5 s quoi qu'il arrive. -->
-<style>html.page-loading main { visibility: hidden; }</style>
+<style>
+  html.page-loading main { visibility: hidden; }
+  /* Trois points de chargement (23/10/2026), visibles seulement si la page met plus d'un quart de seconde. */
+  html.page-loading::after {
+    content: ''; position: fixed; left: 50%; top: 45%; z-index: 35;
+    width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; opacity: 0;
+    background: rgb(var(--color-brand-rgb, 27 75 67) / 0.25);
+    box-shadow: -20px 0 0 rgb(var(--color-brand-rgb, 27 75 67) / 0.25), 20px 0 0 rgb(var(--color-brand-rgb, 27 75 67) / 0.25);
+    animation: bligo-dots-in 0.2s 0.25s forwards, bligo-dots 1.2s 0.25s infinite;
+  }
+  @keyframes bligo-dots-in { to { opacity: 1; } }
+  @keyframes bligo-dots {
+    0%, 100% { box-shadow: -20px 0 0 rgb(var(--color-brand-rgb, 27 75 67) / 0.9), 20px 0 0 rgb(var(--color-brand-rgb, 27 75 67) / 0.25); background: rgb(var(--color-brand-rgb, 27 75 67) / 0.25); }
+    33% { box-shadow: -20px 0 0 rgb(var(--color-brand-rgb, 27 75 67) / 0.25), 20px 0 0 rgb(var(--color-brand-rgb, 27 75 67) / 0.25); background: rgb(var(--color-brand-rgb, 27 75 67) / 0.9); }
+    66% { box-shadow: -20px 0 0 rgb(var(--color-brand-rgb, 27 75 67) / 0.25), 20px 0 0 rgb(var(--color-brand-rgb, 27 75 67) / 0.9); background: rgb(var(--color-brand-rgb, 27 75 67) / 0.25); }
+  }
+</style>
 <script>document.documentElement.classList.add('page-loading'); setTimeout(function () { document.documentElement.classList.remove('page-loading'); }, 2500);</script>
 </head>
 <body class="bg-white text-ink min-h-screen pb-24">
