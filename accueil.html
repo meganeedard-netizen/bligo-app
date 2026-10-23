@@ -972,24 +972,23 @@
     let reviews = reviewsData || [];
     const reviewerIds = [...new Set(reviews.map(r => r.user_id))];
     if (reviewerIds.length) {
-      const { data: reviewerProfiles } = await supabase.from('profiles').select('id, full_name, badge_tier').in('id', reviewerIds);
+      // Avis anonymes : on ne récupère que le badge, jamais le nom de l'auteur.
+      const { data: reviewerProfiles } = await supabase.from('profiles').select('id, badge_tier').in('id', reviewerIds);
       const profilesById = Object.fromEntries((reviewerProfiles || []).map(p => [p.id, p]));
       reviews = reviews.map(r => ({ ...r, profiles: profilesById[r.user_id] }));
     }
 
     const reviewsHtml = reviews.length
       ? reviews.map(r => {
-          const firstName = (r.profiles?.full_name || 'Usager').split(' ')[0];
           return `
             <div class="border-t border-mango-50 pt-3 mt-3 first:border-t-0 first:pt-0 first:mt-0">
               <div class="flex items-center justify-between gap-2 mb-1">
                 <div class="flex items-center gap-1.5">
-                  <span class="text-sm font-bold text-ink">${firstName}</span>
                   ${reviewerBadgeChip(r.profiles?.badge_tier)}
                 </div>
                 <div class="flex gap-0.5 shrink-0">${starsHtml(r.rating)}</div>
               </div>
-              ${r.comment ? `<p class="text-sm text-ink/65 leading-relaxed line-clamp-4">${r.comment}</p>` : ''}
+              ${r.comment ? `<p class="text-sm text-ink/65 leading-relaxed line-clamp-4">${escapeHtmlU(r.comment)}</p>` : ''}
             </div>`;
         }).join('')
       : `<p class="text-sm text-ink/40">Aucun avis laissé</p>`;

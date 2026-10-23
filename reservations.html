@@ -619,7 +619,7 @@
           </div>
           ${item.myRating ? `
             <div class="mt-2">
-              <textarea id="history-comment-${item.bookId}" maxlength="300" placeholder="Ton avis en quelques mots (optionnel)…" class="w-full bg-[#EEEDF2] rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-mango-300 resize-none" rows="2">${item.myComment || ''}</textarea>
+              <textarea id="history-comment-${item.bookId}" maxlength="300" placeholder="Ton avis en quelques mots (optionnel)…" class="w-full bg-[#EEEDF2] rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-mango-300 resize-none" rows="2">${escapeHtml(item.myComment)}</textarea>
               <button type="button" onclick="saveHistoryComment(${item.bookId})" class="mt-1 text-[11px] font-semibold text-mango-700">Enregistrer le commentaire</button>
               <span id="history-comment-msg-${item.bookId}" class="text-[11px] text-ink/40 ml-2"></span>
             </div>` : ''}
