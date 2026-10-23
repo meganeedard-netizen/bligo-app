@@ -378,9 +378,17 @@
   // Noms affichés (16/10/2026, demande de Mégane) : les mêmes que dans le
   // back-office ; « BD » s'affiche « BD & Mangas » et « Thriller » s'affiche
   // « Policier & Thriller » (les valeurs en base ne changent pas).
+  // Nom affiché (23/10/2026 pour les 6 derniers) ; la valeur enregistrée
+  // dans la fiche du livre ne change pas.
   const CATEGORY_SHORT_LABELS = {
     'BD': 'BD & Mangas',
     'Thriller': 'Policier & Thriller',
+    'Fantasy': 'Science-Fiction & Fantasy',
+    'Poésie & théâtre': 'Poésie & Théâtre',
+    'Sciences & nature': 'Sciences & Nature',
+    'Histoire': 'Histoire & Patrimoine',
+    'Culture': 'Arts & Culture',
+    'Sports & loisirs': 'Sports & Loisirs',
   };
 
   // Catégorie du livre en petit texte orange au-dessus du titre (16/10/2026,
@@ -389,6 +397,10 @@
     if (!category) return '';
     return `<p class="text-[9.5px] font-bold uppercase tracking-wide text-mango-600 leading-tight truncate mb-0.5">${CATEGORY_SHORT_LABELS[category] || category}</p>`;
   }
+
+  // Nom sur la tuile : pas de coupure au tiret (« Science-Fiction » reste
+  // entier), et un peu plus petit au-delà de 20 caractères pour tenir sur 2 lignes.
+  const tileLabel = label => (CATEGORY_SHORT_LABELS[label] || label).replace(/-/g, '\u2011');
 
   function renderCategoryFilters() {
     const el = document.getElementById('category-filters');
@@ -404,7 +416,7 @@
       return `
       <button data-value="${c.value ?? ''}" class="category-chip cat-tile ${activeCategory === c.value ? 'is-active' : ''} flex flex-col items-center gap-1 pt-2.5 pb-2 px-1 rounded-2xl bg-white shadow-[0_3px_12px_rgba(16,24,40,0.08)] transition active:scale-95">
         <span class="w-9 h-9 flex items-center justify-center">${icon}</span>
-        <span class="cat-label h-[26px] flex items-center text-[10.5px] font-semibold leading-[13px] text-center text-ink/70">${CATEGORY_SHORT_LABELS[c.label] || c.label}</span>
+        <span class="cat-label h-[26px] flex items-center ${tileLabel(c.label).length > 20 ? 'text-[9.5px] leading-[12px]' : 'text-[10.5px] leading-[13px]'} font-semibold text-center text-ink/70">${tileLabel(c.label)}</span>
       </button>`;
     }).join('');
     el.querySelectorAll('.category-chip').forEach(btn => {
