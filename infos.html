@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Mes informations</title>
 <link rel="stylesheet" href="css/bligo.css?v=20261023">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/fonts.css?v=20261023">
 <style>
   body { font-family: 'Inter', sans-serif; }
   html, body { overscroll-behavior-y: contain; }
@@ -32,6 +32,10 @@
   .toggle[aria-checked="true"] { background: var(--color-mango-500, #FF9B2E); }
   .toggle[aria-checked="true"] span { transform: translateX(22px); }
 </style>
+<!-- Contenu masqué tant que la page n'a pas ses vraies données (23/10/2026) :
+     plus de flash de « 0 point » ou de page vide. Sécurité : affiché au bout de 2,5 s quoi qu'il arrive. -->
+<style>html.page-loading main { visibility: hidden; }</style>
+<script>document.documentElement.classList.add('page-loading'); setTimeout(function () { document.documentElement.classList.remove('page-loading'); }, 2500);</script>
 </head>
 <body class="bg-[#F4F3F7] text-ink min-h-screen">
 
@@ -205,7 +209,7 @@
     msg.className = 'text-xs min-h-[16px] mb-1 text-mango-700';
   });
 
-  init();
+  init().finally(() => document.documentElement.classList.remove('page-loading'));
 </script>
 </body>
 </html>

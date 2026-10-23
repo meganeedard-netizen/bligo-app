@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO · Réservations</title>
 <link rel="stylesheet" href="css/bligo.css?v=20261023">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/fonts.css?v=20261023">
 <style>
   body { font-family: 'Inter', sans-serif; }
   html, body { overscroll-behavior-y: contain; }
@@ -25,6 +25,10 @@
     #history-list textarea::placeholder { font-size: 12px; }
   }
 </style>
+<!-- Contenu masqué tant que la page n'a pas ses vraies données (23/10/2026) :
+     plus de flash de « 0 point » ou de page vide. Sécurité : affiché au bout de 2,5 s quoi qu'il arrive. -->
+<style>html.page-loading main { visibility: hidden; }</style>
+<script>document.documentElement.classList.add('page-loading'); setTimeout(function () { document.documentElement.classList.remove('page-loading'); }, 2500);</script>
 </head>
 <body class="bg-white text-ink min-h-screen pb-24">
 
@@ -751,7 +755,7 @@
   // Le décompte des 30 minutes se met à jour tout seul.
   setInterval(() => { if (currentUser) renderAll(); }, 30000);
 
-  init();
+  init().finally(() => document.documentElement.classList.remove('page-loading'));
 </script>
 </body>
 </html>
