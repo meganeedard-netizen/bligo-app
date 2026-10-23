@@ -694,6 +694,13 @@
     el.innerHTML = items.length ? groupByCommune(items).map(overdueGroupHtml).join('') : '';
   }
 
+  // Avis refusé par la base : auteur bloqué par la médiathèque (42501) ou mots
+  // interdits (message du filtre, déjà rédigé pour l'usager).
+  function reviewErrorMessage(error) {
+    if (error.code === '42501') return 'Tu ne peux plus publier d\'avis. Rapproche-toi de ta médiathèque.';
+    return error.message;
+  }
+
   window.rateBookFromHistory = async function (bookId, rating) {
     if (myRatings[bookId] && myRatings[bookId] !== rating) {
       const ok = await confirmDialog({ title: 'Changer ta note ?', message: 'Tu as déjà noté ce livre.', confirmLabel: 'Changer ma note', cancelLabel: 'Garder ma note' });
@@ -702,7 +709,7 @@
     const { error } = await supabase
       .from('book_reviews')
       .upsert({ book_id: bookId, user_id: currentUser.id, rating }, { onConflict: 'book_id,user_id' });
-    if (error) { showDialog({ message: 'Erreur : ' + error.message }); return; }
+    if (error) { showDialog({ message: reviewErrorMessage(error) }); return; }
     myRatings[bookId] = rating;
     renderAll();
   };
@@ -713,7 +720,7 @@
     const { error } = await supabase
       .from('book_reviews')
       .upsert({ book_id: bookId, user_id: currentUser.id, rating: myRatings[bookId], comment: textarea.value.trim() || null }, { onConflict: 'book_id,user_id' });
-    if (error) { msg.textContent = 'Erreur : ' + error.message; msg.className = 'text-[11px] text-red-600 ml-2'; return; }
+    if (error) { msg.textContent = reviewErrorMessage(error); msg.className = 'text-[11px] text-red-600 ml-2'; return; }
     myComments[bookId] = textarea.value.trim();
     msg.textContent = 'Enregistré ✓';
     msg.className = 'text-[11px] text-ink/40 ml-2';

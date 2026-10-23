@@ -970,6 +970,12 @@
     if (error) console.error(error);
 
     let reviews = reviewsData || [];
+    // Auteurs que l'usager a choisi de ne plus voir (après un signalement).
+    if (currentUser && reviews.length) {
+      const { data: mutes } = await supabase.from('review_author_mutes').select('muted_user_id');
+      const muted = new Set((mutes || []).map(m => m.muted_user_id));
+      reviews = reviews.filter(r => !muted.has(r.user_id));
+    }
     const reviewerIds = [...new Set(reviews.map(r => r.user_id))];
     if (reviewerIds.length) {
       // Avis anonymes : on ne récupère que le badge, jamais le nom de l'auteur.
@@ -989,6 +995,25 @@
                 <div class="flex gap-0.5 shrink-0">${starsHtml(r.rating)}</div>
               </div>
               ${r.comment ? `<p class="text-sm text-ink/65 leading-relaxed line-clamp-4">${escapeHtmlU(r.comment)}</p>` : ''}
+              ${currentUser && r.user_id !== currentUser.id ? `
+                <button type="button" onclick="openReviewReport(${r.id})" id="review-report-btn-${r.id}" class="mt-1 text-[11px] font-semibold text-ink/40">Signaler</button>
+                <div id="review-report-${r.id}" class="hidden mt-2 bg-[#EEEDF2] rounded-xl p-3">
+                  <p class="text-xs font-bold text-ink mb-2">Pourquoi signales-tu cet avis ?</p>
+                  <select id="review-report-reason-${r.id}" style="font-size: 16px;" class="w-full bg-white rounded-lg px-2 py-2 outline-none mb-2">
+                    <option value="injurieux">Injurieux ou offensant</option>
+                    <option value="divulgacheur">Il dévoile la fin du livre</option>
+                    <option value="hors_sujet">Hors sujet</option>
+                    <option value="autre">Autre raison</option>
+                  </select>
+                  <label class="flex items-center gap-2 text-xs text-ink/70 mb-3">
+                    <input type="checkbox" id="review-report-mute-${r.id}" class="accent-mango-600">
+                    Ne plus voir les avis de cette personne
+                  </label>
+                  <div class="flex gap-2">
+                    <button type="button" onclick="sendReviewReport(${r.id}, '${r.user_id}')" class="bg-mango-600 text-white text-xs font-bold px-3 py-1.5 rounded-full">Envoyer</button>
+                    <button type="button" onclick="openReviewReport(${r.id})" class="text-xs font-semibold text-ink/50 px-2">Annuler</button>
+                  </div>
+                </div>` : ''}
             </div>`;
         }).join('')
       : `<p class="text-sm text-ink/40">Aucun avis laissé</p>`;
@@ -998,6 +1023,24 @@
       <div>${reviewsHtml}</div>
     `;
   }
+
+  // Signalement d'un avis (exigence Apple pour le contenu des usagers) :
+  // la médiathèque le reçoit dans le logiciel agent, écran « Avis signalés ».
+  window.openReviewReport = function (reviewId) {
+    document.getElementById(`review-report-${reviewId}`).classList.toggle('hidden');
+  };
+
+  window.sendReviewReport = async function (reviewId, authorId) {
+    const reason = document.getElementById(`review-report-reason-${reviewId}`).value;
+    const mute = document.getElementById(`review-report-mute-${reviewId}`).checked;
+    const { error } = await supabase.from('review_reports').insert({ review_id: reviewId, reporter_id: currentUser.id, reason });
+    // Déjà signalé par cet usager : on le considère comme envoyé.
+    if (error && error.code !== '23505') { alert("Le signalement n'a pas pu être envoyé. Réessaie dans un instant."); return; }
+    if (mute) await supabase.from('review_author_mutes').upsert({ user_id: currentUser.id, muted_user_id: authorId }, { onConflict: 'user_id,muted_user_id' });
+    const box = document.getElementById(`review-report-${reviewId}`);
+    box.innerHTML = `<p class="text-xs text-ink/70">Merci, ta médiathèque va vérifier cet avis.${mute ? ' Tu ne verras plus les avis de cette personne.' : ''}</p>`;
+    document.getElementById(`review-report-btn-${reviewId}`)?.remove();
+  };
 
   window.closeBookModal = function (event) {
     if (event && event.target.id !== 'book-modal-backdrop') return;
