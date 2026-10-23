@@ -5206,7 +5206,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     }
     if (error) { list.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(error.message)}</p>`; return; }
 
-    const userIds = [...new Set((data || []).map(l => l.user_id))];
+    const userIds = [...new Set((data || []).map(l => l.user_id).filter(Boolean))];
     let profilesById = {};
     if (userIds.length) {
       const { data: profiles } = await supabase.from('profiles').select('id, full_name, subscriber_number').in('id', userIds);
@@ -7952,7 +7952,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data: resa, error } = await resaQuery;
     if (error) { console.error(error); return; }
 
-    const userIds = [...new Set(resa.map(r => r.user_id))];
+    const userIds = [...new Set(resa.map(r => r.user_id).filter(Boolean))];
     let profilesById = {};
     if (userIds.length) {
       const { data: profiles } = await supabase.from('profiles').select('id, full_name, subscriber_number').in('id', userIds);
@@ -8341,7 +8341,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data, error } = await query;
     if (error) { console.error(error); reshelveLoans = []; renderReshelveList(); return; }
 
-    const userIds = [...new Set((data || []).map(l => l.user_id))];
+    const userIds = [...new Set((data || []).map(l => l.user_id).filter(Boolean))];
     let profilesById = {};
     if (userIds.length) {
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);

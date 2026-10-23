@@ -6,8 +6,9 @@
 -- (document perdu ou abîmé non réglé). Sinon, message clair et rien n'est supprimé.
 --
 -- Ce qui disparaît : le compte de connexion, le profil, et tout ce qui est
--- rattaché à l'usager avec « on delete cascade » (emprunts rendus, réservations,
--- liste d'envie, avis, inscriptions aux événements...).
+-- rattaché à l'usager avec « on delete cascade » (liste d'envie, avis,
+-- inscriptions aux événements...). Les emprunts rendus et réservations
+-- retirées restent SANS NOM pour les statistiques de prêt (23/10/2026).
 -- Les autres traces où le compte apparaît (ex. « parrainé par », « don de »)
 -- sont vidées (mises à null) pour ne pas bloquer la suppression.
 
@@ -37,6 +38,11 @@ begin
   if exists (select 1 from public.document_debts where user_id = uid and status = 'open') then
     return jsonb_build_object('ok', false, 'message', 'Un document perdu ou abîmé reste à régler avec la médiathèque. Une fois réglé, tu pourras supprimer ton compte.');
   end if;
+
+  -- Réservations pas encore retirées : annulées (le livre n'est plus mis de
+  -- côté pour personne). Les réservations retirées et les emprunts rendus
+  -- restent, sans nom, pour les statistiques de prêt (voir anonymisation).
+  delete from public.reservations where user_id = uid and status in ('panier', 'preparation', 'pret');
 
   -- Toutes les colonnes qui pointent vers le compte sans « on delete cascade » :
   -- mises à null (ou lignes supprimées si la colonne est obligatoire).
