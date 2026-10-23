@@ -59,12 +59,6 @@
       <div class="min-w-0">
         <h1 id="greeting" class="text-xl font-bold text-ink leading-tight">Bonjour</h1>
         <p id="commune-display" class="hidden text-xs font-semibold text-ink/60 mt-0.5 truncate"></p>
-        <!-- Changement de médiathèque (12/10/2026) : catalogue, agenda,
-             horaires, logo et couleurs basculent sur la médiathèque choisie. -->
-        <label id="commune-switch-wrap" class="relative flex items-center mt-0.5 max-w-full">
-          <select id="commune-switch" aria-label="Changer de médiathèque" class="appearance-none bg-transparent text-xs font-semibold text-ink/60 pr-4 cursor-pointer focus:outline-none max-w-full truncate"></select>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="absolute right-0 text-ink/40 pointer-events-none"><path d="M6 9l6 6 6-6"/></svg>
-        </label>
         <button id="opening-hours-link" onclick="openOpeningHoursModal()" class="hidden block text-[11px] font-semibold text-mango-700 underline mt-0.5">Horaires</button>
       </div>
     </div>
@@ -220,26 +214,16 @@
   const readBrowseCommune = () => { try { return Number(localStorage.getItem(BROWSE_KEY)) || null; } catch { return null; } };
   const writeBrowseCommune = id => { try { localStorage.setItem(BROWSE_KEY, String(id)); } catch {} };
 
-  // Usager connecté (16/10/2026, demande de Mégane) : sa médiathèque est
-  // affichée en simple texte, sans choix d'une autre médiathèque, pour ne pas
-  // induire en erreur. Le choix reste proposé aux visiteurs sans compte.
+  // Usager connecté : on consulte toujours sa propre médiathèque.
   let communeLocked = false;
 
-  async function setupCommuneSwitch(currentId) {
-    if (communeLocked) {
-      document.getElementById('commune-switch-wrap').classList.add('hidden');
-      const display = document.getElementById('commune-display');
-      display.textContent = myCommuneName ? `Médiathèque de ${myCommuneName}` : '';
-      display.classList.remove('hidden');
-      return;
-    }
-    const select = document.getElementById('commune-switch');
-    const { data } = await supabase.from('communes').select('id, name').order('name');
-    select.innerHTML = (data || []).map(c => `<option value="${c.id}" ${c.id === currentId ? 'selected' : ''}>Médiathèque de ${escapeHtmlU(c.name)}</option>`).join('');
-    select.onchange = () => {
-      writeBrowseCommune(select.value);
-      window.location.reload();
-    };
+  // Plus de choix d'une autre médiathèque sur l'accueil, même sans compte
+  // (23/10/2026) : la médiathèque est affichée en simple texte, comme pour un
+  // usager connecté. Le choix se fait seulement sur le premier écran.
+  async function setupCommuneSwitch() {
+    const display = document.getElementById('commune-display');
+    display.textContent = myCommuneName ? `Médiathèque de ${myCommuneName}` : '';
+    display.classList.remove('hidden');
   }
 
   // Logo, couleurs et horaires de la médiathèque consultée.
@@ -269,7 +253,7 @@
         .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       logoEl.src = `img/commune-logos/${slug}.png`;
     }
-    await setupCommuneSwitch(communeId);
+    await setupCommuneSwitch();
   }
   // File d'attente (09/10/2026) : livre emprunté → book_id → { hold_id, position }.
   let myHolds = {};
