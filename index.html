@@ -82,7 +82,7 @@
       </select>
       <div class="flex items-center justify-between gap-3 mt-8">
         <button type="button" onclick="stepCommune(-1)" aria-label="Médiathèque précédente" class="w-12 h-12 rounded-xl bg-mango-300 text-white text-xl font-bold shadow-md flex items-center justify-center active:scale-95 transition">«</button>
-        <p id="landing-commune-name" class="flex-1 text-xl text-ink/75 leading-snug text-center whitespace-pre-line">Médiathèque</p>
+        <p id="landing-commune-name" class="flex-1 min-w-0 text-xl text-ink/75 leading-snug text-center whitespace-nowrap">Médiathèque</p>
         <button type="button" onclick="stepCommune(1)" aria-label="Médiathèque suivante" class="w-12 h-12 rounded-xl bg-mango-300 text-white text-xl font-bold shadow-md flex items-center justify-center active:scale-95 transition">»</button>
       </div>
     </div>
@@ -681,10 +681,12 @@
   function showLandingCommune() {
     const select = document.getElementById('landing-commune');
     const current = landingOptions().find(o => o.value === select.value);
-    document.getElementById('landing-commune-name').textContent = current
-      // Nom à la ligne, sans coupure au tiret (« Val-Fleuri » reste entier).
-      ? `Médiathèque de\n${current.textContent.replace(/-/g, '\u2011')}`
-      : 'Choisis ta médiathèque';
+    const nameEl = document.getElementById('landing-commune-name');
+    // Sur une seule ligne, sans « de » (23/10/2026) : « Médiathèque Val-Fleuri ».
+    nameEl.textContent = current ? `Médiathèque ${current.textContent}` : 'Choisis ta médiathèque';
+    // Nom long : la taille du texte diminue jusqu'à tenir sur la ligne.
+    nameEl.style.fontSize = '';
+    for (let size = 20; nameEl.scrollWidth > nameEl.clientWidth && size > 13; size--) nameEl.style.fontSize = size - 1 + 'px';
   }
   window.stepCommune = function (step) {
     const options = landingOptions();
