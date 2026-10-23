@@ -315,8 +315,18 @@
     // fichier et propose directement « Ajouter au calendrier ».
     // iPhone (23/10/2026) : fenêtre d'agenda d'Apple par-dessus l'appli,
     // l'usager choisit son agenda, touche « Ajouter » et reste dans BliGO.
-    if (window.Capacitor?.getPlatform?.() === 'ios' && window.Capacitor.registerPlugin) {
-      const BligoCalendar = window.Capacitor.registerPlugin('BligoCalendar');
+    // Appli iPhone et Android (23/10/2026) : fenêtre d'agenda du téléphone
+    // par-dessus BliGO (iPhone) ou appli d'agenda (Android), l'usager choisit
+    // son agenda, enregistre et revient dans BliGO. Module maison :
+    // CalendarPlugin.swift / CalendarPlugin.java. Repli par le navigateur
+    // (bligo.app/calendrier.php) si le module est absent.
+    if (window.Capacitor?.isNativePlatform?.()) {
+      const openInBrowser = () => {
+        const base64 = btoa(unescape(encodeURIComponent(ics))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        window.open(`https://bligo.app/calendrier.php?ics=${base64}`, '_system');
+      };
+      const BligoCalendar = window.Capacitor.Plugins?.BligoCalendar;
+      if (!BligoCalendar) { openInBrowser(); return; }
       BligoCalendar.addEvent({
         title: e.event_type ? (e.event_type + (e.title ? ' : ' + e.title : '')) : e.title,
         location,
@@ -324,12 +334,12 @@
         start: start.getTime(),
         end: end.getTime(),
       }).then(r => { if (r?.added) showSnackbar('Événement ajouté à ton calendrier.'); })
-        .catch(() => showSnackbar("Impossible d'ouvrir le calendrier. Vérifie l'accès au calendrier dans les Réglages."));
-      return;
-    }
-    if (window.Capacitor?.isNativePlatform?.()) {
-      const base64 = btoa(unescape(encodeURIComponent(ics))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-      window.open(`https://bligo.app/calendrier.php?ics=${base64}`, '_system');
+        .catch(err => {
+          if (err?.code === 'UNIMPLEMENTED') { openInBrowser(); return; }
+          showSnackbar(window.Capacitor.getPlatform() === 'ios'
+            ? "Impossible d'ouvrir le calendrier. Vérifie l'accès au calendrier dans les Réglages."
+            : "Aucune appli d'agenda trouvée sur ce téléphone.");
+        });
       return;
     }
 
