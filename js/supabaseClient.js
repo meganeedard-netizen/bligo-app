@@ -1,4 +1,7 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Module Supabase intégré à l'appli (23/10/2026) : avant, il était
+// retéléchargé depuis esm.sh à chaque changement de page (plusieurs fichiers
+// en cascade), ce qui ralentissait la navigation. Refait par tailwind-build/build.sh.
+import { createClient } from './vendor/supabase.js?v=2.118.0';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=20261016d';
 
 // Logiciel agent Mac/Windows (16/10/2026) : il affiche les pages de bligo.app

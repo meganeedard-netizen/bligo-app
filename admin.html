@@ -1427,13 +1427,12 @@
 <p id="access-message" class="text-sm text-center text-ink/50 mt-16"></p>
 
 <script type="module">
-  import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { supabase } from './js/supabaseClient.js?v=20261023';
   import { frError } from './js/ui.js?v=20261023';
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
-  import { BrowserMultiFormatReader } from 'https://esm.sh/@zxing/browser@0.1.5';
-  import { BarcodeFormat, DecodeHintType } from 'https://esm.sh/@zxing/library@0.21.3';
+  import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from './js/vendor/zxing.js?v=0.1.5';
 
   let currentUser = null;
   let books = [];

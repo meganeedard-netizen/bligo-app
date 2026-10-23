@@ -279,10 +279,10 @@
 </nav>
 
 <script type="module">
-  import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { supabase } from './js/supabaseClient.js?v=20261023';
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
-  import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
+  import { updateReservationBadge } from './js/navBadge.js?v=20261023';
   import { showDialog, frError } from './js/ui.js?v=20261023';
 
   let currentSubscriberNumber = null;
@@ -452,17 +452,16 @@
     document.getElementById('card-name').textContent = fullName;
     document.getElementById('card-number').textContent = profile?.subscriber_number ? `N° abonné ${profile.subscriber_number}` : '';
     shareRefCode = profile?.subscriber_number || '';
-    loadStats(currentUser.id);
-    setupReadingChallenge(currentUser.id, profile?.reading_goal ?? 12);
-
+    // Tout part en même temps, et la page s'affiche quand tout est prêt
+    // (23/10/2026) : plus de chiffres qui changent sous les yeux.
+    const pending = [loadStats(currentUser.id), setupReadingChallenge(currentUser.id, profile?.reading_goal ?? 12)];
 
     const isLibre = profile?.account_type === 'libre';
     const isValidated = profile?.registration_status === 'valide';
-    if (!isLibre && profile?.commune_id) setupMembership(isValidated);
+    if (!isLibre && profile?.commune_id) pending.push(setupMembership(isValidated));
     if (!isLibre && profile?.commune_id) {
       // Catégorie d'abonnement : visible et réglée côté agents uniquement (12/10/2026).
-      setupFamily();
-      setupDigitalResources(profile.commune_id);
+      pending.push(setupFamily(), setupDigitalResources(profile.commune_id));
     }
 
     document.getElementById('card-subtitle').textContent = isLibre
@@ -516,13 +515,14 @@
     if (isValidated && profile?.subscriber_number) {
       currentSubscriberNumber = profile.subscriber_number;
       document.getElementById('card-qr-block').classList.remove('hidden');
-      const { default: QRCode } = await import('https://esm.sh/qrcode@1');
+      const { default: QRCode } = await import('./js/vendor/qrcode.js?v=1.5.4');
       const canvas = document.getElementById('card-qr-canvas');
       await QRCode.toCanvas(canvas, profile.subscriber_number, { width: 160, margin: 1, color: { dark: '#1B4B43' } });
     } else {
       document.getElementById('card-pending-block').classList.remove('hidden');
     }
 
+    await Promise.allSettled(pending);
   }
 
   window.openQrModal = async function (otherNumber) {
@@ -532,7 +532,7 @@
     const backdrop = document.getElementById('qr-modal-backdrop');
     backdrop.classList.remove('hidden');
     backdrop.classList.add('flex');
-    const { default: QRCode } = await import('https://esm.sh/qrcode@1');
+    const { default: QRCode } = await import('./js/vendor/qrcode.js?v=1.5.4');
     const canvas = document.getElementById('qr-modal-canvas');
     await QRCode.toCanvas(canvas, number, { width: 280, margin: 1, color: { dark: '#1B4B43' } });
   };

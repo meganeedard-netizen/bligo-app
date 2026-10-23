@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js?v=20261016d';
+import { supabase } from './supabaseClient.js?v=20261023';
 
 // Pastille "Réservation" de la barre du bas : nombre de livres actuellement
 // réservés ou empruntés (en préparation, prêts, ou empruntés et pas encore

@@ -205,11 +205,11 @@
 </button>
 
 <script type="module">
-  import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { supabase } from './js/supabaseClient.js?v=20261023';
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
-  import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
+  import { updateReservationBadge } from './js/navBadge.js?v=20261023';
   import { showSnackbar, showDialog, confirmDialog, frError } from './js/ui.js?v=20261023';
 
   let currentUser = null;
@@ -1282,15 +1282,14 @@
 
   async function initGuest(communeId) {
     myCommuneId = Number(communeId);
-    await applyBrowsedCommune(myCommuneId);
-
     document.getElementById('greeting').textContent = 'Bienvenue !';
 
     // Sans compte : « 0 pt », la page fidélité explique et invite à s'inscrire.
     document.getElementById('points-display').textContent = formatPoints(0);
 
     renderCategoryFilters();
-    await loadBooks();
+    // Médiathèque et livres chargés en même temps (23/10/2026).
+    await Promise.all([applyBrowsedCommune(myCommuneId), loadBooks()]);
   }
 
   async function init() {
@@ -1339,17 +1338,21 @@
     // Prénom saisi à l'inscription (12/10/2026) ; anciens comptes : premier mot du nom.
     const firstName = currentUser.user_metadata?.first_name || (profile?.full_name && profile.full_name !== 'Nouvel usager' ? name.split(' ')[0] : '');
     document.getElementById('greeting').textContent = firstName ? `Bonjour ${firstName}` : 'Bonjour !';
-    if (browsed) await applyBrowsedCommune(browsed);
     document.getElementById('points-display').textContent = formatPoints(profile?.loyalty_points ?? 0);
     showPointsTipOnce(currentUser);
 
     renderCategoryFilters();
 
-    await loadReservations();
+    // Chargement accéléré (23/10/2026) : médiathèque, réservations, livres,
+    // favoris, file d'attente et inscriptions partent en même temps.
+    await Promise.all([
+      browsed ? applyBrowsedCommune(browsed) : null,
+      loadReservations(),
+      loadBooks(), loadWishlist(), loadHolds(), loadMemberships(),
+    ]);
 
     // Défi de lecture déplacé dans le profil (16/10/2026, demande de Mégane).
 
-    await Promise.all([loadBooks(), loadWishlist(), loadHolds(), loadMemberships()]);
     renderBooks();
     openBookFromUrl();
   }

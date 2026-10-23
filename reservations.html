@@ -142,10 +142,10 @@
 </nav>
 
 <script type="module">
-  import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { supabase } from './js/supabaseClient.js?v=20261023';
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
-  import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
+  import { updateReservationBadge } from './js/navBadge.js?v=20261023';
   import { showSnackbar, showDialog, confirmDialog, frError } from './js/ui.js?v=20261023';
 
   let currentUser = null;
@@ -268,10 +268,12 @@
     currentUser = session.user;
     updateReservationBadge(currentUser.id);
 
-    const { data: communesData } = await supabase.from('communes').select('*');
+    // Tout part en même temps (23/10/2026).
+    const [{ data: communesData }] = await Promise.all([
+      supabase.from('communes').select('*'),
+      loadReservations(), loadLoans(), loadMyRatings(), loadHolds(),
+    ]);
     communes = communesData || [];
-
-    await Promise.all([loadReservations(), loadLoans(), loadMyRatings(), loadHolds()]);
     renderAll();
     watchMyChanges();
 

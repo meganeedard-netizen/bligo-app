@@ -165,10 +165,10 @@
 </nav>
 
 <script type="module">
-  import { supabase } from './js/supabaseClient.js?v=20261016d';
+  import { supabase } from './js/supabaseClient.js?v=20261023';
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
-  import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
+  import { updateReservationBadge } from './js/navBadge.js?v=20261023';
 
   let currentUser = null;
   let currentBadges = [];
@@ -367,8 +367,8 @@
       .select('loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked')
       .eq('id', currentUser.id).single();
 
-    await renderBadges(profile);
-    await renderDefis(currentUser.id);
+    // Badges et défis chargés en même temps (23/10/2026).
+    await Promise.all([renderBadges(profile), renderDefis(currentUser.id)]);
   }
 
   init().finally(() => document.documentElement.classList.remove('page-loading'));
