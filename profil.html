@@ -196,11 +196,19 @@
 <div id="sheet-delete" onclick="closeSheet(event, this)" class="hidden fixed inset-0 z-50 bg-black/40 items-end sm:items-center justify-center">
   <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 relative" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
     <button type="button" onclick="closeSheet()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-ink/50 text-xl">✕</button>
-    <p class="text-base font-bold text-ink mb-2">Supprimer mon compte</p>
-    <p class="text-sm text-ink/70 leading-relaxed">Ton compte, ta carte et ton historique seront supprimés tout de suite, sans retour en arrière possible.</p>
-    <p class="text-sm text-ink/70 leading-relaxed mt-2">Tes documents doivent d'abord être rendus à la médiathèque.</p>
+    <p class="text-base font-bold text-ink mb-3">Supprimer mon compte</p>
+    <!-- Deux choix (23/10/2026) : quitter l'appli en restant abonné, ou tout supprimer. -->
+    <div class="rounded-2xl border border-mango-100 p-4">
+      <p class="text-sm font-bold text-ink">Supprimer mon accès à l'appli</p>
+      <p class="text-xs text-ink/65 leading-relaxed mt-1">Tu restes inscrit à ta médiathèque : ta carte, ton historique, tes emprunts et tes réservations en cours sont gardés. Tu perds ta liste d'envie, tes points, tes badges et tes avis.</p>
+      <button type="button" id="leave-app-btn" onclick="leaveApp()" class="w-full mt-3 bg-[#EEEDF2] text-ink rounded-xl py-2.5 text-sm font-semibold active:scale-[0.98] transition">Supprimer mon accès à l'appli</button>
+    </div>
+    <div class="rounded-2xl border border-red-100 p-4 mt-3">
+      <p class="text-sm font-bold text-ink">Supprimer mon compte et mon inscription</p>
+      <p class="text-xs text-ink/65 leading-relaxed mt-1">Tout est effacé : ta carte, ton historique, ta liste d'envie et tes points. Possible seulement quand tes documents sont rendus et ta situation réglée avec la médiathèque.</p>
+      <button type="button" id="delete-account-btn" onclick="deleteMyAccount()" class="w-full mt-3 bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold active:scale-[0.98] transition">Tout supprimer</button>
+    </div>
     <p id="delete-message" class="text-sm text-red-600 leading-relaxed mt-3 hidden"></p>
-    <button type="button" id="delete-account-btn" onclick="deleteMyAccount()" class="w-full mt-5 bg-red-600 text-white rounded-xl py-3 text-sm font-semibold active:scale-[0.98] transition">Supprimer définitivement</button>
     <button type="button" onclick="closeSheet()" class="w-full mt-2 text-sm font-semibold text-ink/50 py-2">Annuler</button>
   </div>
 </div>
@@ -670,7 +678,35 @@
       msg.textContent = error ? "La suppression n'a pas pu se faire. Réessaie dans un instant." : data.message;
       msg.classList.remove('hidden');
       btn.disabled = false;
-      btn.textContent = 'Supprimer définitivement';
+      btn.textContent = 'Tout supprimer';
+      return;
+    }
+    try { localStorage.clear(); } catch (e) {}
+    await supabase.auth.signOut();
+    window.location.href = 'index.html';
+  };
+
+  // Quitter l'appli en restant abonné à sa médiathèque (23/10/2026).
+  window.leaveApp = async function () {
+    const confirmed = await showDialog({
+      title: "Supprimer ton accès à l'appli ?",
+      message: "Tu ne pourras plus te connecter à l'appli. Ta liste d'envie, tes points, tes badges et tes avis seront perdus. Tu restes inscrit à ta médiathèque et tu peux continuer à emprunter au comptoir.",
+      buttons: [
+        { label: "Non, je reste sur l'appli", value: false, primary: true },
+        { label: "Oui, supprimer mon accès", value: true, danger: true },
+      ],
+    });
+    if (confirmed !== true) return;
+    const btn = document.getElementById('leave-app-btn');
+    const msg = document.getElementById('delete-message');
+    btn.disabled = true;
+    btn.textContent = 'Fermeture…';
+    const { data, error } = await supabase.rpc('leave_app');
+    if (error || !data?.ok) {
+      msg.textContent = error ? "La fermeture n'a pas pu se faire. Réessaie dans un instant." : data.message;
+      msg.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = "Supprimer mon accès à l'appli";
       return;
     }
     try { localStorage.clear(); } catch (e) {}

@@ -420,7 +420,12 @@
       return;
     }
     if (error) {
-      messageEl.textContent = error.message;
+      // Messages en français (23/10/2026) : Supabase répond en anglais.
+      messageEl.textContent = /banned/i.test(error.message)
+        ? "Ton accès à l'appli est fermé. Demande à ta médiathèque de le rouvrir."
+        : /invalid login credentials/i.test(error.message)
+          ? 'E-mail ou mot de passe incorrect.'
+          : error.message;
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }

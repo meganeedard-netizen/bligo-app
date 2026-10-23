@@ -5758,7 +5758,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     currentFicheItems = items;
     currentFicheCommuneSettings = communeSettings;
-    setTimeout(() => { loadFamilySection(profile); loadDebtsSection(profile); }, 0);
+    setTimeout(() => { loadFamilySection(profile); loadDebtsSection(profile); loadAppAccessSection(profile); }, 0);
 
     const rowsHtml = renderFicheSections(items, communeSettings);
 
@@ -5793,6 +5793,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           </select>
         </div>
         <div id="fiche-debts"></div>
+        <div id="fiche-app-access"></div>
         ${membershipRowHtml(profile)}
         <div id="fiche-family" class="border-b border-mango-50"></div>
         ${flaggedBannerHtml}
@@ -5811,6 +5812,27 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         </div>
       </div>`;
   }
+
+  // Abonné qui a fermé son accès à l'appli (23/10/2026) : il reste inscrit,
+  // l'agent peut rouvrir l'accès. Chargé à part pour ne pas casser la fiche
+  // tant que sql/add_quitter_appli.sql n'est pas passé.
+  async function loadAppAccessSection(profile) {
+    const box = document.getElementById('fiche-app-access');
+    if (!box) return;
+    const { data, error } = await supabase.from('profiles').select('app_access_closed_at').eq('id', profile.id).single();
+    if (error || !data?.app_access_closed_at) { box.innerHTML = ''; return; }
+    box.innerHTML = `
+      <div class="px-4 py-2.5 border-b border-mango-50 flex items-center justify-between gap-3 text-xs">
+        <span class="text-ink/60">Accès à l'appli fermé par l'usager le ${new Date(data.app_access_closed_at).toLocaleDateString('fr-FR')} (toujours abonné)</span>
+        <button type="button" onclick="reopenAppAccess('${profile.id}')" style="touch-action: manipulation;" class="text-[11px] font-semibold text-mango-700 underline shrink-0">Rouvrir l'accès</button>
+      </div>`;
+  }
+
+  window.reopenAppAccess = async function (userId) {
+    const { error } = await supabase.rpc('reopen_app_access', { p_user_id: userId });
+    if (error) { alert('Erreur : ' + error.message); return; }
+    document.getElementById('fiche-app-access').innerHTML = `<p class="px-4 py-2.5 border-b border-mango-50 text-xs text-mango-700">Accès à l'appli rouvert : l'usager peut se reconnecter avec son e-mail et son mot de passe.</p>`;
+  };
 
   window.correctTariffCategory = async function (userId, category) {
     const { error } = await supabase.rpc('set_tariff_category', { p_user_id: userId, p_category: category });
