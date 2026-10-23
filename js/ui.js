@@ -25,7 +25,7 @@ export function showSnackbar(message, { duration = 3500 } = {}) {
   snackbarTimer = setTimeout(() => el.classList.add('opacity-0', 'translate-y-3'), duration);
 }
 
-// Pop-up centré. buttons : [{ label, value, primary }] ; renvoie la valeur du
+// Pop-up centré. buttons : [{ label, value, primary, danger }] ; renvoie la valeur du
 // bouton choisi (null si fermé en touchant le fond).
 export function showDialog({ title = '', message = '', buttons = [{ label: 'Compris', value: true, primary: true }] } = {}) {
   return new Promise(resolve => {
@@ -36,7 +36,7 @@ export function showDialog({ title = '', message = '', buttons = [{ label: 'Comp
         ${title ? `<p class="text-lg font-bold text-ink mb-2">${esc(title)}</p>` : ''}
         ${message ? `<p class="text-sm text-ink/65 leading-relaxed">${esc(message)}</p>` : ''}
         <div class="flex flex-col gap-2 mt-6">
-          ${buttons.map((b, i) => `<button data-i="${i}" class="w-full rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition ${b.primary ? 'bg-brand text-white' : 'bg-[#EEEDF2] text-ink/70'}">${esc(b.label)}</button>`).join('')}
+          ${buttons.map((b, i) => `<button data-i="${i}" class="w-full rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition ${b.danger ? 'bg-red-600 text-white' : b.primary ? 'bg-brand text-white' : 'bg-[#EEEDF2] text-ink/70'}">${esc(b.label)}</button>`).join('')}
         </div>
       </div>`;
     const close = value => { backdrop.remove(); resolve(value); };

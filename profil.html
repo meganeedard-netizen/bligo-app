@@ -259,7 +259,7 @@
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js?v=20261016d';
-  import { showDialog } from './js/ui.js?v=20261016d';
+  import { showDialog } from './js/ui.js?v=20261023';
 
   let currentSubscriberNumber = null;
   let currentUserId = null;
@@ -651,6 +651,16 @@
   // Suppression immédiate du compte (23/10/2026), si tout est rendu et réglé
   // (vérifié côté serveur par delete_my_account).
   window.deleteMyAccount = async function () {
+    // Dernière confirmation avant de tout effacer (23/10/2026).
+    const confirmed = await showDialog({
+      title: 'Supprimer ton compte ?',
+      message: 'Veux-tu vraiment supprimer ton compte ? Toutes tes données seront perdues : ta carte, ton historique, tes favoris et tes points. Cette action est définitive.',
+      buttons: [
+        { label: "Non, je reste sur l'appli", value: false, primary: true },
+        { label: 'Oui, supprimer toutes mes données', value: true, danger: true },
+      ],
+    });
+    if (confirmed !== true) return;
     const btn = document.getElementById('delete-account-btn');
     const msg = document.getElementById('delete-message');
     btn.disabled = true;
