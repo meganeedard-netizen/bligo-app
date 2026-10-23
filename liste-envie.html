@@ -176,7 +176,7 @@
         <div data-book-id="${b.id}" class="wishlist-card cursor-pointer bg-white shadow-sm rounded-2xl p-3.5 flex items-center gap-3 active:scale-[0.99] transition">
           ${cov}
           <div class="flex-1 min-w-0">
-            ${b.category ? `<p class="text-[9.5px] font-bold uppercase tracking-wide text-mango-600 leading-tight mb-0.5">${({ BD: 'BD & Mangas', Thriller: 'Policier & Thriller', 'Fantasy': 'Science-Fiction & Fantasy', 'Poésie & théâtre': 'Poésie & Théâtre', 'Sciences & nature': 'Sciences & Nature', 'Histoire': 'Histoire & Patrimoine', 'Culture': 'Arts & Culture', 'Sports & loisirs': 'Sports & Loisirs' })[b.category] || b.category}</p>` : ''}
+            ${b.category ? `<p class="text-[9.5px] font-bold uppercase tracking-wide text-mango-600 leading-tight mb-0.5">${({ BD: 'BD & Mangas', Thriller: 'Policier & Thriller', 'Fantasy': 'Science-Fiction & Fantasy', 'Poésie & théâtre': 'Poésie & Théâtre', 'Sciences & nature': 'Sciences & Nature', 'Histoire': 'Histoire & Patrimoine', 'Culture': 'Arts & Culture', 'Sports & loisirs': 'Sports & Loisirs', 'Bien-être': 'Santé & Bien-être' })[b.category] || b.category}</p>` : ''}
             <p class="text-sm font-bold text-ink">${b.title}</p>
             <p class="text-[11px] text-ink/50">${b.author}</p>
             <span class="mt-1 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${b.available ? 'bg-mango-50 text-mango-700' : 'bg-brand/5 text-ink/40'}">
