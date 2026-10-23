@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient.js?v=20261016d';
 
 // Pastille "Réservation" de la barre du bas : nombre de livres actuellement
 // réservés ou empruntés (en préparation, prêts, ou empruntés et pas encore
-// à échéance) — pour rappel visuel du quota (3 livres adultes + 3 jeunesse,
+// à échéance) - pour rappel visuel du quota (3 livres adultes + 3 jeunesse,
 // renouvelable tous les 3 semaines une fois rendus).
 export async function updateReservationBadge(userId) {
   const badge = document.getElementById('nav-resa-badge');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BliGO — Connexion</title>
+<title>BliGO - Connexion</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
 <style>
   body { font-family: 'Inter', sans-serif; }
   /* Sur un vrai iPhone (encoche/île dynamique), le logo touchait sinon la
-     barre de statut — cette page n'avait pas encore reçu ce correctif,
+     barre de statut - cette page n'avait pas encore reçu ce correctif,
      contrairement aux autres pages de l'app. */
   body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
   .font-logo { font-family: 'Poppins', sans-serif; }
@@ -32,7 +32,7 @@
   .auth-input::placeholder { color: rgba(27,75,67,.55); }
   .auth-input:focus { box-shadow: 0 0 0 2px var(--color-mango-300, #FFB86B); }
   /* En dessous de 16px, Safari iOS zoome automatiquement sur un champ au clic
-     (la page semble "bouger") — on force 16px sur mobile pour l'empêcher.
+     (la page semble "bouger") - on force 16px sur mobile pour l'empêcher.
      !important nécessaire : les classes Tailwind (text-sm, text-xs...) sur
      les champs sont plus spécifiques qu'un simple sélecteur de balise. */
   @media (max-width: 640px) {
@@ -82,7 +82,7 @@
       </select>
       <div class="flex items-center justify-between gap-3 mt-8">
         <button type="button" onclick="stepCommune(-1)" aria-label="Médiathèque précédente" class="w-12 h-12 rounded-xl bg-mango-300 text-white text-xl font-bold shadow-md flex items-center justify-center active:scale-95 transition">«</button>
-        <p id="landing-commune-name" class="flex-1 text-xl text-ink/75 leading-tight">Médiathèque</p>
+        <p id="landing-commune-name" class="flex-1 text-xl text-ink/75 leading-snug text-center whitespace-pre-line">Médiathèque</p>
         <button type="button" onclick="stepCommune(1)" aria-label="Médiathèque suivante" class="w-12 h-12 rounded-xl bg-mango-300 text-white text-xl font-bold shadow-md flex items-center justify-center active:scale-95 transition">»</button>
       </div>
     </div>
@@ -105,7 +105,12 @@
     </div>
 
     <div class="bg-white rounded-3xl shadow-xl px-6 py-7">
-      <p id="gate-message" class="hidden text-xs text-center text-ink/70 bg-mango-50 border border-mango-100 rounded-xl px-3 py-2.5 mb-4 leading-relaxed"></p>
+      <div id="gate-message" class="hidden flex items-center gap-3 bg-mango-50 rounded-2xl px-4 py-3 mb-5">
+        <span class="shrink-0 w-10 h-10 rounded-full bg-mango-500 text-white flex items-center justify-center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+        </span>
+        <p id="gate-message-text" class="text-sm font-semibold text-ink leading-snug"></p>
+      </div>
       <!-- Onglets conservés pour le code existant, remplacés par les liens en bas -->
       <div class="hidden"><button id="tab-login" type="button"></button><button id="tab-signup" type="button"></button></div>
 
@@ -394,6 +399,9 @@
     document.getElementById('tab-signup').classList.toggle('shadow-sm', tab === 'signup');
     document.getElementById('tab-signup').classList.toggle('text-ink', tab === 'signup');
     document.getElementById('auth-message').textContent = '';
+    // « Crée ton compte en 2 secondes… » : seulement sur la création de compte.
+    const gateMsg = document.getElementById('gate-message');
+    gateMsg.classList.toggle('hidden', tab !== 'signup' || !gateMsg.dataset.text);
   };
 
   const messageEl = document.getElementById('auth-message');
@@ -623,7 +631,7 @@
   }
 
   // Dès qu'on sait pour quelle médiathèque on est là (choisie en invité,
-  // lien de parrainage…), on affiche son logo plutôt que celui de BliGO —
+  // lien de parrainage…), on affiche son logo plutôt que celui de BliGO -
   // c'est elle qu'on rejoint, pas juste une appli générique.
   async function applyCommuneHeader(communeId) {
     if (!communeId) return;
@@ -649,7 +657,7 @@
   }
   // Choix de la médiathèque sans compte : on mémorise juste le temps de la
   // redirection (accueil.html lit cette valeur une fois puis la consomme),
-  // pas un vrai "souvenir" durable — on repasse par ce choix à chaque
+  // pas un vrai "souvenir" durable - on repasse par ce choix à chaque
   // reconnexion, comme demandé.
   window.continueAsGuest = function () {
     const select = document.getElementById('landing-commune');
@@ -673,7 +681,10 @@
   function showLandingCommune() {
     const select = document.getElementById('landing-commune');
     const current = landingOptions().find(o => o.value === select.value);
-    document.getElementById('landing-commune-name').textContent = current ? `Médiathèque de ${current.textContent}` : 'Choisis ta médiathèque';
+    document.getElementById('landing-commune-name').textContent = current
+      // Nom à la ligne, sans coupure au tiret (« Val-Fleuri » reste entier).
+      ? `Médiathèque de\n${current.textContent.replace(/-/g, '\u2011')}`
+      : 'Choisis ta médiathèque';
   }
   window.stepCommune = function (step) {
     const options = landingOptions();
@@ -731,16 +742,17 @@
       switchTab('signup');
     }
     // Repli : médiathèque encore inconnue (ex. lien de parrainage direct,
-    // sans être passé par le choix en invité) — on redemande alors ici.
+    // sans être passé par le choix en invité) - on redemande alors ici.
     if (!guestCommuneIdOnLoad) {
       document.getElementById('signup-commune-field').classList.remove('hidden');
       document.getElementById('signup-commune').required = true;
     }
     if (gateReason) {
       const gateMsg = document.getElementById('gate-message');
-      gateMsg.textContent = gateReason === 'event'
+      gateMsg.dataset.text = gateReason === 'event'
         ? "Crée ton compte en 2 secondes pour t'inscrire à un événement !"
         : "Crée ton compte en 2 secondes pour commander tes livres !";
+      document.getElementById('gate-message-text').textContent = gateMsg.dataset.text;
       gateMsg.classList.remove('hidden');
       // Déjà choisie en parcourant sans compte : pas besoin de la redemander.
       const guestCommuneId = localStorage.getItem('bligo_guest_commune_id');
@@ -757,7 +769,7 @@
   // plutôt que d'enchaîner directement sur le catalogue dans le navigateur.
   const justConfirmedEmail = window.location.hash.includes('type=signup') && !window.Capacitor?.isNativePlatform?.();
 
-  // Déjà connecté ? on saute directement au catalogue — sauf juste après une
+  // Déjà connecté ? on saute directement au catalogue - sauf juste après une
   // confirmation d'e-mail sur le site, où on affiche d'abord le bouton
   // ci-dessus.
   supabase.auth.getSession().then(({ data }) => {

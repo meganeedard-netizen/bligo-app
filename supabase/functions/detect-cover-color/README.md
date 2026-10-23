@@ -1,7 +1,7 @@
 # detect-cover-color
 
 Détecte automatiquement si la couverture d'un livre est en couleur ou en noir
-et blanc, en analysant l'image — pas le texte. Contourne le blocage CORS de
+et blanc, en analysant l'image - pas le texte. Contourne le blocage CORS de
 Google Books en récupérant l'image côté serveur (voir `index.ts` pour le détail
 du problème).
 

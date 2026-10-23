@@ -3,7 +3,7 @@
 Crée un compte inscrit directement confirmé, depuis l'écran **Inscrits** de
 `admin.html`, pour une personne qui n'a pas l'application (bouton
 « + Ajouter un inscrit »). Contrairement à une préinscription en ligne, le
-compte est actif immédiatement — l'agent vérifie l'identité en personne au
+compte est actif immédiatement - l'agent vérifie l'identité en personne au
 moment de la saisie.
 
 Ouverte à n'importe quel agent (pas seulement direction) : ajouter un inscrit

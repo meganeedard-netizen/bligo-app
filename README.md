@@ -1,6 +1,6 @@
-# BliGO — application (Médiathèque de Val-Fleuri)
+# BliGO - application (Médiathèque de Val-Fleuri)
 
-Application réelle : catalogue, comptes usagers et réservations Click & Collect, connectés à une vraie base de données (Supabase). Pas de build, pas de npm — HTML/CSS/JS natif, ouvrable dans n'importe quel navigateur.
+Application réelle : catalogue, comptes usagers et réservations Click & Collect, connectés à une vraie base de données (Supabase). Pas de build, pas de npm - HTML/CSS/JS natif, ouvrable dans n'importe quel navigateur.
 
 ## Mise en route (à faire une seule fois)
 
@@ -23,7 +23,7 @@ Application réelle : catalogue, comptes usagers et réservations Click & Collec
    cd app
    python3 -m http.server 8000
    ```
-   Puis ouvre `http://localhost:8000` dans le navigateur (ne pas ouvrir le fichier directement en double-cliquant — certains navigateurs bloquent les comptes/connexions sur `file://`).
+   Puis ouvre `http://localhost:8000` dans le navigateur (ne pas ouvrir le fichier directement en double-cliquant - certains navigateurs bloquent les comptes/connexions sur `file://`).
 
 5. **Tester**
    - Crée un compte usager de test, connecte-toi, réserve un livre.

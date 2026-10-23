@@ -1,4 +1,4 @@
-// BliGO — Envoi effectif des e-mails de relance en attente (15/09/2026)
+// BliGO - Envoi effectif des e-mails de relance en attente (15/09/2026)
 //
 // Vide la table email_outbox (remplie par queue_return_reminders(), voir
 // sql/add_return_reminders_email.sql) en envoyant chaque mail via Resend.
@@ -19,7 +19,7 @@ const EMAIL_FROM = Deno.env.get('EMAIL_FROM') ?? 'BliGO <relances@bligo.fr>';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// Nombre de mails traités par appel — le cron tourne une fois par jour,
+// Nombre de mails traités par appel - le cron tourne une fois par jour,
 // une file plus longue que ça serait traitée sur le prochain appel plutôt
 // que de risquer de dépasser les limites de débit de Resend en un seul coup.
 const BATCH_SIZE = 100;

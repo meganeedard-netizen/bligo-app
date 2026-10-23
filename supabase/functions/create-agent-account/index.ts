@@ -1,7 +1,7 @@
-// BliGO — Création d'un compte agent depuis le logiciel agent (16/09/2026, point 9)
+// BliGO - Création d'un compte agent depuis le logiciel agent (16/09/2026, point 9)
 //
 // Créer un compte Supabase (auth.users) exige la clé service_role, qui ne doit
-// jamais être exposée côté navigateur — sinon n'importe qui pourrait se créer
+// jamais être exposée côté navigateur - sinon n'importe qui pourrait se créer
 // un compte agent. Cette fonction la détient côté serveur, et vérifie elle-même
 // que l'appelant est habilité (direction ou super_admin) avant de créer quoi
 // que ce soit : ne jamais faire confiance à un contrôle fait uniquement côté
@@ -21,7 +21,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // Un navigateur envoie d'abord une requête OPTIONS de pré-vérification (CORS)
 // avant le vrai POST, à cause de l'en-tête Authorization. Sans ces en-têtes,
-// le navigateur bloque la requête avant même qu'elle n'atteigne la fonction —
+// le navigateur bloque la requête avant même qu'elle n'atteigne la fonction -
 // ça remonte côté client comme "Failed to send a request to the Edge Function".
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

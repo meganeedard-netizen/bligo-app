@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BliGO — Profil</title>
+<title>BliGO - Profil</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -27,6 +27,9 @@
   /* Sur un vrai iPhone (encoche/île dynamique + barre du bas), le contenu
      touche sinon la barre de statut et le menu chevauche la barre du bas. */
   body { padding-top: env(safe-area-inset-top); padding-bottom: calc(6rem + env(safe-area-inset-bottom)) !important; }
+  /* Bande blanche sous l'heure et la batterie (23/10/2026) : le contenu et l'en-tête ne passent plus dessous en faisant défiler. */
+  body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #fff; z-index: 40; }
+  header.sticky { top: env(safe-area-inset-top); }
   .font-logo { font-family: 'Poppins', sans-serif; }
   /* Listes du profil en sections (12/10/2026, inspiré de l'appli Gaspiz) */
   .profile-section-title { background: #EEEDF2; color: rgba(27,75,67,.6); font-size: 13px; font-weight: 600; border-radius: 12px; padding: 9px 16px; margin-bottom: 2px; }
@@ -151,10 +154,9 @@
 
   <!-- Ma médiathèque -->
   <p class="profile-section-title mt-6">Ma médiathèque</p>
-  <button type="button" id="membership-row" onclick="openSheet('sheet-membership')" class="hidden profile-row">
+  <div id="membership-row" class="hidden profile-row cursor-default">
     <span class="min-w-0"><span class="block">Mon adhésion</span><span id="membership-status" class="block text-xs text-ink/50 font-normal mt-0.5"></span></span>
-    <span class="profile-chevron">›</span>
-  </button>
+  </div>
   <div id="family-block" class="hidden profile-row cursor-default">
     <span class="min-w-0"><span class="block">Carte famille</span><span id="family-usage" class="block text-xs text-ink/50 font-normal mt-0.5"></span></span>
   </div>
@@ -167,7 +169,7 @@
 
   <!-- Support -->
   <p class="profile-section-title mt-6">Support</p>
-  <a href="https://bligo.fr" target="_blank" rel="noopener" class="profile-row">Tu travailles dans une médiathèque ?<span class="profile-chevron">›</span></a>
+  <a href="https://bligo.fr/mairies-collectivites.html" target="_blank" rel="noopener" class="profile-row">Tu travailles dans une médiathèque ?<span class="profile-chevron">›</span></a>
   <button type="button" id="share-app-btn" class="profile-row">Partager l'appli à un ami<span class="profile-chevron">›</span></button>
   <p id="share-message" class="text-xs text-center text-mango-700"></p>
   <a id="contact-link" href="mailto:megane@bligo.fr?subject=BliGO%20-%20Besoin%20d%27aide" class="profile-row">Nous contacter<span class="profile-chevron">›</span></a>
@@ -183,23 +185,6 @@
 </main>
 
 <!-- Fenêtres du profil (feuilles qui montent du bas) -->
-<div id="sheet-membership" onclick="closeSheet(event, this)" class="hidden fixed inset-0 z-50 bg-black/40 items-end sm:items-center justify-center">
-  <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[85dvh] overflow-y-auto relative" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
-    <button type="button" onclick="closeSheet()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-ink/50 text-xl">✕</button>
-    <p class="text-base font-bold text-ink mb-1">Mon adhésion</p>
-    <p id="membership-status-detail" class="text-sm text-ink/70 mb-5"></p>
-    <p class="text-sm font-bold text-ink mb-1">Emprunter dans une autre médiathèque</p>
-    <p class="text-xs text-ink/55 mb-3">Tu veux emprunter aussi ailleurs ? Demande ton inscription : chaque médiathèque fixe ses conditions pour les non-résidents.</p>
-    <div id="memberships-list" class="flex flex-col gap-1.5 mb-2"></div>
-    <select id="membership-commune-select" class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm mb-1 bg-white">
-      <option value="" disabled selected>Choisis une médiathèque</option>
-    </select>
-    <p id="membership-commune-info" class="text-[11px] text-ink/55 mb-2 min-h-[16px]"></p>
-    <button id="membership-request-btn" class="w-full bg-brand text-white rounded-xl py-3 text-sm font-semibold active:scale-[0.98] transition">Demander mon inscription</button>
-    <p id="membership-message" class="text-xs text-center mt-2"></p>
-  </div>
-</div>
-
 <div id="sheet-password" onclick="closeSheet(event, this)" class="hidden fixed inset-0 z-50 bg-black/40 items-end sm:items-center justify-center">
   <form id="password-form" class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 relative flex flex-col gap-3" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
     <button type="button" onclick="closeSheet()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-ink/50 text-xl">✕</button>
@@ -221,9 +206,10 @@
   <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 relative" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
     <button type="button" onclick="closeSheet()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-ink/50 text-xl">✕</button>
     <p class="text-base font-bold text-ink mb-2">Supprimer mon compte</p>
-    <p class="text-sm text-ink/70 leading-relaxed">Ton compte, ta carte et ton historique seront supprimés. La suppression n'est possible qu'une fois tous tes documents rendus et ta situation réglée avec la médiathèque.</p>
-    <p class="text-sm text-ink/70 leading-relaxed mt-2">Envoie ta demande : elle sera traitée sous un mois.</p>
-    <a id="delete-request-link" href="mailto:megane@bligo.fr" class="block text-center w-full mt-5 bg-red-600 text-white rounded-xl py-3 text-sm font-semibold">Demander la suppression</a>
+    <p class="text-sm text-ink/70 leading-relaxed">Ton compte, ta carte et ton historique seront supprimés tout de suite, sans retour en arrière possible.</p>
+    <p class="text-sm text-ink/70 leading-relaxed mt-2">Tes documents doivent d'abord être rendus à la médiathèque.</p>
+    <p id="delete-message" class="text-sm text-red-600 leading-relaxed mt-3 hidden"></p>
+    <button type="button" id="delete-account-btn" onclick="deleteMyAccount()" class="w-full mt-5 bg-red-600 text-white rounded-xl py-3 text-sm font-semibold active:scale-[0.98] transition">Supprimer définitivement</button>
     <button type="button" onclick="closeSheet()" class="w-full mt-2 text-sm font-semibold text-ink/50 py-2">Annuler</button>
   </div>
 </div>
@@ -250,29 +236,29 @@
 </div>
 
 <nav class="fixed bottom-0 inset-x-0 z-30 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)]" style="transform: translateZ(0); padding-bottom: env(safe-area-inset-bottom);">
-  <div class="max-w-4xl mx-auto w-full flex items-center py-2 px-5">
-  <a href="accueil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+  <div class="max-w-4xl mx-auto w-full flex items-stretch pt-2 pb-1.5 px-1">
+  <a href="accueil.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5l8-7 8 7"/><path d="M6 10.3V19a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-8.7"/></svg>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Accueil</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight">Accueil</span>
   </a>
-  <a href="reservations.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+  <a href="reservations.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-ink/40 hover:text-ink">
     <span class="relative">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 1 1 12 0c0 3.8 1.3 5.2 1.3 5.2H4.7S6 13.3 6 9.5Z"/><path d="M10 17.7a2 2 0 0 0 4 0"/></svg>
       <span id="nav-resa-badge" class="hidden absolute -top-1 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-mango-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">0</span>
     </span>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap" id="nav-resa-label">Réservation</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight" id="nav-resa-label">Réservation</span>
   </a>
-  <a href="liste-envie.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+  <a href="liste-envie.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Liste d'envie</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight">Envies</span>
   </a>
-  <a href="agenda.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+  <a href="agenda.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Agenda</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight">Agenda</span>
   </a>
-  <a href="profil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-mango-700">
+  <a href="profil.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-mango-700">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.6" cy="11" r="2"/><path d="M5.6 16c.4-1.7 1.7-2.6 3-2.6s2.6.9 3 2.6"/><path d="M14 9.3h5M14 12.3h5M14 15.3h3.2"/></svg>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Profil</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight">Profil</span>
   </a>
   </div>
 </nav>
@@ -341,48 +327,19 @@
       </a>`).join('');
   }
 
-  async function setupMemberships(homeCommuneId) {
-    const { data: me, error } = await supabase.from('profiles').select('membership_expires_at').eq('id', currentUserId).single();
-    if (error) return; // migration pas encore passée
-    document.getElementById('membership-row').classList.remove('hidden');
+  // Mon adhésion (23/10/2026) : seulement l'état, active ou en attente de
+  // validation par la médiathèque. Plus de demande d'inscription dans une
+  // autre médiathèque depuis l'appli.
+  async function setupMembership(isValidated) {
+    const row = document.getElementById('membership-row');
+    const el = document.getElementById('membership-status');
+    row.classList.remove('hidden');
+    if (!isValidated) { el.textContent = 'En attente de validation par la médiathèque'; return; }
+    const { data: me } = await supabase.from('profiles').select('membership_expires_at').eq('id', currentUserId).single();
     const exp = me?.membership_expires_at ? new Date(me.membership_expires_at) : null;
-    const text = !exp ? 'Active'
-      : exp <= new Date() ? `Expirée depuis le ${formatDateFr(exp)} : renouvelle-la à l'accueil pour emprunter.`
-      : `Valable jusqu'au ${formatDateFr(exp)}`;
-    for (const id of ['membership-status', 'membership-status-detail']) {
-      const el = document.getElementById(id);
-      el.textContent = text;
-      el.classList.toggle('text-red-600', !!exp && exp <= new Date());
-    }
-
-    const [{ data: communes }, { data: memberships }] = await Promise.all([
-      supabase.from('communes').select('id, name, non_resident_policy, non_resident_fee_cents').order('name'),
-      supabase.from('memberships').select('commune_id, status, expires_at, communes ( name )').eq('user_id', currentUserId),
-    ]);
-    const statusLabel = { pending: 'demande en attente', active: 'inscrit(e)', refused: 'demande refusée' };
-    document.getElementById('memberships-list').innerHTML = (memberships || []).map(m => `
-      <p class="text-xs text-ink"><span class="font-semibold">${m.communes?.name || ''}</span> · <span class="${m.status === 'active' ? 'text-mango-700' : 'text-ink/50'}">${statusLabel[m.status] || m.status}${m.status === 'active' && m.expires_at ? ` jusqu'au ${formatDateFr(m.expires_at)}` : ''}</span></p>`).join('');
-
-    const already = new Set((memberships || []).filter(m => m.status !== 'refused').map(m => m.commune_id));
-    const others = (communes || []).filter(c => c.id !== homeCommuneId && !already.has(c.id));
-    const select = document.getElementById('membership-commune-select');
-    select.innerHTML = `<option value="" disabled selected>Choisis une médiathèque</option>` +
-      others.map(c => `<option value="${c.id}" ${c.non_resident_policy === 'refuse' ? 'disabled' : ''}>${c.name}${c.non_resident_policy === 'refuse' ? ' (non-résidents non acceptés)' : ''}</option>`).join('');
-    select.onchange = () => {
-      const c = others.find(x => x.id === Number(select.value));
-      document.getElementById('membership-commune-info').textContent = !c ? ''
-        : c.non_resident_policy === 'paid' && c.non_resident_fee_cents > 0
-          ? `Tarif non-résident : ${(c.non_resident_fee_cents / 100).toFixed(2).replace('.', ',')} € par an, à régler à l'accueil.`
-          : 'Inscription gratuite pour les non-résidents.';
-    };
-    document.getElementById('membership-request-btn').onclick = async () => {
-      const msg = document.getElementById('membership-message');
-      if (!select.value) { msg.textContent = 'Choisis d\'abord une médiathèque.'; return; }
-      const { data, error } = await supabase.rpc('request_membership', { p_commune_id: Number(select.value) });
-      msg.className = 'text-xs text-center mt-2 ' + (error || !data?.ok ? 'text-red-600' : 'text-mango-700');
-      msg.textContent = error ? error.message : data.message;
-      if (!error && data?.ok) setupMemberships(homeCommuneId);
-    };
+    const expired = !!exp && exp <= new Date();
+    el.textContent = expired ? `Expirée depuis le ${formatDateFr(exp)} : renouvelle-la à l'accueil pour emprunter.` : 'Active';
+    el.classList.toggle('text-red-600', expired);
   }
 
   // Petit œil sur les mots de passe (23/10/2026) : œil pour afficher,
@@ -405,7 +362,7 @@
     document.getElementById('share-app-btn').addEventListener('click', async () => {
       // En dur plutôt que window.location.origin : dans l'app (iOS/Android),
       // l'origine réelle est une adresse interne (capacitor://localhost),
-      // pas https://bligo.app — le lien partagé serait invalide pour qui le
+      // pas https://bligo.app - le lien partagé serait invalide pour qui le
       // reçoit.
       const shareUrl = shareRefCode
         ? `https://bligo.app/index.html?ref=${encodeURIComponent(shareRefCode)}`
@@ -431,7 +388,7 @@
         try {
           await navigator.share({ title: 'BliGO', text: shareText, url: shareUrl });
         } catch (e) {
-          // Partage annulé par l'usager — rien à faire.
+          // Partage annulé par l'usager - rien à faire.
         }
       } else {
         try {
@@ -479,9 +436,6 @@
     const fullName = profile?.full_name && profile.full_name !== 'Nouvel usager' ? profile.full_name : '';
     document.getElementById('card-name').textContent = fullName;
     document.getElementById('card-number').textContent = profile?.subscriber_number ? `N° abonné ${profile.subscriber_number}` : '';
-    document.getElementById('delete-request-link').href = 'mailto:megane@bligo.fr?subject=' +
-      encodeURIComponent('Suppression de mon compte BliGO') + '&body=' +
-      encodeURIComponent(`Bonjour,\n\nJe souhaite supprimer mon compte BliGO.\n\nE-mail : ${currentUser.email}\nN° abonné : ${profile?.subscriber_number || ''}\n`);
     shareRefCode = profile?.subscriber_number || '';
     loadStats(currentUser.id);
     setupReadingChallenge(currentUser.id, profile?.reading_goal ?? 12);
@@ -489,7 +443,7 @@
 
     const isLibre = profile?.account_type === 'libre';
     const isValidated = profile?.registration_status === 'valide';
-    if (!isLibre && isValidated && profile?.commune_id) setupMemberships(profile.commune_id);
+    if (!isLibre && profile?.commune_id) setupMembership(isValidated);
     if (!isLibre && profile?.commune_id) {
       // Catégorie d'abonnement : visible et réglée côté agents uniquement (12/10/2026).
       setupFamily();
@@ -503,7 +457,7 @@
     const communeName = profile?.communes?.name ? `Médiathèque de ${profile.communes.name}` : 'Médiathèque de Val-Fleuri';
 
     // Logo de la commune à la place du mot-clé BliGO, comme sur l'accueil et
-    // le back-office — reste sur BliGO si l'image n'existe pas (ou compte
+    // le back-office - reste sur BliGO si l'image n'existe pas (ou compte
     // Bibliothèque Libre, pas rattaché à une commune).
     if (!isLibre && profile?.communes?.name) {
       const logoEl = document.getElementById('card-commune-logo');
@@ -532,7 +486,7 @@
       badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/5 text-ink/60';
       badge.classList.remove('hidden');
     } else if (isValidated) {
-      // Le compte validé se voit déjà au QR code affiché plus bas — inutile de le redire ici.
+      // Le compte validé se voit déjà au QR code affiché plus bas - inutile de le redire ici.
       badge.classList.add('hidden');
     } else {
       badge.textContent = `● Pré-inscription · ${communeName}`;
@@ -701,6 +655,26 @@
     const backdrop = document.getElementById('pending-popup-backdrop');
     backdrop.classList.add('hidden');
     backdrop.classList.remove('flex');
+  };
+
+  // Suppression immédiate du compte (23/10/2026), si tout est rendu et réglé
+  // (vérifié côté serveur par delete_my_account).
+  window.deleteMyAccount = async function () {
+    const btn = document.getElementById('delete-account-btn');
+    const msg = document.getElementById('delete-message');
+    btn.disabled = true;
+    btn.textContent = 'Suppression…';
+    const { data, error } = await supabase.rpc('delete_my_account');
+    if (error || !data?.ok) {
+      msg.textContent = error ? "La suppression n'a pas pu se faire. Réessaie dans un instant." : data.message;
+      msg.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Supprimer définitivement';
+      return;
+    }
+    try { localStorage.clear(); } catch (e) {}
+    await supabase.auth.signOut();
+    window.location.href = 'index.html';
   };
 
   window.logout = async function () {

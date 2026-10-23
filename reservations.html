@@ -27,6 +27,9 @@
   /* Sur un vrai iPhone (encoche/île dynamique + barre du bas), le contenu
      touche sinon la barre de statut et le menu chevauche la barre du bas. */
   body { padding-top: env(safe-area-inset-top); padding-bottom: calc(6rem + env(safe-area-inset-bottom)) !important; }
+  /* Bande blanche sous l'heure et la batterie (23/10/2026) : le contenu et l'en-tête ne passent plus dessous en faisant défiler. */
+  body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #fff; z-index: 40; }
+  header.sticky { top: env(safe-area-inset-top); }
   .font-logo { font-family: 'Poppins', sans-serif; }
   @media (max-width: 640px) {
     input, select, textarea { font-size: 16px !important; }
@@ -104,29 +107,29 @@
 </div>
 
 <nav class="fixed bottom-0 inset-x-0 z-30 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)]" style="transform: translateZ(0); padding-bottom: env(safe-area-inset-bottom);">
-  <div class="max-w-4xl mx-auto w-full flex items-center py-2 px-5">
-  <a href="accueil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+  <div class="max-w-4xl mx-auto w-full flex items-stretch pt-2 pb-1.5 px-1">
+  <a href="accueil.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5l8-7 8 7"/><path d="M6 10.3V19a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-8.7"/></svg>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Accueil</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight">Accueil</span>
   </a>
-  <a href="reservations.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-mango-700">
+  <a href="reservations.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-mango-700">
     <span class="relative">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 1 1 12 0c0 3.8 1.3 5.2 1.3 5.2H4.7S6 13.3 6 9.5Z"/><path d="M10 17.7a2 2 0 0 0 4 0"/></svg>
       <span id="nav-resa-badge" class="hidden absolute -top-1 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-mango-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">0</span>
     </span>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap" id="nav-resa-label">Réservation</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight" id="nav-resa-label">Réservation</span>
   </a>
-  <a href="liste-envie.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+  <a href="liste-envie.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Liste d'envie</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight">Envies</span>
   </a>
-  <a href="agenda.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+  <a href="agenda.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Agenda</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight">Agenda</span>
   </a>
-  <a href="profil.html" class="flex-1 flex flex-col items-center gap-0.5 px-0.5 py-1 text-ink/40 hover:text-ink">
+  <a href="profil.html" class="flex-1 min-w-0 flex flex-col items-center gap-1 py-1 text-ink/40 hover:text-ink">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.6" cy="11" r="2"/><path d="M5.6 16c.4-1.7 1.7-2.6 3-2.6s2.6.9 3 2.6"/><path d="M14 9.3h5M14 12.3h5M14 15.3h3.2"/></svg>
-    <span class="text-[10.5px] font-semibold whitespace-nowrap">Profil</span>
+    <span class="text-[12px] font-semibold whitespace-nowrap tracking-tight">Profil</span>
   </a>
   </div>
 </nav>
@@ -319,7 +322,7 @@
   }
 
   // Emprunts pris directement au comptoir, sans réservation Click & Collect
-  // préalable (scan de la carte usager par l'agent) — reservation_id null
+  // préalable (scan de la carte usager par l'agent) - reservation_id null
   // filtre les emprunts déjà couverts par loadReservations() ci-dessus, pour
   // ne pas les afficher en double.
   async function loadLoans() {
@@ -428,7 +431,7 @@
 
   // Même forme que normalize(), pour les emprunts comptoir sans réservation.
   // statut "loan_returned" (propre à cette page) plutôt que réutiliser
-  // "expiree" — ce statut sert déjà pour une réservation non récupérée à
+  // "expiree" - ce statut sert déjà pour une réservation non récupérée à
   // temps, pas pour un livre normalement rendu après lecture.
   function normalizeLoans(list) {
     return (list || []).map(l => {
@@ -470,7 +473,7 @@
   }
 
   // Un groupe = les livres d'une même médiathèque, pour afficher une
-  // languette par destination plutôt qu'une liste mélangée — utilisé pour
+  // languette par destination plutôt qu'une liste mélangée - utilisé pour
   // "Prêt à récupérer" et "En préparation".
   function groupByCommune(items) {
     const groups = new Map();
@@ -600,47 +603,51 @@
 
   function historyItemHtml(item) {
     const isExpired = item.status === 'expiree';
-    // Ici, uniquement "Déjà lu" (blanc) ou "Expirée" (rouge) — un livre du
+    // Ici, uniquement "Déjà lu" (blanc) ou "Expirée" (rouge) - un livre du
     // catalogue encore dans ses 3 semaines de prêt est affiché dans sa
     // propre section "Emprunté", pas ici.
     const coverHtml = item.coverUrl
       ? `<img src="${item.coverUrl}" alt="" class="w-11 aspect-[2/3] object-cover rounded-md shadow-sm shrink-0">`
       : `<div class="w-11 aspect-[2/3] rounded-md bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-sm shrink-0">${item.coverInitial}</div>`;
 
+    const tagHtml = isExpired
+      ? `<span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap bg-red-50 text-red-600">Expirée, remise en rayon</span>`
+      : `<span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap bg-brand/5 text-ink/45">Déjà lu</span>`;
+
     const ratingHtml = ((item.status === 'recupere' || item.status === 'loan_returned') && item.bookId)
       ? `
         <div class="mt-1.5">
           <p class="text-[10px] font-semibold text-ink/40 mb-1">${item.myRating ? 'Ta note' : 'Note ce livre'}</p>
+          <div class="flex items-center gap-2">
           <div class="flex items-center gap-0.5">
             ${Array.from({ length: 5 }, (_, i) => `
               <button type="button" onclick="rateBookFromHistory(${item.bookId}, ${i + 1})" class="w-5 h-5" aria-label="${i + 1} étoile${i > 0 ? 's' : ''}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="${i < (item.myRating || 0) ? '#F07F14' : 'none'}" stroke="${i < (item.myRating || 0) ? '#F07F14' : '#D1D5DB'}" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6Z"/></svg>
               </button>`).join('')}
           </div>
+          <span class="ml-auto">${tagHtml}</span>
+          </div>
           ${item.myRating ? `
             <div class="mt-2">
-              <textarea id="history-comment-${item.bookId}" maxlength="300" placeholder="Ton avis en quelques mots (optionnel)…" class="w-full bg-[#EEEDF2] rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-mango-300 resize-none" rows="2">${escapeHtml(item.myComment)}</textarea>
+              <textarea id="history-comment-${item.bookId}" maxlength="300" placeholder="Ton avis en quelques mots…" class="w-full bg-[#EEEDF2] rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-mango-300 resize-none" rows="2">${escapeHtml(item.myComment)}</textarea>
               <button type="button" onclick="saveHistoryComment(${item.bookId})" class="mt-1 text-[11px] font-semibold text-mango-700">Enregistrer le commentaire</button>
               <span id="history-comment-msg-${item.bookId}" class="text-[11px] text-ink/40 ml-2"></span>
             </div>` : ''}
         </div>`
-      : '';
+      : `<div class="mt-1.5">${tagHtml}</div>`;
 
-    const tagHtml = isExpired
-      ? `<span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap bg-red-50 text-red-600">Expirée, remise en rayon</span>`
-      : `<span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap bg-brand/5 text-ink/45">Déjà lu</span>`;
-
+    // Titre sur une seule ligne (23/10/2026) : l'étiquette « Déjà lu » est à
+    // droite des étoiles, le titre prend toute la largeur.
     return `
       <div class="bg-white shadow-sm rounded-2xl p-3.5">
         <div class="flex items-center gap-3">
           ${coverHtml}
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold text-ink">${item.title}</p>
+            <p class="text-sm font-bold text-ink truncate">${item.title}</p>
             <p class="text-[11px] text-ink/50">${item.author}</p>
             <p class="text-[10.5px] text-ink/40 mt-0.5">${formatDate(item.createdAt)}${item.communeId ? ` · Médiathèque de ${communeNameFor(item.communeId)}` : ''}</p>
             ${ratingHtml}
           </div>
-          ${tagHtml}
         </div>
       </div>`;
   }

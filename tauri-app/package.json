@@ -2,7 +2,7 @@
   "name": "bligo-agent",
   "version": "1.0.0",
   "private": true,
-  "description": "BliGO — logiciel agent (back-office + super admin) empaqueté en app de bureau via Tauri",
+  "description": "BliGO - logiciel agent (back-office + super admin) empaqueté en app de bureau via Tauri",
   "scripts": {
     "build": "node sync-web.mjs",
     "tauri": "tauri"

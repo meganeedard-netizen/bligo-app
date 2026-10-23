@@ -4,7 +4,7 @@ Crée un vrai compte agent (auth Supabase + profil) depuis l'écran « Comptes a
 de `admin.html`, sans passer par une manipulation SQL manuelle dans Supabase.
 
 Réservée aux comptes **direction** (et à Mégane, super_admin) : la fonction vérifie
-elle-même le niveau de l'appelant côté serveur avant de créer quoi que ce soit — le
+elle-même le niveau de l'appelant côté serveur avant de créer quoi que ce soit - le
 bouton caché côté interface pour un compte `agent` n'est qu'un confort, pas la
 sécurité réelle.
 

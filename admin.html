@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BliGO — Back-office</title>
+<title>BliGO - Back-office</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -347,32 +347,32 @@
         <div class="grid grid-cols-2 xl:grid-cols-3 gap-3 mb-8">
             <button type="button" onclick="switchScreen('reservations'); switchReservationTab('preparation')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Commandes à préparer</p><span class="text-mango-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6M9 7h3"/></svg></span></div>
-              <p id="kpi-prep" class="text-3xl font-bold mt-1 text-ink">–</p>
+              <p id="kpi-prep" class="text-3xl font-bold mt-1 text-ink">-</p>
               <p class="text-[11px] text-ink/45 mt-1">À mettre de côté pour les usagers</p>
             </button>
             <button type="button" onclick="switchScreen('reservations'); switchReservationTab('pret')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Commandes prêtes à récupérer</p><span class="text-emerald-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/><path d="M9.5 13.5l2 2 3.5-3.5"/></svg></span></div>
-              <p id="kpi-ready" class="text-3xl font-bold mt-1 text-ink">–</p>
+              <p id="kpi-ready" class="text-3xl font-bold mt-1 text-ink">-</p>
               <p class="text-[11px] text-ink/45 mt-1">En attente du passage de l'usager</p>
             </button>
             <button type="button" onclick="switchScreen('reservations'); switchPrTab('active')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">En retard</p><span class="text-red-600 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M5 3L2 6M19 3l3 3"/></svg></span></div>
-              <p id="kpi-late" class="text-3xl font-bold mt-1 text-red-600">–</p>
+              <p id="kpi-late" class="text-3xl font-bold mt-1 text-red-600">-</p>
               <p class="text-[11px] text-ink/45 mt-1">Date de retour dépassée</p>
             </button>
             <button type="button" onclick="switchScreen('reservations'); switchPrTab('rayon')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">À remettre en rayon</p><span class="text-violet-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V4h3v17M10 21V7h3v14"/><path d="M15.5 8.5l3-.8 3.4 12.6-3 .8z"/></svg></span></div>
-              <p id="kpi-reshelve" class="text-3xl font-bold mt-1 text-ink">–</p>
+              <p id="kpi-reshelve" class="text-3xl font-bold mt-1 text-ink">-</p>
               <p class="text-[11px] text-ink/45 mt-1">Rendus ou commandes non récupérées</p>
             </button>
             <button type="button" onclick="switchScreen('users'); openPreregistrationsView()" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Préinscriptions</p><span class="text-hibiscus-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M19 8v6M16 11h6"/></svg></span></div>
-              <p id="kpi-prereg" class="text-3xl font-bold mt-1 text-ink">–</p>
+              <p id="kpi-prereg" class="text-3xl font-bold mt-1 text-ink">-</p>
               <p class="text-[11px] text-ink/45 mt-1">Comptes à valider à l'accueil</p>
             </button>
             <button type="button" id="kpi-transfers-tile" onclick="switchScreen('logistics')" class="bo-kpi text-left bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-brand/40 transition">
               <div class="flex items-start justify-between gap-2"><p class="text-xs font-semibold text-ink/55">Transferts</p><span class="text-teal-700 flex items-center justify-center shrink-0"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="12" height="10" rx="1"/><path d="M14 10h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></span></div>
-              <p id="kpi-transfers" class="text-3xl font-bold mt-1 text-ink">–</p>
+              <p id="kpi-transfers" class="text-3xl font-bold mt-1 text-ink">-</p>
               <p class="text-[11px] text-ink/45 mt-1">À envoyer ou à recevoir</p>
             </button>
         </div>
@@ -649,7 +649,7 @@
               class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300">
             <div id="inscrit-scan-results" class="flex flex-col gap-1.5 max-h-52 overflow-y-auto"></div>
 
-            <p class="text-[11px] text-ink/45 mt-3">Pas de carte, pas de compte, ou pas rattaché à une commune ? Tu peux fermer cette fenêtre et cataloguer directement — le don ne sera juste pas crédité en points de fidélité.</p>
+            <p class="text-[11px] text-ink/45 mt-3">Pas de carte, pas de compte, ou pas rattaché à une commune ? Tu peux fermer cette fenêtre et cataloguer directement - le don ne sera juste pas crédité en points de fidélité.</p>
           </div>
         </div>
       </section>
@@ -718,7 +718,7 @@
           <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
             <button onclick="closeAddInscritForm()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
             <p class="text-base font-bold text-ink mb-1">Ajouter un inscrit</p>
-            <p class="text-xs text-ink/55 mb-4">Pour une personne qui n'a pas l'application — le compte est créé et confirmé immédiatement.</p>
+            <p class="text-xs text-ink/55 mb-4">Pour une personne qui n'a pas l'application - le compte est créé et confirmé immédiatement.</p>
             <label class="text-xs font-semibold text-ink/60 block mb-1">Nom complet</label>
             <input id="add-inscrit-name" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
             <label class="text-xs font-semibold text-ink/60 block mb-1">E-mail</label>
@@ -1462,7 +1462,7 @@
 
   // Documentaire, Sciences & nature, Voyages, Sports & loisirs et Poésie &
   // théâtre ajoutées le 07/10/2026, alignées sur les classes Dewey (voir
-  // deweyCategory) — voir sql/add_categories_documentaire.sql.
+  // deweyCategory) - voir sql/add_categories_documentaire.sql.
   const CATEGORIES = [
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Documentaire', 'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
@@ -1495,7 +1495,7 @@
   ];
 
   // Devine la catégorie à partir des libellés bruts renvoyés par Google Books /
-  // Open Library (souvent en anglais, incohérents) — l'agent peut la corriger
+  // Open Library (souvent en anglais, incohérents) - l'agent peut la corriger
   // ensuite en un tap si besoin.
   function guessCategory(rawText, title) {
     const text = ((rawText || '') + ' ' + (title || '')).toLowerCase();
@@ -1566,7 +1566,7 @@
   };
 
   // Le dernier mot du nom du premier auteur listé est pris comme nom de
-  // famille — imparfait pour certains noms composés ou une fiche au format
+  // famille - imparfait pour certains noms composés ou une fiche au format
   // "Nom, Prénom", mais couvre l'immense majorité des fiches Google Books /
   // Open Library (généralement "Prénom Nom").
   // Lettres de cote sans accents ni espaces (« El Bèze » → « ELB »), comme
@@ -1757,7 +1757,7 @@
 
   // Repère les livres dont la cote ne correspond plus à leur catégorie
   // actuelle (typiquement : catégorie corrigée après coup dans le menu
-  // déroulant, sans repasser par la cote — voir le cas Michel Bussi/"DOC BUS"
+  // déroulant, sans repasser par la cote - voir le cas Michel Bussi/"DOC BUS"
   // du 16/09/2026). Volontairement limité aux catégories à préfixe lettre
   // (Roman, Thriller, Fantasy, BD, Jeunesse, Fonds local) : les catégories
   // documentaires (Bien-être, Maison, Histoire, Culture) utilisent un indice
@@ -1765,7 +1765,7 @@
   // indice par défaut générique.
   //
   // Calculée automatiquement à chaque affichage du catalogue (badge dans
-  // l'en-tête) plutôt que sur un clic — l'agent n'a rien à déclencher pour
+  // l'en-tête) plutôt que sur un clic - l'agent n'a rien à déclencher pour
   // savoir qu'il y a quelque chose à vérifier (17/09/2026).
   function findCoteMismatches() {
     const mismatches = [];
@@ -1822,7 +1822,7 @@
       }
     }
     await loadBooks();
-    if (failed) alert(`${done} couverture(s) détectée(s). ${failed} n'ont pas pu être analysées (image inaccessible) — à faire manuellement dans leur fiche.`);
+    if (failed) alert(`${done} couverture(s) détectée(s). ${failed} n'ont pas pu être analysées (image inaccessible) - à faire manuellement dans leur fiche.`);
   };
 
 
@@ -1953,7 +1953,7 @@
     // 0 passe en gris clair pour que l'œil aille à ce qui demande une action.
     const set = (key, value) => {
       const el = document.getElementById(`kpi-${key}`);
-      el.textContent = value ?? '–';
+      el.textContent = value ?? '-';
       el.closest('.bo-kpi')?.classList.toggle('opacity-50', value === 0);
     };
     const count = r => r?.error ? null : (r?.count ?? 0);
@@ -2057,7 +2057,7 @@
 
   // ---------- Compteur de fréquentation ("+1 Visiteur") ----------
   // Volontairement anonyme : aucun nom ni numéro de carte, juste date/heure/
-  // site/nombre — voir sql/add_activity_log_and_visitor_counter.sql.
+  // site/nombre - voir sql/add_activity_log_and_visitor_counter.sql.
 
   async function refreshVisitorCount() {
     const { data, error } = await supabase.rpc('visitor_count_today');
@@ -2197,20 +2197,20 @@
 
   // Brouillons de catalogage (17/09/2026) : chaque ISBN scanné ou tapé part en
   // recherche multi-API en arrière-plan et atterrit ici, en liste, pour
-  // vérification avant de valider chaque fiche — que ce soit un scan isolé ou
+  // vérification avant de valider chaque fiche - que ce soit un scan isolé ou
   // plusieurs à la suite, un seul et même flux (plus de mode « simple »/
   // « rafale » à choisir à l'avance).
   // { localId, isbn, query, status: 'loading'|'found'|'existing'|'not_found', meta, existingBookId }
   let draftBooks = [];
   // Brouillons dont l'agent a ouvert la fiche complète pour la vérifier avant
-  // de valider (21/09/2026) — voir toggleDraftVerify.
+  // de valider (21/09/2026) - voir toggleDraftVerify.
   let expandedDraftIds = new Set();
 
   // Bip sonore de confirmation à chaque scan réussi (comme une douchette de caisse).
   // + une vibration en complément : marche indépendamment du son sur Android
   // (utile en mode silencieux). Sur iPhone, Apple bloque le son des sites web
   // quand l'interrupteur silencieux est activé et ne permet pas la vibration
-  // depuis un site — aucune limitation qu'on puisse contourner en JS ; le cadre
+  // depuis un site - aucune limitation qu'on puisse contourner en JS ; le cadre
   // orange à l'écran reste la confirmation garantie dans ce cas.
   let audioCtx = null;
   function playBeep() {
@@ -2281,7 +2281,7 @@
       defaultLabel: "Scanner l'ISBN",
       hint: '',
       // Pas de onResult : contrairement aux autres modes, le scan livre ne
-      // ferme pas la caméra après une détection (voir scanLoop) — chaque code
+      // ferme pas la caméra après une détection (voir scanLoop) - chaque code
       // part directement en brouillon via addDraftFromIsbn().
     },
     donor: {
@@ -2308,7 +2308,7 @@
       toggleBtnId: 'checkin-camera-btn',
       hintId: 'checkin-camera-hint',
       defaultLabel: 'Scanner la carte de l\'usager',
-      hint: 'Vise le QR code — la caméra reste ouverte pour enchaîner les participants.',
+      hint: 'Vise le QR code - la caméra reste ouverte pour enchaîner les participants.',
       // Pas de onResult : mode en rafale (voir BURST_SCAN_MODES et
       // scanLoop), la caméra ne se ferme pas après une détection.
     },
@@ -2373,7 +2373,7 @@
       return;
     }
     // Un double-tap (ou un clic impatient pendant l'ouverture de la caméra) pouvait
-    // démarrer deux flux caméra en parallèle — chacun scannant et ajoutant le livre
+    // démarrer deux flux caméra en parallèle - chacun scannant et ajoutant le livre
     // séparément. Ce verrou synchrone bloque toute tentative tant que la première
     // ouverture n'est pas terminée (succès ou échec).
     if (cameraOpening) return;
@@ -2478,7 +2478,7 @@
         const code = found.text;
 
         // Le même code reste souvent quelques instants devant la caméra
-        // après le bip — on ignore les répétitions du même code pendant un
+        // après le bip - on ignore les répétitions du même code pendant un
         // court instant, sans ralentir la détection d'un code différent.
         if (BURST_SCAN_MODES.includes(scanState.mode) && code === lastBatchCode && Date.now() - lastBatchCodeTime < 4000) {
           scanTimeoutId = setTimeout(scanLoop, 400);
@@ -2488,7 +2488,7 @@
         drawHighlight(ctx, found.box, overlay.width);
 
         // Scan livre : la caméra reste ouverte pour enchaîner, chaque code
-        // part directement en brouillon (recherche en arrière-plan) — un
+        // part directement en brouillon (recherche en arrière-plan) - un
         // scan isolé ou une dizaine à la suite empruntent le même chemin.
         if (scanState.mode === 'book') {
           lastBatchCode = code;
@@ -2563,7 +2563,7 @@
       }
 
       // Rien détecté après quelques secondes : le flash s'active tout seul
-      // (souvent la vraie cause de lenteur — pas besoin d'attendre que
+      // (souvent la vraie cause de lenteur - pas besoin d'attendre que
       // l'agent pense à appuyer dessus).
       const torchBtn = document.getElementById('torch-btn');
       if (!torchOn && !torchBtn.classList.contains('hidden') && Date.now() - scanStartTime > 2500) {
@@ -2654,7 +2654,7 @@
     document.getElementById('inscrit-scan-backdrop').classList.remove('flex');
   };
 
-  // Recherche par n° d'abonné ou nom/prénom quand l'inscrit n'a pas sa carte —
+  // Recherche par n° d'abonné ou nom/prénom quand l'inscrit n'a pas sa carte -
   // réutilise la liste des inscrits déjà chargée si elle l'est, sinon la charge.
   window.renderInscritScanResults = async function () {
     const query = searchNormalize(document.getElementById('inscrit-scan-search')?.value || '');
@@ -2713,7 +2713,7 @@
   // Un ISBN scanné (douchette/caméra) ou tapé part en recherche multi-API
   // (Google Books, Open Library, BnF) en arrière-plan et devient une carte
   // brouillon ci-dessous, éditable et à valider une par une (ou toutes à la
-  // fois) avant d'entrer réellement au catalogue — même chemin qu'on scanne
+  // fois) avant d'entrer réellement au catalogue - même chemin qu'on scanne
   // un seul document ou plusieurs à la suite.
 
   // Vrai ISBN (livre) : 10 caractères, ou 13 chiffres en 978/979. Tout autre
@@ -2793,7 +2793,7 @@
       if (!meta.language) meta.language = bnf.language;
       // Dernier recours seulement (18/09/2026) : Google Books et Open Library
       // n'ont pas toujours de résumé éditeur pour l'édition exacte scannée,
-      // la BnF en a parfois un — jamais utilisé pour écraser les deux autres.
+      // la BnF en a parfois un - jamais utilisé pour écraser les deux autres.
       if (!meta.summary && bnf.summary) meta.summary = bnf.summary;
       // Indice BnF prioritaire : c'est celui qu'utilisent les bibliothèques françaises.
       meta.dewey = bnf.dewey || meta.dewey;
@@ -3230,7 +3230,7 @@
     draft.copyCount = 1;
     // Champs dupliqués à plat sur le brouillon (plutôt que dans .meta) pour
     // que la fiche de vérification les édite sans toucher meta tant que
-    // l'agent n'a pas cliqué « Valider » — voir validateDraft.
+    // l'agent n'a pas cliqué « Valider » - voir validateDraft.
     draft.title = meta.title || '';
     draft.author = meta.author || '';
     draft.isbn = meta.isbn || draft.isbn || '';
@@ -3309,7 +3309,7 @@
   }
 
   // En scan en rafale, une autre fiche peut finir sa recherche (et donc
-  // re-rendre toute la liste) pendant que l'agent modifie encore celle-ci —
+  // re-rendre toute la liste) pendant que l'agent modifie encore celle-ci -
   // on répercute chaque changement dans draftBooks tout de suite pour ne rien
   // perdre au prochain rendu.
   window.updateDraftField = function (localId, field, value) {
@@ -3367,7 +3367,7 @@
   };
 
   // Ouvre/replie la fiche complète d'un brouillon pour vérification avant
-  // validation (21/09/2026) — voir draftCardHtml, statut 'found'.
+  // validation (21/09/2026) - voir draftCardHtml, statut 'found'.
   window.toggleDraftVerify = function (localId) {
     if (expandedDraftIds.has(localId)) expandedDraftIds.delete(localId);
     else expandedDraftIds.add(localId);
@@ -3395,7 +3395,7 @@
 
     if (draft.status !== 'found') return;
     // Répercute les corrections faites dans la fiche de vérification (titre,
-    // auteur, ISBN, éditeur, date, résumé) sur meta avant l'insertion —
+    // auteur, ISBN, éditeur, date, résumé) sur meta avant l'insertion -
     // updateDraftField ne touche que le brouillon à plat, jamais meta
     // directement, pour ne rien insérer avant le clic sur « Valider ».
     draft.meta.title = (draft.title || '').trim() || draft.meta.title;
@@ -3578,7 +3578,7 @@
       return `
         <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
           <div class="flex items-center justify-between mb-2">
-            <p class="text-[11px] font-bold text-ink/40 uppercase tracking-wide">Aucune fiche trouvée${d.isbn ? ` — ${escapeHtml(d.isbn)}` : ''}</p>
+            <p class="text-[11px] font-bold text-ink/40 uppercase tracking-wide">Aucune fiche trouvée${d.isbn ? ` - ${escapeHtml(d.isbn)}` : ''}</p>
             <button onclick="removeDraft('${d.localId}')" class="text-xs text-ink/40 hover:text-ink/60 underline shrink-0">Supprimer</button>
           </div>
 
@@ -3628,7 +3628,7 @@
         : `<div class="w-12 h-16 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-lg shrink-0">${escapeHtml((title || '?')[0])}</div>`;
       return `
         <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
-          <p class="text-[11px] font-bold text-mango-700 uppercase tracking-wide mb-2">Déjà au catalogue — ${totalCopies} exemplaire${totalCopies > 1 ? 's' : ''}</p>
+          <p class="text-[11px] font-bold text-mango-700 uppercase tracking-wide mb-2">Déjà au catalogue - ${totalCopies} exemplaire${totalCopies > 1 ? 's' : ''}</p>
           ${d.enrichedFields?.length ? `<p class="text-[11px] text-ink/60 bg-mango-50 rounded-lg px-2.5 py-1.5 mb-2">✓ Fiche complétée automatiquement : ${escapeHtml(d.enrichedFields.join(', '))}${book?.shelf_location ? ` · cote ${escapeHtml(book.shelf_location)}` : ''}</p>` : ''}
           <div class="flex gap-3">
             ${coverHtml}
@@ -3654,11 +3654,11 @@
 
     if (!expandedDraftIds.has(d.localId)) {
       // Vue compacte : aperçu de la fiche récupérée automatiquement, pas
-      // encore éditable — l'agent doit cliquer « Vérifier » pour la corriger.
+      // encore éditable - l'agent doit cliquer « Vérifier » pour la corriger.
       return `
         <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
           <div class="flex items-center justify-between mb-2">
-            <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide">Brouillon — à vérifier avant validation</p>
+            <p class="text-[11px] font-bold text-hibiscus-700 uppercase tracking-wide">Brouillon - à vérifier avant validation</p>
             <button onclick="removeDraft('${d.localId}')" class="text-xs text-ink/40 hover:text-ink/60 underline shrink-0">Supprimer</button>
           </div>
           <div class="flex gap-3">
@@ -3691,7 +3691,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     // Vue dépliée : fiche complète éditable, pour corriger les champs
     // récupérés automatiquement (titre, auteur, ISBN, éditeur…) avant de
-    // valider — validateDraft répercute ces champs sur meta au moment du clic.
+    // valider - validateDraft répercute ces champs sur meta au moment du clic.
     return `
       <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between mb-2">
@@ -3843,7 +3843,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         title: item.title,
         author: (item.authors || ['Auteur inconnu']).join(', '),
         // Les étiquettes de genre de Google sont souvent vides ou trop vagues
-        // (juste "Fiction") — le résumé, lui, contient presque toujours des
+        // (juste "Fiction") - le résumé, lui, contient presque toujours des
         // mots qui trahissent le genre ("thriller", "développement personnel"…),
         // donc on le donne aussi à deviner la catégorie.
         rawCategoryText: [(item.categories || []).join(' '), item.description || ''].join(' '),
@@ -3865,10 +3865,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   // Second recours : Google Books ne connaît pas toutes les éditions (notamment
-  // les éditions locales/anciennes) — Open Library en indexe souvent d'autres.
+  // les éditions locales/anciennes) - Open Library en indexe souvent d'autres.
   //
   // Chemin /api/books.json (pas /api/books, ni format=json en paramètre) :
-  // Open Library a changé son routage entre le 16/09 et le 18/09/2026 — l'ancien
+  // Open Library a changé son routage entre le 16/09 et le 18/09/2026 - l'ancien
   // chemin renvoie une 404 systématique désormais (vérifié en direct, y compris
   // sur des ISBN très connus), ce qui cassait silencieusement tout le
   // complément éditeur/date/pages/langue/genre par cette source.
@@ -3910,7 +3910,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     }
   }
 
-  // Typologie de document utilisée en médiathèque (21/09/2026) — remplace
+  // Typologie de document utilisée en médiathèque (21/09/2026) - remplace
   // l'ancien format éditeur brut (poche/broché/relié seuls) par les grandes
   // familles de documents que l'agent doit distinguer au catalogage.
   //
@@ -3977,7 +3977,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // Traduit le format physique brut d'Open Library (en anglais, valable
   // seulement pour un livre) vers la typologie ci-dessus. Une entrée non
   // reconnue (ou absente) laisse le champ vide plutôt que d'imposer une
-  // valeur au hasard — l'agent choisit alors lui-même dans la liste.
+  // valeur au hasard - l'agent choisit alors lui-même dans la liste.
   const PHYSICAL_FORMAT_FR = {
     'paperback': 'Livre broché',
     'trade paperback': 'Livre broché',
@@ -4000,7 +4000,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // Format physique et résumé n'existent que sur l'endpoint "fiche complète"
   // d'Open Library (/isbn/…), pas sur jscmd=data utilisé ailleurs pour
-  // l'indice Dewey — d'où cet appel séparé, mutualisé pour les deux (21/09/2026,
+  // l'indice Dewey - d'où cet appel séparé, mutualisé pour les deux (21/09/2026,
   // le résumé d'Open Library sert de 2e recours quand Google Books n'en a pas,
   // avant même la BnF qui ne fournit un résumé éditeur que rarement).
   async function fetchEditionDetailsFromOpenLibrary(isbn) {
@@ -4033,9 +4033,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // si les deux premières sources n'avaient rien trouvé.
   //
   // La recherche par ISBN exact ne trouve un résultat que si la BnF a
-  // cataloguée cette édition précise (elle en a souvent une autre — poche,
+  // cataloguée cette édition précise (elle en a souvent une autre - poche,
   // grand format…). Testé le 14/09/2026 sur le vrai catalogue : 6/37 par
-  // ISBN, 26/37 en ajoutant titre+auteur en repli — largement plus fiable.
+  // ISBN, 26/37 en ajoutant titre+auteur en repli - largement plus fiable.
   async function bnfSruQuery(query) {
     try {
       const url = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=${encodeURIComponent(query)}&recordSchema=unimarcxchange&maximumRecords=1`;
@@ -4059,7 +4059,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       // livre (ex. "DL 2017"), uniquement l'année, jamais le mois.
       //
       // Beaucoup de notices BnF récentes utilisent le tag 214 (plus récent)
-      // à la place du 210 pour la même information — vérifié en direct le
+      // à la place du 210 pour la même information - vérifié en direct le
       // 18/09/2026 sur un livre où le 210 était absent alors que la BnF avait
       // bien éditeur/dépôt légal/imprimeur, juste en 214. Le 214 peut
       // apparaître en plusieurs occurrences : une pour éditeur/lieu/date
@@ -4092,12 +4092,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const language = getSub(f101, 'a');
 
       // Tags 606/608 : vedettes Rameau (genre/sujet, ex. "Romans policiers",
-      // "Thrillers (romans)") — vocabulaire français précis, bien plus fiable
+      // "Thrillers (romans)") - vocabulaire français précis, bien plus fiable
       // pour deviner la catégorie que les libellés anglais de Google Books.
       const genreTerms = [...getFields('606'), ...getFields('608')]
         .map(f => getSub(f, 'a')).filter(Boolean).join(' ');
 
-      // Tag 330 $a : résumé éditeur, quand la BnF le fournit — utilisé en
+      // Tag 330 $a : résumé éditeur, quand la BnF le fournit - utilisé en
       // dernier recours seulement (jamais pour écraser Google Books/Open
       // Library), voir fetchBookMetaByIsbn (18/09/2026).
       const summary = getSub(getField('330'), 'a');
@@ -4305,7 +4305,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     try {
       ocrLines = await ocrLinesFromFile(file);
       if (!ocrLines.length) {
-        status.textContent = 'Aucun texte lisible sur la photo — remplis les champs à la main.';
+        status.textContent = 'Aucun texte lisible sur la photo - remplis les champs à la main.';
         return;
       }
       status.textContent = 'Touche la bonne ligne pour remplir Titre ou Auteur :';
@@ -4346,7 +4346,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   // Le moteur de reconnaissance de texte confond parfois des éléments de mise
-  // en page (bords, reflets, logos, tranche du livre) avec des caractères —
+  // en page (bords, reflets, logos, tranche du livre) avec des caractères -
   // on ne garde que ce qui ressemble à du texte français normal.
   function cleanOcrText(text) {
     return text
@@ -4365,7 +4365,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       .slice(0, 8);
   }
 
-  // Photo du verso : le texte de la 4e de couverture est un vrai résumé —
+  // Photo du verso : le texte de la 4e de couverture est un vrai résumé -
   // plus facile à lire pour l'OCR qu'un titre stylisé, et bien plus fiable
   // que les catégories brutes pour deviner le genre du livre.
   window.handleBackPhoto = async function (event, localId) {
@@ -4404,7 +4404,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       updateDraftField(localId, 'category', guessed);
 
       if (!summaryInput) renderDraftBooks();
-      else status.textContent = `Résumé rempli — genre proposé : ${guessed} (modifiable).`;
+      else status.textContent = `Résumé rempli - genre proposé : ${guessed} (modifiable).`;
     } catch (e) {
       status.textContent = 'Erreur de lecture : ' + e.message;
     }
@@ -4414,10 +4414,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // Crée l'exemplaire physique correspondant au livre qui vient d'être
   // catalogué. Code-barres provisoire (BLIGO-xxxxxx, unique puisque basé sur
   // l'id du livre) tant que l'agent n'a rien saisi : jamais un format imposé
-  // par BliGO pour une vraie médiathèque, chaque commune garde le sien —
+  // par BliGO pour une vraie médiathèque, chaque commune garde le sien -
   // l'agent le remplace par le vrai code dès qu'il le connaît (voir
   // updateCopyBarcode). Achat ou don, un nouvel exemplaire part toujours en
-  // 'processing' (à équiper) — voir insertBook (17/09/2026).
+  // 'processing' (à équiper) - voir insertBook (17/09/2026).
   async function createCopyForBook(book, cote, fromDonation, copyIndex = 1) {
     const communeId = myCommuneId || eventCommunes[0]?.id || null;
     if (!communeId) return null;
@@ -5042,7 +5042,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   // Une étiquette par livre à envoyer : usager, titre, destination, jour de
-  // tournée — à coller dessus avant de le mettre dans le bac de cette
+  // tournée - à coller dessus avant de le mettre dans le bac de cette
   // tournée (23/09/2026, voir #print-labels-area et son <style> d'impression).
   window.printTransferLabels = function () {
     const area = document.getElementById('print-labels-area');
@@ -5060,9 +5060,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // Transferts en attente concernant cette médiathèque : à envoyer (elle est
   // l'origine, statut 'requested') et à recevoir (elle est la destination,
-  // statut 'in_transit') — sert aussi de badge de notification dans le menu.
+  // statut 'in_transit') - sert aussi de badge de notification dans le menu.
   // Livres en attente d'envoi (23/09/2026), gardés en mémoire pour imprimer
-  // les étiquettes sans refaire de requête — voir printTransferLabels().
+  // les étiquettes sans refaire de requête - voir printTransferLabels().
   let pendingOutgoingTransfers = [];
 
   async function loadTransfers() {
@@ -5087,7 +5087,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const communeById = Object.fromEntries((communesData || []).map(c => [c.id, c]));
 
     // Nom de l'usager qui attend chaque livre (pour l'étiquette), via la
-    // réservation à l'origine du transfert — absent pour un transfert né
+    // réservation à l'origine du transfert - absent pour un transfert né
     // d'un simple retour mal aiguillé (pas de réservation liée).
     const reservationIds = [...new Set((outgoing || []).map(t => t.reservation_id).filter(Boolean))];
     let usagerByReservation = {};
@@ -5188,7 +5188,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // Tous les emprunts en cours de la médiathèque de l'agent connecté (pas les
   // autres communes de la communauté), qu'ils viennent d'une réservation
-  // Click & Collect ou d'un prêt comptoir direct — la table loans couvre les
+  // Click & Collect ou d'un prêt comptoir direct - la table loans couvre les
   // deux cas depuis add_scan_operations.sql.
   // Plusieurs chargements peuvent partir en même temps (ouverture de l'écran
   // + onglet) : seul le dernier affiche son résultat.
@@ -5742,7 +5742,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     // Unifie prêts comptoir et réservations en une seule chronologie, avec un
     // statut simple à 3 valeurs pour l'affichage (pas les statuts bruts des
     // deux tables, différents l'une de l'autre). La cote/le code-barres ne
-    // sont connus que pour un prêt (exemplaire précis) — une réservation
+    // sont connus que pour un prêt (exemplaire précis) - une réservation
     // n'a pas encore d'exemplaire assigné tant qu'elle n'est pas récupérée.
     const items = [
       ...loans.map(l => ({
@@ -5830,7 +5830,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) alert('Erreur : ' + error.message);
   };
 
-  // Correction du nom/prénom depuis la fiche usager — utile si l'usager a
+  // Correction du nom/prénom depuis la fiche usager - utile si l'usager a
   // fait une erreur de saisie à l'inscription, ou si l'agent constate un
   // écart avec la pièce d'identité présentée au retrait de sa commande.
   window.editUsagerName = async function (userId, currentName) {
@@ -5846,7 +5846,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   // Achat ou don, un document validé reste en statut « À équiper » tant
-  // qu'un agent n'a pas cliqué dessus (voir markEquipped) — la fiche est
+  // qu'un agent n'a pas cliqué dessus (voir markEquipped) - la fiche est
   // complète mais le livre n'a pas encore été plastifié/étiqueté.
   // « 22,50 », « 22.5 € » → 2250 ; vide → null.
   function parsePriceCents(value) {
@@ -5863,7 +5863,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects, price_cents, players, play_duration, age_range })
       .filter(([, v]) => v != null && v !== ''));
     // Détection couleur/N&B automatique dès le catalogage si une couverture a
-    // été trouvée (18/09/2026) — l'agent n'a plus besoin d'ouvrir la fiche
+    // été trouvée (18/09/2026) - l'agent n'a plus besoin d'ouvrir la fiche
     // après coup pour le savoir.
     const cover_color = cover_url ? await fetchCoverColorFromApi(cover_url) : null;
     const { data, error } = await supabase.from('books').insert({
@@ -6167,7 +6167,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const total = data.reduce((n, r) => n + Number(r.copies), 0);
     box.innerHTML = `<p class="font-semibold text-ink mb-1">${total} exemplaire(s) retiré(s) en ${year}</p>
       <table class="w-full"><thead><tr class="text-ink/45 text-left"><th class="font-semibold">Motif</th><th class="font-semibold">Destination</th><th class="font-semibold text-right">Exemplaires</th></tr></thead>
-      <tbody>${data.map(r => `<tr class="border-t border-mango-50"><td>${WEED_REASON_LABEL[r.reason] || '—'}</td><td>${WEED_DEST_LABEL[r.destination] || '—'}</td><td class="text-right">${r.copies}</td></tr>`).join('')}</tbody></table>`;
+      <tbody>${data.map(r => `<tr class="border-t border-mango-50"><td>${WEED_REASON_LABEL[r.reason] || '-'}</td><td>${WEED_DEST_LABEL[r.destination] || '-'}</td><td class="text-right">${r.copies}</td></tr>`).join('')}</tbody></table>`;
   }
 
   // ---------- Abonnements aux magazines (09/10/2026) ----------
@@ -6265,7 +6265,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data, error } = await booksQuery;
     if (error) { console.error(error); return; }
 
-    // Certaines médiathèques ont plusieurs exemplaires du même titre — on
+    // Certaines médiathèques ont plusieurs exemplaires du même titre - on
     // regroupe tous les exemplaires par livre pour calculer un compte
     // disponibles/total, plutôt que de ne garder qu'un seul code-barres comme
     // avant (ça ne marchait que pour un exemplaire unique).
@@ -6564,7 +6564,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // ---------- Tarifs (direction uniquement) ----------
   // La création des comptes agents a été retirée d'ici le 21/09/2026 : elle
   // se fait désormais uniquement depuis superadmin.html (voir createAgentAccount
-  // là-bas), pour que ce soit clairement Mégane seule qui crée les comptes —
+  // là-bas), pour que ce soit clairement Mégane seule qui crée les comptes -
   // la fonction Edge create-agent-account accepte déjà un appelant super_admin.
 
   const WEEKDAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -6741,7 +6741,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   function renderThemePalette(containerId, selected, onPick) {
     // La sélection ne peut pas s'indiquer avec une couleur du thème (elle se
-    // fond dans la pastille choisie) — une coche blanche à ombre portée reste
+    // fond dans la pastille choisie) - une coche blanche à ombre portée reste
     // lisible quelle que soit la couleur (23/09/2026).
     document.getElementById(containerId).innerHTML = THEME_PALETTE.map(c => `
       <button type="button" onclick="${onPick}('${c.hex}')" title="${c.name}"
@@ -6818,7 +6818,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const rule = coteRuleFor(cat);
       return `<div class="grid grid-cols-[1.3fr_1fr_1.2fr] gap-2 items-center">
         <span class="text-xs font-semibold text-ink">${escapeHtml(categoryLabel(cat))}</span>
-        <input data-cote-cat="${escapeHtml(cat)}" data-field="prefix" value="${escapeHtml(rule.prefix || '')}" oninput="refreshCotePreview()" placeholder="—" class="border border-mango-100 rounded-lg px-2 py-1.5 text-sm uppercase">
+        <input data-cote-cat="${escapeHtml(cat)}" data-field="prefix" value="${escapeHtml(rule.prefix || '')}" oninput="refreshCotePreview()" placeholder="-" class="border border-mango-100 rounded-lg px-2 py-1.5 text-sm uppercase">
         <select data-cote-cat="${escapeHtml(cat)}" data-field="mode" oninput="refreshCotePreview()" class="border border-mango-100 rounded-lg px-1.5 py-1.5 text-xs bg-white">
           ${Object.entries(COTE_MODE_LABEL).map(([v, l]) => `<option value="${v}" ${rule.mode === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
@@ -7021,7 +7021,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   // Retour immédiat aux couleurs BliGO d'origine (logo non touché), sans
-  // repasser par "Enregistrer" — demandé le 23/09/2026 après un premier essai
+  // repasser par "Enregistrer" - demandé le 23/09/2026 après un premier essai
   // de couleurs jugé illisible.
   window.resetCommuneTheme = async function () {
     selectedInkHex = null;
@@ -7066,7 +7066,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   // Cliquer sur « Tous les livres » quitte n'importe quel filtre (à équiper,
-  // doublons) pour revenir directement à la liste complète du catalogue —
+  // doublons) pour revenir directement à la liste complète du catalogue -
   // plus intuitif que de devoir recliquer sur le badge du filtre actif
   // (demandé par Mégane le 21/09/2026).
   window.resetCatalogueFilters = function () {
@@ -7086,7 +7086,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.renderCatalogue = function renderCatalogue() {
-    // Recherche par titre, auteur, ISBN ou code-barres de la médiathèque —
+    // Recherche par titre, auteur, ISBN ou code-barres de la médiathèque -
     // toujours sur l'ensemble du catalogue, pas seulement la page affichée.
     const query = searchNormalize(document.getElementById('catalogue-search')?.value || '');
     let filtered = query
@@ -7095,11 +7095,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     // Doublons et cotes à corriger : détectés automatiquement à chaque
     // affichage, affichés en badge dans l'en-tête (masqué si tout est en
-    // ordre) — pas besoin d'un bouton « vérifier » pour le savoir.
+    // ordre) - pas besoin d'un bouton « vérifier » pour le savoir.
     const duplicateGroups = findDuplicateGroups();
     const duplicatesBadge = document.getElementById('duplicates-badge');
     // Plus aucun doublon alors que le filtre était actif (dernier doublon
-    // supprimé à l'instant) : on quitte le filtre automatiquement — sinon le
+    // supprimé à l'instant) : on quitte le filtre automatiquement - sinon le
     // badge qui sert à le désactiver disparaît lui-même (count = 0) et
     // l'agent reste bloqué sur la liste filtrée vide, sans bouton pour
     // revenir au catalogue complet (bug remonté le 21/09/2026).
@@ -7129,7 +7129,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       // Regroupées côte à côte (par titre+auteur) pour comparer d'un coup d'œil.
       filtered = [...filtered].sort((a, b) => bookDuplicateKey(a).localeCompare(bookDuplicateKey(b)));
       banner.textContent = duplicateGroups.length
-        ? `${duplicateGroups.length} groupe(s) de doublons potentiels — même titre et même auteur sur plusieurs fiches.`
+        ? `${duplicateGroups.length} groupe(s) de doublons potentiels - même titre et même auteur sur plusieurs fiches.`
         : `Aucun doublon potentiel détecté dans le catalogue.`;
       banner.classList.remove('hidden');
     } else {
@@ -7703,7 +7703,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   // Centralise l'appel à l'Edge Function detect-cover-color (voir
-  // supabase/functions/detect-cover-color) — utilisée au catalogage
+  // supabase/functions/detect-cover-color) - utilisée au catalogage
   // (insertBook), à la consultation de fiche (autoDetectAndSaveCoverColor),
   // au rattrapage en masse (detectMissingCoverColors) et au bouton manuel
   // (detectCoverColor) : un seul endroit à faire évoluer si besoin.
@@ -7732,7 +7732,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { error } = await supabase.from('books').update({ cover_color: color }).eq('id', id);
     if (error) return;
     b.cover_color = color;
-    // La fiche peut avoir été fermée ou changée pendant l'appel réseau —
+    // La fiche peut avoir été fermée ou changée pendant l'appel réseau -
     // on ne touche à l'affichage que si c'est toujours la même qui est ouverte.
     if (document.getElementById('book-modal-content')?.dataset.bookId == id) {
       const select = document.getElementById('bd-cover-color');
@@ -7996,7 +7996,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // Laisse 30 minutes à l'usager après sa réservation pour finir de choisir
   // ses livres (jusqu'à 3) et se raviser avant que la médiathèque ne
-  // commence à préparer la commande — la réservation existe déjà en base,
+  // commence à préparer la commande - la réservation existe déjà en base,
   // elle est juste masquée de la file d'attente agent pendant ce délai.
   const RESERVATION_GRACE_PERIOD_MS = 30 * 60 * 1000;
   function isVisibleToStaff(r) {
@@ -8278,7 +8278,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   window.setStatus = async function (id, status) {
     // « Récupéré » doit créer un vrai prêt (table loans, exemplaire assigné)
-    // pour apparaître dans Prêts en cours — pas juste changer le statut de la
+    // pour apparaître dans Prêts en cours - pas juste changer le statut de la
     // réservation (bug corrigé le 22/09/2026, voir
     // sql/fix_reservation_pickup_creates_loan.sql).
     if (status === 'recupere') {
@@ -8442,7 +8442,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   // Accueil visiteurs et Agenda culturel retirés du back-office pour
-  // simplifier (à la demande de Mégane) — encore utilisée par Préinscriptions :
+  // simplifier (à la demande de Mégane) - encore utilisée par Préinscriptions :
   function formatEventDateShort(iso) {
     const d = new Date(iso);
     const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -8456,7 +8456,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // Pour la recherche uniquement (catalogue, fiche usager) : en plus de
   // normalizeKey(), ignore les accents. Sans ça, taper "etranger" ne
-  // retrouvait pas "L'Étranger" — repéré le 17/09/2026 sur la fiche usager.
+  // retrouvait pas "L'Étranger" - repéré le 17/09/2026 sur la fiche usager.
   // Volontairement séparée de normalizeKey() : cette dernière sert aussi de
   // clé de correspondance avec cover_bank (déjà enregistrée avec accents en
   // base), la changer aurait cassé la réutilisation des couvertures pour les
@@ -8481,7 +8481,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // Pour un texte inséré comme argument entre apostrophes dans un onclick="..." :
   // escapeHtml() seul ne suffit pas, il transforme ' en &#39; qui redevient une
-  // vraie apostrophe une fois l'attribut HTML décodé par le navigateur — et casse
+  // vraie apostrophe une fois l'attribut HTML décodé par le navigateur - et casse
   // alors la chaîne JS en plein milieu (ex. titres avec une apostrophe : « Tu
   // n'aurais pas dû venir », « Tu m'avais promis »). On échappe ici pour le JS
   // d'abord (\ puis '), puis pour le HTML de l'attribut, sans reéchapper l'apostrophe.
@@ -8719,7 +8719,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('event-detail-backdrop').classList.remove('flex');
   };
 
-  // Présence à un événement par scan de la carte usager (22/09/2026) —
+  // Présence à un événement par scan de la carte usager (22/09/2026) -
   // record_event_checkin() existait déjà côté base (défi "Événement
   // Culturel", voir sql/add_gamification_and_reviews.sql) mais n'était
   // jamais appelée depuis aucun écran.
@@ -8992,14 +8992,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   const SIGB_STATS_BLOCKS = [
     {
-      title: 'C2 — Catalogue',
+      title: 'C2 - Catalogue',
       rows: [
         ['c2_notices_total', 'Nombre total de notices équipées', 'C202'],
         ['c2_notices_added_year', 'Notices ajoutées dans l\'année', 'C205'],
       ],
     },
     {
-      title: 'D1 — Livres imprimés',
+      title: 'D1 - Livres imprimés',
       rows: [
         ['d1_fonds_adultes', 'Fonds adultes (au moment du calcul)', 'D101'],
         ['d1_fonds_jeunesse', 'Fonds jeunesse (au moment du calcul)', 'D121'],
@@ -9008,7 +9008,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       ],
     },
     {
-      title: 'E1 — Usagers',
+      title: 'E1 - Usagers',
       rows: [
         ['e1_inscrits_actifs', 'Inscrits actifs (au moment du calcul)', 'E101'],
         ['e1_nouveaux_inscrits_year', 'Nouveaux inscrits dans l\'année', 'E102'],
@@ -9016,7 +9016,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       ],
     },
     {
-      title: 'E2 — Prêts',
+      title: 'E2 - Prêts',
       rows: [
         ['e2_prets_total_year', 'Prêts total dans l\'année', 'E201'],
         ['e2_prets_adultes_year', 'Dont prêts adultes', 'E202'],
@@ -9024,7 +9024,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       ],
     },
     {
-      title: 'E3 — Réservations',
+      title: 'E3 - Réservations',
       rows: [
         ['e3_reservations_year', 'Réservations créées dans l\'année', 'E304'],
       ],
@@ -9199,7 +9199,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       </div>`).join('');
   }
 
-  // Fiche complète en lecture seule, pour Top Jeunesse et Sélection BliGO —
+  // Fiche complète en lecture seule, pour Top Jeunesse et Sélection BliGO -
   // réutilise la même fenêtre modale que la fiche du Catalogue, juste sans
   // les champs modifiables (ces deux listes se gèrent depuis l'espace admin).
   window.openCuratedDetail = function (source, id) {
@@ -9248,7 +9248,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   init();
 </script>
 
-<!-- Étiquettes de transfert à imprimer (23/09/2026) — masqué à l'écran, seule
+<!-- Étiquettes de transfert à imprimer (23/09/2026) - masqué à l'écran, seule
      cette zone s'imprime (voir le <style> ci-dessous). -->
 <div id="print-labels-area" class="hidden"></div>
 <div id="print-spine-area" class="hidden"></div>

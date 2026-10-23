@@ -2,7 +2,7 @@
   "name": "bligo-mobile",
   "version": "1.0.0",
   "private": true,
-  "description": "BliGO — appli usager empaquetée en app mobile via Capacitor",
+  "description": "BliGO - appli usager empaquetée en app mobile via Capacitor",
   "scripts": {
     "build": "bash sync-web.sh",
     "sync": "npm run build && npx cap sync"

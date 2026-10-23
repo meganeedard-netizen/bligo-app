@@ -33,7 +33,7 @@ le tableau de bord :
 Dans `sql/add_return_reminders_email.sql`, la section 4 contient un
 `net.http_post` vers cette fonction avec un `Authorization: Bearer ...` à
 compléter avec la **service_role key** du projet (Project Settings > API >
-service_role secret — jamais l'anon key, celle-ci doit rester secrète, jamais
+service_role secret - jamais l'anon key, celle-ci doit rester secrète, jamais
 dans un fichier committé ni côté navigateur). Une fois les deux placeholders
 remplis, exécuter le fichier dans Supabase (SQL Editor > New query > Run).
 

@@ -1,4 +1,4 @@
-// BliGO — thème personnalisé par médiathèque (22-23/09/2026)
+// BliGO - thème personnalisé par médiathèque (22-23/09/2026)
 //
 // Chaque page usager utilise déjà les couleurs Tailwind "brand"/"mango"/
 // "hibiscus" pour ses boutons et encadrés colorés (voir tailwind.config de
@@ -7,13 +7,13 @@
 // nom de classe existant.
 //
 // Important (corrigé le 23/09/2026, retour de Mégane) : le texte ("ink")
-// reste TOUJOURS fixe, jamais teinté — seuls les fonds/bordures/dégradés
+// reste TOUJOURS fixe, jamais teinté - seuls les fonds/bordures/dégradés
 // (mango, hibiscus, et le nouveau "brand" qui remplace bg-ink/border-ink)
 // changent. Mélanger texte et fond donnait un rendu illisible/moche dès
 // qu'une médiathèque choisissait une couleur vive.
 //
 // "mango" et "hibiscus" pointent vers LE MÊME dégradé généré à partir d'une
-// seule couleur choisie par la médiathèque (ex. un dégradé de jaune) — sur
+// seule couleur choisie par la médiathèque (ex. un dégradé de jaune) - sur
 // demande explicite de Mégane, plus simple qu'un vrai dégradé à deux teintes
 // pour une couleur quelconque.
 
@@ -57,7 +57,7 @@ export function generateRamp(baseHex) {
   const [h, s] = hexToHsl(baseHex);
   const sat = Math.max(s, 55); // évite une palette trop grisée si la couleur choisie est pâle
   // Le jaune (et le jaune-orange/jaune-vert voisins) paraît toujours plus
-  // clair qu'une autre teinte à la même luminosité HSL — l'œil humain le
+  // clair qu'une autre teinte à la même luminosité HSL - l'œil humain le
   // perçoit comme plus lumineux. Sans correction, un petit texte en
   // mango-600/700/800 (badges, liens) resterait peu lisible sur fond blanc
   // pour une médiathèque ayant choisi une couleur de cette famille
@@ -75,7 +75,7 @@ export function generateRamp(baseHex) {
 const CACHE_KEY = 'bligo_theme';
 
 // Toujours retirer explicitement la variable quand la valeur est vide (pas
-// juste "ne rien faire") — sinon un ancien thème reste affiché après un
+// juste "ne rien faire") - sinon un ancien thème reste affiché après un
 // retour aux couleurs par défaut (bouton Réinitialiser).
 function setVars(brandHex, accentHex) {
   const root = document.documentElement.style;
@@ -105,7 +105,7 @@ function setVars(brandHex, accentHex) {
 }
 
 // À appeler tout de suite au chargement de chaque page, avant même de savoir
-// à quelle médiathèque appartient l'usager — évite un flash des couleurs par
+// à quelle médiathèque appartient l'usager - évite un flash des couleurs par
 // défaut le temps de recharger sa commune depuis Supabase. Jamais la seule
 // source de vérité, juste un raccourci depuis la dernière fois.
 export function applyCachedTheme() {
@@ -116,7 +116,7 @@ export function applyCachedTheme() {
 }
 
 // À appeler après avoir chargé la commune (theme_ink_hex, theme_accent_hex)
-// — applique le vrai thème et le met en cache pour que les prochaines pages
+// - applique le vrai thème et le met en cache pour que les prochaines pages
 // (qui ne rechargent pas toutes la commune) l'aient déjà.
 export function applyCommuneTheme(commune) {
   const brand = commune?.theme_ink_hex || null;

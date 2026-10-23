@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>BliGO — Mes informations</title>
+<title>BliGO - Mes informations</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -27,6 +27,9 @@
   /* Sur un vrai iPhone (encoche/île dynamique + barre du bas), le contenu
      touche sinon la barre de statut et le menu chevauche la barre du bas. */
   body { padding-top: env(safe-area-inset-top); padding-bottom: 0 !important; }
+  /* Bande blanche sous l'heure et la batterie (23/10/2026) : le contenu et l'en-tête ne passent plus dessous en faisant défiler. */
+  body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #fff; z-index: 40; }
+  header.sticky { top: env(safe-area-inset-top); }
   .font-logo { font-family: 'Poppins', sans-serif; }
   /* Listes du profil en sections (12/10/2026, inspiré de l'appli Gaspiz) */
   .profile-section-title { background: #EEEDF2; color: rgba(27,75,67,.6); font-size: 13px; font-weight: 600; border-radius: 12px; padding: 9px 16px; margin-bottom: 2px; }
@@ -169,7 +172,7 @@
     bindCounter('first-name', 30);
     bindCounter('last-name', 40);
     document.getElementById('email').textContent = user.email;
-    document.getElementById('commune').textContent = profile?.communes?.name ? `Médiathèque de ${profile.communes.name}` : '—';
+    document.getElementById('commune').textContent = profile?.communes?.name ? `Médiathèque de ${profile.communes.name}` : '-';
 
     selectedCategories = new Set(profile?.preferred_categories || []);
     selectedPace = profile?.reading_pace || null;

@@ -1,4 +1,4 @@
-// BliGO — Créer un compte inscrit depuis le logiciel agent, sans passer par
+// BliGO - Créer un compte inscrit depuis le logiciel agent, sans passer par
 // l'application (17/09/2026)
 //
 // Pour une personne qui n'a pas l'application (pas de smartphone, ne veut
@@ -7,7 +7,7 @@
 // contrairement à une préinscription en ligne qui attend encore un passage).
 //
 // Créer un utilisateur Supabase exige la clé service_role, jamais exposée
-// côté navigateur — cette fonction la détient côté serveur. Contrairement à
+// côté navigateur - cette fonction la détient côté serveur. Contrairement à
 // create-agent-account (réservée à la direction), n'importe quel agent peut
 // appeler celle-ci : ajouter un inscrit est une tâche de guichet courante,
 // pas une action sensible sur les comptes du personnel.

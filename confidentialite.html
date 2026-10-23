@@ -27,6 +27,9 @@
   /* Sur un vrai iPhone (encoche/île dynamique + barre du bas), le contenu
      touche sinon la barre de statut et le menu chevauche la barre du bas. */
   body { padding-top: env(safe-area-inset-top); padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
+  /* Bande blanche sous l'heure et la batterie (23/10/2026) : le contenu et l'en-tête ne passent plus dessous en faisant défiler. */
+  body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #fff; z-index: 40; }
+  header.sticky { top: env(safe-area-inset-top); }
   .font-logo { font-family: 'Poppins', sans-serif; }
   /* Listes du profil en sections (12/10/2026, inspiré de l'appli Gaspiz) */
   .profile-section-title { background: #EEEDF2; color: rgba(27,75,67,.6); font-size: 13px; font-weight: 600; border-radius: 12px; padding: 9px 16px; margin-bottom: 2px; }
@@ -76,7 +79,7 @@
 <p class="my-2"><strong class="text-ink">Sources bibliographiques.</strong> Pour remplir les fiches des documents, BliGO interroge la BnF, Open Library, Google Books, Wikipédia, Wikidata et MusicBrainz. Ces services reçoivent uniquement l'ISBN, le code-barres ou le titre d'un document, <strong class="text-ink">jamais tes données personnelles</strong>.</p>
 <h2 class="text-xl font-bold text-ink mt-6 mb-2">6. Hébergement et transferts hors UE</h2>
 <p class="my-2">Les données des comptes, des prêts et des avis sont stockées par Supabase dans un centre de données situé <strong class="text-ink">à Paris</strong>. Les fichiers de l'application sont hébergés par Hostinger en <strong class="text-ink">Lituanie</strong>. Aucun de ces hébergements n'entraîne de transfert de données hors de l'Union européenne.</p>
-<p class="my-2">Les e-mails (code de vérification, rappels de retour, alertes de file d'attente) sont envoyés par <strong class="text-ink">Resend</strong>, situé <strong class="text-ink">aux États-Unis</strong>. Resend reçoit uniquement ce qui est nécessaire à l'envoi : ton adresse e-mail, ton nom et le contenu du message, et garde un journal des envois. Ce transfert hors de l'Union européenne est encadré par le cadre de protection des données UE–États-Unis (Data Privacy Framework), auquel Resend est certifié, et par les clauses contractuelles types de la Commission européenne (décision 2021/914), prévues dans son accord de traitement des données.</p>
+<p class="my-2">Les e-mails (code de vérification, rappels de retour, alertes de file d'attente) sont envoyés par <strong class="text-ink">Resend</strong>, situé <strong class="text-ink">aux États-Unis</strong>. Resend reçoit uniquement ce qui est nécessaire à l'envoi : ton adresse e-mail, ton nom et le contenu du message, et garde un journal des envois. Ce transfert hors de l'Union européenne est encadré par le cadre de protection des données UE-États-Unis (Data Privacy Framework), auquel Resend est certifié, et par les clauses contractuelles types de la Commission européenne (décision 2021/914), prévues dans son accord de traitement des données.</p>
 <h2 class="text-xl font-bold text-ink mt-6 mb-2">7. Sécurité des données</h2>
 <ul class="list-disc pl-5 space-y-1 my-2">
 <li>Tous les échanges se font en connexion chiffrée (HTTPS).</li>

@@ -1,4 +1,4 @@
-// BliGO — Auto-détection couverture couleur / noir et blanc (16/09/2026)
+// BliGO - Auto-détection couverture couleur / noir et blanc (16/09/2026)
 //
 // Le navigateur ne peut pas analyser les pixels d'une couverture Google Books :
 // ces images n'ont aucun en-tête CORS, donc <canvas> bloque la lecture (vérifié
@@ -29,7 +29,7 @@ const ALLOWED_HOST_SUFFIXES = [
 
 // Un navigateur envoie d'abord une requête OPTIONS de pré-vérification (CORS)
 // avant le vrai POST, à cause de l'en-tête Authorization. Sans ces en-têtes,
-// le navigateur bloque la requête avant même qu'elle n'atteigne la fonction —
+// le navigateur bloque la requête avant même qu'elle n'atteigne la fonction -
 // ça remonte côté client comme "Failed to send a request to the Edge Function",
 // sans aucun détail utile (bloqué au niveau réseau, pas une vraie réponse HTTP).
 const corsHeaders = {

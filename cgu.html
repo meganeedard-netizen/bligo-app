@@ -27,6 +27,9 @@
   /* Sur un vrai iPhone (encoche/île dynamique + barre du bas), le contenu
      touche sinon la barre de statut et le menu chevauche la barre du bas. */
   body { padding-top: env(safe-area-inset-top); padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
+  /* Bande blanche sous l'heure et la batterie (23/10/2026) : le contenu et l'en-tête ne passent plus dessous en faisant défiler. */
+  body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #fff; z-index: 40; }
+  header.sticky { top: env(safe-area-inset-top); }
   .font-logo { font-family: 'Poppins', sans-serif; }
   /* Listes du profil en sections (12/10/2026, inspiré de l'appli Gaspiz) */
   .profile-section-title { background: #EEEDF2; color: rgba(27,75,67,.6); font-size: 13px; font-weight: 600; border-radius: 12px; padding: 9px 16px; margin-bottom: 2px; }
@@ -79,6 +82,7 @@
 <p class="my-2"><strong class="text-ink">File d'attente.</strong> Pour un document déjà emprunté, l'usager peut rejoindre la file d'attente et voit son rang. Au retour du document, il est mis de côté pour le premier de la file, qui est prévenu et dispose de 48 heures. S'il ne peut pas le recevoir (quota atteint, adhésion expirée), le document passe au suivant.</p>
 <p class="my-2"><strong class="text-ink">Emprunter.</strong> La durée de prêt et le nombre de documents sont fixés par la médiathèque. Certains documents, comme les dictionnaires et encyclopédies, se consultent uniquement sur place.</p>
 <p class="my-2"><strong class="text-ink">Prolonger.</strong> Un prêt peut être prolongé <strong class="text-ink">une fois, de 7 jours</strong>, depuis l'application ou au comptoir. La prolongation est impossible si le prêt est déjà en retard ou si quelqu'un attend le document.</p>
+<p class="my-2"><strong class="text-ink">Délais adaptables.</strong> Les délais indiqués dans cet article (48 heures pour venir chercher un document, prolongation de 7 jours) sont les délais par défaut. Chaque médiathèque peut les modifier et les adapter dans son règlement : ce sont alors ses délais qui s'appliquent.</p>
 <p class="my-2"><strong class="text-ink">Rendre.</strong> Le document est rendu à la médiathèque, ou dans une autre médiathèque du même réseau quand celui-ci le permet. L'agent note son état au retour.</p>
 <p class="my-2"><strong class="text-ink">Retards.</strong> L'usager reçoit un rappel 3 jours avant la date de retour, puis un rappel en cas de retard. La médiathèque peut appliquer des pénalités, par exemple 1 € par jour après une semaine de grâce, selon son règlement. Un retard prolongé ou un document rendu abîmé peut restreindre temporairement les emprunts de l'usager (par exemple, plus d'accès aux nouveautés).</p>
 <p class="my-2"><strong class="text-ink">Documents perdus ou abîmés.</strong> L'usager est responsable des documents qu'il emprunte. En cas de perte ou de dégradation, la médiathèque peut demander leur remplacement à l'identique ou leur remboursement, selon son règlement. Tant que la situation n'est pas réglée, elle peut suspendre les emprunts.</p>
