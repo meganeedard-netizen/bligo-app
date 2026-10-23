@@ -1,0 +1,7 @@
+{
+  "name": "bligo-tailwind-build",
+  "private": true,
+  "devDependencies": {
+    "tailwindcss": "3.4.19"
+  }
+}
