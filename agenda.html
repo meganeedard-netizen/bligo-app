@@ -112,22 +112,22 @@
   let agendaTab = 'upcoming';
   let myCheckins = new Set();
 
+  // Chargement accéléré (23/10/2026) : les demandes partent en même temps,
+  // et seules les inscriptions des événements affichés sont récupérées.
   async function loadEvents() {
-    const { data: eventsData, error } = await supabase
-      .from('events')
-      .select('*, communes ( name )')
-      .eq('commune_id', browseCommuneId)
-      .order('event_date', { ascending: true });
+    const [{ data: eventsData, error }, { data: checkinsData }] = await Promise.all([
+      supabase.from('events').select('*, communes ( name )').eq('commune_id', browseCommuneId).order('event_date', { ascending: true }),
+      currentUser ? supabase.from('event_checkins').select('event_id').eq('user_id', currentUser.id) : Promise.resolve({ data: [] }),
+    ]);
     if (error) {
       console.error(error);
       return;
     }
     events = eventsData || [];
 
-    const [{ data: rsvpsData }, { data: checkinsData }] = await Promise.all([
-      supabase.from('event_rsvps').select('event_id, user_id'),
-      currentUser ? supabase.from('event_checkins').select('event_id').eq('user_id', currentUser.id) : Promise.resolve({ data: [] }),
-    ]);
+    const { data: rsvpsData } = events.length
+      ? await supabase.from('event_rsvps').select('event_id, user_id').in('event_id', events.map(e => e.id))
+      : { data: [] };
     rsvpCounts = {};
     myRsvps = new Set();
     (rsvpsData || []).forEach(r => {
@@ -245,25 +245,27 @@
       const count = rsvpCounts[e.id] || 0;
       const full = e.max_seats != null && count >= e.max_seats && !attending;
       const seatsLabel = e.max_seats != null ? `${count} / ${e.max_seats} place${e.max_seats > 1 ? 's' : ''}` : `${count} inscrit${count > 1 ? 's' : ''}`;
+      // Carte resserrée (23/10/2026) : description sur 2 lignes (en entier en
+      // touchant la carte), boutons sur une ligne, « Me désinscrire » en lien.
+      const calIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg>';
       return `
-        <div onclick="openEventModal(${e.id})" class="cursor-pointer bg-white shadow-sm rounded-2xl p-4 flex gap-4 w-full">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white shrink-0">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconForEvent(e.event_type)}</svg>
+        <div onclick="openEventModal(${e.id})" class="cursor-pointer bg-white shadow-sm rounded-2xl p-3.5 flex gap-3 w-full">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconForEvent(e.event_type)}</svg>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold text-ink">${e.event_type || 'Événement'}</p>
-            ${e.title ? `<p class="text-xs text-ink/55">${e.title}</p>` : ''}
+            <p class="text-sm font-bold text-ink leading-snug">${e.event_type || 'Événement'}${e.title ? `<span class="font-medium text-ink/55"> · ${e.title}</span>` : ''}</p>
             <p class="text-[11px] text-hibiscus-700 font-semibold mt-0.5">${capFirst(formatEventDate(e.event_date, e.duration_minutes))}</p>
-            <p class="text-[11px] text-ink/45 mt-0.5">${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
-            ${e.description ? `<p class="text-xs text-ink/60 leading-relaxed mt-2">${e.description}</p>` : ''}
-            <div class="flex items-center gap-2 mt-3 flex-wrap">
+            <p class="text-[11px] text-ink/45 truncate">${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
+            ${e.description ? `<p class="text-xs text-ink/60 leading-relaxed mt-1.5 line-clamp-2">${e.description}</p>` : ''}
+            <div class="flex items-center gap-2 mt-2.5">
               ${attending
-                ? `<span class="text-sm font-semibold rounded-xl px-4 py-2 bg-mango-50 text-mango-700">Je suis inscrit ✓</span>
-                   <button data-event-id="${e.id}" class="unrsvp-btn text-sm font-semibold rounded-xl px-4 py-2 bg-[#EEEDF2] text-ink/70">Me désinscrire</button>`
-                : `<button data-event-id="${e.id}" ${full ? 'disabled' : ''} class="rsvp-btn text-sm font-semibold rounded-xl px-4 py-2 ${full ? 'bg-[#EEEDF2] text-ink/35' : 'bg-mango-500 text-white shadow-sm'}">${full ? 'Complet' : "Je souhaite m'inscrire"}</button>`}
-              ${attending ? `<button data-event-id="${e.id}" class="ics-btn text-sm font-semibold rounded-xl px-4 py-2 bg-[#EEEDF2] text-ink/70">＋ Ajouter à mon calendrier</button>` : ''}
-              <span class="text-[10.5px] text-ink/40">${seatsLabel}</span>
+                ? `<span class="text-xs font-semibold rounded-lg px-2.5 py-1.5 bg-mango-50 text-mango-700 whitespace-nowrap">Inscrit ✓</span>
+                   <button data-event-id="${e.id}" class="ics-btn flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 bg-[#EEEDF2] text-ink/70 whitespace-nowrap">${calIcon}Calendrier</button>`
+                : `<button data-event-id="${e.id}" ${full ? 'disabled' : ''} class="rsvp-btn text-xs font-semibold rounded-lg px-3 py-1.5 whitespace-nowrap ${full ? 'bg-[#EEEDF2] text-ink/35' : 'bg-mango-500 text-white shadow-sm'}">${full ? 'Complet' : "Je m'inscris"}</button>`}
+              <span class="ml-auto text-[10.5px] text-ink/40 whitespace-nowrap">${seatsLabel}</span>
             </div>
+            ${attending ? `<button data-event-id="${e.id}" class="unrsvp-btn mt-1.5 text-[11px] font-semibold text-ink/45 underline">Me désinscrire</button>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -422,28 +424,42 @@
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
-    // Médiathèque consultée : celle choisie sur l'accueil (12/10/2026).
+    // Médiathèque consultée : celle mémorisée par l'accueil (aussi pour un
+    // usager connecté, voir accueil.html), vérifiée en parallèle du reste.
     let stored = null;
     try { stored = Number(localStorage.getItem('bligo_guest_commune_id')) || null; } catch {}
     if (session) {
       currentUser = session.user;
       updateReservationBadge(currentUser.id);
-      // Usager connecté : toujours l'agenda de sa médiathèque (16/10/2026).
-      const { data: profile } = await supabase.from('profiles').select('commune_id').eq('id', currentUser.id).single();
-      if (profile?.commune_id) stored = profile.commune_id;
     }
-    if (!stored) { window.location.href = 'index.html'; return; }
+    const profilePromise = session
+      ? supabase.from('profiles').select('commune_id').eq('id', currentUser.id).single()
+      : Promise.resolve({ data: null });
+    if (!stored) {
+      // Rien de mémorisé : on attend le profil (usager connecté), sinon retour au choix.
+      const { data: profile } = await profilePromise;
+      stored = profile?.commune_id || null;
+      if (!stored) { window.location.href = 'index.html'; return; }
+    }
     browseCommuneId = stored;
-    const { data: commune } = await supabase.from('communes').select('name, theme_ink_hex, theme_accent_hex').eq('id', browseCommuneId).single();
+    const [{ data: profile }, { data: commune }] = await Promise.all([
+      profilePromise,
+      supabase.from('communes').select('name, theme_ink_hex, theme_accent_hex').eq('id', browseCommuneId).single(),
+      loadEvents(),
+    ]);
+    // Usager connecté : toujours l'agenda de sa médiathèque (16/10/2026).
+    if (profile?.commune_id && profile.commune_id !== browseCommuneId) {
+      try { localStorage.setItem('bligo_guest_commune_id', String(profile.commune_id)); } catch {}
+      browseCommuneId = profile.commune_id;
+      await loadEvents();
+    }
     // Médiathèque qui n'existe plus (Sainte-Anne, retirée le 21/10/2026).
-    if (!commune) {
+    if (!commune && !profile?.commune_id) {
       try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
       window.location.href = 'index.html';
       return;
     }
-    applyCommuneTheme(commune);
-
-    await loadEvents();
+    if (commune) applyCommuneTheme(commune);
   }
 
   window.logout = async function () {
