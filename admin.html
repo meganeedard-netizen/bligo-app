@@ -1909,6 +1909,64 @@
     await Promise.all([loadBooks(), loadReservations(), loadActiveLoans(), loadReshelveLoans(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents(), loadTransfers(), loadReportedReviews()]);
     if (myIsDirection) await loadTeamAndTariffs();
     await loadDashboard();
+    setTimeout(() => backfillIncompleteBooks().catch(e => console.error('Rattrapage des fiches :', e)), 8000);
+  }
+
+  // ---------- Rattrapage automatique des fiches incomplètes (24/10/2026) ----------
+  // Un livre catalogué pendant une panne de Google Books (fréquentes) reste
+  // sans couverture ni résumé, sauf si quelqu'un le rescanne. À chaque
+  // ouverture du logiciel, on reprend en arrière-plan quelques fiches
+  // incomplètes de la médiathèque : couverture, résumé, nombre de pages,
+  // couleur de couverture, âge conseillé. Champs vides seulement, jamais ce
+  // qu'un agent a saisi. Un livre déjà retenté sur ce poste attend 2 jours
+  // avant un nouvel essai, pour ne pas reprendre toujours les mêmes.
+  const BACKFILL_TRIES_KEY = 'bligo_backfill_tries';
+  const BACKFILL_PER_OPENING = 8;
+  const BACKFILL_RETRY_MS = 2 * 24 * 3600 * 1000;
+
+  async function backfillIncompleteBooks() {
+    let tries = {};
+    try { tries = JSON.parse(localStorage.getItem(BACKFILL_TRIES_KEY) || '{}'); } catch {}
+    const now = Date.now();
+    const digits = v => String(v || '').replace(/[^\dX]/gi, '');
+    const needsAge = b => ['Jeunesse', 'BD'].includes(b.category) && !b.age_range;
+    const todo = books.filter(b => !b.archived && isBookIsbn(digits(b.isbn))
+      && (!b.cover_url || !b.summary || !b.cover_color || needsAge(b))
+      && !(tries[b.id] && now - tries[b.id] < BACKFILL_RETRY_MS))
+      .slice(0, BACKFILL_PER_OPENING);
+
+    for (const b of todo) {
+      tries[b.id] = now;
+      try { localStorage.setItem(BACKFILL_TRIES_KEY, JSON.stringify(tries)); } catch {}
+      const isbn = digits(b.isbn);
+      const patch = {};
+      if (!b.cover_url || !b.summary || !b.page_count) {
+        const g = await fetchFromGoogleBooks(`isbn:${isbn}`);
+        if (g) {
+          if (!b.cover_url && g.cover_url) patch.cover_url = g.cover_url;
+          const isFrench = /^fr/i.test(b.language || g.language || '') || isbn.startsWith('9782') || /^2/.test(isbn);
+          if (!b.summary && g.summary && !(isFrench && looksEnglish(g.summary))) patch.summary = g.summary;
+          if (!b.page_count && g.page_count) patch.page_count = g.page_count;
+        }
+      }
+      if (!b.cover_url && !patch.cover_url) {
+        const other = await fetchCoverFromOpenLibrary(isbn) || await lookupCoverBank(b.title, b.author);
+        if (other) patch.cover_url = other;
+      }
+      if (needsAge(b)) {
+        const bnf = await fetchFromBnF(isbn);
+        if (bnf?.age_range) patch.age_range = bnf.age_range;
+      }
+      const cover = patch.cover_url || b.cover_url;
+      if (cover && !b.cover_color) {
+        const color = await fetchCoverColorFromApi(cover);
+        if (color) patch.cover_color = color;
+      }
+      if (!Object.keys(patch).length) continue;
+      const { error } = await supabase.from('books').update(patch).eq('id', b.id);
+      if (error) { console.error(error); continue; }
+      Object.assign(b, patch);
+    }
   }
 
   // Chiffres du jour (écran Aujourd'hui), limités à la médiathèque de l'agent.
@@ -2715,6 +2773,7 @@
     if (!isBookIsbn(isbn)) return await fetchMultimediaMetaByBarcode(isbn, forcedGenre);
 
     let meta = await fetchFromGoogleBooks(`isbn:${isbn}`);
+    const fromGoogle = !!meta;
     if (!meta) meta = await fetchFromOpenLibrary(isbn);
 
     if (meta && !meta.cover_url) {
@@ -2744,6 +2803,20 @@
     if (bnf && !bnf.matchedByIsbn && meta?.author && !/inconnu/i.test(meta.author) && bnf.authorLastName
       && !normalizeKey(stripAccents(meta.author)).includes(normalizeKey(stripAccents(bnf.authorLastName)))) {
       bnf = null;
+    }
+    // Google Books instable répond parfois « 0 résultat » même pour un livre
+    // connu (constaté les 23 et 24/10/2026), sans erreur à retenter. Si la BnF
+    // trouve ce livre par son ISBN, on redemande une fois à Google quelques
+    // secondes plus tard : c'est lui qui a le plus de couvertures et de résumés.
+    if (!fromGoogle && bnf?.matchedByIsbn) {
+      await new Promise(r => setTimeout(r, 3000));
+      const retry = await fetchFromGoogleBooks(`isbn:${isbn}`);
+      if (retry && !meta) meta = retry;
+      else if (retry) {
+        ['summary', 'cover_url', 'publisher', 'published_date', 'page_count', 'language', 'price_cents']
+          .forEach(f => { if (!meta[f] && retry[f]) meta[f] = retry[f]; });
+        meta.rawCategoryText = [meta.rawCategoryText, retry.rawCategoryText].filter(Boolean).join(' ');
+      }
     }
     if (!meta && bnf?.title) {
       meta = {
@@ -2788,6 +2861,7 @@
       meta.authorKey = bnf.authorLastName;
       if (!meta.translator) meta.translator = bnf.translator;
       if (!meta.illustrator) meta.illustrator = bnf.illustrator;
+      if (!meta.age_range) meta.age_range = bnf.age_range;
       if (bnf.author && (!meta.author || /^auteur inconnu$/i.test(meta.author.trim()))) meta.author = bnf.author;
       // Notice de l'édition exacte (même ISBN) : elle fait autorité pour
       // l'éditeur, l'année et tout ce qui dépend de l'édition (reliure,
@@ -3236,6 +3310,7 @@
     draft.subjects = meta.subjects || '';
     draft.translator = meta.translator || '';
     draft.illustrator = meta.illustrator || '';
+    draft.age_range = meta.age_range || '';
     draft.authorKey = meta.authorKey || null;
     draft.issue = meta.issue || '';
     draft.issn = meta.issn || null;
@@ -3267,13 +3342,13 @@
     price_cents: 'prix', binding: 'reliure', dimensions: 'dimensions', illustrations: 'illustrations', collection: 'collection',
     subjects: 'sujets', publisher: 'éditeur', published_date: 'date', page_count: 'pages', language: 'langue',
     legal_deposit: 'dépôt légal', printer: 'imprimeur', translator: 'traducteur', illustrator: 'illustrateur',
-    summary: 'résumé', isbn: 'ISBN', cover_url: 'couverture',
+    summary: 'résumé', isbn: 'ISBN', cover_url: 'couverture', age_range: 'âge conseillé',
   };
 
   async function enrichExistingBook(book, meta) {
     const patch = {};
     ['dewey', 'price_cents', 'binding', 'dimensions', 'illustrations', 'collection', 'subjects', 'format', 'publisher', 'published_date',
-      'page_count', 'language', 'legal_deposit', 'printer', 'translator', 'illustrator', 'summary', 'isbn', 'cover_url']
+      'page_count', 'language', 'legal_deposit', 'printer', 'translator', 'illustrator', 'summary', 'isbn', 'cover_url', 'age_range']
       .forEach(f => { if ((book[f] == null || book[f] === '') && meta[f]) patch[f] = meta[f]; });
     if (/^auteur inconnu$/i.test((book.author || '').trim()) && meta.author && !/inconnu/i.test(meta.author)) patch.author = meta.author;
     if ((!book.category || book.category === 'Autres') && meta.category && meta.category !== 'Autres') patch.category = meta.category;
@@ -3404,6 +3479,7 @@
     draft.meta.subjects = (draft.subjects || '').trim() || null;
     draft.meta.translator = (draft.translator || '').trim() || null;
     draft.meta.illustrator = (draft.illustrator || '').trim() || null;
+    draft.meta.age_range = (draft.age_range || '').trim() || null;
     draft.meta.price_cents = parsePriceCents(draft.price);
     draft.meta.category = draft.category;
     draft.meta.copyCount = Math.max(1, parseInt(draft.copyCount, 10) || 1);
@@ -3744,6 +3820,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <input id="draft-translator-${d.localId}" value="${escapeHtml(d.translator || '')}" oninput="updateDraftField('${d.localId}', 'translator', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm">
           </div>
         </div>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Âge conseillé <span class="font-normal text-ink/40">· rempli par la BnF quand elle l'indique</span></label>
+        <input id="draft-age-range-${d.localId}" value="${escapeHtml(d.age_range || '')}" oninput="updateDraftField('${d.localId}', 'age_range', this.value)" placeholder="Ex. Dès 8 ans" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Prix (€) <span class="font-normal text-ink/40">· sert à facturer un document perdu ou abîmé</span></label>
         <input id="draft-price-${d.localId}" value="${escapeHtml(d.price || '')}" oninput="updateDraftField('${d.localId}', 'price', this.value)" inputmode="decimal" placeholder="Ex. 22,50" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Collection</label>
@@ -4109,6 +4187,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const priceRaw = getSub(getField('010'), 'd') || '';
       const priceMatch = priceRaw.match(/(\d+(?:[.,]\d{1,2})?)\s*(EUR|€)/i);
       const price_cents = priceMatch ? Math.round(parseFloat(priceMatch[1].replace(',', '.')) * 100) : null;
+      // Zone 333 : public destinataire, en pratique l'avis du Centre national
+      // de la littérature pour la jeunesse (« À partir de 11 ans »). Plusieurs
+      // avis possibles : on garde l'âge le plus bas (24/10/2026).
+      const ages = getFields('333').map(f => (getSub(f, 'a') || '').match(/(\d{1,2})\s*ans/i)?.[1]).filter(Boolean).map(Number);
+      const age_range = ages.length ? `Dès ${Math.min(...ages)} ans` : null;
       const f700 = getField('700');
       const authorLastName = getSub(f700, 'a');
       const authorFirstName = getSub(f700, 'b');
@@ -4150,6 +4233,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         dimensions,
         illustrations,
         subjects,
+        age_range,
         authorLastName,
         translator,
         illustrator,
