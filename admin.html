@@ -54,6 +54,27 @@
   /* En-têtes de tableaux et fonds pâles : gris neutre plutôt qu'orangé */
   #app-main .bg-mango-50 { background-color: #F7F8FA; }
   #app-main .bg-mango-50\/50, #app-main .bg-mango-50\/60 { background-color: #F7F8FA; }
+  /* Version téléphone (26/10/2026) : seulement sous 640 px, ordinateur et tablette inchangés. */
+  @media (max-width: 640px) {
+    /* En-tête sur deux lignes : BliGO + Appli/Déconnexion, puis le compteur de visiteurs */
+    #bo-topbar > div { height: auto; flex-wrap: wrap; row-gap: 8px; padding: 10px 16px; }
+    #bo-topbar > div > div:first-child { flex: 1 1 0; min-width: 0; order: 0; }
+    #bo-topbar > div > div:first-child > div { min-width: 0; }
+    #bo-topbar > div > div:first-child p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #bo-topbar > div > div:last-child { display: contents; }
+    #bo-topbar > div > div:last-child > div:last-child { order: 1; flex-shrink: 0; }
+    #header-visitor-widget { order: 2; flex-basis: 100%; }
+    #header-visitor-widget > span { margin-right: auto; }
+    /* Menu en bandeau : fondu à droite pour montrer qu'il défile */
+    #bo-sidebar { scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
+    #bo-sidebar::-webkit-scrollbar { display: none; }
+    /* Onglets Prêts & réservations sur une seule ligne qui défile */
+    #screen-reservations > div:first-of-type { flex-wrap: nowrap; overflow-x: auto; gap: 20px; scrollbar-width: none; }
+    #screen-reservations > div:first-of-type::-webkit-scrollbar { display: none; }
+    /* Boutons de l'agenda : à la ligne plutôt que hors de l'écran */
+    #screen-agenda > div:first-child > div:last-child { flex-shrink: 1; flex-wrap: wrap; width: 100%; }
+    #screen-agenda > div:first-child > div:last-child > button { flex: 1 1 auto; }
+  }
 </style>
 <script>
     // Logiciel agent (16/10/2026) : window.alert() et window.confirm() ne
