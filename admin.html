@@ -1953,12 +1953,18 @@
         const other = await fetchCoverFromOpenLibrary(isbn) || await lookupCoverBank(b.title, b.author);
         if (other) patch.cover_url = other;
       }
+      // Couverture pleine page 2:3, cherchée aussi chez l'éditeur (26/10/2026).
+      if (!b.cover_url && !isOwnCover(patch.cover_url)) {
+        const prepared = await prepareCover({ cover_url: patch.cover_url, isbn, title: b.title });
+        if (prepared?.ok) { patch.cover_url = prepared.cover_url; patch.cover_color = prepared.color; }
+        else if (prepared?.input_checked) delete patch.cover_url;
+      }
       if (needsAge(b)) {
         const bnf = await fetchFromBnF(isbn);
         if (bnf?.age_range) patch.age_range = bnf.age_range;
       }
       const cover = patch.cover_url || b.cover_url;
-      if (cover && !b.cover_color) {
+      if (cover && !b.cover_color && !patch.cover_color) {
         const color = await fetchCoverColorFromApi(cover);
         if (color) patch.cover_color = color;
       }
@@ -5955,10 +5961,21 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     // migration add_document_types_and_dewey.sql n'est pas encore passée.
     const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects, price_cents, players, play_duration, age_range })
       .filter(([, v]) => v != null && v !== ''));
+    // Couverture d'un livre scanné : mise en pleine page 2:3 et, si l'API n'a
+    // rien de bon, cherchée chez l'éditeur (26/10/2026, voir prepareCover).
+    // Pas pour les CD/DVD/jeux (pochettes carrées) ni pour une couverture
+    // déjà dans notre stockage (banque de couvertures, photo de l'agent).
+    let cover_color = null;
+    const isbnDigits = String(isbn || '').replace(/[^\dX]/gi, '');
+    if (isBookIsbn(isbnDigits) && !isOwnCover(cover_url)) {
+      const prepared = await prepareCover({ cover_url, isbn: isbnDigits, title });
+      if (prepared?.ok) { cover_url = prepared.cover_url; cover_color = prepared.color; }
+      else if (prepared?.input_checked) cover_url = null;
+    }
     // Détection couleur/N&B automatique dès le catalogage si une couverture a
     // été trouvée (18/09/2026) - l'agent n'a plus besoin d'ouvrir la fiche
     // après coup pour le savoir.
-    const cover_color = cover_url ? await fetchCoverColorFromApi(cover_url) : null;
+    if (cover_url && !cover_color) cover_color = await fetchCoverColorFromApi(cover_url);
     const { data, error } = await supabase.from('books').insert({
       title, author, category, summary, cover_url, isbn,
       publisher, published_date, page_count, language, format, legal_deposit, printer,
@@ -7794,6 +7811,27 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     // sans action de l'agent, et on l'enregistre tout de suite en base.
     if (b.cover_url && !b.cover_color) autoDetectAndSaveCoverColor(id);
   };
+
+  // Appel à l'Edge Function prepare-cover (26/10/2026) : couverture en pleine
+  // page 2:3, sans bande ni fausse image, cherchée aussi chez l'éditeur, puis
+  // rangée dans le bucket book-covers. Renvoie { ok, cover_url, color } ;
+  // { ok: false, input_checked: true } si l'image proposée a été examinée et
+  // écartée sans rien de mieux (aucune couverture plutôt qu'une mauvaise) ;
+  // null si la fonction n'a pas répondu (pas encore déployée, réseau) : on
+  // garde alors l'ancien fonctionnement.
+  async function prepareCover({ cover_url = null, isbn = null, title = '' }) {
+    try {
+      const { data, error } = await supabase.functions.invoke('prepare-cover', { body: { cover_url, isbn, title } });
+      if (error || !data) return null;
+      return data.ok ? data : { ok: false, input_checked: !!data.input_checked };
+    } catch {
+      return null;
+    }
+  }
+
+  function isOwnCover(url) {
+    return !!url && url.includes('/storage/v1/object/public/book-covers/');
+  }
 
   // Centralise l'appel à l'Edge Function detect-cover-color (voir
   // supabase/functions/detect-cover-color) - utilisée au catalogage
