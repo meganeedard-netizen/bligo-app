@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
   const { data: { user: caller }, error: authError } = await callerClient.auth.getUser();
   if (authError || !caller) return json({ ok: false, message: 'Non authentifié' }, 401);
 
-  let body: { cover_url?: string; isbn?: string; title?: string; photo?: string };
+  let body: { cover_url?: string; isbn?: string; title?: string; photo?: string; book_id?: number };
   try {
     body = await req.json();
   } catch {
@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
 
   // Photo de couverture prise par un agent (27/10/2026) : déjà redressée et
   // améliorée dans le logiciel, elle est seulement vérifiée, remise au format
-  // et rangée ici. Les agents n'ont pas le droit d'écrire directement dans le
+  // et rangée ici (dossier photos-a-verifier/). Les agents n'ont pas le droit d'écrire directement dans le
   // bucket book-covers (réservé au super-admin), d'où ce passage par le serveur.
   if (body.photo) {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -253,7 +253,11 @@ Deno.serve(async (req) => {
     }
     if (img.width < 300 || img.height < 450) return json({ ok: false, message: 'Photo trop petite' }, 400);
     const final = toBookFormat(img);
-    const path = `covers/photo-${isbn || slugify(title) || 'couverture'}-${Date.now()}.jpg`;
+    // Rangée dans photos-a-verifier/ : Mégane les contrôle depuis
+    // superadmin.html (ou le tableau de bord Supabase) avant de les valider.
+    // Le numéro du livre en tête du nom permet de retrouver sa fiche.
+    const bookId = Number.isInteger(body.book_id) ? body.book_id : 0;
+    const path = `photos-a-verifier/${bookId}-${slugify(title) || 'couverture'}-${Date.now()}.jpg`;
     const { error } = await admin.storage.from('book-covers').upload(path, await final.encodeJPEG(90), { contentType: 'image/jpeg' });
     if (error) return json({ ok: false, message: 'Envoi impossible : ' + error.message }, 500);
     const { data: pub } = admin.storage.from('book-covers').getPublicUrl(path);

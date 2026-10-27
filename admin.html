@@ -8125,7 +8125,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     try {
       const b = books.find(x => x.id === coverPhoto.bookId);
       const photo = document.getElementById('cp-result-canvas').toDataURL('image/jpeg', 0.92).split(',')[1];
-      const { data, error } = await supabase.functions.invoke('prepare-cover', { body: { photo, isbn: b?.isbn || null, title: b?.title || '' } });
+      const { data, error } = await supabase.functions.invoke('prepare-cover', { body: { photo, book_id: coverPhoto.bookId, isbn: b?.isbn || null, title: b?.title || '' } });
       if (error || !data?.ok) { alert('Envoi impossible : ' + (data?.message || error?.message || 'réessaie dans un instant.')); return; }
       const patch = { cover_url: data.cover_url, cover_color: data.color };
       const { error: upErr } = await supabase.from('books').update(patch).eq('id', coverPhoto.bookId);
