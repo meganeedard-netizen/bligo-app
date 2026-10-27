@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
   const { data: { user: caller }, error: authError } = await callerClient.auth.getUser();
   if (authError || !caller) return json({ ok: false, message: 'Non authentifié' }, 401);
 
-  let body: { cover_url?: string; isbn?: string; title?: string };
+  let body: { cover_url?: string; isbn?: string; title?: string; photo?: string };
   try {
     body = await req.json();
   } catch {
@@ -234,6 +234,31 @@ Deno.serve(async (req) => {
   }
   const isbn = String(body.isbn || '').replace(/[^0-9X]/gi, '');
   const title = String(body.title || '');
+
+  // Photo de couverture prise par un agent (27/10/2026) : déjà redressée et
+  // améliorée dans le logiciel, elle est seulement vérifiée, remise au format
+  // et rangée ici. Les agents n'ont pas le droit d'écrire directement dans le
+  // bucket book-covers (réservé au super-admin), d'où ce passage par le serveur.
+  if (body.photo) {
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: profile } = await admin.from('profiles').select('role').eq('id', caller.id).maybeSingle();
+    if (!['agent', 'super_admin'].includes(profile?.role)) return json({ ok: false, message: 'Réservé aux agents' }, 403);
+    let img: Image;
+    try {
+      const decoded = await Image.decode(Uint8Array.from(atob(body.photo), (c) => c.charCodeAt(0)));
+      if (!(decoded instanceof Image)) throw new Error('animation');
+      img = decoded;
+    } catch {
+      return json({ ok: false, message: 'Photo illisible' }, 400);
+    }
+    if (img.width < 300 || img.height < 450) return json({ ok: false, message: 'Photo trop petite' }, 400);
+    const final = toBookFormat(img);
+    const path = `covers/photo-${isbn || slugify(title) || 'couverture'}-${Date.now()}.jpg`;
+    const { error } = await admin.storage.from('book-covers').upload(path, await final.encodeJPEG(90), { contentType: 'image/jpeg' });
+    if (error) return json({ ok: false, message: 'Envoi impossible : ' + error.message }, 500);
+    const { data: pub } = admin.storage.from('book-covers').getPublicUrl(path);
+    return json({ ok: true, cover_url: pub.publicUrl, color: coverColor(final), source: 'photo' });
+  }
 
   // Ordre : éditeur d'abord (meilleure image, vraie face avant), puis l'image
   // proposée par l'API, puis Open Library et Google en lecture directe.
