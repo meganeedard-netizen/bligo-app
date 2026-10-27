@@ -1304,10 +1304,31 @@
     currentUser = session.user;
     updateReservationBadge(currentUser.id);
 
-    const { data: profile } = await supabase
+    // Un échec passager du profil (réseau faible, session en cours de
+    // renouvellement) faisait passer l'usager pour un nouveau venu :
+    // questionnaire de goûts et fenêtre « pré-inscription en attente » alors
+    // que son compte est validé (vu le 27/10/2026). Second essai un peu plus
+    // tard ; si ça échoue encore, message « Connexion instable » sans fenêtre.
+    const loadProfile = () => supabase
       .from('profiles')
       .select('full_name, role, loyalty_points, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, communes ( name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url )')
       .eq('id', currentUser.id).single();
+    let { data: profile, error: profileError } = await loadProfile();
+    if (profileError) {
+      await new Promise(r => setTimeout(r, 1500));
+      ({ data: profile, error: profileError } = await loadProfile());
+    }
+    const profileLoaded = !!profile;
+    if (!profileLoaded) {
+      document.getElementById('points-display').textContent = '';
+      document.getElementById('book-list').innerHTML = `
+        <div class="col-span-full text-center py-12">
+          <p class="text-sm font-semibold text-ink mb-1">Connexion instable</p>
+          <p class="text-sm text-ink/55 mb-4">Ton compte n'a pas pu être chargé. Vérifie ta connexion internet.</p>
+          <button onclick="location.reload()" class="bg-brand text-white rounded-full px-5 py-2.5 text-sm font-semibold">Réessayer</button>
+        </div>`;
+      return;
+    }
 
     preferredCategories = profile?.preferred_categories || [];
     isLibreAccount = profile?.account_type === 'libre';
@@ -1325,11 +1346,11 @@
     // Jamais les deux fenêtres en même temps : on attend que les préférences de
     // lecture soient répondues (ou passées) avant de proposer le pop-up de
     // pré-inscription, sinon les deux se superposent et bloquent l'appli.
-    if (!profile?.onboarding_completed) {
+    if (profileLoaded && !profile.onboarding_completed) {
       await setupOnboarding(currentUser.id);
     }
 
-    if (profile?.account_type !== 'libre' && profile?.registration_status !== 'valide' && !sessionStorage.getItem('bligo_prereg_popup_shown')) {
+    if (profileLoaded && profile.account_type !== 'libre' && profile.registration_status !== 'valide' && !sessionStorage.getItem('bligo_prereg_popup_shown')) {
       sessionStorage.setItem('bligo_prereg_popup_shown', '1');
       const popup = document.getElementById('pending-popup-backdrop');
       popup.classList.remove('hidden');
