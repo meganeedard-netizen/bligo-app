@@ -88,7 +88,7 @@
   <!-- Files d'attente juste avant l'historique (22/10/2026, demande de Mégane). -->
   <div id="holds-section" class="hidden mb-8">
     <h2 class="text-base font-bold text-ink mb-1">Mes files d'attente</h2>
-    <p class="text-xs text-ink/50 mb-3">Dès que le livre revient, il est mis de côté pour toi et tu as 48 h pour venir le chercher.</p>
+    <p class="text-xs text-ink/50 mb-3">Dès que le livre revient, il est mis de côté pour toi.</p>
     <div id="holds-list" class="flex flex-col gap-3"></div>
   </div>
 
@@ -580,9 +580,9 @@
         ${editMinutesLeft(it) > 0 ? `<button type="button" onclick="cancelPreparingReservation(${it.id})" class="shrink-0 text-[11px] font-semibold text-red-500/75 hover:text-red-600 border border-red-100 bg-white rounded-full px-2.5 py-1.5">Retirer</button>` : ''}
       </div>`).join('');
     const message = editable
-      ? `<p class="text-xs text-amber-900/80 leading-relaxed">Tu peux encore modifier ta commande. On te prévient dès qu'elle est prête.</p>
+      ? `<p class="text-xs text-amber-900/80 leading-relaxed">Tu peux encore modifier ta commande.</p>
          <p class="text-[11px] font-bold text-amber-700 mt-1.5">⏱ Encore ${minutesLeft} min pour la modifier</p>`
-      : `<p class="text-xs text-amber-900/80 leading-relaxed">Ta commande est en préparation. On te prévient dès qu'elle est prête.</p>`;
+      : `<p class="text-xs text-amber-900/80 leading-relaxed">Ta commande est en préparation.</p>`;
     return `
       <div class="bg-amber-50 rounded-2xl p-3.5 shadow-sm">
         <div class="mb-3">${message}</div>
