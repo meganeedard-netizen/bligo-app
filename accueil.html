@@ -737,10 +737,10 @@
         btnHtml = `<span class="block w-full mt-2 text-center text-[11px] font-semibold bg-brand/5 text-ink/50 rounded-lg py-1.5">📍 Consultation sur place</span>`;
       } else if (isLibreAccount) {
         btnHtml = `<a href="profil.html" class="block w-full mt-2 text-center text-[10.5px] font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-1.5">Rattache-toi à une commune</a>`;
-      } else if (!b.available) {
-        btnHtml = holdButtonHtml(b.id, false);
       } else if (reservedBookIds.has(b.id)) {
         btnHtml = `<button disabled class="w-full mt-2 text-[11px] font-semibold bg-mango-100 text-mango-700 rounded-lg py-1.5">${activeStatusLabel(b.id)}</button>`;
+      } else if (!b.available) {
+        btnHtml = holdButtonHtml(b.id, false);
       } else {
         btnHtml = `<button data-book-id="${b.id}" class="reserve-btn w-full mt-2 text-[11px] font-semibold bg-brand text-white rounded-lg py-1.5 active:scale-[0.97] transition">Commander</button>`;
       }
@@ -846,6 +846,23 @@
         }).then(v => { if (v === 'resa') window.location.href = 'reservations.html'; });
         return;
       }
+      // Livre commandé entre-temps par un autre usager (28/10/2026) :
+      // le catalogue est rechargé et on propose la file d'attente.
+      if (/déjà réservé par un autre usager/i.test(error.message)) {
+        const book = books.find(x => x.id === bookId);
+        if (book) book.available = false;
+        renderBooks();
+        const choice = await showDialog({
+          title: 'Déjà réservé',
+          message: 'Ce livre vient d\'être réservé par un autre usager.' + (holdsEnabled ? ' Tu peux te mettre dans la file d\'attente, tu seras prévenu dès qu\'il sera pour toi.' : ''),
+          buttons: [
+            ...(holdsEnabled ? [{ label: 'Ajouter à la file d\'attente', value: 'hold', primary: true }] : []),
+            { label: 'Fermer', value: null },
+          ],
+        });
+        if (choice === 'hold') await joinHold(bookId);
+        return;
+      }
       showAppAlert(frError(error));
       return;
     }
@@ -868,10 +885,10 @@
       btnHtml = `<p class="w-full mt-4 text-center text-sm font-semibold bg-brand/5 text-ink/50 rounded-2xl py-3">📍 Consultation sur place uniquement</p>`;
     } else if (isLibreAccount) {
       btnHtml = `<a href="profil.html" class="block w-full mt-4 text-center text-sm font-semibold bg-hibiscus-50 text-hibiscus-700 rounded-lg py-2.5">Réservé aux usagers d'une commune, rattache ton compte</a>`;
-    } else if (!b.available) {
-      btnHtml = holdButtonHtml(b.id, true) + `<div class="${holdsEnabled ? '' : 'mt-4'}">${wishlistButtonHtml(b.id, true)}</div>`;
     } else if (reserved) {
       btnHtml = `<button disabled class="w-full mt-4 text-sm font-semibold bg-mango-100 text-mango-700 rounded-2xl py-3">${activeStatusLabel(b.id)}</button>` + wishlistButtonHtml(b.id, true);
+    } else if (!b.available) {
+      btnHtml = holdButtonHtml(b.id, true) + `<div class="${holdsEnabled ? '' : 'mt-4'}">${wishlistButtonHtml(b.id, true)}</div>`;
     } else {
       btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-base font-semibold bg-brand text-white rounded-2xl py-3.5 shadow-md active:scale-[0.98] transition">Commander</button>` + wishlistButtonHtml(b.id, true);
     }
