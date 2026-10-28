@@ -134,7 +134,11 @@
     </div>
     <div class="p-6">
       <p id="badge-modal-message" class="text-sm text-ink/75 leading-relaxed text-center mb-5"></p>
-      <button id="badge-modal-share-btn" type="button" style="touch-action: manipulation;" class="hidden w-full bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">Partager ce badge</button>
+      <div id="badge-modal-share" class="hidden space-y-2">
+        <button id="badge-modal-story-btn" type="button" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">Partager en story</button>
+        <p class="text-[11px] text-center text-ink/50">Instagram, TikTok, Snapchat…</p>
+        <button id="badge-modal-share-btn" type="button" style="touch-action: manipulation;" class="w-full bg-[#EEEDF2] text-ink rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">Envoyer à un ami</button>
+      </div>
       <p id="badge-modal-share-msg" class="text-xs text-center text-ink/50 mt-2"></p>
     </div>
   </div>
@@ -238,16 +242,17 @@
     document.getElementById('badge-modal-type').textContent = b.type === 'niveau' ? `Niveau ${b.level}` : 'Badge spécial';
     document.getElementById('badge-modal-name').textContent = b.name;
 
-    const shareBtn = document.getElementById('badge-modal-share-btn');
+    const shareBlock = document.getElementById('badge-modal-share');
     document.getElementById('badge-modal-share-msg').textContent = '';
 
     if (b.unlocked) {
       document.getElementById('badge-modal-message').textContent = b.message;
-      shareBtn.classList.remove('hidden');
-      shareBtn.onclick = () => shareBadge(b);
+      shareBlock.classList.remove('hidden');
+      document.getElementById('badge-modal-share-btn').onclick = () => shareBadge(b);
+      document.getElementById('badge-modal-story-btn').onclick = () => shareBadgeStory(b);
     } else {
       document.getElementById('badge-modal-message').textContent = `Débloque ce badge : ${b.conditionText || (b.threshold + ' points BliGO')}.`;
-      shareBtn.classList.add('hidden');
+      shareBlock.classList.add('hidden');
     }
 
     const backdrop = document.getElementById('badge-modal-backdrop');
@@ -298,6 +303,93 @@
     } catch (e) {
       msg.textContent = shareText;
     }
+  }
+
+  // Partage en story (28/10/2026) : une image seule au format story
+  // (1080 x 1920), sans texte joint. Avec un texte, l'iPhone ne propose pas
+  // Instagram, TikTok ni Snapchat dans la feuille de partage.
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  function wrapLines(ctx, text, maxWidth) {
+    const lines = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(next).width > maxWidth) { lines.push(line); line = word; }
+      else line = next;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  async function buildBadgeStory(b) {
+    const W = 1080, H = 1920;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    try { await document.fonts.load('800 80px Inter'); await document.fonts.load('600 40px Inter'); } catch (e) {}
+
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#1B4B43');
+    bg.addColorStop(1, '#0E2A25');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    const glow = ctx.createRadialGradient(W / 2, 860, 40, W / 2, 860, 560);
+    glow.addColorStop(0, 'rgba(255, 155, 46, 0.45)');
+    glow.addColorStop(1, 'rgba(255, 155, 46, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    const [logo, badge] = await Promise.all([loadImage('img/bligo-logo-sombre.png'), loadImage(b.img)]);
+    const logoW = 300;
+    ctx.drawImage(logo, (W - logoW) / 2, 170, logoW, logoW * logo.height / logo.width);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
+    ctx.beginPath(); ctx.arc(W / 2, 860, 330, 0, Math.PI * 2); ctx.fill();
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(badge, W / 2 - 260, 860 - 260, 520, 520);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#FFB86B';
+    ctx.font = '600 44px Inter, sans-serif';
+    ctx.fillText(b.type === 'niveau' ? `Badge niveau ${b.level} débloqué` : 'Badge spécial débloqué', W / 2, 1320);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '800 92px Inter, sans-serif';
+    wrapLines(ctx, b.name, W - 160).forEach((l, i) => ctx.fillText(l, W / 2, 1440 + i * 104));
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.font = '500 34px Inter, sans-serif';
+    ctx.fillText("Avec BliGO, l'appli de ma Médiathèque Municipale", W / 2, 1760);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    return new File([blob], `bligo-${b.id}-story.png`, { type: 'image/png' });
+  }
+
+  async function shareBadgeStory(b) {
+    const msg = document.getElementById('badge-modal-share-msg');
+    msg.textContent = '';
+    let file = null;
+    try { file = await buildBadgeStory(b); } catch (e) { file = null; }
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); } catch (e) { /* partage annulé */ }
+      return;
+    }
+    if (file) {
+      // Navigateur sans partage de fichier (ordinateur) : téléchargement.
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(file);
+      a.download = file.name;
+      a.click();
+      msg.textContent = 'Image enregistrée : ajoute-la à ta story depuis ton appli.';
+      return;
+    }
+    msg.textContent = "L'image n'a pas pu être créée, réessaie dans un instant.";
   }
 
   const DEFIS = [
