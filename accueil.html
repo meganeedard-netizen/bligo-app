@@ -255,8 +255,13 @@
     applyCommuneTheme(commune);
     document.getElementById('opening-hours-link').classList.toggle('hidden', !myOpeningHours || !Object.values(myOpeningHours).some(Boolean));
     const logoEl = document.getElementById('commune-logo');
-    logoEl.onerror = () => logoEl.classList.add('hidden');
-    logoEl.onload = () => logoEl.classList.remove('hidden');
+    // Mémorisé pour l'écran de connexion (index.html), qui l'affiche alors
+    // tout de suite au lieu du logo BliGO (28/10/2026).
+    const rememberHeader = (logo) => {
+      try { localStorage.setItem('bligo_commune_header', JSON.stringify({ id: String(communeId), name: myCommuneName, logo })); } catch (e) {}
+    };
+    logoEl.onerror = () => { logoEl.classList.add('hidden'); rememberHeader(null); };
+    logoEl.onload = () => { logoEl.classList.remove('hidden'); rememberHeader(logoEl.src); };
     if (commune?.logo_url) {
       logoEl.src = commune.logo_url;
     } else if (myCommuneName) {

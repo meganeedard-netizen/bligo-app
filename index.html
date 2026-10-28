@@ -113,6 +113,25 @@
       <script>if (document.documentElement.classList.contains('dark')) document.getElementById('header-bligo-logo').src = 'img/bligo-logo-sombre.png';</script>
       <img id="header-commune-logo" alt="" class="hidden w-16 h-16 rounded-full object-contain bg-white shadow-md">
       <p id="header-commune-name" class="hidden text-sm font-bold text-ink text-center"></p>
+      <script>
+        // En-tête de la médiathèque déjà connue affiché tout de suite (28/10/2026) :
+        // plus de logo BliGO pendant 0,1 s avant celui de la médiathèque.
+        (function () {
+          try {
+            var cache = JSON.parse(localStorage.getItem('bligo_commune_header') || 'null');
+            if (!cache || String(cache.id) !== localStorage.getItem('bligo_guest_commune_id')) return;
+            document.getElementById('header-bligo-logo').classList.add('hidden');
+            var name = document.getElementById('header-commune-name');
+            name.textContent = 'Médiathèque de ' + cache.name;
+            name.classList.remove('hidden');
+            if (cache.logo) {
+              var logo = document.getElementById('header-commune-logo');
+              logo.src = cache.logo;
+              logo.classList.remove('hidden');
+            }
+          } catch (e) {}
+        })();
+      </script>
     </div>
 
     <div class="bg-white rounded-3xl shadow-xl px-6 py-7">
@@ -654,16 +673,16 @@
     document.getElementById('signup-welcome').textContent = `Bienvenue, habitant·e de ${commune.name} ! Rejoins l'appli de ta médiathèque !`;
 
     const logoEl = document.getElementById('header-commune-logo');
-    logoEl.onload = () => logoEl.classList.remove('hidden');
-    if (commune.logo_url) {
-      logoEl.onerror = () => logoEl.classList.add('hidden');
-      logoEl.src = commune.logo_url;
-    } else {
-      const slug = commune.name.normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      logoEl.onerror = () => logoEl.classList.add('hidden');
-      logoEl.src = `img/commune-logos/${slug}.png`;
-    }
+    const slug = commune.name.normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const logoSrc = commune.logo_url || `img/commune-logos/${slug}.png`;
+    const remember = (logo) => {
+      try { localStorage.setItem('bligo_commune_header', JSON.stringify({ id: String(communeId), name: commune.name, logo })); } catch (e) {}
+    };
+    logoEl.onload = () => { logoEl.classList.remove('hidden'); remember(logoSrc); };
+    logoEl.onerror = () => { logoEl.classList.add('hidden'); remember(null); };
+    if (logoEl.getAttribute('src') !== logoSrc) logoEl.src = logoSrc;
+    else remember(logoSrc);
   }
   // Choix de la médiathèque sans compte : on mémorise juste le temps de la
   // redirection (accueil.html lit cette valeur une fois puis la consomme),
