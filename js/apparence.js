@@ -33,4 +33,17 @@
   };
 
   apply(get());
+
+  // Dans l'appli iPhone/Android (pas sur le site) : un appui long sur un texte
+  // ou une image n'ouvre plus le menu Copier / Traduire / Partager du
+  // téléphone, comme dans une vraie appli (28/10/2026). Les champs de saisie
+  // restent sélectionnables.
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    document.documentElement.classList.add('is-app');
+    var style = document.createElement('style');
+    style.textContent =
+      'html.is-app, html.is-app body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }' +
+      'html.is-app input, html.is-app textarea, html.is-app [contenteditable] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }';
+    document.head.appendChild(style);
+  }
 })();
