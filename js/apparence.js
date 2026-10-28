@@ -42,7 +42,7 @@
     document.documentElement.classList.add('is-app');
     var style = document.createElement('style');
     style.textContent =
-      'html.is-app, html.is-app body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }' +
+      'html.is-app, html.is-app body, html.is-app a, html.is-app img, html.is-app button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }' +
       'html.is-app input, html.is-app textarea, html.is-app [contenteditable] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }';
     document.head.appendChild(style);
   }

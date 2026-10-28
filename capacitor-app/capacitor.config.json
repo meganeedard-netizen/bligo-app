@@ -1,5 +1,8 @@
 {
   "appId": "com.bligo.app",
   "appName": "BliGO",
-  "webDir": "www"
+  "webDir": "www",
+  "ios": {
+    "allowsLinkPreview": false
+  }
 }

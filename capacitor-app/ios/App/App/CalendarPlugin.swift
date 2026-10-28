@@ -63,6 +63,9 @@ class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(CalendarPlugin())
         bridge?.registerPluginInstance(ApparencePlugin())
+        // Appui long sur un bouton ou un lien : pas d'aperçu avec l'adresse
+        // « capacitor://localhost/… » comme dans Safari (28/10/2026).
+        webView?.allowsLinkPreview = false
         ApparencePlugin.apply(dark: UserDefaults.standard.bool(forKey: ApparencePlugin.key), to: self)
     }
 
