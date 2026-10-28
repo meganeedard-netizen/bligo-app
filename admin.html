@@ -2012,7 +2012,7 @@
         if (g) {
           if (!b.cover_url && g.cover_url) patch.cover_url = g.cover_url;
           const isFrench = /^fr/i.test(b.language || g.language || '') || isbn.startsWith('9782') || /^2/.test(isbn);
-          if (!b.summary && g.summary && !(isFrench && looksEnglish(g.summary))) patch.summary = g.summary;
+          if (!b.summary && g.summary && !(isFrench && looksEnglish(g.summary))) { const clean = stripPressQuotes(g.summary); if (clean) patch.summary = clean; }
           if (!b.page_count && g.page_count) patch.page_count = g.page_count;
         }
       }
@@ -3340,7 +3340,7 @@
     draft.isbn = meta.isbn || draft.isbn || '';
     draft.publisher = meta.publisher || '';
     draft.published_date = meta.published_date || '';
-    draft.summary = meta.summary || '';
+    draft.summary = stripPressQuotes(meta.summary);
     draft.page_count = meta.page_count || '';
     draft.language = meta.language || '';
     draft.legal_deposit = meta.legal_deposit || '';
@@ -4106,6 +4106,52 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       .trim() || null;
   }
 
+  // Retire les citations de presse en tête ou en fin de résumé (28/10/2026),
+  // ex. « Chaque nouveau roman… » The GuardianTabor, une petite ville… (la
+  // BnF colle la source au début du vrai texte). On ne retire une citation
+  // que si ce qui la suit est un nom de journal (avec ses majuscules : « le
+  // monde entier » ne compte pas) : un extrait du livre
+  // entre guillemets en tête de résumé reste en place.
+  const PRESS_SOURCE = /\b(Guardian|Times|New York|New Yorker|Washington|Kirkus|Publishers Weekly|Monde|Figaro|Lib[ée]ration|T[ée]l[ée]rama|Express|L['’]Obs|Nouvel Obs|Le Point|ELLE|Elle magazine|Lire|Livres Hebdo|Inrocks|Inrockuptibles|La Croix|Marianne|Humanit[ée]|Ouest[- ]France|Parisien|Paris Match|France (Inter|Culture|Info|T[ée]l[ée]visions)|RTL|Europe ?1|Le Temps|Le Soir|La Libre|Le Devoir|La Presse|Canard|Transfuge|Page des libraires|Causette|Psychologies|Grazia|Magazine|Journal|Review|Tribune|Post|Herald|Chronicle|Observer|Independent|Telegraph)\b/;
+
+  function stripPressQuotes(raw) {
+    // Mentions de provenance ajoutées par Google Books / Open Library
+    // (« "…"--Back cover. », « La 4e de couverture indique : "…" »).
+    const original = (raw || '').trim();
+    let text = original
+      .replace(/^la 4e de couverture indique\s*:\s*/i, '')
+      .replace(/\s*-{1,2}\s*(back cover|page 4 of cover|r[ée]sum[ée] de l['’][ée]diteur|quatri[èe]me de couverture|4e de couverture)\.?\s*$/i, '')
+      .trim();
+    // Les guillemets qui entouraient la 4e citée sont retirés avec la mention.
+    const wrapped = text.match(/^(["“«])\s*([\s\S]+?)\s*(["”»])\.?$/);
+    if (text !== original && wrapped && !/^["“«]/.test(wrapped[2])) {
+      const inner = wrapped[2];
+      const balanced = wrapped[1] === '"' ? (inner.match(/"/g) || []).length % 2 === 0
+        : (inner.match(/[«“]/g) || []).length === (inner.match(/[»”]/g) || []).length;
+      if (balanced) text = inner;
+    }
+    for (let i = 0; i < 4; i++) {
+      const m = text.match(/^[«“"]([^«»“”"]{5,800})[»”"]\s*/);
+      if (!m) break;
+      const after = text.slice(m[0].length);
+      // La source s'arrête au retour à la ligne, au point, ou là où la BnF a
+      // collé le texte sans espace (« GuardianTabor »).
+      const ends = [after.indexOf('\n'), after.search(/\.\s/), after.search(/[a-zà-ÿ)][A-ZÀ-Ý«]/) + 1]
+        .filter(n => n > 0);
+      const cut = ends.length ? Math.min(...ends) : -1;
+      if (cut < 0 || cut > 70) break;
+      const source = after.slice(0, cut);
+      if (!PRESS_SOURCE.test(source)) break;
+      text = after.slice(cut).replace(/^[\s.,;:–—-]+/, '');
+    }
+    for (let i = 0; i < 4; i++) {
+      const m = text.match(/\s*[«“"]([^«»“”"]{5,800})[»”"]\s*[,–—-]?\s*([^«»“”"\n.]{2,60})\.?\s*$/);
+      if (!m || !PRESS_SOURCE.test(m[2])) break;
+      text = text.slice(0, m.index).trim();
+    }
+    return text;
+  }
+
   // Format physique et résumé n'existent que sur l'endpoint "fiche complète"
   // d'Open Library (/isbn/…), pas sur jscmd=data utilisé ailleurs pour
   // l'indice Dewey - d'où cet appel séparé, mutualisé pour les deux (21/09/2026,
@@ -4526,7 +4572,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           status.textContent = ai.remarque || "Ce n'est pas le dos du livre : reprends la photo de la 4e de couverture.";
           return;
         }
-        summary = ai.resume.trim();
+        summary = stripPressQuotes(ai.resume);
         aiNote = ai.passages_illisibles ? ' Une partie était illisible : complète la fin à la main.' : '';
       } else {
         // Pas d'IA (clé absente, service indisponible) : ancienne lecture.
