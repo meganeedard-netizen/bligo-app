@@ -22,7 +22,9 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
-const MODEL = 'claude-opus-5-5';
+// Modèle léger par défaut (28/10/2026, choix de Mégane pour le coût). Le
+// super-admin peut demander le modèle précis pour comparer les deux.
+const MODELS = { leger: 'claude-haiku-5-5', precis: 'claude-opus-5-5' } as const;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 const corsHeaders = {
@@ -84,7 +86,7 @@ Deno.serve(async (req) => {
 
   if (!ANTHROPIC_API_KEY) return json({ ok: false, code: 'pas_de_cle', message: 'Clé API Anthropic absente' });
 
-  let body: { mode?: string; photo?: string; title?: string };
+  let body: { mode?: string; photo?: string; title?: string; modele?: string };
   try {
     body = await req.json();
   } catch {
@@ -96,10 +98,11 @@ Deno.serve(async (req) => {
   if (photo.length * 0.75 > MAX_PHOTO_BYTES) return json({ ok: false, message: 'Photo trop lourde' }, 413);
   const title = String(body.title || '').slice(0, 200);
 
+  const model = body.modele === 'precis' && profile?.role === 'super_admin' ? MODELS.precis : MODELS.leger;
   const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
   try {
     const response = await client.messages.parse({
-      model: MODEL,
+      model,
       max_tokens: 8000,
       output_config: {
         effort: 'low',
@@ -116,7 +119,7 @@ Deno.serve(async (req) => {
     if (response.stop_reason === 'refusal' || !response.parsed_output) {
       return json({ ok: false, message: "L'IA n'a pas pu lire cette photo." });
     }
-    return json({ ok: true, mode, ...response.parsed_output });
+    return json({ ok: true, mode, model, usage: response.usage, ...response.parsed_output });
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) return json({ ok: false, code: 'pas_de_cle', message: 'Clé API Anthropic invalide' });
     if (err instanceof Anthropic.RateLimitError) return json({ ok: false, message: 'Trop de demandes, réessaie dans un instant.' });
