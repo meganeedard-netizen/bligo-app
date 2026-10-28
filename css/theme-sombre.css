@@ -1,0 +1,85 @@
+/* BliGO - thème foncé (28/10/2026, comme l'appli Gaspiz).
+   Activé par la classe "dark" sur <html> (js/apparence.js, choix dans le
+   profil). Les pages gardent leurs classes Tailwind : ce fichier ne fait que
+   repeindre les fonds clairs en foncé et le texte "ink" en clair. Les couleurs
+   de la médiathèque (brand, mango, hibiscus) restent celles qu'elle a choisies. */
+
+html.dark {
+  color-scheme: dark;
+  --color-ink-rgb: 232 239 236;
+  --sombre-fond: #1E2826;
+  --sombre-carte: #26322F;
+  --sombre-creux: #141B1A;
+  --sombre-trait: #34423F;
+  --sombre-accent: var(--color-mango-500, #FF9B2E);
+  background-color: var(--sombre-fond);
+}
+
+/* Fonds blancs : page, en-têtes, cartes, fenêtres, barre du bas */
+html.dark body,
+html.dark .bg-white { background-color: var(--sombre-fond); }
+html.dark body::before { background: var(--sombre-fond) !important; }
+html.dark nav.fixed.bottom-0 { background-color: var(--sombre-creux); box-shadow: 0 -1px 0 var(--sombre-trait); }
+html.dark .bg-white\/90 { background-color: rgb(30 40 38 / .9); }
+
+/* Fonds teintés pâles de la couleur de la médiathèque */
+html.dark .bg-mango-50 { background-color: color-mix(in srgb, var(--sombre-accent) 10%, var(--sombre-fond)); }
+html.dark .bg-mango-100 { background-color: color-mix(in srgb, var(--sombre-accent) 18%, var(--sombre-fond)); }
+html.dark .bg-hibiscus-50 { background-color: color-mix(in srgb, var(--color-hibiscus-500, #E8437A) 12%, var(--sombre-fond)); }
+html.dark .bg-amber-50 { background-color: rgb(245 158 11 / .12); }
+html.dark .bg-red-50 { background-color: rgb(239 68 68 / .14); }
+html.dark .bg-brand\/5 { background-color: rgb(255 255 255 / .04); }
+html.dark .bg-brand\/10 { background-color: rgb(255 255 255 / .07); }
+/* Gris clair des boutons secondaires et sélecteurs à onglets */
+html.dark .bg-\[\#EEEDF2\],
+html.dark .bg-\[\#F4F3F7\] { background-color: var(--sombre-creux); }
+html.dark .bg-\[\#EEEDF2\] .bg-white { background-color: var(--sombre-carte); }
+html.dark .bg-ink { background-color: #0E1413; }
+html.dark .from-mango-50 { --tw-gradient-from: color-mix(in srgb, var(--sombre-accent) 12%, var(--sombre-fond)) var(--tw-gradient-from-position); }
+html.dark .to-hibiscus-50 { --tw-gradient-to: color-mix(in srgb, var(--color-hibiscus-500, #E8437A) 10%, var(--sombre-fond)) var(--tw-gradient-to-position); }
+
+/* Traits et bordures */
+html.dark .border-mango-100,
+html.dark .border-mango-50,
+html.dark .border-red-100,
+html.dark .divide-red-100 > * + *,
+html.dark .divide-amber-100 > * + * { border-color: var(--sombre-trait); }
+html.dark .border-\[\#EEEDF2\],
+html.dark .border-\[\#E3E2E8\],
+html.dark .divide-\[\#EEEDF2\] > * + * { border-color: var(--sombre-trait); }
+html.dark .border-white { border-color: var(--sombre-fond); }
+
+/* Textes colorés foncés : éclaircis pour rester lisibles sur fond foncé */
+html.dark .text-mango-700,
+html.dark .text-mango-800 { color: var(--color-mango-300, #FFB86B); }
+html.dark .text-mango-600 { color: var(--color-mango-400, #FFA33F); }
+html.dark .text-hibiscus-700,
+html.dark .text-hibiscus-800 { color: var(--color-hibiscus-300, #FF8FB9); }
+html.dark .text-hibiscus-600 { color: var(--color-hibiscus-400, #F2609A); }
+html.dark .text-red-600,
+html.dark .text-red-700 { color: #F87171; }
+html.dark .text-amber-700 { color: #FBBF24; }
+html.dark .text-amber-900\/80 { color: rgb(253 230 138 / .85); }
+
+/* Champs de saisie */
+html.dark input:not([type=checkbox]):not([type=radio]):not([type=range]),
+html.dark select,
+html.dark textarea { background-color: var(--sombre-carte); }
+
+/* Styles propres aux pages (listes du profil, connexion, interrupteurs) */
+html.dark .profile-section-title { background: var(--sombre-creux); color: rgb(232 239 236 / .6); }
+html.dark .profile-row { color: rgb(var(--color-ink-rgb)); border-bottom-color: var(--sombre-trait); }
+html.dark .profile-row:active { background: var(--sombre-carte); }
+html.dark .profile-chevron { color: rgb(232 239 236 / .45); }
+html.dark .auth-input { background: var(--sombre-carte); color: rgb(var(--color-ink-rgb)); }
+html.dark .auth-input::placeholder { color: rgb(232 239 236 / .5); }
+html.dark .toggle { background: #3F4D4A; }
+html.dark .cat-tile .cat-svg { color: rgb(232 239 236 / .75); }
+
+/* Choix du thème dans le profil (même allure que Gaspiz) */
+.apparence-switch { display: flex; gap: 4px; padding: 5px; border-radius: 16px; background: #EEEDF2; }
+.apparence-switch button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 8px; border-radius: 12px; font-size: 15px; font-weight: 500; color: rgb(27 75 67 / .6); }
+.apparence-switch button[aria-pressed="true"] { background: #fff; color: #1B4B43; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+html.dark .apparence-switch { background: var(--sombre-creux); }
+html.dark .apparence-switch button { color: rgb(232 239 236 / .6); }
+html.dark .apparence-switch button[aria-pressed="true"] { background: var(--sombre-carte); color: rgb(var(--color-ink-rgb)); box-shadow: none; }
