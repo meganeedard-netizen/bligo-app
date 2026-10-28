@@ -4479,6 +4479,32 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       .slice(0, 8);
   }
 
+  // Lecture des photos par l'IA (28/10/2026, Edge Function lire-photo-livre) :
+  // résumé recopié mot pour mot depuis le dos du livre, ou contrôle de la
+  // photo de couverture. Renvoie null si l'IA n'est pas disponible (clé
+  // absente, réseau) : l'appelant garde alors l'ancien fonctionnement.
+  async function readBookPhotoWithAI(mode, photo, title) {
+    try {
+      const { data, error } = await supabase.functions.invoke('lire-photo-livre', { body: { mode, photo, title } });
+      if (error || !data?.ok) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  // Photo réduite à 1 600 px de côté au plus : assez pour lire un petit
+  // texte, et l'envoi reste rapide sur le réseau mobile.
+  async function photoFileToJpegBase64(file) {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
+  }
+
   // Photo du verso : le texte de la 4e de couverture est un vrai résumé -
   // plus facile à lire pour l'OCR qu'un titre stylisé, et bien plus fiable
   // que les catégories brutes pour deviner le genre du livre.
@@ -4491,8 +4517,22 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     status.textContent = 'Lecture du résumé (verso)… (quelques secondes)';
 
     try {
-      const raw = await ocrRawTextFromFile(file);
-      const summary = cleanOcrText(raw.split('\n').map(l => l.trim()).filter(Boolean).join(' '));
+      const draftTitle = document.getElementById(`draft-title-${localId}`)?.value || draftBooks.find(d => d.localId === localId)?.title || '';
+      let summary = '';
+      let aiNote = '';
+      const ai = await readBookPhotoWithAI('resume', await photoFileToJpegBase64(file), draftTitle);
+      if (ai?.ok) {
+        if (!ai.est_quatrieme_de_couverture || !ai.resume.trim()) {
+          status.textContent = ai.remarque || "Ce n'est pas le dos du livre : reprends la photo de la 4e de couverture.";
+          return;
+        }
+        summary = ai.resume.trim();
+        aiNote = ai.passages_illisibles ? ' Une partie était illisible : complète la fin à la main.' : '';
+      } else {
+        // Pas d'IA (clé absente, service indisponible) : ancienne lecture.
+        const raw = await ocrRawTextFromFile(file);
+        summary = cleanOcrText(raw.split('\n').map(l => l.trim()).filter(Boolean).join(' '));
+      }
 
       if (!summary) {
         status.textContent = 'Aucun texte lisible sur cette photo.';
@@ -4508,7 +4548,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const draft = draftBooks.find(d => d.localId === localId);
       if (draft?.dewey) {
         if (!summaryInput) renderDraftBooks();
-        else status.textContent = 'Résumé rempli (modifiable).';
+        else status.textContent = 'Résumé rempli, relis-le avant de valider.' + aiNote;
         return;
       }
       const titleValue = document.getElementById(`draft-title-${localId}`)?.value || draft?.title || '';
@@ -4518,7 +4558,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       updateDraftField(localId, 'category', guessed);
 
       if (!summaryInput) renderDraftBooks();
-      else status.textContent = `Résumé rempli - genre proposé : ${guessed} (modifiable).`;
+      else status.textContent = `Résumé rempli, relis-le avant de valider. Genre proposé : ${guessed}.${aiNote}`;
     } catch (e) {
       status.textContent = 'Erreur de lecture : ' + e.message;
     }
@@ -8053,7 +8093,33 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     enhanceCoverPhoto(img);
     ctx.putImageData(img, 0, 0);
     coverPhotoShowStep('preview');
+    checkCoverPhotoWithAI(warnings);
   };
+
+  // Contrôle par l'IA de la photo redressée (28/10/2026) : elle ne touche
+  // pas à l'image, elle dit seulement s'il faut la reprendre (dos du livre,
+  // reflet sur le titre, doigt…). L'agent peut toujours enregistrer.
+  const AI_COVER_PROBLEMS = {
+    dos_du_livre: "C'est le dos du livre : photographie la face avant.",
+    reflet: 'Un reflet gêne la lecture de la couverture.',
+    flou: "Le titre n'est pas net.",
+    trop_sombre: 'La photo est trop sombre.',
+    doigt_ou_objet: 'Un doigt ou un objet est sur la couverture.',
+    couverture_coupee: 'Une partie de la couverture manque, ou le fond se voit autour.',
+    pas_un_livre: "Ce n'est pas une couverture de livre.",
+  };
+  async function checkCoverPhotoWithAI(localWarnings) {
+    const box = document.getElementById('cp-warnings');
+    const canvas = document.getElementById('cp-result-canvas');
+    const token = (coverPhoto.aiCheck = Symbol());
+    const b = books.find(x => x.id === coverPhoto.bookId);
+    const ai = await readBookPhotoWithAI('couverture', canvas.toDataURL('image/jpeg', 0.85).split(',')[1], b?.title || '');
+    if (coverPhoto.aiCheck !== token || !ai || ai.acceptable) return;
+    const lines = [...new Set([...localWarnings, ...ai.problemes.map(p => AI_COVER_PROBLEMS[p]).filter(Boolean)])];
+    if (ai.conseil) lines.push(escapeHtml(ai.conseil));
+    box.innerHTML = lines.join('<br>') + '<br><b>Tu peux reprendre la photo, ou enregistrer quand même.</b>';
+    box.classList.remove('hidden');
+  }
 
   // Amélioration d'une photo de téléphone, dans cet ordre :
   // - balance des blancs « point blanc » : les 2 % de pixels les plus clairs
