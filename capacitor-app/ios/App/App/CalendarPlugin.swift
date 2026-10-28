@@ -62,5 +62,12 @@ public class CalendarPlugin: CAPPlugin, CAPBridgedPlugin, EKEventEditViewDelegat
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(CalendarPlugin())
+        bridge?.registerPluginInstance(ApparencePlugin())
+        ApparencePlugin.apply(dark: UserDefaults.standard.bool(forKey: ApparencePlugin.key), to: self)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        ApparencePlugin.apply(dark: UserDefaults.standard.bool(forKey: ApparencePlugin.key), to: self)
     }
 }

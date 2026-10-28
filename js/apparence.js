@@ -9,9 +9,14 @@
     var dark = theme === 'fonce';
     document.documentElement.classList.toggle('dark', dark);
     // Heure et batterie en blanc sur fond foncé (appli iPhone/Android).
-    var bar = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar;
-    if (bar) {
-      try { bar.setStyle({ style: dark ? 'DARK' : 'LIGHT' }); } catch (e) { /* ancienne version de l'appli */ }
+    var plugins = window.Capacitor && window.Capacitor.Plugins;
+    if (plugins && plugins.StatusBar) {
+      try { plugins.StatusBar.setStyle({ style: dark ? 'DARK' : 'LIGHT' }); } catch (e) { /* ancienne version de l'appli */ }
+    }
+    // Fond natif de l'écran, visible un instant entre deux pages : sans lui,
+    // flash blanc en thème foncé sur un iPhone réglé en mode clair.
+    if (plugins && plugins.BligoApparence) {
+      try { plugins.BligoApparence.setTheme({ dark: dark }).catch(function () {}); } catch (e) { /* ancienne version de l'appli */ }
     }
   }
 
