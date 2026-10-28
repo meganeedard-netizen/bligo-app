@@ -34,6 +34,10 @@
 <style>
   html.start-auth #landing-choice { display: none; }
   html.start-auth #auth-card { display: flex; }
+  /* Arrivée par « Commander », « S'inscrire »… : la création de compte
+     (« Bienvenue ») s'affiche d'emblée, sans passer par « De retour ? ». */
+  html.start-signup #form-login { display: none; }
+  html.start-signup #form-signup { display: flex; }
   html.start-blank #landing-choice { visibility: hidden; }
 </style>
 <script>
@@ -41,6 +45,7 @@
     try {
       var q = new URLSearchParams(location.search);
       if (q.has('gate') || q.has('signup') || q.has('login') || q.has('ref')) document.documentElement.classList.add('start-auth');
+      if (q.has('gate') || q.has('signup') || q.has('ref')) document.documentElement.classList.add('start-signup');
       else if (Object.keys(localStorage).some(function (k) { return /^sb-.*-auth-token$/.test(k); })) document.documentElement.classList.add('start-blank');
       // Pas connecté : on efface les pages mémorisées du compte précédent (js/snapshot.js).
       if (!Object.keys(localStorage).some(function (k) { return /^sb-.*-auth-token$/.test(k); })) {
@@ -158,6 +163,26 @@
       <form id="form-signup" class="hidden flex-col gap-4">
         <p class="text-3xl font-bold text-ink text-center">👋 Bienvenue</p>
         <p id="signup-welcome" class="text-sm text-ink/60 text-center -mt-2 mb-1">Rejoins l'appli de ta médiathèque !</p>
+        <script>
+          // Même texte que celui posé ensuite par le script de la page, mais
+          // tout de suite : rien ne bouge à l'ouverture (28/10/2026).
+          (function () {
+            try {
+              var q = new URLSearchParams(location.search);
+              var gate = q.get('gate');
+              if (gate) {
+                var gateMsg = document.getElementById('gate-message');
+                gateMsg.dataset.text = gate === 'event' ? "Crée ton compte pour t'inscrire à un événement !" : 'Crée ton compte pour commander !';
+                document.getElementById('gate-message-text').textContent = gateMsg.dataset.text;
+                gateMsg.classList.remove('hidden');
+              }
+              var cache = JSON.parse(localStorage.getItem('bligo_commune_header') || 'null');
+              if (cache && String(cache.id) === localStorage.getItem('bligo_guest_commune_id')) {
+                document.getElementById('signup-welcome').textContent = 'Bienvenue, habitant·e de ' + cache.name + " ! Rejoins l'appli de ta médiathèque !";
+              }
+            } catch (e) {}
+          })();
+        </script>
         <label class="flex items-start justify-center gap-2 text-sm text-ink/75 leading-relaxed">
           <input required type="checkbox" id="signup-cgu" class="mt-1 w-4 h-4 accent-mango-600 shrink-0">
           <span>Accepter nos <button type="button" onclick="openLegal(event, 'cgu.html')" class="font-semibold text-mango-700">conditions générales</button> et notre <button type="button" onclick="openLegal(event, 'confidentialite.html')" class="font-semibold text-mango-700">politique de confidentialité</button></span>
@@ -416,6 +441,7 @@
   });
 
   window.switchTab = function (tab) {
+    document.documentElement.classList.remove('start-signup');
     document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
     document.getElementById('form-login').classList.toggle('flex', tab === 'login');
     document.getElementById('form-signup').classList.toggle('hidden', tab !== 'signup');
