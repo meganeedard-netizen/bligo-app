@@ -214,6 +214,7 @@
   applyCachedTheme();
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
   import { updateReservationBadge } from './js/navBadge.js?v=20261023';
+  import { takeNewBadges, openBadgeModal } from './js/badges.js?v=20261029a';
   import { showSnackbar, showDialog, confirmDialog, frError } from './js/ui.js?v=20261023';
 
   let currentUser = null;
@@ -1335,7 +1336,7 @@
     // tard ; si ça échoue encore, message « Connexion instable » sans fenêtre.
     const loadProfile = () => supabase
       .from('profiles')
-      .select('full_name, role, loyalty_points, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, communes ( name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url )')
+      .select('full_name, role, loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, communes ( name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url )')
       .eq('id', currentUser.id).single();
     let { data: profile, error: profileError } = await loadProfile();
     if (profileError) {
@@ -1379,7 +1380,8 @@
       const popup = document.getElementById('pending-popup-backdrop');
       popup.classList.remove('hidden');
       popup.classList.add('flex');
-    } else if (profile?.registration_status === 'valide') showMembershipPopupIfNeeded(currentUser.id);
+    }
+    const membershipCheck = profile?.registration_status === 'valide' ? showMembershipPopupIfNeeded(currentUser.id) : null;
 
     const name = profile?.full_name || currentUser.email;
     // Prénom saisi à l'inscription (12/10/2026) ; anciens comptes : premier mot du nom.
@@ -1387,6 +1389,18 @@
     document.getElementById('greeting').textContent = firstName ? `Bonjour ${firstName}` : 'Bonjour !';
     document.getElementById('points-display').textContent = formatPoints(profile?.loyalty_points ?? 0);
     showPointsTipOnce(currentUser);
+
+    // Badge débloqué depuis la dernière visite (points validés au comptoir) :
+    // fenêtre « Nouveau badge » avec Partager en story / Envoyer à un ami
+    // (29/10/2026). Si une autre fenêtre est ouverte, ce sera pour la
+    // prochaine visite : jamais deux fenêtres l'une sur l'autre.
+    if (profileLoaded) Promise.resolve(membershipCheck).then(() => {
+      const otherOpen = ['pending-popup-backdrop', 'membership-popup-backdrop', 'onboarding-modal-backdrop']
+        .some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
+      if (otherOpen) return;
+      const fresh = takeNewBadges(currentUser.id, profile);
+      if (fresh.length) openBadgeModal(fresh[fresh.length - 1], { nouveau: true });
+    });
 
     renderCategoryFilters();
 
