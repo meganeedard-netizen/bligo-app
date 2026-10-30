@@ -16,8 +16,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Signature Google Play (30/10/2026) : clé et mots de passe hors du dépôt,
+    // dans ~/.gradle/gradle.properties (BLIGO_UPLOAD_*). Sans eux, la version
+    // release n'est pas signée.
+    signingConfigs {
+        release {
+            if (project.hasProperty('BLIGO_UPLOAD_STORE_FILE')) {
+                storeFile file(BLIGO_UPLOAD_STORE_FILE)
+                storePassword BLIGO_UPLOAD_STORE_PASSWORD
+                keyAlias BLIGO_UPLOAD_KEY_ALIAS
+                keyPassword BLIGO_UPLOAD_KEY_PASSWORD
+            }
+        }
+    }
     buildTypes {
         release {
+            if (project.hasProperty('BLIGO_UPLOAD_STORE_FILE')) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

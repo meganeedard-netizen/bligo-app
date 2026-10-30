@@ -110,6 +110,21 @@ export function closeBadgeModal() {
   backdrop.classList.remove('flex');
 }
 
+// Appli Android : pas de navigator.share dans la WebView, partage par le
+// module natif BligoPartage (30/10/2026). L'iPhone garde navigator.share.
+function nativeShare() {
+  return window.Capacitor?.Plugins?.BligoPartage || null;
+}
+
+function toBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function shareBadge(b) {
   const shareText = `J'ai débloqué le badge « ${b.name} » sur BliGO ! ${b.message}`;
   const msg = document.getElementById('badge-modal-share-msg');
@@ -125,6 +140,16 @@ async function shareBadge(b) {
     file = new File([blob], `badge-${b.id}.png`, { type: blob.type || 'image/png' });
   } catch (e) {
     file = null;
+  }
+
+  const native = nativeShare();
+  if (native) {
+    try {
+      await native.share({ title: 'Envoyer à un ami', text: shareText, image: file ? await toBase64(file) : '', fileName: file ? file.name : '' });
+    } catch (e) {
+      msg.textContent = "Le partage n'a pas pu s'ouvrir, réessaie dans un instant.";
+    }
+    return;
   }
 
   const canShareFile = file && navigator.canShare && navigator.canShare({ files: [file] });
@@ -219,6 +244,12 @@ async function shareBadgeStory(b) {
   msg.textContent = '';
   let file = null;
   try { file = await buildBadgeStory(b); } catch (e) { file = null; }
+  const native = nativeShare();
+  if (file && native) {
+    try { await native.share({ title: 'Partager en story', image: await toBase64(file), fileName: file.name }); }
+    catch (e) { msg.textContent = "Le partage n'a pas pu s'ouvrir, réessaie dans un instant."; }
+    return;
+  }
   if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file] }); } catch (e) { /* partage annulé */ }
     return;

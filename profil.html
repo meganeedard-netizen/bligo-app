@@ -409,13 +409,16 @@
         : 'https://bligo.app/';
       const shareText = 'Rejoins-moi sur BliGO, la médiathèque numérique gratuite !';
       const msg = document.getElementById('share-message');
+      // Appli Android : pas de navigator.share dans la WebView, partage par
+      // le module natif BligoPartage (30/10/2026).
+      const nativeShare = window.Capacitor?.Plugins?.BligoPartage;
       // WhatsApp proposé en premier (19/10/2026), puis le partage du téléphone.
       const choice = await showDialog({
         title: "Partager l'appli à un ami",
         message: 'Comment veux-tu lui envoyer le lien ?',
         buttons: [
           { label: 'WhatsApp', value: 'whatsapp', primary: true },
-          ...(navigator.share ? [{ label: 'Autres applis', value: 'share', primary: true }] : []),
+          ...(navigator.share || nativeShare ? [{ label: 'Autres applis', value: 'share', primary: true }] : []),
           { label: 'Copier le lien', value: 'copy', primary: true },
           { label: 'Annuler', value: null },
         ],
@@ -426,7 +429,8 @@
         if (!window.open(waUrl, '_blank')) window.location.href = waUrl;
       } else if (choice === 'share') {
         try {
-          await navigator.share({ title: 'BliGO', text: shareText, url: shareUrl });
+          if (nativeShare) await nativeShare.share({ title: "Partager l'appli", text: `${shareText} ${shareUrl}` });
+          else await navigator.share({ title: 'BliGO', text: shareText, url: shareUrl });
         } catch (e) {
           // Partage annulé par l'usager - rien à faire.
         }
