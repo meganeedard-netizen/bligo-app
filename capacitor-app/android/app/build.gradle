@@ -4,7 +4,10 @@ android {
     namespace = "com.bligo.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.bligo.app"
+        // Sur Google Play, com.bligo.app est déjà pris par une autre appli
+        // (« Bligo » de FAKRO) : fr.bligo.app (30/10/2026). L'iPhone garde
+        // com.bligo.app ; le code Java reste dans le paquet com.bligo.app.
+        applicationId "fr.bligo.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
