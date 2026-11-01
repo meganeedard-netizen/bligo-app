@@ -1,10 +1,13 @@
 import { supabase } from './supabaseClient.js?v=20261023';
+import { updateProfileBadge } from './verifEmail.js?v=20261101a';
 
 // Pastille "Réservation" de la barre du bas : nombre de livres actuellement
 // réservés ou empruntés (en préparation, prêts, ou empruntés et pas encore
 // à échéance) - pour rappel visuel du quota (3 livres adultes + 3 jeunesse,
 // renouvelable tous les 3 semaines une fois rendus).
 export async function updateReservationBadge(userId) {
+  // Et la pastille « 1 » du Profil : adresse e-mail à vérifier (01/11/2026).
+  updateProfileBadge(userId);
   const badge = document.getElementById('nav-resa-badge');
   if (!badge) return;
 

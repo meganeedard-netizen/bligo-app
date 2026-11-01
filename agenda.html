@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO · Agenda culturel</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261028">
+<link rel="stylesheet" href="css/bligo.css?v=20261101a">
 <link rel="stylesheet" href="css/theme-sombre.css?v=20261028">
 <script src="js/apparence.js?v=20261029a"></script>
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
@@ -106,7 +106,8 @@
   import { supabase } from './js/supabaseClient.js?v=20261023';
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
-  import { updateReservationBadge } from './js/navBadge.js?v=20261023';
+  import { updateReservationBadge } from './js/navBadge.js?v=20261101a';
+  import { ensureEmailVerified } from './js/verifEmail.js?v=20261101a';
   import { showSnackbar, showDialog, frError } from './js/ui.js?v=20261023';
 
 
@@ -429,6 +430,8 @@
     // Confirmation avant de s'inscrire (12/10/2026) : places limitées et délai
     // de désinscription réglé par la médiathèque (48 h par défaut).
     if (!myRsvps.has(eventId)) {
+      // Adresse e-mail à vérifier d'abord (01/11/2026).
+      if (!(await ensureEmailVerified(currentUser, "de t'inscrire à un événement"))) return;
       const ev = events.find(e => e.id === eventId);
       if (ev && !(await confirmRsvp(ev))) return;
     }

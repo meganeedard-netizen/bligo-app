@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Profil</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261028">
+<link rel="stylesheet" href="css/bligo.css?v=20261101a">
 <link rel="stylesheet" href="css/theme-sombre.css?v=20261028">
 <script src="js/apparence.js?v=20261029a"></script>
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
@@ -158,6 +158,11 @@
 
   <!-- Mes informations personnelles -->
   <p class="profile-section-title">Mes informations personnelles</p>
+  <!-- Adresse e-mail à vérifier (01/11/2026) : disparaît une fois le code validé. -->
+  <button type="button" id="verify-email-row" onclick="verifyMyEmail()" class="hidden profile-row">
+    <span class="min-w-0"><span class="flex items-center gap-2">Vérifier mon compte<span class="min-w-[18px] h-[18px] px-1 rounded-full bg-mango-600 text-white text-[10px] font-bold flex items-center justify-center leading-none">1</span></span><span class="block text-xs text-ink/50 font-normal mt-0.5">Nécessaire pour commander et t'inscrire aux événements</span></span>
+    <span class="profile-chevron">›</span>
+  </button>
   <a href="infos.html" class="profile-row">Modifier mon profil<span class="profile-chevron">›</span></a>
   <button type="button" onclick="openSheet('sheet-password')" class="profile-row">Changer de mot de passe<span class="profile-chevron">›</span></button>
   <button type="button" onclick="openSheet('sheet-delete')" class="profile-row">Supprimer mon compte<span class="profile-chevron">›</span></button>
@@ -307,8 +312,9 @@
   import { supabase } from './js/supabaseClient.js?v=20261023';
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
-  import { updateReservationBadge } from './js/navBadge.js?v=20261023';
-  import { showDialog, frError } from './js/ui.js?v=20261023';
+  import { updateReservationBadge } from './js/navBadge.js?v=20261101a';
+  import { showDialog, showSnackbar, frError } from './js/ui.js?v=20261023';
+  import { isEmailVerified, openVerifyModal } from './js/verifEmail.js?v=20261101a';
 
   let currentSubscriberNumber = null;
   let currentUserId = null;
@@ -456,6 +462,14 @@
     const currentUser = session.user;
     currentUserId = currentUser.id;
     updateReservationBadge(currentUser.id);
+
+    const verifyRow = document.getElementById('verify-email-row');
+    isEmailVerified(currentUser.id).then(ok => verifyRow.classList.toggle('hidden', ok));
+    window.verifyMyEmail = async function () {
+      if (!(await openVerifyModal(currentUser.email))) return;
+      verifyRow.classList.add('hidden');
+      showSnackbar('Ton adresse e-mail est vérifiée !');
+    };
 
     const { data: profile } = await supabase
       .from('profiles')
