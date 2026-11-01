@@ -125,8 +125,11 @@ function toBase64(blob) {
   });
 }
 
+// Message pour un proche (01/11/2026) : le texte de félicitations du badge
+// s'adresse à l'usager (« grâce à toi »), il n'est donc pas repris ici.
 async function shareBadge(b) {
-  const shareText = `J'ai débloqué le badge « ${b.name} » sur BliGO ! ${b.message}`;
+  const emoji = (b.message.match(/^\S+/) || [''])[0];
+  const shareText = `${emoji} J'ai débloqué le badge « ${b.name} » sur BliGO, l'appli de ma Médiathèque Municipale ! Emprunter des livres, gagner des points et des badges… Rejoins-moi : https://bligo.app/`;
   const msg = document.getElementById('badge-modal-share-msg');
   msg.textContent = '';
 
@@ -197,7 +200,7 @@ function wrapLines(ctx, text, maxWidth) {
   return lines;
 }
 
-async function buildBadgeStory(b) {
+export async function buildBadgeStory(b) {
   const W = 1080, H = 1920;
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
@@ -209,7 +212,10 @@ async function buildBadgeStory(b) {
   bg.addColorStop(1, '#0E2A25');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W / 2, 860, 40, W / 2, 860, 560);
+  // Haut (~250 px) et bas (~340 px) recouverts par les boutons d'Instagram,
+  // TikTok et Snapchat (01/11/2026) : tout le contenu reste entre les deux.
+  const CY = 880;
+  const glow = ctx.createRadialGradient(W / 2, CY, 40, W / 2, CY, 560);
   glow.addColorStop(0, 'rgba(255, 155, 46, 0.45)');
   glow.addColorStop(1, 'rgba(255, 155, 46, 0)');
   ctx.fillStyle = glow;
@@ -217,23 +223,23 @@ async function buildBadgeStory(b) {
 
   const [logo, badge] = await Promise.all([loadImage('img/bligo-logo-sombre.png'), loadImage(b.img)]);
   const logoW = 300;
-  ctx.drawImage(logo, (W - logoW) / 2, 170, logoW, logoW * logo.height / logo.width);
+  ctx.drawImage(logo, (W - logoW) / 2, 300, logoW, logoW * logo.height / logo.width);
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
-  ctx.beginPath(); ctx.arc(W / 2, 860, 330, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(W / 2, CY, 300, 0, Math.PI * 2); ctx.fill();
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(badge, W / 2 - 260, 860 - 260, 520, 520);
+  ctx.drawImage(badge, W / 2 - 235, CY - 235, 470, 470);
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#FFB86B';
   ctx.font = '600 44px Inter, sans-serif';
-  ctx.fillText(b.type === 'niveau' ? `Badge niveau ${b.level} débloqué` : 'Badge spécial débloqué', W / 2, 1320);
+  ctx.fillText(b.type === 'niveau' ? `Badge niveau ${b.level} débloqué` : 'Badge spécial débloqué', W / 2, 1290);
   ctx.fillStyle = '#FFFFFF';
   ctx.font = '800 92px Inter, sans-serif';
-  wrapLines(ctx, b.name, W - 160).forEach((l, i) => ctx.fillText(l, W / 2, 1440 + i * 104));
+  wrapLines(ctx, b.name, W - 160).forEach((l, i) => ctx.fillText(l, W / 2, 1400 + i * 104));
   ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
   ctx.font = '500 34px Inter, sans-serif';
-  ctx.fillText("Avec BliGO, l'appli de ma Médiathèque Municipale", W / 2, 1760);
+  ctx.fillText("Avec BliGO, l'appli de ma Médiathèque Municipale", W / 2, 1560);
 
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   return new File([blob], `bligo-${b.id}-story.png`, { type: 'image/png' });

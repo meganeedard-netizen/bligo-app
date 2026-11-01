@@ -71,7 +71,9 @@
   </div>
 
   <!-- Choix de la médiathèque : premier écran vu sans compte -->
-  <div id="landing-choice" class="min-h-screen flex flex-col items-center justify-between px-6 py-8 max-w-md mx-auto">
+  <!-- Hauteur de l'écran moins les barres du téléphone (01/11/2026) : avec
+       min-h-screen, « J'ai déjà un compte » passait sous les boutons Android. -->
+  <div id="landing-choice" style="min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));" class="flex flex-col items-center justify-between px-6 py-8 max-w-md mx-auto">
     <div class="relative w-full flex justify-center pt-6">
       <img src="img/bligo-icon.png" alt="" class="absolute top-0 w-56 h-56 object-contain opacity-[0.12]">
       <svg viewBox="0 0 300 170" class="relative w-full max-w-xs mt-14" aria-hidden="true">
