@@ -51,13 +51,13 @@ const CouvertureSchema = z.object({
 
 const PROMPT_RESUME = (title: string) => `Cette photo montre la 4e de couverture d'un livre${title ? ` (titre : « ${title} »)` : ''}, prise au téléphone par un agent de médiathèque.
 
-Recopie le texte de présentation du livre (le résumé de l'éditeur) exactement comme il est imprimé : mêmes mots, même ponctuation, accents et majuscules. Recolle les mots coupés en fin de ligne et mets le texte sur un seul paragraphe par paragraphe imprimé (séparés par une ligne vide).
+Recopie le texte de présentation du livre (le résumé de l'éditeur) exactement comme il est imprimé : mêmes mots, même ponctuation, accents et majuscules. Recolle les mots coupés en fin de ligne et mets le texte sur un seul paragraphe par paragraphe imprimé (séparés par une ligne vide). Garde les puces (•) des listes.
 
-Laisse de côté : prix, ISBN, code-barres, nom et adresse de l'éditeur, crédits photo, mentions de collection, et la courte biographie de l'auteur si elle est séparée du résumé.
+Laisse de côté : prix, ISBN, code-barres, nom et adresse de l'éditeur, crédits photo, nom ou titre de la collection (même placé en tête), citations de presse ou de lecteurs, et la courte biographie de l'auteur si elle est séparée du résumé.
 
-N'invente et ne reformule rien. Si un passage est illisible (reflet, flou, coupé), arrête le texte avant ce passage et mets passages_illisibles à true. Si ce n'est pas une 4e de couverture, mets est_quatrieme_de_couverture à false et resume vide. La remarque, en français et en une phrase courte, s'adresse à l'agent (vide si tout va bien).`;
+N'invente et ne reformule rien. Ne devine jamais un mot caché par un doigt, un reflet ou le bord de la photo, même si la suite de la phrase le laisse deviner. Dès qu'un passage est illisible (reflet, flou, doigt, coupé) ou que tu hésites sur un mot, arrête le texte avant ce passage et mets passages_illisibles à true. Si ce n'est pas une 4e de couverture, mets est_quatrieme_de_couverture à false et resume vide. La remarque, en français et en une phrase courte, tutoie l'agent et lui dit quoi faire (vide si tout va bien).`;
 
-const PROMPT_COUVERTURE = (title: string) => `Cette image est la photo d'une couverture de livre${title ? ` (titre attendu : « ${title} »)` : ''}, prise au téléphone par un agent de médiathèque puis recadrée. Elle sera affichée dans le catalogue de l'appli.
+const PROMPT_COUVERTURE = (title: string) => `Cette image est la photo d'une couverture de livre${title ? ` (titre attendu : « ${title} »)` : ''}, prise au téléphone par un agent de médiathèque puis recadrée automatiquement (le recadrage peut avoir raté). Elle sera affichée telle quelle dans le catalogue de l'appli.
 
 Dis si elle est utilisable. Problèmes possibles :
 - dos_du_livre : c'est la 4e de couverture (résumé, code-barres) et non la face avant ;
@@ -65,10 +65,10 @@ Dis si elle est utilisable. Problèmes possibles :
 - flou : le titre n'est pas net ;
 - trop_sombre : l'image est sombre ou terne au point de gêner ;
 - doigt_ou_objet : un doigt, une main ou un objet est sur la couverture ;
-- couverture_coupee : une partie de la couverture manque, ou on voit le fond autour ;
+- couverture_coupee : une partie de la couverture manque, OU on voit autre chose que la couverture autour d'elle (table, clavier, tissu, main, autres livres, mur), même sur une bande étroite le long d'un seul bord ;
 - pas_un_livre : ce n'est pas une couverture de livre.
 
-Sois raisonnable : un léger défaut qui ne gêne pas la lecture ne compte pas. acceptable vaut false seulement s'il y a au moins un vrai problème. Le conseil, en français, tutoie l'agent et dit en une phrase comment reprendre la photo (vide si elle est acceptable).`;
+Regarde d'abord les quatre bords de l'image un par un : chacun doit être le bord de la couverture elle-même. Pour le reflet, le flou et la luminosité, sois raisonnable : un léger défaut qui ne gêne pas la lecture ne compte pas. Le dos du livre et le fond visible comptent toujours. acceptable vaut false dès qu'il y a au moins un problème. Le conseil, en français, tutoie l'agent et dit en une phrase comment reprendre la photo (vide si elle est acceptable).`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -81,10 +81,24 @@ Deno.serve(async (req) => {
   if (authError || !caller) return json({ ok: false, message: 'Non authentifié' }, 401);
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const { data: profile } = await admin.from('profiles').select('role').eq('id', caller.id).maybeSingle();
+  const { data: profile } = await admin.from('profiles').select('role, commune_id').eq('id', caller.id).maybeSingle();
   if (!['agent', 'super_admin'].includes(profile?.role)) return json({ ok: false, message: 'Réservé aux agents' }, 403);
 
   if (!ANTHROPIC_API_KEY) return json({ ok: false, code: 'pas_de_cle', message: 'Clé API Anthropic absente' });
+
+  // Plafond mensuel par médiathèque (02/11/2026, sql/add_ia_photos_limite.sql).
+  // Le super-admin n'est pas limité.
+  if (profile?.role === 'agent') {
+    const { data: commune } = await admin.from('communes').select('ia_photos_limite_mois').eq('id', profile.commune_id).maybeSingle();
+    const limite = commune?.ia_photos_limite_mois ?? 300;
+    const now = new Date();
+    const debutMois = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+    const { count } = await admin.from('ia_photos_usage').select('id', { count: 'exact', head: true })
+      .eq('commune_id', profile.commune_id).gte('created_at', debutMois);
+    if ((count ?? 0) >= limite) {
+      return json({ ok: false, code: 'limite_atteinte', message: `Ta médiathèque a utilisé ses ${limite} lectures de photos par l'IA ce mois-ci. Elles reviennent le 1er du mois prochain.` });
+    }
+  }
 
   let body: { mode?: string; photo?: string; title?: string; modele?: string };
   try {
@@ -119,6 +133,7 @@ Deno.serve(async (req) => {
     if (response.stop_reason === 'refusal' || !response.parsed_output) {
       return json({ ok: false, message: "L'IA n'a pas pu lire cette photo." });
     }
+    await admin.from('ia_photos_usage').insert({ commune_id: profile?.commune_id ?? null, user_id: caller.id, mode, model });
     return json({ ok: true, mode, model, usage: response.usage, ...response.parsed_output });
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) return json({ ok: false, code: 'pas_de_cle', message: 'Clé API Anthropic invalide' });

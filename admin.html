@@ -4529,9 +4529,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // résumé recopié mot pour mot depuis le dos du livre, ou contrôle de la
   // photo de couverture. Renvoie null si l'IA n'est pas disponible (clé
   // absente, réseau) : l'appelant garde alors l'ancien fonctionnement.
+  // Plafond mensuel atteint : { ok:false, limite:true, message } pour que
+  // l'agent sache pourquoi l'IA ne répond plus.
   async function readBookPhotoWithAI(mode, photo, title) {
     try {
       const { data, error } = await supabase.functions.invoke('lire-photo-livre', { body: { mode, photo, title } });
+      if (data?.code === 'limite_atteinte') return { ok: false, limite: true, message: data.message };
       if (error || !data?.ok) return null;
       return data;
     } catch {
@@ -4575,7 +4578,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         summary = stripPressQuotes(ai.resume);
         aiNote = ai.passages_illisibles ? ' Une partie était illisible : complète la fin à la main.' : '';
       } else {
-        // Pas d'IA (clé absente, service indisponible) : ancienne lecture.
+        // Pas d'IA (clé absente, service indisponible, plafond du mois
+        // atteint) : ancienne lecture.
+        if (ai?.limite) aiNote = ' ' + ai.message;
         const raw = await ocrRawTextFromFile(file);
         summary = cleanOcrText(raw.split('\n').map(l => l.trim()).filter(Boolean).join(' '));
       }
@@ -8161,6 +8166,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const b = books.find(x => x.id === coverPhoto.bookId);
     const ai = await readBookPhotoWithAI('couverture', canvas.toDataURL('image/jpeg', 0.85).split(',')[1], b?.title || '');
     if (coverPhoto.aiCheck !== token || !ai || ai.acceptable) return;
+    if (ai.limite) {
+      box.innerHTML = [...localWarnings, escapeHtml(ai.message)].join('<br>');
+      box.classList.remove('hidden');
+      return;
+    }
     const lines = [...new Set([...localWarnings, ...ai.problemes.map(p => AI_COVER_PROBLEMS[p]).filter(Boolean)])];
     if (ai.conseil) lines.push(escapeHtml(ai.conseil));
     box.innerHTML = lines.join('<br>') + '<br><b>Tu peux reprendre la photo, ou enregistrer quand même.</b>';
