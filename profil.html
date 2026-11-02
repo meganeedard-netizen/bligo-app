@@ -24,6 +24,8 @@
   .profile-section-title { background: #EEEDF2; color: rgba(27,75,67,.6); font-size: 13px; font-weight: 600; border-radius: 12px; padding: 9px 16px; margin-bottom: 2px; }
   .profile-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; text-align: left; padding: 16px; font-size: 15px; font-weight: 500; color: #1B4B43; border-bottom: 1px solid #EEEDF2; }
   .profile-row:active { background: #FAFAFB; }
+  /* Sans ça, display:flex ci-dessus l'emporte sur la classe hidden (ligne « Vérifier mon compte » toujours visible). */
+  .profile-row.hidden { display: none; }
   .profile-chevron { color: rgba(27,75,67,.45); font-size: 22px; line-height: 1; }
   @media (max-width: 640px) {
     input, select, textarea { font-size: 16px !important; }
