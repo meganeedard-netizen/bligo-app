@@ -56,8 +56,12 @@ public class ConnexionPlugin: CAPPlugin, CAPBridgedPlugin, ASAuthorizationContro
             return
         }
         // Prénom et nom : donnés par Apple seulement à la toute première connexion.
+        // Le code d'autorisation sert à prévenir Apple quand le compte est
+        // supprimé (fonction revoquer-apple).
+        let code = credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) } ?? ""
         call.resolve([
             "idToken": token,
+            "authorizationCode": code,
             "givenName": credential.fullName?.givenName ?? "",
             "familyName": credential.fullName?.familyName ?? ""
         ])

@@ -315,6 +315,7 @@
   import { updateReservationBadge } from './js/navBadge.js?v=20261101a';
   import { showDialog, showSnackbar, frError } from './js/ui.js?v=20261023';
   import { isEmailVerified, openVerifyModal } from './js/verifEmail.js?v=20261101a';
+  import { revokeAppleIfNeeded } from './js/connexionSociale.js?v=20261102b';
 
   let currentSubscriberNumber = null;
   let currentUserId = null;
@@ -763,6 +764,8 @@
       ],
     });
     if (confirmed !== true) return;
+    // Compte ouvert avec Apple : Apple redemande la connexion, puis l'accès est révoqué chez Apple.
+    if ((await revokeAppleIfNeeded()).cancelled) return;
     const msg = document.getElementById('delete-message');
     const screen = showProgressScreen({
       title: 'Suppression de ton compte…',
@@ -792,6 +795,8 @@
       ],
     });
     if (confirmed !== true) return;
+    // Compte ouvert avec Apple : Apple redemande la connexion, puis l'accès est révoqué chez Apple.
+    if ((await revokeAppleIfNeeded()).cancelled) return;
     const msg = document.getElementById('delete-message');
     const screen = showProgressScreen({
       title: "Suppression de ton accès à l'appli…",

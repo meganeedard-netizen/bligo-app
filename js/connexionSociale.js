@@ -86,3 +86,20 @@ async function finishSocialSignIn(communeId, fullName) {
   if (profile && !profile.email_verifie) await supabase.rpc('confirmer_mon_email');
   return isNew;
 }
+
+// Suppression du compte ou de l'accès à l'appli (règle d'Apple) : pour un
+// compte ouvert avec Apple, l'iPhone redemande la connexion Apple, et la
+// fonction revoquer-apple révoque l'accès chez Apple. Renvoie { cancelled }
+// si l'usager ferme la fenêtre d'Apple (rien n'est alors supprimé).
+export async function revokeAppleIfNeeded() {
+  const { data: { session } } = await supabase.auth.getSession();
+  const providers = session?.user?.app_metadata?.providers || [];
+  if (!providers.includes('apple') || platform() !== 'ios' || !plugin()) return {};
+  let res;
+  try { res = await plugin().apple({}); } catch (e) { return {}; }
+  if (res?.cancelled) return { cancelled: true };
+  if (res?.authorizationCode) {
+    await supabase.functions.invoke('revoquer-apple', { body: { authorizationCode: res.authorizationCode } }).catch(() => {});
+  }
+  return {};
+}
