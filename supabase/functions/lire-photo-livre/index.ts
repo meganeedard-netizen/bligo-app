@@ -65,10 +65,10 @@ Dis si elle est utilisable. Problèmes possibles :
 - flou : le titre n'est pas net ;
 - trop_sombre : l'image est sombre ou terne au point de gêner ;
 - doigt_ou_objet : un doigt, une main ou un objet est sur la couverture ;
-- couverture_coupee : une partie de la couverture manque, OU on voit autre chose que la couverture autour d'elle (table, clavier, tissu, main, autres livres, mur), même sur une bande étroite le long d'un seul bord ;
+- couverture_coupee : on voit autre chose que la couverture autour d'elle (table, clavier, tissu, main, autres livres, mur) sur une bande nette le long d'au moins un bord, OU une partie utile de la couverture manque (titre, nom de l'auteur ou illustration coupés) ;
 - pas_un_livre : ce n'est pas une couverture de livre.
 
-Regarde d'abord les quatre bords de l'image un par un : chacun doit être le bord de la couverture elle-même. Pour le reflet, le flou et la luminosité, sois raisonnable : un léger défaut qui ne gêne pas la lecture ne compte pas. Le dos du livre et le fond visible comptent toujours. acceptable vaut false dès qu'il y a au moins un problème. Le conseil, en français, tutoie l'agent et dit en une phrase comment reprendre la photo (vide si elle est acceptable).`;
+Regarde d'abord les quatre bords de l'image un par un. Ne compte pas comme un problème : un liseré de fond de quelques pixels, un coin à peine arrondi, ou un bord très légèrement rogné qui ne touche ni le titre ni l'auteur ni l'illustration principale ; l'usure ou les taches de la couverture elle-même ne sont pas du fond. Pour le reflet, le flou et la luminosité, sois raisonnable aussi : un léger défaut qui ne gêne pas la lecture ne compte pas. Le dos du livre compte toujours. acceptable vaut false dès qu'il y a au moins un vrai problème. Le conseil, en français, tutoie l'agent et dit en une phrase comment reprendre la photo (vide si elle est acceptable).`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
