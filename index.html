@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Connexion</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261101a">
+<link rel="stylesheet" href="css/bligo.css?v=20261102a">
 <link rel="stylesheet" href="css/theme-sombre.css?v=20261028">
 <script src="js/apparence.js?v=20261029a"></script>
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
@@ -151,6 +151,8 @@
       <!-- LOGIN -->
       <form id="form-login" class="flex flex-col gap-4">
         <p id="login-welcome-title" class="text-3xl font-bold text-ink text-center mb-2">👋 De retour ?</p>
+        <!-- Continuer avec Apple / Google (02/11/2026), rempli par renderSocialButtons. -->
+        <div data-social class="hidden flex-col gap-3"></div>
         <input required type="email" id="login-email" autocomplete="email" placeholder="E-mail" class="auth-input">
         <div class="relative">
           <input required type="password" id="login-password" autocomplete="current-password" placeholder="Mot de passe" class="auth-input pr-12">
@@ -185,6 +187,7 @@
             } catch (e) {}
           })();
         </script>
+        <div data-social class="hidden flex-col gap-3"></div>
         <label class="flex items-start justify-center gap-2 text-sm text-ink/75 leading-relaxed">
           <input required type="checkbox" id="signup-cgu" class="mt-1 w-4 h-4 accent-mango-600 shrink-0">
           <span>Accepter nos <button type="button" onclick="openLegal(event, 'cgu.html')" class="font-semibold text-mango-700">conditions générales</button> et notre <button type="button" onclick="openLegal(event, 'confidentialite.html')" class="font-semibold text-mango-700">politique de confidentialité</button></span>
@@ -344,6 +347,7 @@
   import { frError } from './js/ui.js?v=20261023';
   import { sendVerifyCode, checkVerifyCode, startCooldown } from './js/verifEmail.js?v=20261101a';
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
+  import { socialProviders, signInWith, finishWebSocialSignIn } from './js/connexionSociale.js?v=20261102a';
   applyCachedTheme();
 
   const eyeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -833,8 +837,79 @@
   // Déjà connecté ? on saute directement au catalogue - sauf juste après une
   // confirmation d'e-mail sur le site, où on affiche d'abord le bouton
   // ci-dessus.
-  supabase.auth.getSession().then(({ data }) => {
+  // « Continuer avec Apple / Google » (02/11/2026) : en haut de la connexion
+  // et de la création de compte. Un nouveau compte est rattaché à la
+  // médiathèque choisie sur l'écran d'accueil (voir js/connexionSociale.js).
+  const SOCIAL = {
+    apple: {
+      label: 'Continuer avec Apple',
+      style: 'background:#000;color:#fff;',
+      icon: '<svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor" aria-hidden="true"><path d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.27-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.78.74 2.99.72 1.24-.02 2.02-1.12 2.77-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.39-.92-2.41-3.65zM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.01.61-2.66 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.05-.52 2.68-1.28z"/></svg>',
+    },
+    google: {
+      label: 'Continuer avec Google',
+      style: 'background:#fff;color:#1f1f1f;border:1px solid #dadce0;',
+      icon: '<svg viewBox="0 0 48 48" class="w-5 h-5" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>',
+    },
+  };
+  function renderSocialButtons() {
+    const providers = socialProviders();
+    if (!providers.length) return;
+    document.querySelectorAll('[data-social]').forEach(box => {
+      box.innerHTML = providers.map(p => `
+        <button type="button" onclick="socialSignIn('${p}')" style="${SOCIAL[p].style}" class="w-full rounded-2xl py-3.5 text-base font-semibold flex items-center justify-center gap-2.5 active:scale-[0.98] transition">${SOCIAL[p].icon}${SOCIAL[p].label}</button>`).join('') + `
+        <p class="text-[11px] text-ink/50 text-center leading-relaxed">En continuant, tu acceptes nos <button type="button" onclick="openLegal(event, 'cgu.html')" class="font-semibold text-mango-700">conditions générales</button> et notre <button type="button" onclick="openLegal(event, 'confidentialite.html')" class="font-semibold text-mango-700">politique de confidentialité</button>.</p>
+        <div class="flex items-center gap-3 text-xs text-ink/40"><span class="flex-1 h-px bg-ink/10"></span>ou avec ton e-mail<span class="flex-1 h-px bg-ink/10"></span></div>`;
+      box.classList.remove('hidden');
+      box.classList.add('flex');
+    });
+  }
+  renderSocialButtons();
+
+  // Médiathèque choisie en invité, sinon celle affichée sur l'écran d'accueil.
+  function chosenCommuneId() {
+    try { const guest = localStorage.getItem('bligo_guest_commune_id'); if (guest) return guest; } catch (e) {}
+    return document.getElementById('signup-commune').value || document.getElementById('landing-commune').value || null;
+  }
+
+  window.socialSignIn = async function (provider) {
+    messageEl.textContent = 'Connexion…';
+    messageEl.className = 'text-xs text-center mt-3 text-ink/50';
+    const res = await signInWith(provider, chosenCommuneId());
+    if (res.redirect) return;
+    if (res.cancelled) { messageEl.textContent = ''; return; }
+    if (res.error) {
+      messageEl.textContent = frError(res.error);
+      messageEl.className = 'text-xs text-center mt-3 text-red-600';
+      return;
+    }
+    try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
+    // Nouveau compte : même accueil qu'après « Créer mon compte ».
+    if (res.isNew) { messageEl.textContent = ''; await showWelcome(); } else goAfterLogin();
+  };
+
+  // Site : retour de la page de connexion de Google.
+  const socialReturn = urlParams.has('social');
+  const socialError = new URLSearchParams(location.hash.slice(1)).get('error_description') || urlParams.get('error_description');
+  if (socialReturn && socialError) {
+    showAuthCard();
+    messageEl.textContent = 'Connexion Google impossible, réessaie ou connecte-toi avec ton e-mail.';
+    messageEl.className = 'text-xs text-center mt-3 text-red-600';
+  }
+
+  supabase.auth.getSession().then(async ({ data }) => {
     if (!data.session) { document.documentElement.classList.remove('start-blank'); return; }
+    if (socialReturn) {
+      history.replaceState(null, '', 'index.html');
+      try { localStorage.removeItem('bligo_guest_commune_id'); } catch {}
+      if (await finishWebSocialSignIn()) {
+        document.documentElement.classList.remove('start-blank');
+        await showWelcome();
+      } else {
+        goAfterLogin();
+      }
+      return;
+    }
     if (justConfirmedEmail) {
       document.getElementById('landing-choice').classList.add('hidden');
       document.getElementById('reopen-app-banner').classList.remove('hidden');

@@ -18,6 +18,7 @@
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		B1C0CA1E2FEA000100000001 /* CalendarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0CA1E2FEA000100000002 /* CalendarPlugin.swift */; };
 		B1C0CA1E2FEA000100000003 /* ApparencePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0CA1E2FEA000100000004 /* ApparencePlugin.swift */; };
+		B1C0CA1E2FEA000100000005 /* ConnexionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0CA1E2FEA000100000006 /* ConnexionPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,8 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		B1C0CA1E2FEA000100000002 /* CalendarPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPlugin.swift; sourceTree = "<group>"; };
 		B1C0CA1E2FEA000100000004 /* ApparencePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApparencePlugin.swift; sourceTree = "<group>"; };
+		B1C0CA1E2FEA000100000006 /* ConnexionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnexionPlugin.swift; sourceTree = "<group>"; };
+		B1C0CA1E2FEA000100000007 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,6 +76,8 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				B1C0CA1E2FEA000100000002 /* CalendarPlugin.swift */,
 				B1C0CA1E2FEA000100000004 /* ApparencePlugin.swift */,
+				B1C0CA1E2FEA000100000006 /* ConnexionPlugin.swift */,
+				B1C0CA1E2FEA000100000007 /* App.entitlements */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -168,6 +173,7 @@
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				B1C0CA1E2FEA000100000001 /* CalendarPlugin.swift in Sources */,
 				B1C0CA1E2FEA000100000003 /* ApparencePlugin.swift in Sources */,
+				B1C0CA1E2FEA000100000005 /* ConnexionPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -318,6 +324,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bligo.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -340,6 +347,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bligo.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

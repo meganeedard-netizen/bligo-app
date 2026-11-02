@@ -13,6 +13,8 @@ public class MainActivity extends BridgeActivity {
         // vers les autres applis (voir PartagePlugin.java).
         registerPlugin(ApparencePlugin.class);
         registerPlugin(PartagePlugin.class);
+        // « Continuer avec Google » (voir ConnexionPlugin.java).
+        registerPlugin(ConnexionPlugin.class);
         super.onCreate(savedInstanceState);
         ApparencePlugin.apply(ApparencePlugin.isDark(this), this, getBridge().getWebView());
     }
