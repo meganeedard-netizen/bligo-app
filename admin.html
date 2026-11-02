@@ -1430,7 +1430,7 @@
 
     <div id="cp-step-crop" class="hidden">
       <h3 class="text-lg font-bold text-ink mb-1">Ajuste le cadre</h3>
-      <p class="text-sm text-ink/60 mb-3">Fais glisser les 4 ronds sur les 4 coins de la couverture.</p>
+      <p id="cp-crop-hint" class="text-sm text-ink/60 mb-3">Fais glisser les 4 ronds sur les 4 coins de la couverture.</p>
       <div class="relative w-full select-none touch-none">
         <canvas id="cp-crop-canvas" class="w-full rounded-lg bg-ink/5"></canvas>
       </div>
@@ -7969,7 +7969,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // un téléphone ordinaire : conseils de prise de vue, cadrage par les 4 coins
   // (redressement de perspective), puis amélioration automatique (niveaux,
   // balance des blancs, netteté) avant l'envoi via prepare-cover.
-  const coverPhoto = { bookId: null, src: null, corners: null, drag: -1 };
+  const coverPhoto = { bookId: null, src: null, corners: null, drag: -1, touched: false };
   const CP_MAX_SIDE = 2000;
   const SHARPNESS_MIN = 60;
 
@@ -8006,10 +8006,43 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     src.height = Math.round(bitmap.height * scale);
     src.getContext('2d').drawImage(bitmap, 0, 0, src.width, src.height);
     coverPhoto.src = src;
+    coverPhoto.touched = false;
     const w = src.width, h = src.height, mx = w * 0.1, my = h * 0.1;
     coverPhoto.corners = [[mx, my], [w - mx, my], [w - mx, h - my], [mx, h - my]];
     coverPhotoShowStep('crop');
+    findCoverCornersWithAI(src);
   };
+
+  // Les 4 coins placés par l'IA (02/11/2026) : elle situe seulement la
+  // couverture, le redressement reste fait ici pixel pour pixel. Photo
+  // envoyée en 1 500 px au plus (au-delà, l'API la réduit et les
+  // coordonnées seraient décalées). Sans réponse, le cadre par défaut reste.
+  async function findCoverCornersWithAI(src) {
+    const hint = document.getElementById('cp-crop-hint');
+    const defaultHint = 'Fais glisser les 4 ronds sur les 4 coins de la couverture.';
+    hint.textContent = 'Recherche des bords de la couverture…';
+    const scale = Math.min(1, 1500 / Math.max(src.width, src.height));
+    const small = document.createElement('canvas');
+    small.width = Math.round(src.width * scale);
+    small.height = Math.round(src.height * scale);
+    small.getContext('2d').drawImage(src, 0, 0, small.width, small.height);
+    let data = null;
+    try {
+      const res = await supabase.functions.invoke('lire-photo-livre', {
+        body: { mode: 'coins', photo: small.toDataURL('image/jpeg', 0.88).split(',')[1], width: small.width, height: small.height },
+      });
+      data = res.data;
+    } catch {}
+    // L'agent a repris une autre photo ou déjà déplacé un coin entre-temps.
+    if (coverPhoto.src !== src || coverPhoto.touched) return;
+    if (data?.code === 'limite_atteinte') { hint.textContent = data.message + ' ' + defaultHint; return; }
+    if (!data?.ok || !data.livre_trouve) { hint.textContent = defaultHint; return; }
+    const clampX = (v) => Math.max(0, Math.min(src.width, v / scale));
+    const clampY = (v) => Math.max(0, Math.min(src.height, v / scale));
+    coverPhoto.corners = ['haut_gauche', 'haut_droit', 'bas_droit', 'bas_gauche'].map(k => [clampX(data[k].x), clampY(data[k].y)]);
+    hint.textContent = 'Cadre placé automatiquement : vérifie les 4 coins, ajuste si besoin, puis valide.';
+    drawCoverCrop();
+  }
 
   // Mesurées sur la couverture redressée, avant amélioration, en pleine
   // taille (une version réduite cache le flou) : luminosité, reflets,
@@ -8079,6 +8112,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       // Tolérance large : au doigt, on vise rarement le rond au pixel près.
       if (Math.sqrt(bestD) < Math.max(canvas.width, canvas.height) / 6) {
         coverPhoto.drag = best;
+        coverPhoto.touched = true;
         canvas.setPointerCapture(e.pointerId);
       }
     });

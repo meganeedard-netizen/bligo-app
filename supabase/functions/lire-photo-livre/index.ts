@@ -49,6 +49,15 @@ const CouvertureSchema = z.object({
   conseil: z.string(),
 });
 
+const Point = z.object({ x: z.number(), y: z.number() });
+const CoinsSchema = z.object({
+  livre_trouve: z.boolean(),
+  haut_gauche: Point,
+  haut_droit: Point,
+  bas_droit: Point,
+  bas_gauche: Point,
+});
+
 const PROMPT_RESUME = (title: string) => `Cette photo montre la 4e de couverture d'un livre${title ? ` (titre : « ${title} »)` : ''}, prise au téléphone par un agent de médiathèque.
 
 Recopie le texte de présentation du livre (le résumé de l'éditeur) exactement comme il est imprimé : mêmes mots, même ponctuation, accents et majuscules. Recolle les mots coupés en fin de ligne et mets le texte sur un seul paragraphe par paragraphe imprimé (séparés par une ligne vide). Garde les puces (•) des listes.
@@ -69,6 +78,12 @@ Dis si elle est utilisable. Problèmes possibles :
 - pas_un_livre : ce n'est pas une couverture de livre.
 
 Regarde d'abord les quatre bords de l'image un par un. Ne compte pas comme un problème : un liseré de fond de quelques pixels, un coin à peine arrondi, ou un bord très légèrement rogné qui ne touche ni le titre ni l'auteur ni l'illustration principale ; l'usure ou les taches de la couverture elle-même ne sont pas du fond. Pour le reflet, le flou et la luminosité, sois raisonnable aussi : un léger défaut qui ne gêne pas la lecture ne compte pas. Le dos du livre compte toujours. acceptable vaut false dès qu'il y a au moins un vrai problème. Le conseil, en français, tutoie l'agent et dit en une phrase comment reprendre la photo (vide si elle est acceptable).`;
+
+// Mode "coins" (02/11/2026) : l'IA situe seulement les 4 coins de la
+// couverture ; le logiciel redresse lui-même la photo, pixel pour pixel.
+const PROMPT_COINS = (width: number, height: number) => `Cette photo, prise au téléphone par un agent de médiathèque, montre la couverture d'un livre posée sur une table, avec du fond autour (table, clavier, tissu, mains…). L'image fait ${width} pixels de large et ${height} pixels de haut ; l'origine (0, 0) est le coin en haut à gauche.
+
+Donne la position exacte, en pixels de cette image, des quatre coins de la couverture (la face avant du livre seulement, sans le fond). Si le livre est vu en biais, donne les vrais coins de la forme, même si ce n'est pas un rectangle droit. Vise le bord extérieur de la couverture, au pixel près. Si aucune couverture de livre n'est visible, mets livre_trouve à false et des coins à 0.`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -100,13 +115,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  let body: { mode?: string; photo?: string; title?: string; modele?: string };
+  let body: { mode?: string; photo?: string; title?: string; modele?: string; width?: number; height?: number };
   try {
     body = await req.json();
   } catch {
     return json({ ok: false, message: 'Corps de requête invalide' }, 400);
   }
-  const mode = body.mode === 'couverture' ? 'couverture' : 'resume';
+  const mode = body.mode === 'couverture' || body.mode === 'coins' ? body.mode : 'resume';
   const photo = (body.photo || '').replace(/^data:image\/\w+;base64,/, '');
   if (!photo) return json({ ok: false, message: 'Photo manquante' }, 400);
   if (photo.length * 0.75 > MAX_PHOTO_BYTES) return json({ ok: false, message: 'Photo trop lourde' }, 413);
@@ -120,13 +135,13 @@ Deno.serve(async (req) => {
       max_tokens: 8000,
       output_config: {
         effort: 'low',
-        format: zodOutputFormat(mode === 'couverture' ? CouvertureSchema : ResumeSchema),
+        format: zodOutputFormat(mode === 'coins' ? CoinsSchema : mode === 'couverture' ? CouvertureSchema : ResumeSchema),
       },
       messages: [{
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: photo } },
-          { type: 'text', text: mode === 'couverture' ? PROMPT_COUVERTURE(title) : PROMPT_RESUME(title) },
+          { type: 'text', text: mode === 'coins' ? PROMPT_COINS(Number(body.width) || 0, Number(body.height) || 0) : mode === 'couverture' ? PROMPT_COUVERTURE(title) : PROMPT_RESUME(title) },
         ],
       }],
     });
