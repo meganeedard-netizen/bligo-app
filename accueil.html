@@ -872,7 +872,7 @@
       return;
     }
     const b = books.find(x => x.id === bookId);
-    showSnackbar(`${b?.title || 'Le livre'}${b?.author ? ' de ' + b.author : ''} est commandé ! Tu recevras une notification et un mail quand il sera prêt.`, { duration: 5000 });
+    showSnackbar(`${b?.title || 'Le livre'}${b?.author ? ' de ' + b.author : ''} est commandé ! Tu as 30 min pour le retirer de tes réservations si tu changes d'avis. Tu recevras une notification et un mail quand il sera prêt.`, { duration: 8000 });
     await loadReservations();
     renderBooks();
     updateReservationBadge(currentUser.id);
