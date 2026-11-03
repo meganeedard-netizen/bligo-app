@@ -247,6 +247,15 @@
 
         <h3 class="text-base font-bold text-ink mb-3">Par commune</h3>
         <div id="users-by-commune" class="flex flex-col gap-5"></div>
+
+        <!-- Suppression d'un compte (03/11/2026) : comptes de test, usager qui le demande par e-mail. -->
+        <h3 class="text-base font-bold text-ink mt-8 mb-1">Supprimer un compte</h3>
+        <p class="text-sm text-ink/55 mb-3">Recherche le compte par son adresse e-mail. Il faut qu'il n'ait aucun document en cours d'emprunt.</p>
+        <form onsubmit="event.preventDefault(); findAccountToDelete()" class="flex flex-wrap gap-2 mb-3">
+          <input id="delete-account-email" type="email" required placeholder="adresse@exemple.fr" class="flex-1 min-w-[220px] border border-mango-100 rounded-xl px-3 py-2 text-sm bg-white">
+          <button type="submit" class="text-sm font-semibold bg-ink text-white rounded-xl px-4 py-2">Rechercher</button>
+        </form>
+        <div id="delete-account-result"></div>
       </section>
 
       <!-- COUVERTURES MANQUANTES -->
@@ -651,6 +660,41 @@
     }).join('');
   }
 
+  // ---------- Suppression d'un compte (03/11/2026) ----------
+  // sql/admin_suppression_compte_2026-11-03.sql : même nettoyage que la
+  // suppression faite par l'usager dans l'appli.
+
+  const ROLE_LABELS = { usager: 'Usager', agent: 'Agent', super_admin: 'Super-admin' };
+
+  window.findAccountToDelete = async function () {
+    const email = document.getElementById('delete-account-email').value.trim();
+    const box = document.getElementById('delete-account-result');
+    box.innerHTML = `<p class="text-sm text-ink/50">Recherche…</p>`;
+    const { data, error } = await supabase.rpc('admin_find_account', { p_email: email });
+    if (error) { box.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
+    const a = data?.[0];
+    if (!a) { box.innerHTML = `<p class="text-sm text-ink/50">Aucun compte avec cette adresse.</p>`; return; }
+    const via = (a.providers || []).map(p => ({ email: 'e-mail', google: 'Google', apple: 'Apple' }[p] || p)).join(', ');
+    box.innerHTML = `
+      <div class="bg-white border border-mango-100 rounded-xl shadow-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <span class="text-sm">
+          <span class="font-semibold text-ink block">${escapeHtml(a.full_name || 'Sans nom')} · ${escapeHtml(a.email)}</span>
+          <span class="text-[11px] text-ink/50">${ROLE_LABELS[a.role] || escapeHtml(a.role || '')} · ${escapeHtml(a.commune_name || 'Sans médiathèque')} · créé le ${new Date(a.created_at).toLocaleDateString('fr-FR')} · connexion par ${escapeHtml(via)}</span>
+        </span>
+        <button onclick="deleteAccount('${a.id}', '${escapeJsAttr(a.full_name || a.email)}')" class="text-xs font-semibold bg-red-600 text-white rounded-full px-3 py-1.5">Supprimer ce compte</button>
+      </div>`;
+  };
+
+  window.deleteAccount = async function (userId, name) {
+    if (!(await confirmDialog(`Supprimer définitivement le compte de ${name} ? Son profil, sa liste d'envie, ses avis et ses points seront effacés. C'est irréversible.`))) return;
+    const { data, error } = await supabase.rpc('admin_delete_account', { p_user_id: userId });
+    if (error || !data?.ok) { alert(error ? 'Erreur : ' + frError(error) : data.message); return; }
+    document.getElementById('delete-account-result').innerHTML = `<p class="text-sm text-mango-700 font-semibold">Compte de ${escapeHtml(name)} supprimé.</p>`;
+    document.getElementById('delete-account-email').value = '';
+    closeUserModal();
+    await loadUsers();
+  };
+
   // ---------- Fiche usager ----------
 
   const statusMap = {
@@ -719,6 +763,8 @@
             <span class="text-xs font-semibold text-mango-700 shrink-0">+${d.points_awarded} pts</span>
           </div>`).join('') : `<p class="text-xs text-ink/40">Aucun.</p>`}
       </div>
+
+      <button onclick="deleteAccount('${profile.id}', '${escapeJsAttr(profile.full_name || 'cet usager')}')" class="mt-6 w-full text-sm font-semibold text-red-600 border border-red-200 rounded-xl py-2.5 hover:bg-red-50">Supprimer ce compte</button>
     `;
   }
 
