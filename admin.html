@@ -8989,16 +8989,47 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // Un clic : si quelqu'un attend le livre, sa commande passe « prête » (il est
   // prévenu dans l'appli et par e-mail) ; sinon le livre revient en ligne.
-  window.finishReshelve = async function (kind, id) {
-    const { data, error } = await supabase.rpc('finish_reshelve', kind === 'loan' ? { p_loan_id: id } : { p_reservation_id: id });
+  // Personne attendue déjà à son maximum (03/11/2026) : l'agent choisit entre
+  // passer au suivant (elle garde sa place dans la file) et garder le livre de
+  // côté quand même. ✕ ne change rien.
+  function askHoldLimit(name) {
+    return new Promise(resolve => {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'fixed inset-0 z-[70] bg-brand/50 backdrop-blur-sm flex items-center justify-center p-4';
+      backdrop.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+          <button type="button" data-choice="cancel" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+          <p class="text-xs font-bold text-orange-700 uppercase tracking-wide mb-1">Maximum atteint</p>
+          <p class="text-base font-bold text-ink pr-8 mb-3">${escapeHtml(name)} a déjà atteint son maximum de livres.</p>
+          <p class="text-sm text-ink/60 mb-5">Tu peux proposer le livre à la personne suivante de la file (ou le remettre en rayon s'il n'y a personne) : ${escapeHtml(name)} garde sa place pour le prochain retour et sera prévenu. Ou le garder de côté quand même : il faudra qu'il rapporte un livre avant de l'emporter.</p>
+          <div class="flex flex-col gap-2">
+            <button type="button" data-choice="skip" class="w-full bg-[#F28C28] text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition">Passer à la personne suivante</button>
+            <button type="button" data-choice="keep" class="w-full border-2 border-mango-100 text-ink/70 rounded-lg py-3 text-sm font-semibold">Garder le livre de côté quand même</button>
+          </div>
+        </div>`;
+      backdrop.querySelectorAll('[data-choice]').forEach(btn => btn.onclick = () => { backdrop.remove(); resolve(btn.dataset.choice); });
+      document.body.appendChild(backdrop);
+    });
+  }
+
+  window.finishReshelve = async function (kind, id, choice = null) {
+    const args = kind === 'loan' ? { p_loan_id: id } : { p_reservation_id: id };
+    if (choice === 'skip') args.p_skip_first_hold = true;
+    if (choice === 'keep') args.p_keep_over_limit = true;
+    const { data, error } = await supabase.rpc('finish_reshelve', args);
     if (error) {
       // Tant que sql/file_attente_remise_en_rayon.sql n'est pas passé : ancien fonctionnement.
       if (!/finish_reshelve/.test(error.message)) { alert('Erreur : ' + frError(error)); return; }
       const { error: updateError } = await supabase.from(kind === 'loan' ? 'loans' : 'reservations').update({ reshelved: true }).eq('id', id);
       if (updateError) { alert('Erreur : ' + frError(updateError)); return; }
+    } else if (!data.ok && data.limit_reached) {
+      playRefuse();
+      const picked = await askHoldLimit(data.name || 'Cet usager');
+      if (picked !== 'cancel') return finishReshelve(kind, id, picked);
+      return;
     } else if (!data.ok) {
       alert(data.message); return;
-    } else if (data.prepared_for) {
+    } else if (data.prepared_for || choice === 'skip') {
       alert(data.message);
     }
     await Promise.all([loadReshelveLoans(), loadReservations()]);
