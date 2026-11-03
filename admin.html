@@ -2,9 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Back-office</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261102a">
+<link rel="stylesheet" href="css/bligo.css?v=20261103a">
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=20261023">
 <style>
@@ -13,8 +13,12 @@
   .spin { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (max-width: 640px) {
-    input, select, textarea { font-size: 16px; }
+    input, select, textarea { font-size: 16px !important; }
   }
+  /* Espace agent dans l'appli iPhone/Android (03/11/2026) : rien sous
+     l'encoche ni sous la barre d'accueil. */
+  html.native-app body { padding-bottom: env(safe-area-inset-bottom); }
+  html.native-app #bo-topbar { padding-top: env(safe-area-inset-top); }
   /* ---- Refonte « logiciel » (12/10/2026) ---- */
   body { background: #F5F6F8; }
   #bo-sidebar { padding: 10px; }
@@ -81,6 +85,7 @@
     // marchent pas dans la fenêtre du logiciel. On les remplace par de vraies
     // boîtes HTML, seulement dans le logiciel. confirmDialog() renvoie une
     // promesse partout (boîte native du navigateur sur le site).
+    if (window.Capacitor?.isNativePlatform?.()) document.documentElement.classList.add('native-app');
     window.BLIGO_AGENT_APP = (() => { try { return sessionStorage.getItem('bligo_agent_app') === '1'; } catch (e) { return false; } })();
     window.confirmDialog = function (message) { return Promise.resolve(window.confirm(message)); };
     window.promptDialog = function (message, value) { return Promise.resolve(window.prompt(message, value ?? '')); };
@@ -1122,7 +1127,7 @@
         <div class=" flex gap-2">
           <button onclick="saveCommuneTheme()" class="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les modifications</button>
         </div>
-        <p id="settings-save-status" class="text-[11px] text-ink/45 mt-2 h-4"></p>
+        <p id="settings-save-status" class="text-base font-semibold text-center text-emerald-700 mt-3 min-h-[24px]"></p>
 
           </div>
           <div data-settings-pane="tarifs" class="hidden">
@@ -1340,6 +1345,33 @@
                 <p class="text-xs text-ink/55 mt-0.5">Tous les documents et exemplaires, en Excel (CSV) ou en UNIMARC, le format standard des bibliothèques.</p>
               </div>
               <button onclick="openExportModal()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition shrink-0">Exporter le catalogue</button>
+            </div>
+            <!-- Usagers et prêts + durée de conservation (03/11/2026, RGPD). -->
+            <div class="border border-[#E5E7EB] rounded-xl p-4 mt-3">
+              <p class="text-sm font-bold text-ink">Usagers et prêts</p>
+              <p class="text-xs text-ink/55 mt-0.5 mb-3">En Excel (CSV). Ces fichiers contiennent des données personnelles : garde-les dans un dossier protégé et supprime-les quand tu n'en as plus besoin. Chaque export est noté dans le journal d'activité.</p>
+              <div class="flex flex-wrap gap-2">
+                <button onclick="exportUsagersCsv()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-3 py-2 text-sm font-semibold active:scale-[0.98] transition">Usagers</button>
+                <button onclick="exportPretsCsv('en_cours')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-3 py-2 text-sm font-semibold active:scale-[0.98] transition">Prêts en cours</button>
+                <button onclick="exportPretsCsv('historique')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-3 py-2 text-sm font-semibold active:scale-[0.98] transition">Historique des prêts</button>
+              </div>
+              <label class="flex items-center gap-2 mt-3 text-xs text-ink/70"><input type="checkbox" id="export-history-names" class="accent-[#F7901E]"> Historique avec le nom des usagers (sinon : documents et dates seulement, pour les statistiques)</label>
+              <p id="export-people-status" class="text-xs text-ink/60 mt-2"></p>
+            </div>
+            <div class="border border-[#E5E7EB] rounded-xl p-4 mt-3">
+              <p class="text-sm font-bold text-ink">Durée de conservation de l'historique des prêts</p>
+              <p class="text-xs text-ink/55 mt-0.5 mb-3">Après ce délai, compté à partir du retour du document, le prêt est anonymisé : BliGO garde le document et les dates pour les statistiques, mais efface le lien avec l'usager. Les prêts en cours ne sont jamais touchés. Durée à fixer avec ton délégué à la protection des données (DPO).</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <select id="retention-months" class="border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">Non choisie (historique conservé)</option>
+                  <option value="4">4 mois après le retour (pratique la plus courante)</option>
+                  <option value="12">1 an après le retour</option>
+                  <option value="36">3 ans après le retour</option>
+                </select>
+                <button onclick="saveRetention()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2 text-sm font-bold active:scale-[0.98] transition">Enregistrer</button>
+              </div>
+              <p class="text-xs text-ink/55 mt-2">Avec 4 mois, le nombre d'emprunteurs de l'année (statistiques annuelles) ne compte plus les personnes dont tous les prêts ont été anonymisés : prépare ton rapport annuel avant, ou choisis 1 an.</p>
+              <p id="retention-status" class="text-xs text-ink/60 mt-2"></p>
             </div>
           </div>
           <div data-settings-pane="types" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
@@ -2097,6 +2129,7 @@
   window.showSettingsTab = function (tab) {
     document.querySelectorAll('[data-settings-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.settingsPane !== tab));
     document.querySelectorAll('[data-settings-tab]').forEach(el => el.classList.toggle('is-active', el.dataset.settingsTab === tab));
+    if (tab === 'donnees') window.loadRetention?.();
   };
 
   window.switchScreen = function (screen) {
@@ -6596,6 +6629,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   function downloadBlob(blob, filename) {
+    // Appli iPhone/Android : pas de dossier Téléchargements, l'export se fait
+    // sur ordinateur.
+    if (window.Capacitor?.isNativePlatform?.()) { alert("Les exports se font depuis le logiciel sur ordinateur."); return; }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -6699,6 +6735,68 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const leader = String(recordLength).padStart(5, '0') + 'nam  22' + String(baseAddress).padStart(5, '0') + '   450 ';
     return [utf8.encode(leader), dirBytes, ...body, utf8.encode(MARC_RT)];
   }
+
+  // Usagers, prêts en cours, historique (03/11/2026). Les fonctions SQL
+  // vérifient que c'est la direction de CETTE médiathèque et notent l'export.
+  function peopleCsv(rows) {
+    const cell = v => { const x = v == null ? '' : String(v); return /[";\n\r]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+    return '﻿' + rows.map(r => r.map(cell).join(';')).join('\r\n');
+  }
+  const frDate = v => v ? new Date(v).toLocaleDateString('fr-FR') : '';
+
+  window.exportUsagersCsv = async function () {
+    const status = document.getElementById('export-people-status');
+    status.textContent = 'Préparation de l\'export…';
+    const { data, error } = await supabase.rpc('export_usagers', { p_commune_id: myCommuneId });
+    if (error) { status.textContent = 'Erreur : ' + frError(error); return; }
+    if (!data?.length) { status.textContent = 'Aucun usager à exporter.'; return; }
+    const tariff = { mineur: 'Mineur', majeur: 'Majeur', gratuit: 'Gratuité', famille: 'Famille' };
+    const reg = { valide: 'Inscrit', pre_inscrit: 'Préinscrit' };
+    const rows = [['N° abonné', 'Nom', 'E-mail', 'Catégorie tarifaire', 'Inscription', 'Inscrit le', 'Adhésion jusqu\'au', 'Prêts en cours']]
+      .concat(data.map(u => [u.subscriber_number, u.full_name, u.email, tariff[u.tariff_category] || '', reg[u.registration_status] || u.registration_status,
+        frDate(u.inscrit_le), frDate(u.adhesion_jusqu_au), u.prets_en_cours]));
+    downloadBlob(new Blob([peopleCsv(rows)], { type: 'text/csv;charset=utf-8' }), `${exportFileBase()}-usagers.csv`);
+    status.textContent = `Export terminé : ${data.length} usager(s).`;
+  };
+
+  window.exportPretsCsv = async function (scope) {
+    const status = document.getElementById('export-people-status');
+    const names = scope === 'en_cours' || document.getElementById('export-history-names').checked;
+    status.textContent = 'Préparation de l\'export…';
+    const { data, error } = await supabase.rpc('export_prets', { p_commune_id: myCommuneId, p_scope: scope, p_nominatif: names });
+    if (error) { status.textContent = 'Erreur : ' + frError(error); return; }
+    if (!data?.length) { status.textContent = scope === 'en_cours' ? 'Aucun prêt en cours.' : 'Aucun prêt dans l\'historique.'; return; }
+    const head = ['Titre', 'Auteur', 'ISBN', 'Code-barres', 'Cote', 'Emprunté le', 'Retour prévu'];
+    if (scope === 'historique') head.push('Rendu le');
+    const rows = [(names ? ['N° abonné', 'Usager'] : []).concat(head)].concat(data.map(l => {
+      const base = [l.title, l.author, l.isbn, l.barcode, l.cote, frDate(l.emprunte_le), frDate(l.retour_prevu)];
+      if (scope === 'historique') base.push(frDate(l.rendu_le));
+      return (names ? [l.subscriber_number, l.anonymise ? '(anonymisé)' : l.full_name] : []).concat(base);
+    }));
+    const suffix = scope === 'en_cours' ? 'prets-en-cours' : (names ? 'historique-nominatif' : 'historique-anonyme');
+    downloadBlob(new Blob([peopleCsv(rows)], { type: 'text/csv;charset=utf-8' }), `${exportFileBase()}-${suffix}.csv`);
+    status.textContent = `Export terminé : ${data.length} prêt(s).`;
+  };
+
+  window.loadRetention = async function () {
+    if (!myCommuneId) return;
+    const { data } = await supabase.from('communes').select('loan_history_retention_months').eq('id', myCommuneId).maybeSingle();
+    const sel = document.getElementById('retention-months');
+    if (sel && data) sel.value = data.loan_history_retention_months ?? '';
+  };
+
+  window.saveRetention = async function () {
+    const status = document.getElementById('retention-status');
+    const raw = document.getElementById('retention-months').value;
+    const months = raw ? Number(raw) : null;
+    if (months && !await confirmDialog(`Les prêts rendus depuis plus de ${months === 4 ? '4 mois' : months === 12 ? '1 an' : '3 ans'} vont être anonymisés tout de suite, puis chaque nuit. Ce n'est pas réversible. Continuer ?`)) return;
+    status.textContent = 'Enregistrement…';
+    const { data, error } = await supabase.rpc('update_commune_retention', { p_commune_id: myCommuneId, p_months: months });
+    if (error) { status.textContent = 'Erreur : ' + frError(error); return; }
+    status.textContent = months
+      ? `Enregistré. ${data || 0} prêt(s) ancien(s) anonymisé(s) maintenant.`
+      : 'Enregistré. L\'historique est conservé tant qu\'aucune durée n\'est choisie.';
+  };
 
   window.exportCatalogue = async function (format) {
     const status = document.getElementById('export-status');
@@ -7264,10 +7362,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     });
     if (error) { status.textContent = ''; alert('Erreur : ' + frError(error)); return; }
     pendingLogoFile = null;
-    status.textContent = '✓ Modifications enregistrées.';
     // Applique tout de suite dans cette fenêtre, sans attendre un rechargement.
     applyCommuneTheme({ theme_ink_hex: selectedInkHex, theme_accent_hex: selectedAccentHex });
     await loadCommuneSettings();
+    // Après le rechargement (qui vide le message) et affiché 6 s : avant, il
+    // disparaissait presque aussitôt (retour de Mégane, 03/11/2026).
+    status.textContent = '✓ Modifications enregistrées';
+    clearTimeout(status._timer);
+    status._timer = setTimeout(() => { status.textContent = ''; }, 6000);
   };
 
   // Retour immédiat aux couleurs BliGO d'origine (logo non touché), sans

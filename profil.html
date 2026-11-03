@@ -486,10 +486,11 @@
     if (profile?.role === 'super_admin' && (currentUser.email || '').toLowerCase() === 'megane@bligo.fr') {
       document.getElementById('superadmin-link').classList.remove('hidden');
     }
-    // Appli iPhone/Android : le back-office n'est pas embarqué, il s'ouvre sur bligo.app.
+    // Appli iPhone/Android (03/11/2026) : l'espace agent est embarqué dans
+    // l'appli ; l'espace admin BliGO reste sur ordinateur.
     if (window.Capacitor?.isNativePlatform?.()) {
-      document.getElementById('admin-link').href = 'https://bligo.app/admin.html';
-      document.getElementById('superadmin-link').href = 'https://bligo.app/superadmin.html';
+      document.getElementById('admin-link').firstChild.textContent = 'Espace agent';
+      document.getElementById('superadmin-link').classList.add('hidden');
     }
 
     const points = profile?.loyalty_points ?? 0;

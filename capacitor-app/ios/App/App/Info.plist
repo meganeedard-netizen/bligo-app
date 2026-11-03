@@ -39,6 +39,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Les agents de la médiathèque scannent les codes-barres et photographient les livres.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>BliGO ajoute les événements de ta médiathèque auxquels tu es inscrit à ton calendrier.</string>
 	<key>UIApplicationSceneManifest</key>
