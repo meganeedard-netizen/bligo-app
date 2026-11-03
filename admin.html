@@ -1416,7 +1416,7 @@
     <input id="cover-photo-file" type="file" accept="image/*" capture="environment" class="hidden" onchange="coverPhotoChosen(event)">
 
     <div id="cp-step-tips">
-      <h3 class="text-lg font-bold text-ink mb-1">Photographier la couverture</h3>
+      <h3 class="text-lg font-bold text-ink mb-1">Photo de la couverture</h3>
       <p class="text-sm text-ink/60 mb-3">Pour une couverture nette dans l'appli :</p>
       <ul class="text-sm text-ink/80 space-y-1.5 mb-4 list-disc pl-5">
         <li>Pose le livre <b>à plat</b> sur une table, près d'une fenêtre ou sous une lumière forte.</li>
@@ -1425,7 +1425,7 @@
         <li>Évite les <b>reflets</b> (couverture brillante : penche un peu la lampe) et l'ombre de ton téléphone.</li>
         <li>Attends que l'image soit <b>nette</b> avant d'appuyer.</li>
       </ul>
-      <button type="button" onclick="document.getElementById('cover-photo-file').click()" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold">Prendre la photo</button>
+      <button type="button" onclick="document.getElementById('cover-photo-file').click()" id="cp-take-btn" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold">Prendre la photo</button>
     </div>
 
     <div id="cp-step-crop" class="hidden">
@@ -3704,7 +3704,7 @@
           <div id="cover-ocr-lines-${d.localId}" class="hidden mb-3"></div>
           ${d.cover_url
             ? `<div class="flex items-center gap-3 mb-3"><img src="${escapeHtml(d.cover_url)}" alt="" class="w-12 h-16 object-cover rounded bg-mango-50 shrink-0"><button type="button" onclick="openDraftCoverPhoto('${d.localId}')" class="text-xs text-mango-700 underline">Reprendre la photo de couverture</button></div>`
-            : `<button type="button" onclick="openDraftCoverPhoto('${d.localId}')" class="w-full mb-3 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">${CAMERA_ICON}Photographier la couverture (image du catalogue)</button>`}
+            : `<button type="button" onclick="openDraftCoverPhoto('${d.localId}')" class="w-full mb-3 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">${CAMERA_ICON}Ajouter une photo de la couverture (image du catalogue)</button>`}
 
           <label class="text-xs font-semibold text-ink/60 block mb-1">Titre</label>
           <input id="draft-title-${d.localId}" value="${escapeHtml(d.title || '')}" oninput="updateDraftField('${d.localId}', 'title', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Titre du document">
@@ -3766,7 +3766,7 @@
     // photographie dès le catalogage, sans repasser par le Catalogue.
     const coverPhotoBtn = d.meta.cover_url
       ? `<button type="button" onclick="openDraftCoverPhoto('${d.localId}')" class="mt-2 text-xs text-mango-700 underline">Remplacer la couverture par une photo</button>`
-      : `<button type="button" onclick="openDraftCoverPhoto('${d.localId}')" class="w-full mt-3 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">${CAMERA_ICON}Aucune couverture trouvée : photographier la couverture</button>`;
+      : `<button type="button" onclick="openDraftCoverPhoto('${d.localId}')" class="w-full mt-3 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold">${CAMERA_ICON}Aucune couverture trouvée : ajouter une photo de la couverture</button>`;
 
     if (!expandedDraftIds.has(d.localId)) {
       // Vue compacte : aperçu de la fiche récupérée automatiquement, pas
@@ -7889,7 +7889,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <p class="text-sm text-ink/55">${escapeHtml(b.author)}</p>
           ${b.cover_url
             ? `<button type="button" onclick="openCoverPhoto(${b.id})" class="mt-1.5 text-xs text-mango-700 underline">Remplacer par une photo</button>`
-            : `<button type="button" onclick="openCoverPhoto(${b.id})" class="mt-2 text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg px-3 py-1.5">Photographier la couverture</button>`}
+            : `<button type="button" onclick="openCoverPhoto(${b.id})" class="mt-2 text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg px-3 py-1.5">Ajouter une photo de la couverture</button>`}
         </div>
       </div>
 
@@ -7989,6 +7989,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     coverPhoto.bookId = bookId;
     coverPhoto.draftId = null;
     coverPhoto.src = null;
+    // Sur ordinateur, le bouton ouvre les dossiers et non l'appareil photo.
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+    document.getElementById('cp-take-btn').textContent = touch ? 'Prendre la photo' : 'Charger ta photo depuis l\'ordinateur';
     coverPhotoShowStep('tips');
     document.getElementById('cover-photo-backdrop').classList.remove('hidden');
   };
