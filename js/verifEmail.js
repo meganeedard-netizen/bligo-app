@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js?v=20261023';
+import { supabase } from './supabaseClient.js?v=20261103b';
 import { showDialog, frError } from './ui.js?v=20261023';
 
 // Vérification de l'adresse e-mail « plus tard » (01/11/2026, demandé par

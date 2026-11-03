@@ -50,6 +50,8 @@
       // Pas connecté : on efface les pages mémorisées du compte précédent (js/snapshot.js).
       if (!Object.keys(localStorage).some(function (k) { return /^sb-.*-auth-token$/.test(k); })) {
         Object.keys(localStorage).forEach(function (k) { if (k.indexOf('bligo_snap_') === 0) localStorage.removeItem(k); });
+        // Et les données gardées pour le mode hors connexion (js/horsConnexion.js).
+        try { indexedDB.deleteDatabase('bligo-hors-connexion'); } catch (e) {}
       }
     } catch (e) {}
   })();
@@ -343,11 +345,11 @@
   </div>
 
 <script type="module">
-  import { supabase } from './js/supabaseClient.js?v=20261023';
+  import { supabase } from './js/supabaseClient.js?v=20261103b';
   import { frError } from './js/ui.js?v=20261023';
-  import { sendVerifyCode, checkVerifyCode, startCooldown, codeWaitSeconds } from './js/verifEmail.js?v=20261103a';
+  import { sendVerifyCode, checkVerifyCode, startCooldown, codeWaitSeconds } from './js/verifEmail.js?v=20261103b';
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
-  import { socialProviders, signInWith, finishWebSocialSignIn } from './js/connexionSociale.js?v=20261102b';
+  import { socialProviders, signInWith, finishWebSocialSignIn } from './js/connexionSociale.js?v=20261103a';
   applyCachedTheme();
 
   const eyeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';

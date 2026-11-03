@@ -3,6 +3,7 @@
 // en cascade), ce qui ralentissait la navigation. Refait par tailwind-build/build.sh.
 import { createClient } from './vendor/supabase.js?v=2.118.0';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=20261016d';
+import { offlineFetch, keepSessionOffline } from './horsConnexion.js?v=20261103a';
 
 // Logiciel agent Mac/Windows (16/10/2026) : il affiche les pages de bligo.app
 // et les ouvre avec « ?logiciel=1 ». Le repère reste pour toute la fenêtre
@@ -16,6 +17,13 @@ const AGENT_APP = (() => {
 })();
 if (AGENT_APP) window.BLIGO_AGENT_APP = true;
 
+// Mode hors connexion (03/11/2026) : appli usager seulement. Le logiciel des
+// agents (admin, super-admin) travaille toujours sur les données du moment.
+const AGENT_PAGE = /(^|\/)(admin|superadmin)\.html$/.test(location.pathname);
+
 export const supabase = AGENT_APP
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage: window.sessionStorage, persistSession: true } })
-  : createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  : AGENT_PAGE
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { fetch: offlineFetch(SUPABASE_URL) } });
+if (!AGENT_APP && !AGENT_PAGE) keepSessionOffline(supabase);

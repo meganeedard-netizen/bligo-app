@@ -1,5 +1,5 @@
-import { supabase } from './supabaseClient.js?v=20261023';
-import { updateProfileBadge } from './verifEmail.js?v=20261103a';
+import { supabase } from './supabaseClient.js?v=20261103b';
+import { updateProfileBadge } from './verifEmail.js?v=20261103b';
 
 // Pastille "Réservation" de la barre du bas : nombre de livres actuellement
 // réservés ou empruntés (en préparation, prêts, ou empruntés et pas encore

@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js?v=20261023';
+import { supabase } from './supabaseClient.js?v=20261103b';
 
 // « Continuer avec Apple » et « Continuer avec Google » (02/11/2026).
 // iPhone : Apple + Google ; Android : Google ; site bligo.app : Google.
