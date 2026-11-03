@@ -326,7 +326,7 @@
   async function loadReservations() {
     const { data, error } = await supabase
       .from('reservations')
-      .select('id, status, created_at, ready_at, return_due_at, books ( id, title, author, cover_initial, cover_url, commune_id )')
+      .select('id, status, created_at, ready_at, pickup_deadline, return_due_at, books ( id, title, author, cover_initial, cover_url, commune_id )')
       .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false });
     if (error) { console.error(error); return; }
@@ -433,6 +433,8 @@
         createdAt: r.created_at,
         orderedAt: r.created_at,
         readyAt: r.ready_at || null,
+        // Délai de retrait réglé par la médiathèque (03/11/2026), 48 h pour les anciennes commandes.
+        pickupDeadline: r.pickup_deadline || (r.ready_at ? new Date(new Date(r.ready_at).getTime() + 48 * 3600 * 1000).toISOString() : null),
         returnDueAt: loan?.due_at || r.return_due_at || null,
         renewalCount: renewalsByReservation[r.id] || 0,
         myRating: book?.id ? (myRatings[book.id] || null) : null,
@@ -543,12 +545,13 @@
 
   function readyGroupHtml(group) {
     const communeId = group[0].communeId;
-    const earliestReady = group.reduce((min, it) => new Date(it.readyAt) < new Date(min) ? it.readyAt : min, group[0].readyAt);
-    const deadline = new Date(new Date(earliestReady).getTime() + 48 * 3600 * 1000);
+    const earliestDeadline = group.reduce((min, it) => new Date(it.pickupDeadline) < new Date(min) ? it.pickupDeadline : min, group[0].pickupDeadline);
+    const deadline = new Date(earliestDeadline);
     const hoursLeft = Math.max(0, Math.round((deadline - new Date()) / 3600000));
+    const daysLeft = Math.floor(hoursLeft / 24);
     const rowsHtml = group.map((it, i) => `<div class="${i > 0 ? 'pt-2.5' : ''}">${bookRowHtml(it, { light: true, hideMeta: true })}</div>`).join('');
     // Carte toujours orange hibiscus, même sous 24 h (19/10/2026, demande de Mégane).
-    const pillText = hoursLeft <= 0 ? '⏰ Délai dépassé : contacte la Médiathèque Municipale' : `⏰ Il te reste ${hoursLeft}h pour récupérer ta commande`;
+    const pillText = hoursLeft <= 0 ? '⏰ Délai dépassé : contacte la Médiathèque Municipale' : (hoursLeft > 48 ? `⏰ Il te reste ${daysLeft} jours pour récupérer ta commande` : `⏰ Il te reste ${hoursLeft}h pour récupérer ta commande`);
 
     return `
       <div class="rounded-2xl p-3.5 text-white shadow-md bg-gradient-to-br from-mango-600 to-hibiscus-700 relative overflow-hidden">

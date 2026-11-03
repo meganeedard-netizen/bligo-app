@@ -1245,6 +1245,25 @@
           <button onclick="saveMembershipSettings()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
         </div>
 
+        <!-- Délai de retrait (03/11/2026) : réglé par chaque médiathèque, appliqué aux réservations prêtes ensuite. -->
+        <h2 class="text-lg font-bold text-ink mb-1 mt-6 flex items-center gap-3"><span class="w-10 h-10 text-brand flex items-center justify-center shrink-0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9"/></svg></span>Délai pour venir chercher un document</h2>
+        <p class="text-sm text-ink/55 mb-4">Temps laissé à l'usager quand sa commande est prête ou qu'un livre attendu lui est mis de côté. Passé ce délai, la réservation expire.</p>
+        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
+          <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Délai de retrait</label>
+          <select id="pickup-hours" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+            <option value="24">24 h</option>
+            <option value="48">48 h</option>
+            <option value="72">3 jours</option>
+            <option value="96">4 jours</option>
+            <option value="120">5 jours</option>
+            <option value="168">7 jours</option>
+            <option value="240">10 jours</option>
+            <option value="336">14 jours</option>
+          </select>
+          <p class="text-[11px] text-ink/45 mb-3">L'appli, les notifications et les e-mails des usagers affichent ce délai. Les commandes déjà prêtes gardent leur délai d'origine.</p>
+          <button onclick="savePickupHours()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+        </div>
+
         <!-- File d'attente (16/10/2026) : toutes les médiathèques n'en proposent pas. -->
         <h2 class="text-lg font-bold text-ink mb-1 mt-6 flex items-center gap-3"><span class="w-10 h-10 text-brand flex items-center justify-center shrink-0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>Livres déjà empruntés</h2>
         <p class="text-sm text-ink/55 mb-4">Ce que l'usager peut faire dans l'appli quand un livre n'est pas disponible.</p>
@@ -1540,6 +1559,11 @@
   let donorSession = null; // { id, full_name, count }
   let statsScope = 'commune';
   let myCommuneId = null;
+  // Délai de retrait de la médiathèque (03/11/2026, communes.pickup_hours).
+  let myPickupHours = 48;
+  const pickupDelayLabel = (h = myPickupHours) => (h >= 72 && h % 24 === 0 ? `${h / 24} jours` : `${h} h`);
+  // Date limite de retrait : celle enregistrée sur la réservation, sinon 48 h (anciennes réservations).
+  const pickupDeadlineMs = r => r.pickup_deadline ? new Date(r.pickup_deadline).getTime() : new Date(r.ready_at).getTime() + 48 * 3600 * 1000;
   let myIsDirection = false;
   let eventCommunes = [];
   let events = [];
@@ -1941,7 +1965,8 @@
     document.getElementById('nav-settings-btn').classList.toggle('hidden', !myIsDirection);
 
     if (myCommuneId) {
-      const { data: commune } = await supabase.from('communes').select('name, logo_url, theme_ink_hex, theme_accent_hex').eq('id', myCommuneId).single();
+      const { data: commune } = await supabase.from('communes').select('name, logo_url, theme_ink_hex, theme_accent_hex, pickup_hours').eq('id', myCommuneId).single();
+      if (commune?.pickup_hours) myPickupHours = commune.pickup_hours;
       applyCommuneTheme(commune);
       if (commune?.name) {
         document.getElementById('header-commune-name').textContent = `Médiathèque de ${commune.name}`;
@@ -5657,7 +5682,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   // Après un retour : si le livre était attendu, la base l'a attribué au
-  // premier de la file (réservation prête, 48 h). On prévient l'agent pour
+  // premier de la file (réservation prête, délai de retrait). On prévient l'agent pour
   // qu'il le mette de côté au lieu de le ranger.
   async function holdAlertForBarcode(barcode) {
     const { data: copy } = await supabase.from('book_copies').select('book_id, status').eq('barcode', barcode).maybeSingle();
@@ -5677,7 +5702,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       .order('promoted_at', { ascending: false }).limit(1).maybeSingle();
     if (!hold) return null;
     const { data: profile } = await supabase.from('profiles').select('full_name, subscriber_number').eq('id', hold.user_id).maybeSingle();
-    return `Ce livre était attendu : mets-le de côté pour ${profile?.full_name || 'l\'usager'}${profile?.subscriber_number ? ` (${profile.subscriber_number})` : ''}. Il est prévenu et a 48 h pour venir le chercher.`;
+    return `Ce livre était attendu : mets-le de côté pour ${profile?.full_name || 'l\'usager'}${profile?.subscriber_number ? ` (${profile.subscriber_number})` : ''}. Il est prévenu et a ${pickupDelayLabel()} pour venir le chercher.`;
   }
 
   window.quickReturnFromList = async function (barcode) {
@@ -6964,6 +6989,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         document.getElementById('non-resident-fee-wrap').classList.toggle('hidden', commune.non_resident_policy !== 'paid');
       }
       document.getElementById('holds-enabled').value = String(commune.holds_enabled !== false);
+      myPickupHours = commune.pickup_hours || 48;
+      document.getElementById('pickup-hours').value = String(myPickupHours);
       document.getElementById('tariff-updated-label').textContent = commune.tariff_updated_at
         ? `Dernière modification le ${formatDateShortAdmin(commune.tariff_updated_at)}`
         : 'Jamais modifiés.';
@@ -7038,6 +7065,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) { alert('Erreur : ' + frError(error)); return; }
     alert('Réglages enregistrés.');
     await loadTeamAndTariffs();
+  };
+
+  window.savePickupHours = async function () {
+    const hours = Number(document.getElementById('pickup-hours').value);
+    const { error } = await supabase.rpc('update_commune_pickup_hours', { p_commune_id: myCommuneId, p_hours: hours });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    myPickupHours = hours;
+    alert('Délai enregistré : ' + pickupDelayLabel() + ' pour les prochaines commandes prêtes.');
   };
 
   window.saveHoldsSetting = async function () {
@@ -7930,7 +7965,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       copyIds.length
         ? supabase.from('loans').select('copy_id, due_at, user_id').in('copy_id', copyIds).is('returned_at', null)
         : Promise.resolve({ data: [] }),
-      supabase.from('reservations').select('status, ready_at, created_at, user_id').eq('book_id', b.id).in('status', ['preparation', 'pret']).order('created_at'),
+      supabase.from('reservations').select('status, ready_at, pickup_deadline, created_at, user_id').eq('book_id', b.id).in('status', ['preparation', 'pret']).order('created_at'),
       supabase.from('holds').select('user_id, created_at').eq('book_id', b.id).eq('status', 'waiting').order('created_at'),
     ]);
     const loans = loansRes.data || [], resas = resaRes.data || [], holds = holdsRes.data || [];
@@ -7954,7 +7989,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     });
     resas.forEach(r => {
       const label = r.status === 'pret' && r.ready_at
-        ? `Mis de côté jusqu'au ${formatDateShortAdmin(new Date(new Date(r.ready_at).getTime() + 48 * 3600 * 1000).toISOString())}`
+        ? `Mis de côté jusqu'au ${formatDateShortAdmin(new Date(pickupDeadlineMs(r)).toISOString())}`
         : 'Réservé, en préparation';
       rows.push(`
         <div class="py-2 border-t border-mango-50 first:border-t-0">
@@ -8640,7 +8675,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     // super admin voyait aussi celles des autres médiathèques.
     let resaQuery = supabase
       .from('reservations')
-      .select('id, status, created_at, ready_at, reshelved, user_id, book_id, books!inner ( title, author, shelf_location, isbn, cover_url, cover_initial, commune_id, book_copies ( barcode ) )')
+      .select('id, status, created_at, ready_at, pickup_deadline, reshelved, user_id, book_id, books!inner ( title, author, shelf_location, isbn, cover_url, cover_initial, commune_id, book_copies ( barcode ) )')
       .neq('status', 'panier')
       .order('created_at', { ascending: true });
     if (myCommuneId) resaQuery = resaQuery.eq('books.commune_id', myCommuneId);
@@ -8666,7 +8701,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // d'attente (19/10/2026, sql/file_attente_remise_en_rayon.sql).
   async function expireStaleReservations() {
     const now = Date.now();
-    const stale = reservations.filter(r => r.status === 'pret' && r.ready_at && (now - new Date(r.ready_at).getTime()) > 48 * 3600 * 1000);
+    const stale = reservations.filter(r => r.status === 'pret' && r.ready_at && now > pickupDeadlineMs(r));
     if (!stale.length) return;
 
     for (const r of stale) {
@@ -8686,8 +8721,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     expiree: { label: 'Expirée, à remettre en rayon', classes: 'bg-red-50 text-red-600' },
   };
 
-  function formatRemaining(readyAt) {
-    const deadline = new Date(readyAt).getTime() + 48 * 3600 * 1000;
+  function formatRemaining(r) {
+    const deadline = pickupDeadlineMs(r);
     const diffMs = deadline - Date.now();
     if (diffMs <= 0) return { text: 'Délai dépassé', urgent: true };
     const hours = Math.floor(diffMs / 3600000);
@@ -8756,7 +8791,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         }
         let countdownHtml = '';
         if (r.status === 'pret' && r.ready_at) {
-          const rem = formatRemaining(r.ready_at);
+          const rem = formatRemaining(r);
           countdownHtml = `<span class="text-[11px] font-semibold ${rem.urgent ? 'text-red-600' : 'text-ink/45'} whitespace-nowrap">${rem.text}</span>`;
         }
         const coverHtml = r.books?.cover_url
