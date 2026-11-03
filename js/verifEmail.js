@@ -20,9 +20,24 @@ export async function isEmailVerified(userId, { refresh = false } = {}) {
 
 // Code à 6 chiffres envoyé par e-mail (modèle « Magic Link » de Supabase,
 // réécrit en français avec {{ .Token }}).
+// Supabase refuse un deuxième envoi à la même adresse dans la minute
+// (« Trop de tentatives » affiché sans que l'usager ait rien essayé,
+// 03/11/2026) : le code envoyé reste valable 1 h, on ne renvoie donc rien
+// pendant cette minute, et un refus pour ce motif n'est pas une erreur.
+const SENT_KEY = email => 'bligo_code_envoye_' + String(email).toLowerCase();
+
+export function codeWaitSeconds(email) {
+  let sent = 0;
+  try { sent = Number(localStorage.getItem(SENT_KEY(email))) || 0; } catch (e) {}
+  return Math.max(0, Math.ceil((sent + 60000 - Date.now()) / 1000));
+}
+
 export async function sendVerifyCode(email) {
+  if (codeWaitSeconds(email) > 0) return null;
   const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-  return error;
+  if (error && !/rate limit|too many requests|security purposes|after \d+ seconds/i.test(error.message || '')) return error;
+  try { localStorage.setItem(SENT_KEY(email), String(Date.now())); } catch (e) {}
+  return null;
 }
 
 export async function checkVerifyCode(email, token) {
@@ -36,9 +51,10 @@ export async function checkVerifyCode(email, token) {
 }
 
 // Supabase n'accepte qu'un envoi par minute environ : bouton grisé 60 s.
-export function startCooldown(btnOrId, label) {
+export function startCooldown(btnOrId, label, seconds = 60) {
   const btn = typeof btnOrId === 'string' ? document.getElementById(btnOrId) : btnOrId;
-  let left = 60;
+  let left = seconds;
+  if (left <= 0) return;
   btn.disabled = true;
   btn.textContent = `${label} (${left} s)`;
   const timer = setInterval(() => {
@@ -84,7 +100,7 @@ export function openVerifyModal(email) {
       const error = await sendVerifyCode(email);
       if (error) { setMsg(frError(error), 'text-red-600'); return; }
       setMsg('', '');
-      startCooldown(resendBtn, 'Renvoyer le code');
+      startCooldown(resendBtn, 'Renvoyer le code', codeWaitSeconds(email));
     };
 
     input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, '').slice(0, 6); });

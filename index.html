@@ -345,7 +345,7 @@
 <script type="module">
   import { supabase } from './js/supabaseClient.js?v=20261023';
   import { frError } from './js/ui.js?v=20261023';
-  import { sendVerifyCode, checkVerifyCode, startCooldown } from './js/verifEmail.js?v=20261101a';
+  import { sendVerifyCode, checkVerifyCode, startCooldown, codeWaitSeconds } from './js/verifEmail.js?v=20261103a';
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
   import { socialProviders, signInWith, finishWebSocialSignIn } from './js/connexionSociale.js?v=20261102b';
   applyCachedTheme();
@@ -611,7 +611,7 @@
     goAfterLogin();
   };
 
-  const startResendCooldown = () => startCooldown(document.getElementById('resend-code-btn'), 'Renvoyer le code de vérification');
+  const startResendCooldown = () => startCooldown(document.getElementById('resend-code-btn'), 'Renvoyer le code de vérification', lastSignup ? codeWaitSeconds(lastSignup.email) : 60);
 
   window.resendCode = async function () {
     if (!lastSignup) return;
