@@ -127,7 +127,26 @@
     <svg class="w-8 h-8 text-mango-600 mb-3" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 1.9"/></svg>
     <p class="text-base font-bold text-ink mb-2">Pré-inscription en attente de validation</p>
     <p class="text-sm text-ink/60 leading-relaxed">Tu peux dès maintenant réserver des livres. Lors du retrait de ta première réservation à la médiathèque, présente une <strong>pièce d'identité</strong> et un <strong>justificatif de domicile de moins de 3 mois</strong> (facture d'électricité, d'eau, ou d'abonnement internet/mobile) : l'agent validera ton compte et activera ta carte à ce moment-là. Si tu es mineur·e, prévois une <strong>autorisation parentale</strong>.</p>
+    <!-- Reprise des adhérents (05/11/2026) : affiché si la médiathèque a importé son fichier. -->
+    <div id="adherent-bloc" class="hidden mt-4 bg-mango-50 rounded-xl p-3">
+      <p class="text-sm font-bold text-ink mb-1">Déjà adhérent ?</p>
+      <p class="text-xs text-ink/60 mb-2">Entre ton numéro de carte et ta date de naissance : tu n'auras aucun justificatif à rapporter.</p>
+      <input id="adherent-carte" type="text" autocomplete="off" aria-label="Numéro de carte" placeholder="Numéro de carte" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-2">
+      <input id="adherent-naissance" type="date" aria-label="Date de naissance" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-2">
+      <button onclick="reconnaitreParCarte()" class="w-full bg-white border border-brand/20 text-ink rounded-lg py-2 text-sm font-semibold">Retrouver mon adhésion</button>
+      <p id="adherent-message" class="text-xs text-hibiscus-700 mt-2" aria-live="polite"></p>
+      <p class="text-xs text-ink/60 mt-2">Plus de carte ? Passe au comptoir et donne ton nom : l'équipe retrouvera ton adhésion.</p>
+    </div>
     <button onclick="closePendingPopup()" class="w-full mt-5 bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">J'ai compris</button>
+  </div>
+</div>
+
+<!-- Adhérent reconnu (05/11/2026) -->
+<div id="adherent-reconnu-backdrop" class="hidden fixed inset-0 z-50 bg-brand/50 backdrop-blur-sm items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+    <p class="text-base font-bold text-ink mb-2">🎉 Bonne nouvelle !</p>
+    <p class="text-sm text-ink/60 leading-relaxed">Tu es déjà inscrit à la médiathèque. Ta carte est active et tu peux réserver directement, sans justificatif à rapporter.</p>
+    <button onclick="document.getElementById('adherent-reconnu-backdrop').classList.add('hidden');document.getElementById('adherent-reconnu-backdrop').classList.remove('flex')" class="w-full mt-5 bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">Super !</button>
   </div>
 </div>
 
@@ -1232,6 +1251,22 @@
     document.getElementById('pending-popup-backdrop').classList.remove('flex');
   };
 
+  function afficherAdherentReconnu() {
+    const f = document.getElementById('adherent-reconnu-backdrop');
+    f.classList.remove('hidden'); f.classList.add('flex');
+  }
+  window.reconnaitreParCarte = async function () {
+    const carte = document.getElementById('adherent-carte').value.trim(), naissance = document.getElementById('adherent-naissance').value, msg = document.getElementById('adherent-message');
+    if (!carte || !naissance) { msg.textContent = 'Indique ton numéro de carte et ta date de naissance.'; return; }
+    msg.textContent = '';
+    const { data, error } = await supabase.rpc('reconnaitre_adherent_par_carte', { p_numero: carte, p_naissance: naissance });
+    if (error) { msg.textContent = "Ça n'a pas marché, réessaie dans un instant."; return; }
+    if (data?.statut === 'reconnu') { window.closePendingPopup(); afficherAdherentReconnu(); return; }
+    msg.textContent = data?.statut === 'trop_essais'
+      ? "Trop d'essais pour aujourd'hui. Passe au comptoir : l'équipe retrouvera ton adhésion."
+      : "On ne retrouve pas cette carte. Vérifie les informations, ou passe au comptoir.";
+  };
+
   function escapeHtmlHours(str) {
     return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
@@ -1379,6 +1414,16 @@
       await setupOnboarding(currentUser.id);
     }
 
+    // Reprise des adhérents (05/11/2026) : reconnu par son e-mail confirmé, sinon proposition du numéro de carte.
+    if (profileLoaded && profile.account_type !== 'libre' && profile.registration_status !== 'valide') {
+      const { data: reprise } = await supabase.rpc('reconnaitre_adherent'); // sans le SQL : data vide, rien ne change
+      if (reprise?.statut === 'reconnu') {
+        profile.registration_status = 'valide';
+        afficherAdherentReconnu();
+      } else if (reprise?.fichier) {
+        document.getElementById('adherent-bloc').classList.remove('hidden');
+      }
+    }
     if (profileLoaded && profile.account_type !== 'libre' && profile.registration_status !== 'valide' && !sessionStorage.getItem('bligo_prereg_popup_shown')) {
       sessionStorage.setItem('bligo_prereg_popup_shown', '1');
       const popup = document.getElementById('pending-popup-backdrop');

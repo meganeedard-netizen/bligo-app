@@ -227,6 +227,10 @@
         <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>
         Agenda culturel
       </button>
+      <button onclick="switchScreen('communication')" style="touch-action: manipulation;" class="agent-nav-btn" data-screen="communication">
+        <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4l11 5V5L4 10Z"/><path d="M15 9.5a3 3 0 0 1 0 5"/><path d="M7 15.5V19a1.5 1.5 0 0 0 3 0v-2.2"/></svg>
+        Communication
+      </button>
       <p class="bo-nav-group" id="nav-divider-pilotage">Pilotage</p>
 
       <button onclick="switchScreen('stats')" style="touch-action: manipulation;" class="agent-nav-btn" data-screen="stats">
@@ -1044,6 +1048,18 @@
         </div>
       </section>
 
+      <!-- COMMUNICATION (05/11/2026) : posts générés et supports de lancement -->
+      <section id="screen-communication" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Communication</h2>
+        <p class="text-sm text-ink/55 mb-4">Tes supports pour faire connaître la médiathèque, à ton nom et à ton logo. Tu enregistres l'image, tu copies la légende et tu publies sur tes réseaux.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+          <button type="button" id="com-onglet-posts" onclick="ongletCommunication('posts')" class="bg-brand text-white rounded-lg px-4 py-2 text-sm font-semibold">Posts à publier</button>
+          <button type="button" id="com-onglet-supports" onclick="ongletCommunication('supports')" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2 text-sm font-semibold">Kit de lancement</button>
+        </div>
+        <div id="com-posts"></div>
+        <div id="com-supports" class="hidden"></div>
+      </section>
+
       <!-- TENDANCES -->
       <section id="screen-stats" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Tendances</h2>
@@ -1371,6 +1387,18 @@
           <div data-settings-pane="donnees" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
             <h3 class="text-base font-bold text-ink mb-1">Données de la médiathèque</h3>
             <p class="text-sm text-ink/55 mb-5">Tes données t'appartiennent : tu peux les récupérer à tout moment, par exemple pour les archiver ou changer de logiciel.</p>
+            <!-- Reprise des adhérents (05/11/2026) -->
+            <div class="border border-[#E5E7EB] rounded-xl p-4 mb-3">
+              <p class="text-sm font-bold text-ink">Importer mes adhérents</p>
+              <p class="text-xs text-ink/55 mt-0.5 mb-3">Un fichier CSV avec au moins une colonne Nom. Ajoute si possible : numéro de carte, e-mail, date de naissance, catégorie et fin d'adhésion. Tes adhérents n'auront pas à rapporter de justificatif : ils seront reconnus quand ils créeront leur compte.</p>
+              <input type="file" id="adherents-fichier" accept=".csv,.txt,text/csv" onchange="analyserFichierAdherents(this)" class="text-sm w-full mb-2">
+              <div id="adherents-apercu" class="text-xs text-ink/70"></div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+                <button type="button" id="adherents-importer" onclick="importerFichierAdherents()" class="hidden bg-brand text-white rounded-lg px-3 py-2 text-sm font-semibold">Importer</button>
+                <button type="button" onclick="supprimerAdherentsNonRattaches()" class="border border-brand/20 text-ink bg-white rounded-lg px-3 py-2 text-sm font-semibold">Retirer ceux qui n'ont pas créé de compte</button>
+              </div>
+              <p id="adherents-etat" class="text-xs text-ink/60 mt-2"></p>
+            </div>
             <div class="border border-[#E5E7EB] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <p class="text-sm font-bold text-ink">Catalogue complet</p>
@@ -2171,6 +2199,7 @@
     document.querySelectorAll('[data-settings-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.settingsPane !== tab));
     document.querySelectorAll('[data-settings-tab]').forEach(el => el.classList.toggle('is-active', el.dataset.settingsTab === tab));
     if (tab === 'donnees') window.loadRetention?.();
+    if (tab === 'donnees') window.etatAdherents?.();
   };
 
   window.switchScreen = function (screen) {
@@ -2185,6 +2214,7 @@
     // champ (utile avec une douchette qui tape dès qu'on la déclenche).
     if (screen === 'reservations') { awaitedOnly = false; switchPrTab('preparation'); refreshVisitorCount(); loadActiveLoans(); }
     if (screen === 'stats') switchStatsTab('emprunts');
+    if (screen === 'communication') window.ongletCommunication('posts');
     if (screen === 'sigb-stats') { initSigbStatsYearSelect(); loadUnpaidSummary(); }
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
     if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
@@ -8679,9 +8709,118 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <option value="famille" ${p.tariff_category === 'famille' ? 'selected' : ''}>Famille (compte partagé)</option>
         </select>
         <span class="sm:text-right">
+          <button onclick="rechercherAdherentComptoir('${p.id}', ${Number(p.commune_id) || 'null'}, '${escapeJsAttr(p.full_name)}')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[12px] font-semibold text-brand underline mb-1 sm:mr-2">Déjà adhérent ?</button>
           <button onclick="validateRegistration('${p.id}', '${escapeJsAttr(p.full_name)}')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">Valider l'inscription</button>
         </span>
+        <div id="adh-comptoir-${p.id}" class="sm:col-span-5"></div>
       </div>`).join('');
+  };
+
+  // Reprise des adhérents au comptoir (05/11/2026) : carte perdue, e-mail changé.
+  window.rechercherAdherentComptoir = async function (userId, communeId, nom) {
+    const zone = document.getElementById('adh-comptoir-' + userId);
+    if (zone.dataset.ouvert) { zone.innerHTML = ''; delete zone.dataset.ouvert; return; }
+    zone.dataset.ouvert = '1';
+    zone.innerHTML = `<div class="bg-mango-50 rounded-lg p-3 mt-2"><label class="text-[11px] font-semibold text-ink/60 block mb-1">Rechercher dans le fichier des adhérents (nom ou numéro de carte)</label><input class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white" value="${escapeHtml(nom)}" oninput="resultatsAdherentComptoir('${userId}', ${Number(communeId) || 'null'}, this.value)"><div id="adh-res-${userId}" class="mt-2 text-xs text-ink/70"></div></div>`;
+    await window.resultatsAdherentComptoir(userId, communeId, nom);
+  };
+  let adhRechercheN = 0;
+  window.resultatsAdherentComptoir = async function (userId, communeId, q) {
+    const res = document.getElementById('adh-res-' + userId), n = ++adhRechercheN;
+    if (!res) return;
+    if (String(q).trim().length < 2) { res.textContent = 'Tape au moins 2 lettres.'; return; }
+    const { data, error } = await supabase.rpc('chercher_adherent_importe', { p_commune_id: communeId || myCommuneId, p_recherche: q });
+    if (n !== adhRechercheN) return;
+    if (error) { res.textContent = 'Erreur : ' + frError(error); return; }
+    res.innerHTML = data?.length
+      ? data.map(a => `<div class="flex items-center justify-between gap-2 py-1.5 border-t border-mango-100"><span><b>${escapeHtml(a.nom_complet)}</b>${a.numero_carte ? ' · ' + escapeHtml(a.numero_carte) : ''}</span><button type="button" onclick="rattacherAdherentComptoir('${userId}', ${Number(a.id)}, '${escapeJsAttr(a.nom_complet)}')" class="bg-brand text-white rounded-lg px-3 py-1.5 text-xs font-semibold shrink-0">C'est cette personne</button></div>`).join('')
+      : "Personne dans le fichier avec ce nom. Si l'usager n'y figure pas, valide-le normalement avec ses justificatifs.";
+  };
+  window.rattacherAdherentComptoir = async function (userId, adherentId, nom) {
+    if (!confirm(`Rattacher ce compte à l'adhérent ${nom} ? Vérifie son identité avant de confirmer. Il gardera son numéro de carte et son adhésion, sans justificatif.`)) return;
+    const { error } = await supabase.rpc('rattacher_adherent_au_comptoir', { p_user_id: userId, p_adherent_id: adherentId });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    await loadPreregistrations();
+  };
+
+  // Import du fichier des adhérents (Réglages > Données et export).
+  let adherentsAnalyse = null;
+  window.analyserFichierAdherents = async function (input) {
+    const apercu = document.getElementById('adherents-apercu'), bouton = document.getElementById('adherents-importer');
+    adherentsAnalyse = null; bouton.classList.add('hidden'); apercu.textContent = '';
+    const f = input.files?.[0]; if (!f) return;
+    const octets = await f.arrayBuffer();
+    let texte = new TextDecoder('utf-8').decode(octets);
+    if (texte.includes('\uFFFD')) texte = new TextDecoder('windows-1252').decode(octets); // fichier Excel français
+    const { analyserCsv } = await import('./js/adherentsImport.js?v=20261105a');
+    const r = analyserCsv(texte);
+    const avec = k => r.lignes.filter(l => l[k]).length;
+    apercu.innerHTML = r.lignes.length
+      ? `<p><b>${r.lignes.length} adhérent(s) trouvé(s)</b> : ${avec('email')} avec e-mail, ${avec('numero_carte')} avec numéro de carte, ${avec('date_naissance')} avec date de naissance.</p>${r.erreurs.length ? `<p class="mt-1 text-hibiscus-700">${r.erreurs.slice(0, 5).map(escapeHtml).join('<br>')}${r.erreurs.length > 5 ? `<br>Et ${r.erreurs.length - 5} autre(s) point(s).` : ''}</p>` : ''}`
+      : `<p class="text-hibiscus-700">${r.erreurs.map(escapeHtml).join('<br>')}</p>`;
+    if (r.lignes.length) { adherentsAnalyse = r.lignes; bouton.classList.remove('hidden'); }
+  };
+  window.importerFichierAdherents = async function () {
+    if (!adherentsAnalyse) return;
+    if (!confirm(`Importer ${adherentsAnalyse.length} adhérent(s) ? Le précédent import est remplacé, sauf pour les comptes déjà créés.`)) return;
+    const etat = document.getElementById('adherents-etat');
+    etat.textContent = 'Import en cours…';
+    const { data, error } = await supabase.rpc('importer_adherents', { p_commune_id: myCommuneId, p_lignes: adherentsAnalyse });
+    if (error) { etat.textContent = 'Erreur : ' + frError(error); return; }
+    adherentsAnalyse = null;
+    document.getElementById('adherents-importer').classList.add('hidden');
+    document.getElementById('adherents-apercu').textContent = '';
+    document.getElementById('adherents-fichier').value = '';
+    await window.etatAdherents(`Import terminé : ${data.importes} adhérent(s)${data.ignores ? `, ${data.ignores} numéro(s) de carte déjà utilisé(s) ignoré(s)` : ''}.`);
+  };
+  window.etatAdherents = async function (prefixe = '') {
+    const etat = document.getElementById('adherents-etat'); if (!etat || !myCommuneId) return;
+    const [{ count: total, error }, { count: libres }] = await Promise.all([
+      supabase.from('adherents_importes').select('id', { count: 'exact', head: true }).eq('commune_id', myCommuneId),
+      supabase.from('adherents_importes').select('id', { count: 'exact', head: true }).eq('commune_id', myCommuneId).is('rattache_a', null),
+    ]);
+    if (error) { etat.textContent = prefixe; return; }
+    etat.textContent = `${prefixe ? prefixe + ' ' : ''}${total ? `${total - libres} adhérent(s) sur ${total} ont créé leur compte.` : 'Aucun fichier importé pour le moment.'}`;
+  };
+  window.supprimerAdherentsNonRattaches = async function () {
+    if (!confirm("Retirer du fichier les adhérents qui n'ont pas encore créé de compte ? À faire une fois la reprise terminée.")) return;
+    const { data, error } = await supabase.rpc('supprimer_adherents_non_rattaches', { p_commune_id: myCommuneId });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    await window.etatAdherents(`${data} ligne(s) retirée(s).`);
+  };
+
+  // Écran Communication (05/11/2026).
+  const comOuvert = { posts: false, supports: false };
+  function comTelecharger(blob, nom) {
+    if (window.Capacitor?.isNativePlatform?.()) {
+      const natif = window.Capacitor?.Plugins?.BligoPartage, fichier = new File([blob], nom, { type: blob.type });
+      if (natif && blob.type.startsWith('image/')) {
+        const r = new FileReader();
+        r.onload = () => natif.share({ title: nom, image: String(r.result).split(',')[1], fileName: nom });
+        r.readAsDataURL(blob);
+        return;
+      }
+      if (navigator.canShare?.({ files: [fichier] })) { navigator.share({ files: [fichier] }).catch(() => {}); return; }
+    }
+    downloadBlob(blob, nom);
+  }
+  window.ongletCommunication = async function (onglet) {
+    const actif = 'bg-brand text-white rounded-lg px-4 py-2 text-sm font-semibold', inactif = 'border border-brand/20 text-ink bg-white rounded-lg px-4 py-2 text-sm font-semibold';
+    document.getElementById('com-onglet-posts').className = onglet === 'posts' ? actif : inactif;
+    document.getElementById('com-onglet-supports').className = onglet === 'supports' ? actif : inactif;
+    document.getElementById('com-posts').classList.toggle('hidden', onglet !== 'posts');
+    document.getElementById('com-supports').classList.toggle('hidden', onglet !== 'supports');
+    if (!myCommuneId) { document.getElementById('com-' + onglet).innerHTML = '<p class="text-sm text-ink/55">Choisis d\'abord une médiathèque.</p>'; return; }
+    try {
+      if (onglet === 'posts') {
+        const { ouvrirCommunication } = await import('./js/communication.js?v=20261105b');
+        await ouvrirCommunication({ supabase, communeId: myCommuneId, telecharger: comTelecharger });
+      } else if (!comOuvert.supports) {
+        const { ouvrirSupports } = await import('./js/communicationSupports.js?v=20261105b');
+        await ouvrirSupports({ supabase, communeId: myCommuneId, telecharger: comTelecharger });
+        comOuvert.supports = true;
+      }
+    } catch (e) { console.error(e); document.getElementById('com-' + onglet).innerHTML = '<p class="text-sm text-hibiscus-700">Les supports n\'ont pas pu être préparés. Réessaie dans un instant.</p>'; }
   };
 
   window.validateRegistration = async function (id, name) {
