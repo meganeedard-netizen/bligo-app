@@ -8816,7 +8816,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         const { ouvrirCommunication } = await import('./js/communication.js?v=20261105b');
         await ouvrirCommunication({ supabase, communeId: myCommuneId, telecharger: comTelecharger });
       } else if (!comOuvert.supports) {
-        const { ouvrirSupports } = await import('./js/communicationSupports.js?v=20261105b');
+        const { ouvrirSupports } = await import('./js/communicationSupports.js?v=20261105c');
         await ouvrirSupports({ supabase, communeId: myCommuneId, telecharger: comTelecharger });
         comOuvert.supports = true;
       }

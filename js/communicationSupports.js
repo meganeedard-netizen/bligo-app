@@ -117,7 +117,7 @@ function bas(c, a, largeur, t, h, qs, qp, ql, f, fl, st, eco) {
   const y = t + (h - qs) / 2, x = ql + qs + ql * .7, col = eco ? INK : '#fff';
   codeQr(c, a, ql, y, qs, qp);
   texte(c, 'Votre médiathèque,\npartout avec vous !', x, y, { size: f, color: col, largeur: 2000, interligne: 1.08 });
-  texte(c, "Scannez pour télécharger BliGO, l'appli culturelle gratuite.", x, y + f * 2.3, { size: fl, weight: 600, font: 'Inter', color: col, largeur: largeur - x - 8, max: 1 });
+  texte(c, "Scannez pour télécharger BliGO, l'appli culturelle de votre médiathèque.", x, y + f * 2.3, { size: fl, weight: 600, font: 'Inter', color: col, largeur: largeur - x - 8, max: 1 });
   magasins(c, a, x, y + qs - st, st);
 }
 const FORMATS = {
@@ -249,17 +249,17 @@ function imprimerImages(urls, wmm, hmm) {
 
 export function legendePost(a, reseau) {
   const fin = reseau === 'fb' ? `👉 Téléchargez l'appli ici : ${LIEN}` : '👉 Le lien de téléchargement est dans notre bio !';
-  return `📚 Réservez depuis le canapé !\n\nAvec BliGO, l'appli culturelle gratuite de la Médiathèque Municipale ${deCommune(a.nom)}, vous pouvez :\n\n✅ réserver vos livres et autres documents : on vous prévient dès qu'ils sont prêts à retirer\n✅ vous inscrire aux événements culturels de la commune\n✅ avoir votre carte de médiathèque dématérialisée, toujours dans votre poche\n${a.dons ? `\n📦 ${PHRASE_DONS}\n` : ''}\n${fin}\n\nÀ très bientôt à la médiathèque !`;
+  return `📚 Réservez depuis le canapé !\n\nAvec BliGO, l'appli culturelle de la Médiathèque Municipale ${deCommune(a.nom)}, vous pouvez :\n\n✅ réserver vos livres et autres documents : on vous prévient dès qu'ils sont prêts à retirer\n✅ vous inscrire aux événements culturels de la commune\n✅ avoir votre carte de médiathèque dématérialisée, toujours dans votre poche\n${a.dons ? `\n📦 ${PHRASE_DONS}\n` : ''}\n${fin}\n\nÀ très bientôt à la médiathèque !`;
 }
 export function texteBulletin(a) {
-  return `Réservez depuis le canapé !\n\nLa Médiathèque Municipale ${deCommune(a.nom)} vous propose BliGO, une appli culturelle gratuite. Réservez vos livres et autres documents, puis retirez-les à la médiathèque dès qu'ils sont prêts. Découvrez les événements culturels de la commune et inscrivez-vous en quelques secondes. Votre carte de médiathèque reste aussi toujours dans votre poche.\n\nDéjà adhérent ? Créez votre compte avec l'e-mail connu de la médiathèque et réservez directement, sans justificatif.${a.dons ? `\n\n${PHRASE_DONS}` : ''}\n\nBliGO se télécharge gratuitement sur l'App Store et Google Play : ${LIEN}`;
+  return `Réservez depuis le canapé !\n\nLa Médiathèque Municipale ${deCommune(a.nom)} vous propose BliGO, une appli culturelle. Réservez vos livres et autres documents, puis retirez-les à la médiathèque dès qu'ils sont prêts. Découvrez les événements culturels de la commune et inscrivez-vous en quelques secondes. Votre carte de médiathèque reste aussi toujours dans votre poche.\n\nDéjà adhérent ? Créez votre compte avec l'e-mail connu de la médiathèque et réservez directement, sans justificatif.${a.dons ? `\n\n${PHRASE_DONS}` : ''}\n\nBliGO se télécharge sur l'App Store et Google Play : ${LIEN}`;
 }
 export function mailHtml(a) {
   const nom = `Médiathèque Municipale ${deCommune(a.nom)}`;
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Réservez depuis le canapé</title></head><body style="margin:0;padding:0;background:#F3EEE6"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3EEE6"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:14px;font-family:Arial,Helvetica,sans-serif;color:#083133">
 <tr><td style="padding:18px 28px">${a.logoUrl ? `<img src="${esc(a.logoUrl)}" width="56" alt="" style="display:block;margin-bottom:8px">` : ''}<b style="font-size:18px">${esc(nom)}</b></td></tr>
 <tr><td style="padding:10px 30px 6px;font:16px/1.55 Arial,sans-serif"><h1 style="margin:0 0 4px;font:bold 31px/1.12 Arial,sans-serif;color:#083133">Réservez depuis le canapé.</h1><p style="margin:0 0 18px;font:bold 18px/1.3 Arial,sans-serif;color:#F0295D">Vos livres et vos sorties culturelles.</p>
-<p style="margin:0 0 14px">Bonjour,</p><p style="margin:0 0 12px">Bonne nouvelle ! Avec <b>BliGO</b>, l'appli culturelle gratuite de votre Médiathèque Municipale, vous pouvez :</p>
+<p style="margin:0 0 14px">Bonjour,</p><p style="margin:0 0 12px">Bonne nouvelle ! Avec <b>BliGO</b>, l'appli culturelle de votre Médiathèque Municipale, vous pouvez :</p>
 <ul style="margin:0 0 16px;padding-left:22px"><li style="margin-bottom:6px">réserver vos livres et autres documents : on vous prévient dès qu'ils sont prêts à retirer ;</li><li style="margin-bottom:6px">vous inscrire aux événements culturels de votre commune ;</li><li>avoir votre carte de médiathèque dématérialisée, toujours dans votre poche.</li></ul>
 <p style="margin:0 0 16px">Téléchargez l'appli, choisissez votre médiathèque et créez votre compte. Passez ensuite nous voir avec une pièce d'identité et un justificatif de domicile pour valider votre inscription.</p>
 <p style="margin:0 0 22px;background:#FFF1DF;border-radius:8px;padding:12px 14px"><b>Déjà adhérent ?</b> Créez votre compte avec l'adresse e-mail connue de la médiathèque : vous réservez directement, sans justificatif à rapporter.</p>
