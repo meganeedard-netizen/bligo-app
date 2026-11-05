@@ -158,6 +158,8 @@
 
   let currentUser = null;
   let currentBadges = [];
+  // Dons de livres en option par médiathèque (05/11/2026).
+  let donationsEnabled = true;
 
   async function renderBadges(profile) {
     const xp = profile?.loyalty_points || 0;
@@ -166,7 +168,8 @@
     document.getElementById('points-unit').textContent = xp > 1 ? 'points' : 'point';
     document.getElementById('points-zero').classList.toggle('hidden', xp > 0);
 
-    currentBadges = badgesFor(profile);
+    // Sans dons, le badge n'apparaît plus, sauf s'il a déjà été gagné.
+    currentBadges = badgesFor(profile).filter(b => donationsEnabled || b.id !== 'badge_sp_02' || b.unlocked);
 
     const next = currentBadges.find(b => b.type === 'niveau' && !b.unlocked);
     if (next) {
@@ -225,7 +228,8 @@
     };
     const goalByCode = { vide_bibliotheque: 3, critique_litteraire: 3, marathon_10_livres: 10, evenement_culturel: 5 };
 
-    document.getElementById('defis-list').innerHTML = DEFIS.map(d => {
+    const defisVisibles = DEFIS.filter(d => donationsEnabled || d.code !== 'vide_bibliotheque' || completedCodes.has(d.code));
+    document.getElementById('defis-list').innerHTML = defisVisibles.map(d => {
       const done = completedCodes.has(d.code);
       const progress = Math.min(progressByCode[d.code], goalByCode[d.code]);
       const pct = Math.round((progress / goalByCode[d.code]) * 100);
@@ -263,8 +267,14 @@
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked')
+      .select('loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, commune_id')
       .eq('id', currentUser.id).single();
+
+    if (profile?.commune_id) {
+      // select('*') : donations_enabled n'existe qu'après dons_reglage_2026-11-05.sql.
+      const { data: commune } = await supabase.from('communes').select('*').eq('id', profile.commune_id).maybeSingle();
+      donationsEnabled = commune?.donations_enabled !== false;
+    }
 
     // Badges et défis chargés en même temps (23/10/2026).
     await Promise.all([renderBadges(profile), renderDefis(currentUser.id)]);
