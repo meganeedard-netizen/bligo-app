@@ -110,6 +110,10 @@
       <button onclick="switchScreen('top20')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="top20">
         Sélection BliGO
       </button>
+      <button onclick="switchScreen('reviews')" class="agent-nav-btn text-left px-3 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap flex items-center gap-2" data-screen="reviews">
+        Avis
+        <span class="ml-auto bg-white/15 text-[10px] px-1.5 py-0.5 rounded-full hidden" id="reviews-count">0</span>
+      </button>
     </nav>
 
     <div class="flex-1 min-w-0">
@@ -298,6 +302,17 @@
         <button onclick="saveTop20Admin()" class="bg-ink text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer la sélection</button>
       </section>
 
+      <!-- AVIS (09/11/2026) : modération réservée à Mégane, plus aux agents -->
+      <section id="screen-reviews" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Avis signalés (<span id="reviews-reported-count">0</span>)</h2>
+        <p class="text-sm text-ink/55 mb-4">Chaque commentaire est relu par l'IA avant publication : les avis injurieux, haineux, harcelants, prosélytes (religion, secte) ou politiques ne sont jamais publiés. Ici, les avis publiés qu'un lecteur a quand même signalés : garde-le s'il est correct, supprime-le sinon. Un auteur bloqué ne peut plus publier d'avis et ses avis existants sont effacés.</p>
+        <div id="reviews-reported-list" class="space-y-3 mb-8"></div>
+
+        <h2 class="text-lg font-bold text-ink mb-1">Refusés automatiquement (30 derniers jours)</h2>
+        <p class="text-sm text-ink/55 mb-4">Commentaires bloqués par l'IA ou le filtre de mots, jamais visibles dans l'appli. Rien à faire, sauf bloquer un auteur qui recommence.</p>
+        <div id="reviews-refused-list" class="space-y-3"></div>
+      </section>
+
     </div>
   </div>
 
@@ -360,7 +375,82 @@
     await loadMissingCovers();
     await loadCoverPhotos();
     await loadTop20Admin();
+    await loadReviewsAdmin();
   }
+
+  // ---------- Avis (09/11/2026) ----------
+  const REVIEW_REPORT_REASONS = { injurieux: 'Injurieux ou offensant', divulgacheur: 'Dévoile la fin', hors_sujet: 'Hors sujet', autre: 'Autre raison' };
+  const REFUS_LABELS = {
+    insulte_ou_grossierete: 'Insulte ou grossièreté', haine_ou_discrimination: 'Haine ou discrimination',
+    harcelement_ou_attaque_personnelle: 'Harcèlement', menace_ou_violence: 'Menace ou violence',
+    proselytisme_religieux_ou_sectaire: 'Prosélytisme religieux ou sectaire', propagande_politique_ou_extremiste: 'Propagande politique',
+    contenu_sexuel: 'Contenu sexuel', donnees_personnelles: 'Données personnelles', publicite_ou_spam: 'Publicité ou spam',
+    autre_contenu_interdit: 'Contenu interdit',
+  };
+
+  async function loadReviewsAdmin() {
+    const [reported, refused] = await Promise.all([supabase.rpc('reported_reviews'), supabase.rpc('refused_reviews')]);
+    const repList = document.getElementById('reviews-reported-list');
+    const refList = document.getElementById('reviews-refused-list');
+    if (reported.error) {
+      repList.innerHTML = `<p class="text-sm text-red-600">Impossible de charger les avis signalés : ${escapeHtml(frError(reported.error))}</p>`;
+    } else {
+      const rows = reported.data || [];
+      document.getElementById('reviews-reported-count').textContent = rows.length;
+      const badge = document.getElementById('reviews-count');
+      badge.textContent = rows.length;
+      badge.classList.toggle('hidden', !rows.length);
+      repList.innerHTML = rows.length ? rows.map(r => `
+        <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <p class="text-sm font-bold text-ink">${escapeHtml(r.book_title)}</p>
+              <p class="text-xs text-ink/50">${escapeHtml(r.commune_name || '')} · note ${r.rating}/5 · par ${escapeHtml(r.author_name || 'Usager')} · le ${new Date(r.review_created_at).toLocaleDateString('fr-FR')}</p>
+            </div>
+            <span class="shrink-0 text-[11px] font-bold bg-red-50 text-red-700 px-2 py-0.5 rounded-full">${r.report_count} signalement${r.report_count > 1 ? 's' : ''}</span>
+          </div>
+          <p class="text-sm text-ink/75 leading-relaxed bg-[#F6F5F9] rounded-lg px-3 py-2 mb-2">${r.comment ? escapeHtml(r.comment) : '<span class="text-ink/40">Note sans commentaire</span>'}</p>
+          <p class="text-xs text-ink/50 mb-3">Motif : ${(r.reasons || []).map(x => REVIEW_REPORT_REASONS[x] || escapeHtml(x)).join(', ')}</p>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="moderateReview(${r.review_id}, 'garder')" class="text-xs font-semibold border border-mango-200 text-ink px-3 py-1.5 rounded-full">Garder l'avis</button>
+            <button type="button" onclick="moderateReview(${r.review_id}, 'supprimer')" class="text-xs font-semibold bg-red-600 text-white px-3 py-1.5 rounded-full">Supprimer l'avis</button>
+            ${r.author_blocked ? '' : `<button type="button" onclick="blockReviewAuthor('${r.author_id}')" class="text-xs font-semibold text-red-700 px-3 py-1.5">Bloquer l'auteur</button>`}
+          </div>
+        </div>`).join('') : `<p class="text-sm text-ink/40 text-center py-6">Aucun avis signalé pour le moment.</p>`;
+    }
+    if (refused.error) {
+      refList.innerHTML = `<p class="text-sm text-red-600">Impossible de charger les avis refusés : ${escapeHtml(frError(refused.error))}</p>`;
+      return;
+    }
+    const refRows = refused.data || [];
+    refList.innerHTML = refRows.length ? refRows.map(r => `
+      <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div>
+            <p class="text-sm font-bold text-ink">${escapeHtml(r.book_title || 'Livre supprimé')}</p>
+            <p class="text-xs text-ink/50">par ${escapeHtml(r.author_name || 'Usager')} · le ${new Date(r.created_at).toLocaleDateString('fr-FR')}${r.refus_auteur > 1 ? ` · <span class="text-red-700 font-semibold">${r.refus_auteur} refus pour cet auteur</span>` : ''}</p>
+          </div>
+          <span class="shrink-0 text-[11px] font-bold bg-red-50 text-red-700 px-2 py-0.5 rounded-full">${escapeHtml(REFUS_LABELS[r.categorie] || r.categorie)}</span>
+        </div>
+        <p class="text-sm text-ink/75 leading-relaxed bg-[#F6F5F9] rounded-lg px-3 py-2 mb-2">${escapeHtml(r.comment)}</p>
+        ${r.raison ? `<p class="text-xs text-ink/50 mb-2">${escapeHtml(r.raison)}</p>` : ''}
+        ${r.author_blocked || !r.author_id ? (r.author_blocked ? '<p class="text-xs text-ink/40">Auteur bloqué</p>' : '') : `<button type="button" onclick="blockReviewAuthor('${r.author_id}')" class="text-xs font-semibold text-red-700 border border-red-200 px-3 py-1.5 rounded-full">Bloquer l'auteur</button>`}
+      </div>`).join('') : `<p class="text-sm text-ink/40 text-center py-6">Aucun avis refusé ces 30 derniers jours.</p>`;
+  }
+
+  window.moderateReview = async function (reviewId, action) {
+    if (action === 'supprimer' && !(await confirmDialog('Supprimer cet avis ? Il disparaîtra de l\'appli pour tous les usagers.'))) return;
+    const { error } = await supabase.rpc('moderate_review', { p_review_id: reviewId, p_action: action });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    loadReviewsAdmin();
+  };
+
+  window.blockReviewAuthor = async function (userId) {
+    if (!(await confirmDialog('Bloquer cet auteur ? Il ne pourra plus publier d\'avis et tous ses avis seront supprimés.'))) return;
+    const { error } = await supabase.rpc('set_review_author_blocked', { p_user_id: userId, p_blocked: true });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    loadReviewsAdmin();
+  };
 
   window.switchScreen = function (screen) {
     document.querySelectorAll('.agent-screen').forEach(el => el.classList.add('hidden'));
@@ -1064,6 +1154,7 @@
 
     alert('Sélection BliGO enregistrée.');
     await loadTop20Admin();
+    await loadReviewsAdmin();
   };
 
   window.logout = async function () {

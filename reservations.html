@@ -321,6 +321,9 @@
     if (error) { console.error(error); return; }
     myRatings = Object.fromEntries((data || []).map(r => [r.book_id, r.rating]));
     myComments = Object.fromEntries((data || []).map(r => [r.book_id, r.comment || '']));
+    // Commentaire en cours de vérification (09/11/2026) : l'usager retrouve son texte.
+    const { data: pending } = await supabase.from('book_review_pending').select('comment, book_reviews ( book_id )');
+    (pending || []).forEach(p => { if (p.book_reviews?.book_id) myComments[p.book_reviews.book_id] = p.comment; });
   }
 
   async function loadReservations() {
@@ -739,12 +742,24 @@
   window.saveHistoryComment = async function (bookId) {
     const textarea = document.getElementById(`history-comment-${bookId}`);
     const msg = document.getElementById(`history-comment-msg-${bookId}`);
-    const { error } = await supabase
+    const { data: saved, error } = await supabase
       .from('book_reviews')
-      .upsert({ book_id: bookId, user_id: currentUser.id, rating: myRatings[bookId], comment: textarea.value.trim() || null }, { onConflict: 'book_id,user_id' });
+      .upsert({ book_id: bookId, user_id: currentUser.id, rating: myRatings[bookId], comment: textarea.value.trim() || null }, { onConflict: 'book_id,user_id' })
+      .select('id')
+      .single();
     if (error) { msg.textContent = reviewErrorMessage(error); msg.className = 'text-[11px] text-red-600 ml-2'; return; }
     myComments[bookId] = textarea.value.trim();
-    msg.textContent = 'Enregistré ✓';
+    if (!textarea.value.trim()) { msg.textContent = 'Enregistré ✓'; msg.className = 'text-[11px] text-ink/40 ml-2'; return; }
+    // Chaque commentaire est relu automatiquement avant publication (09/11/2026).
+    msg.textContent = 'Vérification…';
+    msg.className = 'text-[11px] text-ink/40 ml-2';
+    const { data: verdict } = await supabase.functions.invoke('moderer-avis', { body: { review_id: saved.id } });
+    if (verdict?.statut === 'refuse') {
+      msg.textContent = verdict.message;
+      msg.className = 'text-[11px] text-red-600 ml-2';
+      return;
+    }
+    msg.textContent = verdict?.statut === 'publie' ? 'Publié ✓' : 'Enregistré, publié après vérification ✓';
     msg.className = 'text-[11px] text-ink/40 ml-2';
   };
 
