@@ -79,7 +79,9 @@ const SECTIONS = [
     ['C301', 'Surface utile nette totale (m²)', N, 'ta'],
     ['C309', 'Bâtiment accessible (loi du 11 février 2005)', ON, 'ta'],
   ] },
-  { titre: 'D1 - Livres imprimés (exemplaires)', lignes: [
+  { titre: 'D1 - Livres imprimés (exemplaires)', note: d => d._dons
+      ? `Dons de l'année : ${d._dons.n} don(s), ${d._dons.recus} document(s) apporté(s), ${d._dons.gardes} gardé(s) au catalogue, ${d._dons.ecartes} non retenu(s). D131 compte les livres gardés.`
+      : '', lignes: [
     ['D101', 'Fonds adulte', N, 'ta', fonds('livre', 'a', 0)],
     ['D116', 'Fonds jeunesse', N, 'ta', fonds('livre', 'j', 0)],
     ['D128', 'Fonds total', N, 'ta', fonds('livre', 't', 0)],
@@ -298,10 +300,13 @@ const SECTIONS = [
 
 // ---------- Données ----------
 async function charger(supabase, communeId, year) {
-  const [auto, saisies, commune] = await Promise.all([
+  const [auto, saisies, commune, dons] = await Promise.all([
     supabase.rpc('neoscrib_auto', { p_commune_id: communeId, p_year: year }),
     supabase.from('neoscrib_saisies').select('code, valeur').eq('commune_id', communeId).eq('annee', year),
     supabase.from('communes').select('opening_hours, tariff_mineur_cents, tariff_majeur_cents').eq('id', communeId).maybeSingle(),
+    // Sessions de don de l'année (13/11/2026) : apportés / gardés / non retenus.
+    supabase.from('donation_sessions').select('received_count, retained_count, rejected_count, closed_at')
+      .eq('commune_id', communeId).gte('started_at', `${year}-01-01`).lt('started_at', `${year + 1}-01-01`),
   ]);
   if (auto.error) throw auto.error;
   if (saisies.error) throw saisies.error;
@@ -309,6 +314,15 @@ async function charger(supabase, communeId, year) {
   d._horaires = horaires(commune.data?.opening_hours);
   const c = commune.data;
   if (c && c.tariff_mineur_cents != null) d._gratuit = (c.tariff_mineur_cents || 0) + (c.tariff_majeur_cents || 0) === 0 ? 'Oui' : 'Non';
+  if (!dons.error && dons.data?.length) {
+    const ds = dons.data;
+    d._dons = {
+      n: ds.length,
+      recus: ds.reduce((t, x) => t + (x.closed_at ? x.received_count || 0 : (x.retained_count || 0) + (x.rejected_count || 0)), 0),
+      gardes: ds.reduce((t, x) => t + (x.retained_count || 0), 0),
+      ecartes: ds.reduce((t, x) => t + (x.rejected_count || 0), 0),
+    };
+  }
   const s = {};
   (saisies.data || []).forEach(r => { s[r.code] = r.valeur; });
   return { d, s };

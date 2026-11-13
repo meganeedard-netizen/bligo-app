@@ -15,7 +15,7 @@ export const BADGES = [
   { id: 'badge_09', name: 'Maître des Pages', type: 'niveau', level: 9, threshold: 7500, img: 'img/badges/badge-9.png', message: "👑 Légendaire ! Badge Maître des Pages débloqué. Ton engagement inspire toute la communauté BliGO !" },
   { id: 'badge_10', name: 'Légende BliGO', type: 'niveau', level: 10, threshold: 10000, img: 'img/badges/badge-10.png', message: "🏆 Sommet atteint ! Bravo, tu es officiellement une Légende BliGO. La culture de ta commune te dit un grand MERCI !" },
   { id: 'badge_sp_01', name: 'Plume Locale', type: 'special', conditionText: '150 points BliGO sur la catégorie « Plume Locale »', img: 'img/badges/badge-special-1.png', message: "🌴 Bravo péyi ! Tu as débloqué le badge Plume Locale. Merci de faire rayonner les auteurs et la culture du territoire !" },
-  { id: 'badge_sp_02', name: 'Cœur Généreux', type: 'special', conditionText: '5 dons de livres validés au total', img: 'img/badges/badge-special-2.png', message: "💛 Un grand Cœur ! Tu as débloqué le badge Cœur Généreux. Grâce à tes dons, tu donnes une seconde vie aux livres !" },
+  { id: 'badge_sp_02', name: 'Cœur Généreux', type: 'special', conditionText: '5 livres donnés et gardés par ta médiathèque', img: 'img/badges/badge-special-2.png', message: "💛 Un grand Cœur ! Tu as débloqué le badge Cœur Généreux. Grâce à tes dons, tu donnes une seconde vie aux livres !" },
 ];
 
 // Badges d'un profil, avec unlocked selon le niveau et les badges spéciaux.

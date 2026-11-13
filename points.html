@@ -154,7 +154,7 @@
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { updateReservationBadge } from './js/navBadge.js?v=20261103b';
-  import { BADGES, badgesFor, takeNewBadges, openBadgeModal } from './js/badges.js?v=20261101a';
+  import { BADGES, badgesFor, takeNewBadges, openBadgeModal } from './js/badges.js?v=20261113c';
 
   let currentUser = null;
   let currentBadges = [];
@@ -199,16 +199,17 @@
   };
 
   const DEFIS = [
-    { code: 'vide_bibliotheque', name: 'Vide-Bibliothèque', description: '3 dons déposés dans l\'année', reward: 100 },
+    { code: 'vide_bibliotheque', name: 'Vide-Bibliothèque', description: '3 livres donnés et gardés par ta médiathèque dans l\'année', reward: 100 },
     { code: 'critique_litteraire', name: 'Critique Littéraire', description: '3 avis déposés sur des livres', reward: 50 },
     { code: 'marathon_10_livres', name: 'Marathon 10 Livres', description: '10 livres marqués comme lus', reward: 100 },
     { code: 'evenement_culturel', name: 'Événement Culturel', description: 'Présent à 5 événements culturels', reward: 80 },
   ];
 
   async function renderDefis(userId) {
-    const [{ data: completed }, { count: donations1y }, { count: reviewsCount }, { count: readCount }, { data: rsvpEvents }] = await Promise.all([
+    const [{ data: completed }, { data: dons1y }, { count: reviewsCount }, { count: readCount }, { data: rsvpEvents }] = await Promise.all([
       supabase.from('defis_completed').select('defi_code').eq('user_id', userId),
-      supabase.from('free_books').select('id', { count: 'exact', head: true }).eq('donated_by', userId).gte('created_at', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()),
+      // Dons gardés par la médiathèque dans l'année (sessions de don, 13/11/2026).
+      supabase.from('donations').select('copies').eq('donor_id', userId).gt('points_awarded', 0).gte('created_at', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()),
       supabase.from('book_reviews').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'recupere'),
       // Pas de vrai pointage de présence à l'entrée d'un événement : une
@@ -221,7 +222,7 @@
 
     const completedCodes = new Set((completed || []).map(d => d.defi_code));
     const progressByCode = {
-      vide_bibliotheque: donations1y || 0,
+      vide_bibliotheque: (dons1y || []).reduce((t, d) => t + (d.copies || 1), 0),
       critique_litteraire: reviewsCount || 0,
       marathon_10_livres: readCount || 0,
       evenement_culturel: eventsAttendedCount,

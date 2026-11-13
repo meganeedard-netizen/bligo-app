@@ -234,7 +234,7 @@
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
   import { updateReservationBadge } from './js/navBadge.js?v=20261103b';
   import { ensureEmailVerified } from './js/verifEmail.js?v=20261103b';
-  import { takeNewBadges, openBadgeModal } from './js/badges.js?v=20261101a';
+  import { takeNewBadges, openBadgeModal } from './js/badges.js?v=20261113c';
   import { showSnackbar, showDialog, confirmDialog, frError } from './js/ui.js?v=20261023';
 
   let currentUser = null;
@@ -1443,10 +1443,25 @@
     // fenêtre « Nouveau badge » avec Partager en story / Envoyer à un ami
     // (29/10/2026). Si une autre fenêtre est ouverte, ce sera pour la
     // prochaine visite : jamais deux fenêtres l'une sur l'autre.
-    if (profileLoaded) Promise.resolve(membershipCheck).then(() => {
+    if (profileLoaded) Promise.resolve(membershipCheck).then(async () => {
       const otherOpen = ['pending-popup-backdrop', 'membership-popup-backdrop', 'onboarding-modal-backdrop']
         .some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
       if (otherOpen) return;
+      // Don validé par la médiathèque (13/11/2026) : « Merci pour ton don,
+      // ta Médiathèque Municipale a gardé X documents, tu reçois Y points ».
+      // Affiché une fois, puis le badge éventuel juste après.
+      const { data: dons } = await supabase.from('notifications').select('id, message')
+        .eq('user_id', currentUser.id).eq('kind', 'don').eq('read', false)
+        .order('created_at', { ascending: false }).limit(5);
+      if (dons?.length) {
+        await supabase.from('notifications').update({ read: true }).in('id', dons.map(n => n.id));
+        const choix = await showDialog({
+          title: '💛 Merci pour ton don !',
+          message: dons[0].message.replace(/^💛\s*Merci pour ton don !\s*/u, ''),
+          buttons: [{ label: 'Voir mes points', value: 'points', primary: true }, { label: 'Fermer', value: null }],
+        });
+        if (choix === 'points') { window.location.href = 'points.html'; return; }
+      }
       const fresh = takeNewBadges(currentUser.id, profile);
       if (fresh.length) openBadgeModal(fresh[fresh.length - 1], { nouveau: true });
     });

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Back-office</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261113b">
+<link rel="stylesheet" href="css/bligo.css?v=20261113c">
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=20261023">
 <style>
@@ -498,9 +498,14 @@
         <div id="donor-session-bar" class="hidden mt-3 bg-hibiscus-50 border border-hibiscus-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
           <div>
             <p class="text-xs font-bold text-hibiscus-700 uppercase tracking-wide">Session de don en cours</p>
-            <p class="text-sm text-ink"><span id="donor-session-name" class="font-semibold"></span> · <span id="donor-session-count">0</span> livre(s) donné(s)</p>
+            <p class="text-sm text-ink"><span id="donor-session-name" class="font-semibold"></span> · <span id="donor-session-count">0</span> gardé(s) au catalogue · <span id="donor-session-rejected">0</span> non retenu(s)</p>
+            <p class="text-[11px] text-ink/50">Chaque document catalogué compte comme gardé. Un document que tu ne gardes pas : clique sur « Non retenu ».</p>
           </div>
-          <button type="button" onclick="endDonorSession()" class="text-xs font-semibold text-ink/50 border border-mango-100 rounded-full px-3 py-1.5 shrink-0">Terminer</button>
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button type="button" onclick="donorRejected(-1)" title="Annuler un non retenu" class="text-xs font-semibold text-ink/50 border border-mango-100 rounded-full w-8 h-8 bg-white">−</button>
+            <button type="button" onclick="donorRejected(1)" style="touch-action: manipulation;" class="text-xs font-semibold text-hibiscus-700 border border-hibiscus-200 bg-white rounded-full px-3 py-1.5">Non retenu</button>
+            <button type="button" onclick="openDonorCloseModal()" style="touch-action: manipulation;" class="text-xs font-semibold text-white bg-brand rounded-full px-3 py-1.5">Terminer le don</button>
+          </div>
         </div>
 
         <!-- Scan / catalogage d'un nouveau livre -->
@@ -647,7 +652,7 @@
           <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
             <button onclick="closeInscritScanModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
             <p class="text-base font-bold text-ink mb-1">Don de livre : scanne la carte de l'inscrit</p>
-            <p class="text-xs text-ink/55 mb-4">Pour créditer ses points de fidélité sur les documents donnés à la suite.</p>
+            <p class="text-xs text-ink/55 mb-4">Il recevra ses points de fidélité et un message de remerciement à la fin du don.</p>
 
             <div id="donor-camera-slot" class="mb-2"></div>
             <button type="button" id="donor-session-start-btn" onclick="toggleCamera('donor')" style="touch-action: manipulation;"
@@ -667,7 +672,47 @@
               class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300">
             <div id="inscrit-scan-results" class="flex flex-col gap-1.5 max-h-52 overflow-y-auto"></div>
 
-            <p class="text-[11px] text-ink/45 mt-3">Pas de carte, pas de compte, ou pas rattaché à une commune ? Tu peux fermer cette fenêtre et cataloguer directement - le don ne sera juste pas crédité en points de fidélité.</p>
+            <div class="flex items-center gap-2 my-3">
+              <div class="flex-1 h-px bg-mango-100"></div>
+              <span class="text-[10px] font-semibold text-ink/35 uppercase">pas de compte</span>
+              <div class="flex-1 h-px bg-mango-100"></div>
+            </div>
+            <input id="donor-anon-label" type="text" autocomplete="off" placeholder="Qui donne ? (facultatif : école, association…)"
+              style="font-size: 16px;"
+              class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300">
+            <button type="button" onclick="startAnonymousDonorSession()" style="touch-action: manipulation;" class="w-full border border-brand/20 bg-white text-ink rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Don sans compte</button>
+            <p class="text-[11px] text-ink/45 mt-3">Sans compte, le don est bien compté dans les statistiques, mais personne ne reçoit de points de fidélité.</p>
+          </div>
+        </div>
+
+        <!-- Fin de la session de don (13/11/2026) : nombre de documents
+             apportés, gardés, non retenus, et ce que deviennent les non retenus. -->
+        <div id="donor-close-backdrop" onclick="closeDonorCloseModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+            <button onclick="closeDonorCloseModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+            <p class="text-base font-bold text-ink mb-1">Terminer le don</p>
+            <p id="donor-close-name" class="text-xs text-ink/55 mb-4"></p>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Nombre de documents apportés</label>
+            <input id="donor-close-received" type="number" min="0" inputmode="numeric" oninput="renderDonorCloseRecap()"
+              style="font-size: 16px;"
+              class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-1 outline-none focus:ring-2 focus:ring-mango-300">
+            <p class="text-[11px] text-ink/45 mb-3">Compte tout ce qui a été apporté, même ce que tu n'as pas gardé.</p>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              <div class="bg-mango-50 rounded-lg px-3 py-2"><p class="text-[11px] text-ink/50">Gardés au catalogue</p><p id="donor-close-retained" class="text-lg font-bold text-ink">0</p></div>
+              <div class="bg-hibiscus-50 rounded-lg px-3 py-2"><p class="text-[11px] text-ink/50">Non retenus</p><p id="donor-close-rejected" class="text-lg font-bold text-ink">0</p></div>
+            </div>
+            <div id="donor-close-dest-wrap" class="hidden">
+              <label class="text-xs font-semibold text-ink/60 block mb-1">Les non retenus</label>
+              <select id="donor-close-dest" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+                <option value="rendu">Rendus au donateur</option>
+                <option value="don">Donnés (boîte à livres, association…)</option>
+                <option value="vente">Gardés pour une vente</option>
+                <option value="recyclage">Recyclés</option>
+                <option value="autre">Autre</option>
+              </select>
+            </div>
+            <p id="donor-close-points" class="text-xs text-ink/60 mb-4"></p>
+            <button type="button" id="donor-close-submit" onclick="submitDonorClose()" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Valider le don</button>
           </div>
         </div>
       </section>
@@ -1649,7 +1694,7 @@
   let books = [];
   let reservations = [];
   let zxingReaders = {};
-  let donorSession = null; // { id, full_name, count }
+  let donorSession = null; // { sessionId, id (donateur ou null), full_name, count, rejected }
   window.depotBdSession = false; // catalogage d'un dépôt de la BD (Néoscrib)
   let statsScope = 'commune';
   let myCommuneId = null;
@@ -2065,6 +2110,7 @@
       // Requête à part : tant que le SQL des dons n'est pas lancé, rien ne casse.
       const { data: dons } = await supabase.from('communes').select('donations_enabled').eq('id', myCommuneId).maybeSingle();
       applyDonationsSetting(dons?.donations_enabled !== false);
+      if (dons?.donations_enabled !== false) restoreDonorSession();
       if (commune?.name) {
         document.getElementById('header-commune-name').textContent = `Médiathèque de ${commune.name}`;
         document.getElementById('sidebar-commune-name').textContent = `Médiathèque de ${commune.name}`;
@@ -2847,10 +2893,33 @@
   }
 
   // ---------- Session de don ----------
-  // L'agent scanne d'abord la carte de l'inscrit (s'il en a une) pour ouvrir
-  // une session depuis le bouton « Scanner la carte de l'inscrit », puis
-  // catalogue les documents donnés à la suite : chacun crédite automatiquement
-  // des points de fidélité, sans ressaisie.
+  // L'agent scanne d'abord la carte de l'inscrit (ou ouvre un don sans
+  // compte), puis catalogue les documents donnés à la suite : chacun compte
+  // comme gardé. « Non retenu » compte ce qui est écarté. À la fin, l'agent
+  // confirme le nombre de documents apportés : le donateur reçoit alors ses
+  // points (10 par document gardé), une notification et un e-mail de
+  // remerciement (13/11/2026, sql/dons_sessions_2026-11-13.sql). La session
+  // est enregistrée : elle survit à un rechargement du logiciel.
+
+  async function openDonationSession(donorId, fullName, label) {
+    const { data, error } = await supabase.rpc('donation_session_start', { p_donor_id: donorId, p_donor_label: label || null });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    donorSession = { sessionId: data.id, id: donorId, full_name: fullName || data.donor_label, count: 0, rejected: 0 };
+    renderDonorSession();
+    closeInscritScanModal();
+  }
+
+  async function restoreDonorSession() {
+    const { data, error } = await supabase.rpc('donation_session_current');
+    if (error || !data) return;
+    donorSession = { sessionId: data.id, id: data.donor_id, full_name: data.donor_name, count: data.retained_count || 0, rejected: data.rejected_count || 0 };
+    renderDonorSession();
+  }
+
+  window.startAnonymousDonorSession = function () {
+    const label = document.getElementById('donor-anon-label').value.trim();
+    openDonationSession(null, label || 'Don sans compte', label);
+  };
 
   async function startDonorSession(code) {
     const { data: profile, error } = await supabase
@@ -2862,14 +2931,13 @@
       alert(`Aucun usager trouvé pour « ${code} ».`);
       return;
     }
-    donorSession = { id: profile.id, full_name: profile.full_name, count: 0 };
-    renderDonorSession();
-    closeInscritScanModal();
+    await openDonationSession(profile.id, profile.full_name);
   }
 
   window.openInscritScanModal = function () {
     document.getElementById('inscrit-scan-search').value = '';
     document.getElementById('inscrit-scan-results').innerHTML = '';
+    document.getElementById('donor-anon-label').value = '';
     document.getElementById('inscrit-scan-backdrop').classList.remove('hidden');
     document.getElementById('inscrit-scan-backdrop').classList.add('flex');
   };
@@ -2905,14 +2973,84 @@
   window.selectDonorProfile = function (id) {
     const profile = inscritsList.find(p => p.id === id);
     if (!profile) return;
-    donorSession = { id: profile.id, full_name: profile.full_name, count: 0 };
-    renderDonorSession();
-    closeInscritScanModal();
+    openDonationSession(profile.id, profile.full_name);
   };
 
+  // Réglage « dons désactivés » : on quitte la session à l'écran ; elle sera
+  // clôturée côté serveur (au bout de 12 h, ou au prochain don de l'agent).
   window.endDonorSession = function () {
     donorSession = null;
     renderDonorSession();
+  };
+
+  window.donorRejected = async function (delta) {
+    if (!donorSession) return;
+    if (delta < 0 && !donorSession.rejected) return;
+    const { data, error } = await supabase.rpc('donation_add_rejected', { p_session_id: donorSession.sessionId, p_delta: delta });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    donorSession.rejected = data.rejected_count;
+    donorSession.count = data.retained_count;
+    renderDonorSession();
+  };
+
+  window.openDonorCloseModal = function () {
+    if (!donorSession) return;
+    document.getElementById('donor-close-name').textContent = donorSession.id
+      ? `Don de ${donorSession.full_name}`
+      : `${donorSession.full_name} (sans compte, pas de points)`;
+    document.getElementById('donor-close-received').value = donorSession.count + donorSession.rejected;
+    document.getElementById('donor-close-dest').value = 'rendu';
+    renderDonorCloseRecap();
+    const bd = document.getElementById('donor-close-backdrop');
+    bd.classList.remove('hidden'); bd.classList.add('flex');
+  };
+
+  window.closeDonorCloseModal = function (event) {
+    if (event && event.target.id !== 'donor-close-backdrop') return;
+    const bd = document.getElementById('donor-close-backdrop');
+    bd.classList.add('hidden'); bd.classList.remove('flex');
+  };
+
+  function donorCloseReceived() {
+    const n = parseInt(document.getElementById('donor-close-received').value, 10);
+    return Math.max(Number.isFinite(n) ? n : 0, donorSession?.count || 0);
+  }
+
+  window.renderDonorCloseRecap = function () {
+    if (!donorSession) return;
+    const received = donorCloseReceived();
+    const rejected = received - donorSession.count;
+    document.getElementById('donor-close-retained').textContent = donorSession.count;
+    document.getElementById('donor-close-rejected').textContent = rejected;
+    document.getElementById('donor-close-dest-wrap').classList.toggle('hidden', rejected <= 0);
+    document.getElementById('donor-close-points').textContent = !donorSession.id
+      ? 'Don sans compte : compté dans les statistiques, sans points.'
+      : (donorSession.count
+        ? `${donorSession.full_name} va recevoir ${donorSession.count * 10} points et un message de remerciement.`
+        : `${donorSession.full_name} va recevoir un message de remerciement (pas de points : aucun document gardé).`);
+  };
+
+  window.submitDonorClose = async function () {
+    if (!donorSession) return;
+    const btn = document.getElementById('donor-close-submit');
+    btn.disabled = true;
+    const received = donorCloseReceived();
+    const { data, error } = await supabase.rpc('donation_session_close', {
+      p_session_id: donorSession.sessionId,
+      p_received: received,
+      p_destination: received > donorSession.count ? document.getElementById('donor-close-dest').value : null,
+    });
+    btn.disabled = false;
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    const name = donorSession.full_name;
+    const hasAccount = !!donorSession.id;
+    donorSession = null;
+    renderDonorSession();
+    window.closeDonorCloseModal();
+    const badges = (data?.badges || []);
+    alert(`Don enregistré : ${data.retained_count} gardé(s) sur ${data.received_count}.`
+      + (hasAccount && data.received_count ? `\n${name} reçoit ${data.points_total || 0} points et un message de remerciement.` : '')
+      + (badges.length ? `\nNouveau badge : ${badges.join(', ')}.` : ''));
   };
 
   function renderDonorSession() {
@@ -2921,18 +3059,21 @@
     if (donorSession) {
       document.getElementById('donor-session-name').textContent = donorSession.full_name;
       document.getElementById('donor-session-count').textContent = donorSession.count;
+      document.getElementById('donor-session-rejected').textContent = donorSession.rejected || 0;
     }
   }
 
-  async function maybeRecordDonation(bookId, freeBookId) {
+  // Document catalogué pendant la session = gardé (avec ses exemplaires).
+  async function maybeRecordDonation(bookId, copies = 1) {
     if (!donorSession) return;
-    const { error } = await supabase.rpc('record_donation', {
-      p_donor_id: donorSession.id,
+    const { data, error } = await supabase.rpc('donation_add_retained', {
+      p_session_id: donorSession.sessionId,
       p_book_id: bookId,
-      p_free_book_id: freeBookId,
+      p_copies: Math.max(1, copies || 1),
     });
-    if (error) { console.error(error); return; }
-    donorSession.count += 1;
+    if (error) { console.error(error); alert('Le document est catalogué, mais le don n\'a pas pu être compté : ' + frError(error)); return; }
+    donorSession.count = data.retained_count;
+    donorSession.rejected = data.rejected_count;
     renderDonorSession();
   }
 
@@ -3601,7 +3742,7 @@
         index += 1;
         await createCopyForBook(book, book.shelf_location, !!donorSession, index);
       }
-      if (donorSession) await maybeRecordDonation(book.id, null);
+      if (donorSession) await maybeRecordDonation(book.id, count);
       await loadBooks();
       window.removeDraft(localId);
       return;
@@ -3639,7 +3780,7 @@
     draft.meta.onSiteOnly = document.getElementById('batch-onsite-only')?.checked || !!draft.onSiteOnly;
 
     const inserted = await insertBook(draft.meta);
-    if (inserted) await maybeRecordDonation(inserted.id, null);
+    if (inserted) await maybeRecordDonation(inserted.id, draft.meta.copyCount);
     if (inserted && draft.issn && documentTypeKind(draft.format) === 'periodique') {
       supabase.rpc('receive_issue_by_issn', { p_issn: draft.issn, p_issue: parseIssueNumber(draft.issue) || null }).then(() => {});
     }
@@ -3673,7 +3814,7 @@
       players: (draft.players || '').trim() || null,
       play_duration: (draft.play_duration || '').trim() || null,
       age_range: (draft.age_range || '').trim() || null });
-    if (inserted) await maybeRecordDonation(inserted.id, null);
+    if (inserted) await maybeRecordDonation(inserted.id, 1);
     window.removeDraft(localId);
   };
 
@@ -10048,7 +10189,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // Rapport annuel Néoscrib (13/11/2026) : remplace l'ancien tableau de
   // 15 indicateurs (dont plusieurs codes faux) par le formulaire 2026 complet,
   // voir js/neoscrib.js et sql/add_neoscrib_rapport_annuel.sql.
-  const neoscribModule = () => import('./js/neoscrib.js?v=20261113b');
+  const neoscribModule = () => import('./js/neoscrib.js?v=20261113c');
 
   window.loadSigbStats = async function () {
     const year = Number(document.getElementById('sigb-stats-year').value);
