@@ -148,16 +148,25 @@ begin
     'C201', 'Oui',
     'C202', (select count(*) from public.books b
               where b.commune_id = p_commune_id and coalesce(b.archived, false) = false
+                and b.created_at < v_ref
                 and exists (select 1 from public.book_copies bc where bc.book_id = b.id and bc.owner_commune_id = p_commune_id)),
     'C206', 'BliGO',
     -- E1 Usagers
-    'E101', (select count(*) from public.profiles p
-              where p.commune_id = p_commune_id and coalesce(p.role, 'usager') = 'usager'
-                and p.commune_confirmed = true and p.created_at < v_ref
-                and (p.membership_expires_at is null or p.membership_expires_at >= v_start))
-            + (select count(*) from public.adherents_importes a
-              where a.commune_id = p_commune_id and a.rattache_a is null and a.importe_le < v_ref
-                and (a.adhesion_jusqu_au is null or a.adhesion_jusqu_au >= v_start)),
+    -- Inscrits actifs = usagers rattachés et à jour d'adhésion, adhérents
+    -- importés pas encore sur l'appli, et toute personne qui a emprunté dans
+    -- l'année (un emprunteur actif est forcément un inscrit actif).
+    'E101', (select count(*) from (
+               select p.id::text as k from public.profiles p
+                where p.commune_id = p_commune_id and coalesce(p.role, 'usager') = 'usager'
+                  and p.commune_confirmed = true and p.created_at < v_ref
+                  and (p.membership_expires_at is null or p.membership_expires_at >= v_start)
+               union
+               select 'adh' || a.id::text from public.adherents_importes a
+                where a.commune_id = p_commune_id and a.rattache_a is null and a.importe_le < v_ref
+                  and (a.adhesion_jusqu_au is null or a.adhesion_jusqu_au >= v_start)
+               union
+               select emprunteur from _neo_pr where emprunteur not like 'anon%'
+             ) t),
     'E102', (select count(*) from public.profiles p
               where p.commune_id = p_commune_id and coalesce(p.role, 'usager') = 'usager'
                 and p.commune_confirmed = true
