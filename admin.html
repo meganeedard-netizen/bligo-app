@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Back-office</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261103a">
+<link rel="stylesheet" href="css/bligo.css?v=20261113a">
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=20261023">
 <style>
@@ -1407,6 +1407,22 @@
               <label class="flex items-center gap-2 mt-3 text-xs text-ink/70"><input type="checkbox" id="export-history-names" class="accent-[#F7901E]"> Historique avec le nom des usagers (sinon : documents et dates seulement, pour les statistiques)</label>
               <p id="export-people-status" class="text-xs text-ink/60 mt-2"></p>
             </div>
+            <div class="border border-[#E5E7EB] rounded-xl p-4 mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p class="text-sm font-bold text-ink">Impayés</p>
+                <p class="text-xs text-ink/55 mt-0.5">Documents perdus ou abîmés pas encore réglés, pour la régie ou un titre de recette.</p>
+              </div>
+              <button onclick="exportUnpaidDebts()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-3 py-2 text-sm font-semibold active:scale-[0.98] transition shrink-0">Exporter les impayés</button>
+            </div>
+            <div class="border border-[#E5E7EB] rounded-xl p-4 mt-3">
+              <p class="text-sm font-bold text-ink">Statistiques de l'année</p>
+              <p class="text-xs text-ink/55 mt-0.5 mb-3">Le rapport annuel Néoscrib (codes officiels), les prêts mois par mois et, pour l'année en cours, les 20 documents les plus empruntés.</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <select id="export-stats-year" class="border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white"></select>
+                <button onclick="exportStatsCsv()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-3 py-2 text-sm font-semibold active:scale-[0.98] transition">Exporter les statistiques</button>
+              </div>
+              <p id="export-stats-status" class="text-xs text-ink/60 mt-2"></p>
+            </div>
             <div class="border border-[#E5E7EB] rounded-xl p-4 mt-3">
               <p class="text-sm font-bold text-ink">Durée de conservation de l'historique des prêts</p>
               <p class="text-xs text-ink/55 mt-0.5 mb-3">Après ce délai, compté à partir du retour du document, le prêt est anonymisé : BliGO garde le document et les dates pour les statistiques, mais efface le lien avec l'usager. Les prêts en cours ne sont jamais touchés. Durée à fixer avec ton délégué à la protection des données (DPO).</p>
@@ -1454,9 +1470,17 @@
           </div>
           <button onclick="exportUnpaidDebts()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition shrink-0">Télécharger la liste (Excel)</button>
         </div>
-        <div class="flex items-center gap-2 mb-4">
+        <!-- Rapport annuel Néoscrib (13/11/2026) : codes officiels 2026, calcul auto + saisie du reste. -->
+        <p class="text-sm font-bold text-ink mb-1">Rapport annuel Néoscrib</p>
+        <p class="text-xs text-ink/55 mb-3 max-w-3xl">L'enquête annuelle du ministère de la Culture, relayée par ta bibliothèque départementale. Demande-lui quel rapport ta médiathèque doit remplir.</p>
+        <div class="flex flex-wrap items-center gap-2 mb-4">
           <label class="text-xs font-semibold text-ink/60">Année</label>
           <select id="sigb-stats-year" onchange="loadSigbStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white"></select>
+          <select id="sigb-stats-report" onchange="loadSigbStats()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white">
+            <option value="ta">Rapport très abrégé</option>
+            <option value="b">Rapport basique</option>
+          </select>
+          <button onclick="exportNeoscribCsv()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-full px-3 py-1.5 text-xs font-semibold active:scale-[0.98] transition">Télécharger (Excel)</button>
         </div>
         <div id="sigb-stats-content" class="flex flex-col gap-5"></div>
       </section>
@@ -2187,8 +2211,7 @@
   window.showSettingsTab = function (tab) {
     document.querySelectorAll('[data-settings-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.settingsPane !== tab));
     document.querySelectorAll('[data-settings-tab]').forEach(el => el.classList.toggle('is-active', el.dataset.settingsTab === tab));
-    if (tab === 'donnees') window.loadRetention?.();
-    if (tab === 'donnees') window.etatAdherents?.();
+    if (tab === 'donnees') { window.loadRetention?.(); window.fillStatsYears?.(); window.etatAdherents?.(); }
   };
 
   window.switchScreen = function (screen) {
@@ -6791,6 +6814,46 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     status.textContent = `Export terminé : ${data.length} prêt(s).`;
   };
 
+  // Statistiques (03/11/2026) : mêmes chiffres que l'écran Statistiques SIGB,
+  // plus les prêts par mois et le top 20, en un seul fichier Excel.
+  window.fillStatsYears = function () {
+    const sel = document.getElementById('export-stats-year');
+    if (!sel || sel.options.length) return;
+    const y = new Date().getFullYear();
+    sel.innerHTML = [y, y - 1, y - 2].map(v => `<option value="${v}">${v}</option>`).join('');
+  };
+
+  window.exportStatsCsv = async function () {
+    const status = document.getElementById('export-stats-status');
+    const year = Number(document.getElementById('export-stats-year').value);
+    const isCurrent = year === new Date().getFullYear();
+    status.textContent = 'Calcul en cours…';
+    const start = new Date(year, 0, 1).toISOString();
+    // Un comptage par mois (count + head) : l'API limite les lignes renvoyées.
+    const monthCounts = Array.from({ length: 12 }, (_, m) => supabase.from('loans')
+      .select('id', { count: 'exact', head: true }).eq('borrowed_at_commune_id', myCommuneId)
+      .gte('borrowed_at', new Date(year, m, 1).toISOString()).lt('borrowed_at', new Date(year, m + 1, 1).toISOString()));
+    const { lignesNeoscrib } = await neoscribModule();
+    let neoRows;
+    try { neoRows = await lignesNeoscrib({ supabase, communeId: myCommuneId, year, rapport: 'b' }); }
+    catch (e) { status.textContent = 'Erreur : ' + frError(e); return; }
+    const [top, ...perMonthRes] = await Promise.all([
+      isCurrent ? supabase.rpc('stats_top_books', { p_scope: 'commune', p_since: start, p_limit: 20 }) : Promise.resolve({ data: [] }),
+      ...monthCounts,
+    ]);
+    const rows = neoRows;
+    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const perMonth = perMonthRes.map(r => r.count ?? 'NC');
+    rows.push(['', '', ''], ['Prêts par mois', '', '']);
+    months.forEach((m, i) => rows.push([m, perMonth[i], '']));
+    if (isCurrent && top?.data?.length) {
+      rows.push(['', '', ''], [`Les 20 documents les plus empruntés depuis le 1er janvier ${year}`, 'Prêts', 'Auteur']);
+      top.data.forEach((b, i) => rows.push([`${i + 1}. ${b.title}`, b.loan_count, b.author]));
+    }
+    downloadBlob(new Blob([peopleCsv(rows)], { type: 'text/csv;charset=utf-8' }), `${exportFileBase()}-statistiques-${year}.csv`);
+    status.textContent = `Export terminé : statistiques ${year}.`;
+  };
+
   window.loadRetention = async function () {
     if (!myCommuneId) return;
     const { data } = await supabase.from('communes').select('loan_history_retention_months').eq('id', myCommuneId).maybeSingle();
@@ -9875,75 +9938,27 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     loadSigbStats();
   }
 
-  const SIGB_STATS_BLOCKS = [
-    {
-      title: 'C2 - Catalogue',
-      rows: [
-        ['c2_notices_total', 'Nombre total de notices équipées', 'C202'],
-        ['c2_notices_added_year', 'Notices ajoutées dans l\'année', 'C205'],
-      ],
-    },
-    {
-      title: 'D1 - Livres imprimés',
-      rows: [
-        ['d1_fonds_adultes', 'Fonds adultes (au moment du calcul)', 'D101'],
-        ['d1_fonds_jeunesse', 'Fonds jeunesse (au moment du calcul)', 'D121'],
-        ['d1_acquisitions_year', 'Acquisitions dans l\'année', 'D103'],
-        ['d1_eliminations_year', 'Éliminations dans l\'année', 'D106'],
-      ],
-    },
-    {
-      title: 'E1 - Usagers',
-      rows: [
-        ['e1_inscrits_actifs', 'Inscrits actifs (au moment du calcul)', 'E101'],
-        ['e1_nouveaux_inscrits_year', 'Nouveaux inscrits dans l\'année', 'E102'],
-        ['e1_emprunteurs_actifs_year', 'Emprunteurs actifs dans l\'année', 'E140'],
-      ],
-    },
-    {
-      title: 'E2 - Prêts',
-      rows: [
-        ['e2_prets_total_year', 'Prêts total dans l\'année', 'E201'],
-        ['e2_prets_adultes_year', 'Dont prêts adultes', 'E202'],
-        ['e2_prets_jeunesse_year', 'Dont prêts jeunesse', 'E221'],
-      ],
-    },
-    {
-      title: 'E3 - Réservations',
-      rows: [
-        ['e3_reservations_year', 'Réservations créées dans l\'année', 'E304'],
-      ],
-    },
-    {
-      title: 'Fréquentation',
-      rows: [
-        ['frequentation_year', 'Entrées enregistrées dans l\'année (bouton +1 Visiteur)', 'E147'],
-      ],
-    },
-  ];
+  // Rapport annuel Néoscrib (13/11/2026) : remplace l'ancien tableau de
+  // 15 indicateurs (dont plusieurs codes faux) par le formulaire 2026 complet,
+  // voir js/neoscrib.js et sql/add_neoscrib_rapport_annuel.sql.
+  const neoscribModule = () => import('./js/neoscrib.js?v=20261113a');
 
   window.loadSigbStats = async function () {
     const year = Number(document.getElementById('sigb-stats-year').value);
-    const content = document.getElementById('sigb-stats-content');
-    content.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Calcul en cours…</p>`;
+    const rapport = document.getElementById('sigb-stats-report').value;
+    const container = document.getElementById('sigb-stats-content');
+    const { afficherNeoscrib } = await neoscribModule();
+    afficherNeoscrib({ supabase, communeId: myCommuneId, year, rapport, container, frError });
+  };
 
-    const { data, error } = await supabase.rpc('sigb_annual_stats', { p_commune_id: myCommuneId, p_year: year });
-    if (error) { content.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
-
-    content.innerHTML = SIGB_STATS_BLOCKS.map(block => `
-      <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
-        <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">${block.title}</div>
-        <div class="grid grid-cols-[1fr_80px_64px] gap-2 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-ink/35">
-          <span>Indicateur</span><span class="text-right">Valeur</span><span class="text-right w-16">Code</span>
-        </div>
-        ${block.rows.map(([key, label, code]) => `
-          <div class="grid grid-cols-[1fr_80px_64px] gap-2 px-4 py-2 items-center border-t border-mango-50 text-sm">
-            <span class="text-ink/80">${label}</span>
-            <span class="text-right font-bold text-ink">${data?.[key] ?? 'NC'}</span>
-            <span class="text-right w-16 text-[10px] text-ink/35 font-mono">${code}</span>
-          </div>`).join('')}
-      </div>`).join('') + `
-      <p class="text-[11px] text-ink/35">Automatique = calculé à partir des vraies données BliGO. Ces chiffres préparent la saisie Neoscrib, ils ne la remplacent pas.</p>`;
+  window.exportNeoscribCsv = async function () {
+    const year = Number(document.getElementById('sigb-stats-year').value);
+    const rapport = document.getElementById('sigb-stats-report').value;
+    try {
+      const { lignesNeoscrib } = await neoscribModule();
+      const rows = await lignesNeoscrib({ supabase, communeId: myCommuneId, year, rapport });
+      downloadBlob(new Blob([peopleCsv(rows)], { type: 'text/csv;charset=utf-8' }), `${exportFileBase()}-neoscrib-${year}.csv`);
+    } catch (e) { alert('Erreur : ' + frError(e)); }
   };
 
   window.setStatsScope = function (scope) {
