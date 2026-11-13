@@ -17,8 +17,11 @@ const fonds = (fam, pub, i) => d => [].concat(fam).reduce((s, f) => s + PUB[pub]
 const prets = (fam, pub) => d => [].concat(fam).reduce((s, f) => s + PUB[pub].reduce((t, p) => t + (d[`_p_${f}_${p}`] || 0), 0), 0);
 const TOUTES = ['livre', 'periodique', 'livre_audio', 'musique', 'video', 'jeu', 'jeu_video', 'autre'];
 const AUTRES_D3 = ['jeu', 'autre'];
-const ev = (types, i) => d => [].concat(types).reduce((s, t) => s + ((d[`_h_${t}`] || [0, 0])[i] || 0), 0);
+// d._h_<type>_<tous|enfants> = [nombre, population touchée]
+const ev = (types, i, aud) => d => [].concat(types).reduce((s, t) => s + (aud ? [aud] : ['tous', 'enfants'])
+  .reduce((u, a) => u + ((d[`_h_${t}_${a}`] || [0, 0])[i] || 0), 0), 0);
 const evOui = types => d => ev(types, 0)(d) > 0 ? 'Oui' : 'Non';
+const pretsBD = (fam, pub) => d => [].concat(fam).reduce((s, f) => s + PUB[pub].reduce((t, p) => t + (d[`_pd_${f}_${p}`] || 0), 0), 0);
 
 // Horaires saisis par jour en texte libre : « 9h-12h30 / 14h-18h », « Fermé ».
 function heuresJour(txt) {
@@ -86,10 +89,10 @@ const SECTIONS = [
     ['D103', 'Éliminations adulte', N, 'b', fonds('livre', 'a', 2)],
     ['D118', 'Éliminations jeunesse', N, 'b', fonds('livre', 'j', 2)],
     ['D130', 'Éliminations total', N, 'b', fonds('livre', 't', 2)],
-    ['D131', 'Dont nombre de dons', N, 'b'],
-    ['D144', 'En dépôt de la BD au 31/12 de l\'année précédente : adulte', N, 'ta'],
-    ['D142', 'En dépôt de la BD : jeunesse', N, 'ta'],
-    ['D143', 'En dépôt de la BD : total', N, 'ta'],
+    ['D131', 'Dont nombre de dons', N, 'b', d => d.D131],
+    ['D144', 'En dépôt de la BD au 31/12 : adulte', N, 'ta', fonds('livre', 'a', 3)],
+    ['D142', 'En dépôt de la BD au 31/12 : jeunesse', N, 'ta', fonds('livre', 'j', 3)],
+    ['D143', 'En dépôt de la BD au 31/12 : total', N, 'ta', fonds('livre', 't', 3)],
   ] },
   { titre: 'D2 - Publications en série (abonnements)', note: 'Calculé à partir des titres de type Périodique au catalogue : vérifie que chacun correspond bien à un abonnement en cours.', lignes: [
     ['D201', 'Abonnements adultes', N, 'b', d => d._abos_a],
@@ -121,6 +124,7 @@ const SECTIONS = [
     ['D409', 'Total documents sonores : fonds', N, 'b', fonds(['musique', 'livre_audio'], 't', 0)],
     ['D410', 'Total documents sonores : acquisitions', N, 'b', fonds(['musique', 'livre_audio'], 't', 1)],
     ['D418', 'Total documents sonores : éliminations', N, 'b', fonds(['musique', 'livre_audio'], 't', 2)],
+    ['D447', 'Documents sonores en dépôt de la BD', N, 'b', fonds(['musique', 'livre_audio'], 't', 3)],
     ['D429', 'Vidéo adultes : fonds', N, 'b', fonds('video', 'a', 0)],
     ['D430', 'Vidéo adultes : acquisitions', N, 'b', fonds('video', 'a', 1)],
     ['D431', 'Vidéo adultes : éliminations', N, 'b', fonds('video', 'a', 2)],
@@ -130,20 +134,36 @@ const SECTIONS = [
     ['D411', 'Total vidéo : fonds', N, 'b', fonds('video', 't', 0)],
     ['D412', 'Total vidéo : acquisitions', N, 'b', fonds('video', 't', 1)],
     ['D419', 'Total vidéo : éliminations', N, 'b', fonds('video', 't', 2)],
+    ['D448', 'Vidéo en dépôt de la BD', N, 'b', fonds('video', 't', 3)],
     ['D444', 'Jeux vidéo : fonds', N, 'b', fonds('jeu_video', 't', 0)],
     ['D445', 'Jeux vidéo : acquisitions', N, 'b', fonds('jeu_video', 't', 1)],
     ['D446', 'Jeux vidéo : éliminations', N, 'b', fonds('jeu_video', 't', 2)],
   ] },
-  { titre: 'E1 - Usagers', note: "BliGO ne demande ni l'âge ni le sexe des usagers (RGPD) : la répartition par âge est à saisir à la main, si tu la connais.", lignes: [
+  { titre: 'E1 - Usagers', note: d => [
+      "Tranche d'âge et résidence : cochées par l'agent sur la fiche de chaque usager (pas de date de naissance demandée).",
+      d._sans_age ? `${d._sans_age} emprunteur(s) de l'année n'ont pas encore de tranche d'âge : complète leur fiche (Inscrits) pour que les chiffres par âge soient justes.` : '',
+      d._sans_resid ? `${d._sans_resid} emprunteur(s) sans la case « habite la commune » renseignée.` : '',
+    ].filter(Boolean).join(' '), lignes: [
+    ['E110', 'Inscrits actifs : enfants (0-14 ans)', N, 'b', d => d.E110],
+    ['E111', 'Nouveaux inscrits : enfants', N, 'b', d => d.E111],
+    ['E119', 'Inscrits actifs : adultes (15-64 ans)', N, 'b', d => d.E119],
+    ['E120', 'Nouveaux inscrits : adultes (15-64 ans)', N, 'b', d => d.E120],
+    ['E128', 'Inscrits actifs : 65 ans et plus', N, 'b', d => d.E128],
+    ['E129', 'Nouveaux inscrits : 65 ans et plus', N, 'b', d => d.E129],
+    ['E137', 'Inscrits actifs : total adulte', N, 'b', d => d.E137],
+    ['E138', 'Nouveaux inscrits : total adulte', N, 'b', d => d.E138],
     ['E101', 'Inscrits actifs (total)', N, 'b', d => d.E101],
     ['E102', 'Dont nouveaux inscrits', N, 'b', d => d.E102],
-    ['E112', 'Emprunteurs actifs : enfants (0-14 ans)', N, 'ta'],
-    ['E121', 'Emprunteurs actifs : adultes (15-64 ans)', N, 'ta'],
-    ['E130', 'Emprunteurs actifs : adultes (65 ans et plus)', N, 'ta'],
-    ['E139', 'Emprunteurs actifs : total adulte', N, 'ta'],
+    ['E140', 'Inscrits actifs résidents de la commune ou du réseau', N, 'b', d => d.E140],
+    ['E141', 'Nouveaux inscrits résidents', N, 'b', d => d.E141],
+    ['E112', 'Emprunteurs actifs : enfants (0-14 ans)', N, 'ta', d => d.E112],
+    ['E121', 'Emprunteurs actifs : adultes (15-64 ans)', N, 'ta', d => d.E121],
+    ['E130', 'Emprunteurs actifs : adultes (65 ans et plus)', N, 'ta', d => d.E130],
+    ['E139', 'Emprunteurs actifs : total adulte', N, 'ta', d => d.E139],
     ['E103', 'Emprunteurs actifs : total (enfants et adultes)', N, 'ta', d => d.E103],
-    ['E142', 'Dont résidents de la commune ou du réseau', N, 'ta'],
-    ['E144', 'Collectivités emprunteuses', N, 'ta'],
+    ['E142', 'Dont résidents de la commune ou du réseau', N, 'ta', d => d.E142],
+    ['E143', 'Collectivités inscrites', N, 'b', d => d.E143],
+    ['E144', 'Collectivités emprunteuses', N, 'ta', d => d.E144],
     ['E147', 'Fréquentation annuelle (entrées)', N, 'ta', d => d.E147],
     ['E160', 'Semaine test 1', N, 'ta'],
     ['E161', 'Semaine test 2', N, 'ta'],
@@ -152,7 +172,7 @@ const SECTIONS = [
     ['E201', 'Livres : adultes', N, 'ta', prets('livre', 'a')],
     ['E202', 'Livres : jeunesse', N, 'ta', prets('livre', 'j')],
     ['E203', 'Livres : total', N, 'ta', prets('livre', 't')],
-    ['E241', 'Dont prêts sur documents de la BD', N, 'ta'],
+    ['E241', 'Dont prêts sur documents de la BD', N, 'ta', pretsBD('livre', 't')],
     ['E205', 'Publications en série : adultes', N, 'b', prets('periodique', 'a')],
     ['E206', 'Publications en série : jeunesse', N, 'b', prets('periodique', 'j')],
     ['E207', 'Publications en série : total', N, 'b', prets('periodique', 't')],
@@ -161,9 +181,11 @@ const SECTIONS = [
     ['E214', 'Livres enregistrés : jeunesse', N, 'b', prets('livre_audio', 'j')],
     ['E215', 'Livres enregistrés : total', N, 'b', prets('livre_audio', 't')],
     ['E235', 'Documents sonores : total', N, 'b', prets(['musique', 'livre_audio'], 't')],
+    ['E242', 'Documents sonores : dont documents de la BD', N, 'b', pretsBD(['musique', 'livre_audio'], 't')],
     ['E217', 'Vidéo : adultes', N, 'b', prets('video', 'a')],
     ['E218', 'Vidéo : jeunesse', N, 'b', prets('video', 'j')],
     ['E219', 'Vidéo : total', N, 'b', prets('video', 't')],
+    ['E243', 'Vidéo : dont documents de la BD', N, 'b', pretsBD('video', 't')],
     ['E247', 'Jeux de société', N, 'b', prets('jeu', 't')],
     ['E248', 'Jeux vidéo', N, 'b', prets('jeu_video', 't')],
     ['E221', 'Autres documents : adultes', N, 'b', prets('autre', 'a')],
@@ -172,7 +194,7 @@ const SECTIONS = [
     ['E237', 'Total des prêts : adultes', N, 'ta', prets(TOUTES, 'a')],
     ['E238', 'Total des prêts : jeunesse', N, 'ta', prets(TOUTES, 'j')],
     ['E239', 'Total des prêts', N, 'ta', prets(TOUTES, 't')],
-    ['E240', 'Dont prêts aux collectivités', N, 'ta'],
+    ['E240', 'Dont prêts aux collectivités', N, 'ta', d => d.E240],
   ] },
   { titre: "E3 et E5 - Autres usages, services en ligne", lignes: [
     ['E302', 'Réservations', N, 'b', d => d.E302],
@@ -229,29 +251,37 @@ const SECTIONS = [
     ['H122', 'Partenariat avec des services de la petite enfance', ON, 'b'],
     ['H123', 'Petite enfance : population touchée', N, 'b'],
   ] },
-  { titre: "H4 - Actions au sein de l'établissement (agenda BliGO)", note: "Compté à partir de l'agenda de l'année. Si ton agenda contient aussi des événements qui ne sont pas organisés par la médiathèque (auditorium, autres services), corrige les chiffres. Population touchée = présents pointés, sinon inscrits.", lignes: [
-    ['H401', 'Expositions', ON, 'b', evOui('Exposition')],
-    ['H402', 'Expositions : nombre (tous publics)', N, 'b', ev('Exposition', 0)],
+  { titre: "H4 - Actions au sein de l'établissement (agenda BliGO)", note: "Compté à partir de l'agenda de l'année, avec le public choisi sur chaque événement (tous publics ou enfants). Population touchée = nombre de participants saisi sur l'événement, sinon présents pointés, sinon inscrits. Si l'agenda contient des événements qui ne sont pas organisés par la médiathèque, corrige les chiffres.", lignes: [
+    ['H401', 'Expositions', ON, 'b', evOui(['Exposition'])],
+    ['H402', 'Expositions : nombre pour tous publics', N, 'b', ev(['Exposition'], 0, 'tous')],
+    ['H403', 'Expositions : nombre pour enfants', N, 'b', ev(['Exposition'], 0, 'enfants')],
     ['H409', 'Conférences, rencontres, lectures', ON, 'b', evOui(['Conférence', 'Débat'])],
-    ['H410', 'Conférences, rencontres, lectures : nombre (tous publics)', N, 'b', ev(['Conférence', 'Débat'], 0)],
+    ['H410', 'Conférences, rencontres, lectures : nombre pour tous publics', N, 'b', ev(['Conférence', 'Débat'], 0, 'tous')],
+    ['H411', 'Conférences, rencontres, lectures : nombre pour enfants', N, 'b', ev(['Conférence', 'Débat'], 0, 'enfants')],
     ['H412', 'Conférences, rencontres, lectures : population touchée', N, 'b', ev(['Conférence', 'Débat'], 1)],
-    ['H417', 'Séances de conte', ON, 'b', evOui('Heure du conte')],
-    ['H418', 'Séances de conte : nombre (enfants)', N, 'b', ev('Heure du conte', 0)],
-    ['H419', 'Séances de conte : population touchée', N, 'b', ev('Heure du conte', 1)],
-    ['H437', 'Concerts', ON, 'b', evOui('Concert')],
-    ['H438', 'Concerts : nombre (tous publics)', N, 'b', ev('Concert', 0)],
-    ['H440', 'Concerts : population touchée', N, 'b', ev('Concert', 1)],
-    ['H441', 'Projections', ON, 'b', evOui('Cinéma')],
-    ['H442', 'Projections : nombre (tous publics)', N, 'b', ev('Cinéma', 0)],
-    ['H444', 'Projections : population touchée', N, 'b', ev('Cinéma', 1)],
-    ['H445', 'Clubs de lecteurs', ON, 'b', evOui('Club de lecture')],
-    ['H446', 'Clubs de lecteurs : nombre de séances (tous publics)', N, 'b', ev('Club de lecture', 0)],
-    ['H448', 'Clubs de lecteurs : population touchée', N, 'b', ev('Club de lecture', 1)],
-    ['H461', 'Ateliers', ON, 'b', evOui('Atelier')],
-    ['H462', 'Ateliers : nombre (tous publics)', N, 'b', ev('Atelier', 0)],
-    ['H464', 'Ateliers : population touchée', N, 'b', ev('Atelier', 1)],
+    ['H417', 'Séances de conte', ON, 'b', evOui(['Heure du conte'])],
+    ['H436', 'Séances de conte : nombre pour tous publics', N, 'b', ev(['Heure du conte'], 0, 'tous')],
+    ['H418', 'Séances de conte : nombre pour enfants', N, 'b', ev(['Heure du conte'], 0, 'enfants')],
+    ['H419', 'Séances de conte : population touchée', N, 'b', ev(['Heure du conte'], 1)],
+    ['H437', 'Concerts', ON, 'b', evOui(['Concert'])],
+    ['H438', 'Concerts : nombre pour tous publics', N, 'b', ev(['Concert'], 0, 'tous')],
+    ['H439', 'Concerts : nombre pour enfants', N, 'b', ev(['Concert'], 0, 'enfants')],
+    ['H440', 'Concerts : population touchée', N, 'b', ev(['Concert'], 1)],
+    ['H441', 'Projections', ON, 'b', evOui(['Cinéma'])],
+    ['H442', 'Projections : nombre pour tous publics', N, 'b', ev(['Cinéma'], 0, 'tous')],
+    ['H443', 'Projections : nombre pour enfants', N, 'b', ev(['Cinéma'], 0, 'enfants')],
+    ['H444', 'Projections : population touchée', N, 'b', ev(['Cinéma'], 1)],
+    ['H445', 'Clubs de lecteurs', ON, 'b', evOui(['Club de lecture'])],
+    ['H446', 'Clubs de lecteurs : nombre pour tous publics', N, 'b', ev(['Club de lecture'], 0, 'tous')],
+    ['H447', 'Clubs de lecteurs : nombre pour enfants', N, 'b', ev(['Club de lecture'], 0, 'enfants')],
+    ['H448', 'Clubs de lecteurs : population touchée', N, 'b', ev(['Club de lecture'], 1)],
+    ['H461', 'Ateliers', ON, 'b', evOui(['Atelier'])],
+    ['H462', 'Ateliers : nombre pour tous publics', N, 'b', ev(['Atelier'], 0, 'tous')],
+    ['H463', 'Ateliers : nombre pour enfants', N, 'b', ev(['Atelier'], 0, 'enfants')],
+    ['H464', 'Ateliers : population touchée', N, 'b', ev(['Atelier'], 1)],
     ['H428', 'Autres actions (spectacles, théâtre, autres)', ON, 'b', evOui(['Théâtre', 'Spectacle', 'Autre'])],
-    ['H429', 'Autres actions : nombre (tous publics)', N, 'b', ev(['Théâtre', 'Spectacle', 'Autre'], 0)],
+    ['H429', 'Autres actions (spectacles, théâtre, autres) : nombre pour tous publics', N, 'b', ev(['Théâtre', 'Spectacle', 'Autre'], 0, 'tous')],
+    ['H430', 'Autres actions (spectacles, théâtre, autres) : nombre pour enfants', N, 'b', ev(['Théâtre', 'Spectacle', 'Autre'], 0, 'enfants')],
   ] },
   { titre: "H5 - Actions hors de l'établissement", lignes: [
     ['H501', 'Actions hors les murs', ON, 'b'],
@@ -336,7 +366,7 @@ export async function afficherNeoscrib({ supabase, communeId, year, rapport, con
     ${sections.map(sec => `
       <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
         <div class="px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50">${esc(sec.titre)}</div>
-        ${sec.note ? `<p class="px-4 py-2 text-[11.5px] text-ink/50">${esc(sec.note)}</p>` : ''}
+        ${(typeof sec.note === 'function' ? sec.note(d) : sec.note) ? `<p class="px-4 py-2 text-[11.5px] text-ink/50">${esc(typeof sec.note === 'function' ? sec.note(d) : sec.note)}</p>` : ''}
         ${sec.lignes.map(champ).join('')}
       </div>`).join('')}
     <p class="text-[11px] text-ink/40">Ces chiffres préparent ta saisie sur neoscrib.culture.gouv.fr (identifiants donnés par ta bibliothèque départementale). L'export reprend les codes dans l'ordre du formulaire.</p>`;

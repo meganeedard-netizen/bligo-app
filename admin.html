@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Back-office</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261113a">
+<link rel="stylesheet" href="css/bligo.css?v=20261113b">
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=20261023">
 <style>
@@ -506,6 +506,12 @@
         <!-- Scan / catalogage d'un nouveau livre -->
         <div id="catalogue-scan-view" class="hidden mt-4">
           <button onclick="closeScanView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
+          <!-- Dépôt de la bibliothèque départementale (13/11/2026) : ces exemplaires
+               sont comptés à part dans le rapport Néoscrib (D142-D144, E241). -->
+          <label class="flex items-center gap-2 mb-3 text-xs font-semibold text-ink/70 bg-white border border-mango-100 rounded-lg px-3 py-2 w-fit">
+            <input type="checkbox" id="depot-bd-toggle" onchange="depotBdSession = this.checked" class="accent-[#F7901E]">
+            Documents prêtés par la bibliothèque départementale (dépôt)
+          </label>
 
           <div class="flex flex-col lg:flex-row lg:items-start gap-6">
             <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm w-full lg:max-w-sm lg:shrink-0">
@@ -699,10 +705,10 @@
             <button type="button" onclick="clearSearchInput('preregistrations-search')" aria-label="Effacer" class="absolute right-3 top-1/2 -translate-y-1/2 text-ink/30 hover:text-ink/60 text-sm">✕</button>
           </div>
           <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-x-auto">
-            <div class="hidden sm:grid grid-cols-[1.4fr_1fr_1fr_1.2fr_160px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[560px]">
-              <span>Usager</span><span>N° abonné</span><span>Pré-inscrit le</span><span>Catégorie tarifaire</span><span></span>
+            <div class="hidden sm:grid grid-cols-[1.4fr_0.8fr_0.8fr_1.1fr_1.1fr_160px] gap-2 px-4 py-2.5 bg-mango-50 text-[11px] font-bold uppercase tracking-wide text-ink/50 sm:min-w-[680px]">
+              <span>Usager</span><span>N° abonné</span><span>Pré-inscrit le</span><span>Catégorie tarifaire</span><span>Âge et domicile</span><span></span>
             </div>
-            <div id="preregistrations-list" class="sm:min-w-[560px]"></div>
+            <div id="preregistrations-list" class="sm:min-w-[680px]"></div>
           </div>
 
           <h3 class="text-base font-bold text-ink mt-8 mb-1">Non-résidents</h3>
@@ -744,6 +750,25 @@
               <option value="majeur">Majeur</option>
               <option value="gratuit">Gratuité (sans emploi)</option>
             </select>
+            <!-- Rapport Néoscrib (13/11/2026) : tranche d'âge et résidence, sans date de naissance. -->
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              <div>
+                <label class="text-xs font-semibold text-ink/60 block mb-1">Âge</label>
+                <select id="add-inscrit-age" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="" selected disabled>Choisir…</option>
+              <option value="enfant">0 à 14 ans</option>
+              <option value="adulte">15 à 64 ans</option>
+              <option value="senior">65 ans et plus</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-ink/60 block mb-1">Habite la commune</label>
+                <select id="add-inscrit-resident" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="oui" selected>Oui</option>
+                  <option value="non">Non</option>
+                </select>
+              </div>
+            </div>
             <button onclick="submitAddInscrit()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Créer le compte</button>
           </div>
         </div>
@@ -988,6 +1013,20 @@
               <option value="72">72 h avant</option>
               <option value="168">1 semaine avant</option>
             </select>
+            <!-- Rapport Néoscrib (13/11/2026) : public visé et participants réels. -->
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              <div>
+                <label class="text-xs font-semibold text-ink/60 block mb-1">Public</label>
+                <select id="event-audience" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="tous" selected>Tous publics</option>
+                  <option value="enfants">Enfants</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-ink/60 block mb-1">Participants (après l'événement)</label>
+                <input type="number" min="0" id="event-participants" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm" placeholder="Ex. 18">
+              </div>
+            </div>
             <div class="flex gap-2">
               <button onclick="saveEvent()" class="flex-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
               <button onclick="resetEventForm(); closeEventForm()" class="text-xs text-ink/50 font-semibold px-3 hover:text-ink/80">Annuler</button>
@@ -1611,6 +1650,7 @@
   let reservations = [];
   let zxingReaders = {};
   let donorSession = null; // { id, full_name, count }
+  window.depotBdSession = false; // catalogage d'un dépôt de la BD (Néoscrib)
   let statsScope = 'commune';
   let myCommuneId = null;
   // Délai de retrait de la médiathèque (03/11/2026, communes.pickup_hours).
@@ -4716,7 +4756,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       current_commune_id: communeId,
       shelf_location: cote,
       status: 'processing',
-      source: fromDonation ? 'donation' : 'purchase',
+      source: window.depotBdSession ? 'depot_bd' : (fromDonation ? 'donation' : 'purchase'),
     }).select().single();
     if (error) { console.error('Erreur création exemplaire :', error); return null; }
     return data;
@@ -5849,8 +5889,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const password = document.getElementById('add-inscrit-password').value;
     const tariff_category = document.getElementById('add-inscrit-tariff').value;
 
-    if (!full_name || !email || password.length < 8 || !tariff_category) {
-      alert('Nom, e-mail, mot de passe (8 caractères minimum) et catégorie tarifaire sont obligatoires.');
+    const age_group = document.getElementById('add-inscrit-age').value;
+    const resident = document.getElementById('add-inscrit-resident').value === 'oui';
+    if (!full_name || !email || password.length < 8 || !tariff_category || !age_group) {
+      alert('Nom, e-mail, mot de passe (8 caractères minimum), catégorie tarifaire et âge sont obligatoires.');
       return;
     }
 
@@ -5859,6 +5901,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     });
 
     if (error || !data?.ok) { alert('Erreur : ' + (data?.message || frError(error) || 'échec de la création')); return; }
+    if (data.user_id) await supabase.rpc('set_usager_neoscrib', { p_user_id: data.user_id, p_age_group: age_group, p_resident: resident, p_collectivite: false });
 
     closeAddInscritForm();
     await loadInscritsList();
@@ -6057,7 +6100,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     currentFicheItems = items;
     currentFicheCommuneSettings = communeSettings;
-    setTimeout(() => { loadFamilySection(profile); loadDebtsSection(profile); loadAppAccessSection(profile); }, 0);
+    setTimeout(() => { loadFamilySection(profile); loadDebtsSection(profile); loadAppAccessSection(profile); loadNeoscribSection(profile); }, 0);
 
     const rowsHtml = renderFicheSections(items, communeSettings);
 
@@ -6091,6 +6134,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             ${Object.entries(tariffLabels).map(([v, label]) => `<option value="${v}" ${profile.tariff_category === v ? 'selected' : ''}>${label}</option>`).join('')}
           </select>
         </div>
+        <div id="fiche-neoscrib"></div>
         <div id="fiche-debts"></div>
         <div id="fiche-app-access"></div>
         ${membershipRowHtml(profile)}
@@ -6115,6 +6159,34 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // Abonné qui a fermé son accès à l'appli (23/10/2026) : il reste inscrit,
   // l'agent peut rouvrir l'accès. Chargé à part pour ne pas casser la fiche
   // tant que sql/add_quitter_appli.sql n'est pas passé.
+  // Rapport Néoscrib (13/11/2026) : tranche d'âge, résidence, collectivité.
+  // Chargé à part (comme l'accès à l'appli) pour ne jamais bloquer la fiche.
+  async function loadNeoscribSection(profile) {
+    const box = document.getElementById('fiche-neoscrib');
+    if (!box) return;
+    const { data, error } = await supabase.from('profiles').select('age_group, resident, is_collectivite').eq('id', profile.id).single();
+    if (error || !data) { box.innerHTML = ''; return; }
+    const sel = (id, opts, val) => `<select id="${id}" onchange="saveUsagerNeoscrib('${profile.id}')" class="border ${val == null || val === '' ? 'border-hibiscus-300' : 'border-mango-100'} rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
+      ${opts.map(([v, l]) => `<option value="${v}" ${String(val ?? '') === v ? 'selected' : ''} ${v === '' ? 'disabled' : ''}>${l}</option>`).join('')}</select>`;
+    box.innerHTML = `
+      <div class="px-4 py-2.5 border-b border-mango-50 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        <span class="flex items-center gap-2"><span class="text-ink/50">Âge :</span>${sel('fiche-age', [['', 'À renseigner'], ['enfant', '0 à 14 ans'], ['adulte', '15 à 64 ans'], ['senior', '65 ans et plus']], data.age_group)}</span>
+        <span class="flex items-center gap-2"><span class="text-ink/50">Habite la commune :</span>${sel('fiche-resident', [['', 'À renseigner'], ['true', 'Oui'], ['false', 'Non']], data.resident)}</span>
+        <label class="flex items-center gap-1.5 text-ink/60"><input type="checkbox" id="fiche-collectivite" onchange="saveUsagerNeoscrib('${profile.id}')" ${data.is_collectivite ? 'checked' : ''} class="accent-[#F7901E]"> Collectivité (classe, crèche, EHPAD…)</label>
+      </div>`;
+  }
+
+  window.saveUsagerNeoscrib = async function (userId) {
+    const age = document.getElementById('fiche-age').value || null;
+    const r = document.getElementById('fiche-resident').value;
+    const { error } = await supabase.rpc('set_usager_neoscrib', {
+      p_user_id: userId, p_age_group: age, p_resident: r === '' ? null : r === 'true',
+      p_collectivite: document.getElementById('fiche-collectivite').checked,
+    });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    loadNeoscribSection({ id: userId });
+  };
+
   async function loadAppAccessSection(profile) {
     const box = document.getElementById('fiche-app-access');
     if (!box) return;
@@ -6591,7 +6663,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const bookIds = data.map(b => b.id);
     let copiesByBook = {};
     if (bookIds.length) {
-      const { data: copies } = await supabase.from('book_copies').select('id, book_id, barcode, status').in('book_id', bookIds);
+      const { data: copies } = await supabase.from('book_copies').select('id, book_id, barcode, status, source').in('book_id', bookIds);
       (copies || []).forEach(c => { (copiesByBook[c.book_id] ||= []).push(c); });
     }
 
@@ -7991,6 +8063,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <input type="text" value="${escapeHtml(c.barcode)}" placeholder="Scanne (douchette) ou tape le code"
             onchange="updateCopyBarcode(${c.id}, ${b.id}, this.value)"
             class="flex-1 min-w-0 text-xs text-ink/70 border border-transparent hover:border-mango-100 focus:border-mango-200 rounded px-1.5 py-1 outline-none">
+          <select onchange="setCopySource(${c.id}, ${b.id}, this.value)" title="Provenance de l'exemplaire" class="text-[10.5px] text-ink/60 border border-mango-100 rounded-full px-1.5 py-0.5 bg-white shrink-0">
+            ${[['purchase', 'Achat'], ['donation', 'Don'], ['depot_bd', 'Dépôt BD']].map(([v, l]) => `<option value="${v}" ${(c.source || 'purchase') === v ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
           <span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full shrink-0 ${badge.classes}">${badge.label}</span>
           ${canWithdraw ? `<button onclick="withdrawCopy(${c.id}, ${b.id})" class="text-[11px] text-red-500/70 hover:text-red-600 font-semibold shrink-0">Retirer</button>` : '<span class="w-12 shrink-0"></span>'}
         </div>`;
@@ -8002,6 +8077,13 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       <button type="button" onclick="addCopyToBook(${b.id})" class="w-full text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg py-2 mb-3">+ Ajouter un exemplaire</button>
     `;
   }
+
+  window.setCopySource = async function (copyId, bookId, source) {
+    const { error } = await supabase.from('book_copies').update({ source }).eq('id', copyId);
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    await loadBooks();
+    openBookDetail(bookId);
+  };
 
   window.addCopyToBook = async function (id) {
     const b = books.find(x => x.id === id);
@@ -8698,7 +8780,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       return;
     }
     list.innerHTML = filtered.map(p => `
-      <div class="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr_1fr_1.2fr_160px] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
+      <div class="grid grid-cols-1 sm:grid-cols-[1.4fr_0.8fr_0.8fr_1.1fr_1.1fr_160px] gap-1.5 sm:gap-2 px-4 py-3 sm:items-center border-t border-mango-50 text-sm">
         <span>
           <span class="font-semibold text-ink block">${escapeHtml(p.full_name)}</span>
           <span class="text-[10.5px] text-mango-700 font-semibold">${escapeHtml(p.communes?.name || '')}</span>
@@ -8713,11 +8795,23 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <option value="gratuit" ${p.tariff_category === 'gratuit' ? 'selected' : ''}>Gratuité (sans emploi)</option>
           <option value="famille" ${p.tariff_category === 'famille' ? 'selected' : ''}>Famille (compte partagé)</option>
         </select>
+        <span class="flex flex-col gap-1">
+          <select id="prereg-age-${p.id}" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
+            <option value="" selected disabled>Âge…</option>
+            <option value="enfant">0 à 14 ans</option>
+            <option value="adulte">15 à 64 ans</option>
+            <option value="senior">65 ans et plus</option>
+          </select>
+          <select id="prereg-resident-${p.id}" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
+            <option value="oui" selected>Habite la commune</option>
+            <option value="non">N'habite pas la commune</option>
+          </select>
+        </span>
         <span class="sm:text-right">
           <button onclick="rechercherAdherentComptoir('${p.id}', ${Number(p.commune_id) || 'null'}, '${escapeJsAttr(p.full_name)}')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[12px] font-semibold text-brand underline mb-1 sm:mr-2">Déjà adhérent ?</button>
           <button onclick="validateRegistration('${p.id}', '${escapeJsAttr(p.full_name)}')" style="touch-action: manipulation;" class="w-full sm:w-auto text-[13px] font-semibold bg-brand text-white rounded-full px-4 py-2.5 sm:py-1.5">Valider l'inscription</button>
         </span>
-        <div id="adh-comptoir-${p.id}" class="sm:col-span-5"></div>
+        <div id="adh-comptoir-${p.id}" class="sm:col-span-6"></div>
       </div>`).join('');
   };
 
@@ -8832,10 +8926,15 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const tariffSelect = document.getElementById('prereg-tariff-' + id);
     const tariff_category = tariffSelect?.value;
     if (!tariff_category) { alert('Choisis la catégorie tarifaire (mineur / majeur / gratuité / famille) avant de valider.'); return; }
+    const age_group = document.getElementById('prereg-age-' + id)?.value;
+    if (!age_group) { alert("Choisis la tranche d'âge (pour le rapport annuel du ministère) avant de valider."); return; }
+    const resident = document.getElementById('prereg-resident-' + id)?.value !== 'non';
     if (!await confirmDialog(`Confirmer la validation de l'inscription de ${name} ? Vérifie bien sa pièce d'identité et son justificatif de domicile (et son autorisation parentale si mineur) avant de continuer.`)) return;
 
     const { error: tariffError } = await supabase.rpc('set_tariff_category', { p_user_id: id, p_category: tariff_category });
     if (tariffError) { alert('Erreur : ' + frError(tariffError)); return; }
+    const { error: neoError } = await supabase.rpc('set_usager_neoscrib', { p_user_id: id, p_age_group: age_group, p_resident: resident, p_collectivite: false });
+    if (neoError) { alert('Erreur : ' + frError(neoError)); return; }
 
     const { error } = await supabase.rpc('validate_registration', { p_user_id: id });
     if (error) { alert('Erreur : ' + frError(error)); return; }
@@ -9772,6 +9871,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('event-max-seats').disabled = e.max_seats == null;
     document.getElementById('event-max-seats').value = e.max_seats == null ? '' : e.max_seats;
     document.getElementById('event-unsubscribe-hours').value = String(e.unsubscribe_hours || 48);
+    document.getElementById('event-audience').value = e.audience || 'tous';
+    document.getElementById('event-participants').value = e.participants ?? '';
     setEventImagePreview(e.image_url);
     document.getElementById('event-confirmation').classList.add('hidden');
   };
@@ -9796,6 +9897,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('event-max-seats').disabled = e.max_seats == null;
     document.getElementById('event-max-seats').value = e.max_seats == null ? '' : e.max_seats;
     document.getElementById('event-unsubscribe-hours').value = String(e.unsubscribe_hours || 48);
+    document.getElementById('event-audience').value = e.audience || 'tous';
+    document.getElementById('event-participants').value = '';
     setEventImagePreview(e.image_url);
     document.getElementById('event-confirmation').classList.add('hidden');
     document.getElementById('event-title').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -9810,6 +9913,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('event-hour').value = '10';
     document.getElementById('event-minute').value = '0';
     document.getElementById('event-duration').value = '90';
+    document.getElementById('event-audience').value = 'tous';
+    document.getElementById('event-participants').value = '';
     if (myCommuneId) document.getElementById('event-commune').value = myCommuneId;
     document.getElementById('event-location').value = '';
     document.getElementById('event-unlimited').checked = false;
@@ -9885,6 +9990,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       max_seats,
       unsubscribe_hours: Number(document.getElementById('event-unsubscribe-hours').value) || 48,
       image_url,
+      audience: document.getElementById('event-audience').value || 'tous',
+      participants: document.getElementById('event-participants').value === '' ? null : Math.max(0, parseInt(document.getElementById('event-participants').value, 10) || 0),
     };
 
     const { data: saved, error } = id
@@ -9941,7 +10048,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // Rapport annuel Néoscrib (13/11/2026) : remplace l'ancien tableau de
   // 15 indicateurs (dont plusieurs codes faux) par le formulaire 2026 complet,
   // voir js/neoscrib.js et sql/add_neoscrib_rapport_annuel.sql.
-  const neoscribModule = () => import('./js/neoscrib.js?v=20261113a');
+  const neoscribModule = () => import('./js/neoscrib.js?v=20261113b');
 
   window.loadSigbStats = async function () {
     const year = Number(document.getElementById('sigb-stats-year').value);
