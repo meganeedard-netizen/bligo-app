@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Mes informations</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261102a">
+<link rel="stylesheet" href="css/bligo.css?v=20261116a">
 <link rel="stylesheet" href="css/theme-sombre.css?v=20261028">
 <script src="js/apparence.js?v=20261029a"></script>
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
@@ -104,6 +104,15 @@
     <button type="button" id="notif-toggle" role="switch" aria-checked="false" class="toggle shrink-0"><span></span></button>
   </div>
 
+  <!-- Récap de l'agenda par e-mail (16/11/2026) -->
+  <div class="bg-white rounded-2xl p-4 shadow-sm mt-3 flex items-center justify-between gap-4">
+    <div>
+      <p class="text-base font-bold text-ink">Récap de l'agenda</p>
+      <p class="text-xs text-ink/55 mt-0.5">Un e-mail le lundi matin quand ta Médiathèque Municipale ajoute de nouveaux événements.</p>
+    </div>
+    <button type="button" id="digest-toggle" role="switch" aria-checked="true" class="toggle shrink-0"><span></span></button>
+  </div>
+
   <p class="text-center text-sm text-ink/70 mt-8">Voir nos <a href="cgu.html" class="text-mango-700 font-semibold">conditions générales</a></p>
 </main>
 
@@ -133,6 +142,7 @@
   let selectedCategories = new Set();
   let selectedPace = null;
   let notifications = false;
+  let agendaDigest = true;
 
   const chip = on => `text-sm font-semibold px-3.5 py-2 rounded-full border transition ${on ? 'bg-brand text-white border-brand' : 'bg-white text-ink/65 border-transparent shadow-sm'}`;
 
@@ -153,6 +163,7 @@
     });
     const t = document.getElementById('notif-toggle');
     t.setAttribute('aria-checked', String(notifications));
+    document.getElementById('digest-toggle').setAttribute('aria-checked', String(agendaDigest));
   }
 
   function bindCounter(id, max) {
@@ -168,7 +179,7 @@
     if (!session) { window.location.href = 'profil.html'; return; }
     user = session.user;
     const { data: profile } = await supabase.from('profiles')
-      .select('full_name, preferred_categories, reading_pace, notifications_enabled, communes ( name, theme_ink_hex, theme_accent_hex )')
+      .select('full_name, preferred_categories, reading_pace, notifications_enabled, agenda_digest, communes ( name, theme_ink_hex, theme_accent_hex )')
       .eq('id', user.id).single();
     applyCommuneTheme(profile?.communes);
 
@@ -186,8 +197,14 @@
     selectedCategories = new Set(profile?.preferred_categories || []);
     selectedPace = profile?.reading_pace || null;
     notifications = !!profile?.notifications_enabled;
+    agendaDigest = profile?.agenda_digest !== false;
     renderChoices();
   }
+
+  document.getElementById('digest-toggle').addEventListener('click', () => {
+    agendaDigest = !agendaDigest;
+    renderChoices();
+  });
 
   document.getElementById('notif-toggle').addEventListener('click', async () => {
     notifications = !notifications;
@@ -212,6 +229,7 @@
       full_name: `${firstName} ${lastName}`,
       preferred_categories: [...selectedCategories],
       notifications_enabled: notifications,
+      agenda_digest: agendaDigest,
     };
     if (selectedPace) { payload.reading_pace = selectedPace; payload.reading_goal = selectedPace * 12; }
     const [{ error }, { error: metaError }] = await Promise.all([
