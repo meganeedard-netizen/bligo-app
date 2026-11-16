@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO · Réservations</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261116a">
+<link rel="stylesheet" href="css/bligo.css?v=20261116b">
 <link rel="stylesheet" href="css/theme-sombre.css?v=20261028">
 <script src="js/apparence.js?v=20261029a"></script>
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
@@ -326,12 +326,28 @@
     (pending || []).forEach(p => { if (p.book_reviews?.book_id) myComments[p.book_reviews.book_id] = p.comment; });
   }
 
+  // Prêt à deux niveaux (16/11/2026) : commandes de documents de la
+  // bibliothèque départementale, qui arrivent avec la navette.
+  let navetteByResa = {};
+  let myHomeCommuneId = null;
+  async function loadNavetteInfo() {
+    const [{ data }, { data: prof }] = await Promise.all([
+      supabase.rpc('my_navette_info'),
+      myHomeCommuneId ? Promise.resolve({ data: null }) : supabase.from('profiles').select('commune_id').eq('id', currentUser.id).single(),
+    ]);
+    if (prof?.commune_id) myHomeCommuneId = prof.commune_id;
+    navetteByResa = Object.fromEntries((data || []).map(n => [n.reservation_id, n]));
+  }
+
   async function loadReservations() {
-    const { data, error } = await supabase
-      .from('reservations')
-      .select('id, status, created_at, ready_at, pickup_deadline, return_due_at, books ( id, title, author, cover_initial, cover_url, commune_id )')
-      .eq('user_id', currentUser.id)
-      .order('created_at', { ascending: false });
+    const [{ data, error }] = await Promise.all([
+      supabase
+        .from('reservations')
+        .select('id, status, created_at, ready_at, pickup_deadline, return_due_at, books ( id, title, author, cover_initial, cover_url, commune_id )')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false }),
+      loadNavetteInfo().catch(() => {}),
+    ]);
     if (error) { console.error(error); return; }
     reservations = data;
   }
@@ -430,7 +446,9 @@
         author: book?.author || '',
         coverInitial: book?.cover_initial || book?.title?.[0] || '?',
         coverUrl: book?.cover_url || null,
-        communeId: book?.commune_id || null,
+        // Document de la BDP : il se retire dans la médiathèque de l'usager.
+        communeId: (communes.find(c => c.id === book?.commune_id)?.is_bdp && myHomeCommuneId) ? myHomeCommuneId : (book?.commune_id || null),
+        navette: navetteByResa[r.id] || null,
         bookId: book?.id || null,
         status: loan?.returned_at ? 'loan_returned' : r.status,
         createdAt: r.created_at,
@@ -578,11 +596,20 @@
   const editMinutesLeft = it => Math.ceil((new Date(it.orderedAt).getTime() + EDIT_WINDOW_MS - Date.now()) / 60000);
 
   function preparingGroupHtml(group) {
+    const navetteHtml = it => {
+      const n = it.navette;
+      if (!n) return '';
+      const date = n.navette_date ? new Date(n.navette_date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : null;
+      const txt = n.etape === 'en_route' ? '🚐 En route dans la navette, il arrive bientôt.'
+        : n.etape === 'attente_bdp' ? `🚐 La bibliothèque départementale fait revenir ce document pour toi${date ? `, il partira avec une prochaine navette` : ''}.`
+        : `🚐 Il arrive avec la navette${date ? ` du ${date}` : ''}. On te prévient dès qu'il est là.`;
+      return `<p class="text-[11px] font-semibold text-amber-800 mt-1">${txt}</p>`;
+    };
     const editable = group.some(it => editMinutesLeft(it) > 0);
     const minutesLeft = Math.max(...group.map(editMinutesLeft));
     const rowsHtml = group.map((it, i) => `
       <div class="${i > 0 ? 'pt-2.5' : ''} flex items-center gap-2">
-        <div class="flex-1 min-w-0">${bookRowHtml(it, { hideMeta: true })}</div>
+        <div class="flex-1 min-w-0">${bookRowHtml(it, { hideMeta: true })}${navetteHtml(it)}</div>
         ${editMinutesLeft(it) > 0 ? `<button type="button" onclick="cancelPreparingReservation(${it.id})" class="shrink-0 text-[11px] font-semibold text-red-500/75 hover:text-red-600 border border-red-100 bg-white rounded-full px-2.5 py-1.5">Retirer</button>` : ''}
       </div>`).join('');
     const message = editable

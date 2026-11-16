@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO · Accueil</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261116a">
+<link rel="stylesheet" href="css/bligo.css?v=20261116b">
 <link rel="stylesheet" href="css/theme-sombre.css?v=20261028">
 <script src="js/apparence.js?v=20261029a"></script>
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
@@ -512,6 +512,9 @@
   }
   setupCategoryScroll();
 
+  let bdpInfo = null;
+  const isBdpBook = b => !!(bdpInfo?.id && b.commune_id === bdpInfo.id);
+
   async function loadBooks() {
     const statusEl = document.getElementById('catalogue-status');
 
@@ -522,15 +525,31 @@
       return;
     }
 
+    // Prêt à deux niveaux (16/11/2026) : dans un réseau avec une bibliothèque
+    // départementale, ses documents s'ajoutent au catalogue de la médiathèque
+    // (commandés ici, ils arrivent avec la navette). Gardé sur le téléphone.
+    const cid = catalogueCommuneId || myCommuneId;
+    let bdp = null;
+    try { bdp = JSON.parse(localStorage.getItem('bligo_bdp_' + cid) || 'null'); } catch {}
+    const bdpPromise = supabase.rpc('bdp_for_commune', { p_commune_id: cid }).then(({ data }) => {
+      try { localStorage.setItem('bligo_bdp_' + cid, JSON.stringify(data || null)); } catch {}
+      return data || null;
+    }, () => bdp);
+    if (!bdp) bdp = await bdpPromise;
+    const communeIds = bdp?.id ? [cid, bdp.id] : [cid];
+
     const [{ data, error }, { data: types }] = await Promise.all([
-      supabase.from('books').select('*').eq('commune_id', catalogueCommuneId || myCommuneId).eq('equipped', true).order('id'),
+      supabase.from('books').select('*').in('commune_id', communeIds).eq('equipped', true).order('id'),
       supabase.from('document_types').select('label, kind'),
     ]);
     if (error) {
       statusEl.textContent = 'Erreur de chargement : ' + frError(error);
       return;
     }
-    books = data;
+    bdpInfo = bdp;
+    // Même ISBN dans la médiathèque et à la BDP : on garde celui de la médiathèque.
+    const localIsbns = new Set((data || []).filter(b => b.commune_id === cid && b.isbn).map(b => b.isbn));
+    books = (data || []).filter(b => !(bdp?.id && b.commune_id === bdp.id && b.isbn && localIsbns.has(b.isbn)));
     documentTypeKinds = Object.fromEntries((types || []).map(t => [t.label, t.kind]));
     statusEl.textContent = '';
     renderTypeFilters();
@@ -941,6 +960,7 @@
       ${b.summary ? `<p class="text-sm text-ink/70 leading-relaxed mt-4">${b.summary}</p>` : `<p class="text-sm text-ink/40 italic mt-4">Résumé non disponible pour ce titre.</p>`}
       ${(b.players || b.play_duration) ? `<p class="text-[12px] text-ink/60 mt-2">🎲 ${[b.players, b.play_duration, b.age_range].filter(Boolean).join(' · ')}</p>` : ''}
       ${(b.page_count || b.legal_deposit) ? `<p class="text-[11px] text-ink/40 mt-2">${[b.page_count ? `${b.page_count} pages` : '', b.legal_deposit ? `Dépôt légal ${String(b.legal_deposit).replace(/^DL\s*/i, '')}` : ''].filter(Boolean).join(' · ')}</p>` : ''}
+      ${isBdpBook(b) ? `<p class="text-[12px] text-ink/65 bg-mango-50 rounded-lg px-3 py-2 mt-3">🚐 Ce document vient de la bibliothèque départementale. Commande-le ici : il arrive dans ta Médiathèque Municipale avec la navette, et tu es prévenu dès qu'il est là.</p>` : ''}
       ${btnHtml}
     `;
 
