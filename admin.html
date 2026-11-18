@@ -2738,7 +2738,10 @@
       // Échec (16/10/2026) : on referme proprement, sinon le bouton restait
       // sur « Fermer la caméra » sans rien fermer.
       stopCamera();
-      hint.textContent = e?.name === 'NotAllowedError'
+      const isNativeApp = !!window.Capacitor?.isNativePlatform?.();
+      hint.textContent = e?.name === 'NotAllowedError' && isNativeApp
+        ? "Caméra refusée. Va dans Réglages › BliGO › Appareil photo, active-le, puis réessaie."
+        : e?.name === 'NotAllowedError'
         ? "Caméra refusée. Sur Windows : Paramètres › Confidentialité et sécurité › Caméra, active « Autoriser les applications de bureau à accéder à la caméra », puis réessaie."
         : e?.name === 'NotFoundError'
           ? "Aucune caméra trouvée sur cet ordinateur. Branche une webcam ou utilise la douchette."
@@ -10275,15 +10278,34 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       ${e.description ? `<p class="text-sm text-ink/70 leading-relaxed mt-3">${escapeHtml(e.description)}</p>` : ''}
 
       <div class="mt-4 pt-4 border-t border-mango-100">
-        <p class="text-sm font-bold text-ink mb-2">Enregistrer une présence</p>
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm font-bold text-ink">Inscrits</p>
+          <span id="event-rsvp-gauge" class="text-xs font-semibold text-ink/55"></span>
+        </div>
+        <div id="event-rsvp-list" class="flex flex-col gap-1.5 mb-1"><p class="text-xs text-ink/40">Chargement…</p></div>
+      </div>
+
+      <div class="mt-4 pt-4 border-t border-mango-100">
+        <p class="text-sm font-bold text-ink mb-1">Inscrire ou enregistrer une présence</p>
+        <p class="text-[11px] text-ink/45 mb-2">Pour un usager qui appelle ou se présente à l'accueil.</p>
         <div id="checkin-camera-slot" class="mb-2"></div>
         <button type="button" id="checkin-camera-btn" onclick="toggleCamera('checkin'); document.getElementById('checkin-subscriber-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition mb-2">Scanner la carte de l'usager</button>
-        <p id="checkin-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
-        <input id="checkin-subscriber-input" type="text" autocomplete="off" data-event-id="${e.id}" placeholder="Ou taper le numéro d'abonné"
-          onkeydown="if(event.key==='Enter'){event.preventDefault(); confirmEventCheckin(this.value, ${e.id});}"
+        <p id="checkin-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 min-h-4"></p>
+        <input id="checkin-subscriber-input" type="text" autocomplete="off" data-event-id="${e.id}" placeholder="Ou taper le nom ou le numéro d'abonné"
+          oninput="searchEventPerson(this.value, ${e.id})"
+          onkeydown="if(event.key==='Enter'){event.preventDefault(); searchEventPerson(this.value, ${e.id}, true);}"
           style="font-size: 16px;"
           class="w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300 mb-2">
+        <div id="event-person-results" class="flex flex-col gap-1.5 mb-2"></div>
         <div id="checkin-result"></div>
+
+        <button type="button" onclick="toggleGuestRsvpForm()" class="text-xs font-semibold text-mango-700 hover:text-mango-800 mt-1">+ Inscrire une personne sans compte</button>
+        <div id="guest-rsvp-form" class="hidden mt-2 bg-mango-50/50 border border-mango-100 rounded-lg p-3">
+          <p class="text-[11px] text-ink/55 mb-2">Pour une personne sans appli ni compte BliGO (inscription par téléphone ou sur place).</p>
+          <input id="guest-rsvp-name" type="text" autocomplete="off" placeholder="Nom et prénom" style="font-size: 16px;" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 mb-2 bg-white">
+          <input id="guest-rsvp-phone" type="tel" autocomplete="off" placeholder="Téléphone (facultatif)" style="font-size: 16px;" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-mango-300 mb-2 bg-white">
+          <button type="button" onclick="addGuestRsvp(${e.id})" class="w-full bg-mango-600 hover:bg-mango-700 text-white rounded-lg py-2 text-sm font-semibold">Inscrire</button>
+        </div>
       </div>
     `;
   }
@@ -10292,6 +10314,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const e = events.find(x => x.id === id);
     if (!e) return;
     document.getElementById('event-detail-content').innerHTML = eventDetailHtml(e);
+    loadEventRsvps(id);
     document.getElementById('event-detail-backdrop').classList.remove('hidden');
     document.getElementById('event-detail-backdrop').classList.add('flex');
   };
@@ -10301,6 +10324,135 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     stopCamera(); // le check-in reste ouvert en rafale, à couper si on ferme la fenêtre pendant un scan.
     document.getElementById('event-detail-backdrop').classList.add('hidden');
     document.getElementById('event-detail-backdrop').classList.remove('flex');
+  };
+
+  // Inscriptions faites par l'agent (18/11/2026, demande de Bastia) : un
+  // usager qui appelle ou vient sur place, avec ou sans compte BliGO. La jauge
+  // est tenue côté base (trigger enforce_event_capacity).
+  let eventRsvpsCache = [];
+
+  async function loadEventRsvps(eventId) {
+    const listBox = document.getElementById('event-rsvp-list');
+    if (!listBox) return;
+    const { data, error } = await supabase.rpc('agent_event_rsvps', { p_event_id: eventId });
+    if (error) { listBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(frError(error))}</p>`; return; }
+    eventRsvpsCache = data || [];
+    const e = events.find(x => x.id === eventId);
+    if (e) e.rsvpCount = eventRsvpsCache.length;
+    const gauge = document.getElementById('event-rsvp-gauge');
+    if (gauge) {
+      const full = e?.max_seats != null && eventRsvpsCache.length >= e.max_seats;
+      gauge.textContent = e?.max_seats != null
+        ? `${eventRsvpsCache.length} / ${e.max_seats} place${e.max_seats > 1 ? 's' : ''}${full ? ' · Complet' : ''}`
+        : `${eventRsvpsCache.length} inscrit${eventRsvpsCache.length > 1 ? 's' : ''}`;
+      gauge.className = 'text-xs font-semibold ' + (full ? 'text-red-600' : 'text-ink/55');
+    }
+    if (!eventRsvpsCache.length) {
+      listBox.innerHTML = `<p class="text-xs text-ink/40">Personne n'est encore inscrit.</p>`;
+    } else {
+      listBox.innerHTML = eventRsvpsCache.map(r => `
+        <div class="flex items-center gap-2 bg-mango-50/40 border border-mango-100 rounded-lg px-3 py-2">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.full_name)}</p>
+            <p class="text-[11px] text-ink/50 truncate">${r.has_account ? escapeHtml(r.subscriber_number || '') : 'Sans compte' + (r.phone ? ' · ' + escapeHtml(r.phone) : '')}</p>
+          </div>
+          ${r.checked_in ? '<span class="text-[11px] font-semibold text-mango-700 shrink-0">Présent·e</span>'
+            : r.has_account ? `<button type="button" onclick="eventCheckinUser('${r.user_id}', ${eventId})" class="text-[11px] font-semibold text-mango-700 border border-mango-200 bg-white rounded-full px-2.5 py-1 shrink-0">Présent·e</button>` : ''}
+          <button type="button" onclick="removeEventRsvp(${r.rsvp_id}, ${eventId})" class="text-[11px] font-semibold text-red-500/70 hover:text-red-600 shrink-0">Retirer</button>
+        </div>`).join('');
+    }
+    renderEventsList();
+    renderPastEventsList();
+  }
+
+  let eventPersonSearchTimer = null;
+  window.searchEventPerson = function (raw, eventId, immediate = false) {
+    clearTimeout(eventPersonSearchTimer);
+    const run = async () => {
+      const box = document.getElementById('event-person-results');
+      if (!box) return;
+      const q = (raw || '').trim().replace(/[%,()*]/g, ' ').trim();
+      if (q.length < 2) { box.innerHTML = ''; return; }
+      const e = events.find(x => x.id === eventId);
+      let req = supabase.from('profiles').select('id, full_name, subscriber_number')
+        .or(`full_name.ilike.%${q}%,subscriber_number.ilike.%${q}%`)
+        .order('full_name').limit(8);
+      if (e?.commune_id) req = req.eq('commune_id', e.commune_id);
+      const { data, error } = await req;
+      if (error) { box.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(frError(error))}</p>`; return; }
+      if (!data?.length) {
+        box.innerHTML = `<p class="text-xs text-ink/50">Aucun usager trouvé. Pour une personne sans compte, utilise « Inscrire une personne sans compte ».</p>`;
+        return;
+      }
+      const registered = new Set(eventRsvpsCache.map(r => r.user_id).filter(Boolean));
+      box.innerHTML = data.map(p => `
+        <div class="flex items-center gap-2 border border-mango-100 rounded-lg px-3 py-2">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-ink truncate">${escapeHtml(p.full_name || 'Sans nom')}</p>
+            <p class="text-[11px] text-ink/50 truncate">${escapeHtml(p.subscriber_number || '')}</p>
+          </div>
+          ${registered.has(p.id)
+            ? '<span class="text-[11px] text-ink/45 shrink-0">Déjà inscrit·e</span>'
+            : `<button type="button" onclick="addEventRsvpUser('${p.id}', ${eventId})" class="text-[11px] font-semibold text-white bg-mango-600 hover:bg-mango-700 rounded-full px-2.5 py-1 shrink-0">Inscrire</button>`}
+          <button type="button" onclick="eventCheckinUser('${p.id}', ${eventId})" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-full px-2.5 py-1 shrink-0">Présent·e</button>
+        </div>`).join('');
+    };
+    if (immediate) run(); else eventPersonSearchTimer = setTimeout(run, 250);
+  };
+
+  function clearEventPersonSearch() {
+    const input = document.getElementById('checkin-subscriber-input');
+    if (input) input.value = '';
+    const box = document.getElementById('event-person-results');
+    if (box) box.innerHTML = '';
+  }
+
+  window.addEventRsvpUser = async function (userId, eventId) {
+    const resultBox = document.getElementById('checkin-result');
+    const { error } = await supabase.rpc('agent_add_event_rsvp', { p_event_id: eventId, p_user_id: userId });
+    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(frError(error))}</p>`; return; }
+    resultBox.innerHTML = `<p class="text-xs font-semibold text-mango-700">✓ Inscription enregistrée.</p>`;
+    clearEventPersonSearch();
+    loadEventRsvps(eventId);
+  };
+
+  window.eventCheckinUser = async function (userId, eventId) {
+    const resultBox = document.getElementById('checkin-result');
+    const { data: isNew, error } = await supabase.rpc('record_event_checkin', { p_user_id: userId, p_event_id: eventId });
+    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(frError(error))}</p>`; return; }
+    playBeep();
+    resultBox.innerHTML = isNew
+      ? `<p class="text-xs font-semibold text-mango-700">✓ Présence enregistrée.</p>`
+      : `<p class="text-xs text-ink/55">Présence déjà enregistrée.</p>`;
+    clearEventPersonSearch();
+    loadEventRsvps(eventId);
+  };
+
+  window.toggleGuestRsvpForm = function () {
+    document.getElementById('guest-rsvp-form').classList.toggle('hidden');
+    document.getElementById('guest-rsvp-name').focus();
+  };
+
+  window.addGuestRsvp = async function (eventId) {
+    const name = document.getElementById('guest-rsvp-name').value.trim();
+    const phone = document.getElementById('guest-rsvp-phone').value.trim();
+    const resultBox = document.getElementById('checkin-result');
+    if (!name) { resultBox.innerHTML = `<p class="text-xs text-red-600">Indique le nom de la personne.</p>`; return; }
+    const { error } = await supabase.rpc('agent_add_event_rsvp', { p_event_id: eventId, p_guest_name: name, p_guest_phone: phone || null });
+    if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(frError(error))}</p>`; return; }
+    resultBox.innerHTML = `<p class="text-xs font-semibold text-mango-700">✓ ${escapeHtml(name)} est inscrit·e.</p>`;
+    document.getElementById('guest-rsvp-name').value = '';
+    document.getElementById('guest-rsvp-phone').value = '';
+    document.getElementById('guest-rsvp-form').classList.add('hidden');
+    loadEventRsvps(eventId);
+  };
+
+  window.removeEventRsvp = async function (rsvpId, eventId) {
+    const r = eventRsvpsCache.find(x => x.rsvp_id === rsvpId);
+    if (!(await confirmDialog(`Retirer ${r?.full_name || 'cette personne'} de la liste des inscrits ?`))) return;
+    const { error } = await supabase.rpc('agent_remove_event_rsvp', { p_rsvp_id: rsvpId });
+    if (error) { alert(frError(error)); return; }
+    loadEventRsvps(eventId);
   };
 
   // Présence à un événement par scan de la carte usager (22/09/2026) -
@@ -10332,6 +10484,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       ? `<p class="text-xs font-semibold text-mango-700">✓ Présence enregistrée pour ${escapeHtml(profile.full_name)}.</p>`
       : `<p class="text-xs text-ink/55">${escapeHtml(profile.full_name)} était déjà enregistré(e) comme présent(e) à cet événement.</p>`;
     document.getElementById('checkin-subscriber-input').value = '';
+    loadEventRsvps(eventId);
   };
 
   function populateEventHourSelect() {
