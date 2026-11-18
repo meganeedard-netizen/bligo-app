@@ -63,13 +63,20 @@ export function lignes(c, texte, largeur) {
   }
   return res;
 }
-export function texte(c, t, x, y, { size, weight = 700, color = INK, font = 'Poppins', largeur = W - 2 * x, interligne = 1.05, max = 99 }) {
+export function texte(c, t, x, y, { size, weight = 700, color = INK, font = 'Poppins', largeur = W - 2 * x, interligne = 1.05, max = 99, espace = 0 }) {
   c.fillStyle = color; c.textBaseline = 'top';
   c.font = `${weight} ${size}px ${font}, Arial, sans-serif`;
+  if ('letterSpacing' in c) c.letterSpacing = espace ? `${espace}px` : '0px';
   let ls = lignes(c, t, largeur);
   if (ls.length > max) { ls = ls.slice(0, max); ls[max - 1] = ls[max - 1].replace(/\s*\S*$/, '') + '…'; }
   ls.forEach((l, i) => c.fillText(l, x, y + i * size * interligne));
+  if ('letterSpacing' in c) c.letterSpacing = '0px';
   return y + ls.length * size * interligne;
+}
+// Hauteur qu'occuperait un texte, sans le dessiner.
+function hauteur(c, t, { size, weight = 600, font = 'Poppins', largeur, interligne = 1.1, max = 99 }) {
+  c.font = `${weight} ${size}px ${font}, Arial, sans-serif`;
+  return Math.min(lignes(c, t, largeur).length, max) * size * interligne;
 }
 // Titre ramené à la taille qui tient sur `max` lignes.
 export function tailleQuiTient(c, t, size, mini, largeur, max, weight = 700) {
@@ -85,108 +92,158 @@ export function image(c, img, x, y, w, h, r) {
   c.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
   c.restore();
 }
+// Refonte du 18/11/2026 (retour de Mégane : « grossier, pas très fin ») :
+// titres moins gras et plus petits, beaucoup d'air, petites étiquettes en
+// capitales espacées, couvertures avec une ombre douce, filet fin au pied.
+// Chaque bloc de texte est placé d'après la hauteur réelle du précédent :
+// plus rien ne se chevauche, même avec un titre long.
+const FOND = '#FBF6EF', TRAIT = 'rgba(8,49,51,.14)';
+
+function ombre(c, x, y, w, h, r, force = 1) {
+  c.save();
+  c.shadowColor = `rgba(8,49,51,${.30 * force})`; c.shadowBlur = 50; c.shadowOffsetY = 22;
+  c.fillStyle = '#fff'; arrondi(c, x, y, w, h, r); c.fill();
+  c.restore();
+}
 function couverture(c, livre, x, y, w, h, n = 0) {
-  if (livre._img) return image(c, livre._img, x, y, w, h, w * .025);
-  c.fillStyle = COULEURS[n % COULEURS.length]; arrondi(c, x, y, w, h, w * .025); c.fill();
-  const s = Math.round(w * .11);
-  const fin = texte(c, livre.title, x + w * .1, y + w * .12, { size: s, color: '#fff', largeur: w * .8, interligne: 1.15, max: 6 });
+  const r = Math.max(6, w * .02);
+  ombre(c, x, y, w, h, r);
+  if (livre._img) return image(c, livre._img, x, y, w, h, r);
+  c.fillStyle = COULEURS[n % COULEURS.length]; arrondi(c, x, y, w, h, r); c.fill();
+  const s = Math.round(w * .1);
+  const fin = texte(c, livre.title, x + w * .1, y + w * .12, { size: s, weight: 600, color: '#fff', largeur: w * .8, interligne: 1.15, max: 6 });
   texte(c, livre.author || '', x + w * .1, Math.max(fin + s, y + h - w * .2), { size: Math.round(s * .55), weight: 500, font: 'Inter', color: '#fff', largeur: w * .8, max: 2 });
 }
-function entete(c, a, couleur) {
-  const m = 40 * 4 / 3;
-  if (a.logo) {
-    c.fillStyle = '#fff'; c.beginPath(); c.arc(m + 42, 46 + 42, 42, 0, Math.PI * 2); c.fill();
-    const k = Math.min(68 / a.logo.width, 68 / a.logo.height), lw = a.logo.width * k, lh = a.logo.height * k;
-    c.drawImage(a.logo, m + 42 - lw / 2, 88 - lh / 2, lw, lh);
-  }
-  const x = a.logo ? m + 100 : m;
-  texte(c, 'Médiathèque Municipale', x, 50, { size: 26, weight: 600, color: couleur, largeur: W - x - m });
-  const s = tailleQuiTient(c, deCommune(a.nom), 34, 20, W - x - m, 1);
-  texte(c, deCommune(a.nom), x, 84, { size: s, color: couleur, largeur: W - x - m, max: 1 });
+function etiquette(c, t, x, y, color) {
+  return texte(c, t.toUpperCase(), x, y, { size: 22, weight: 600, font: 'Inter', color, espace: 4, largeur: W - x - M });
 }
-function pied(c, a, couleur, t) {
-  const m = 40 * 4 / 3;
-  texte(c, t, m, H - 92, { size: 34, weight: 600, color: couleur, largeur: W - 2 * m - 110 });
-  c.fillStyle = '#fff'; arrondi(c, W - m - 90, H - 40 - 84, 90, 84, 16); c.fill();
+function entete(c, a, couleur) {
+  let x = M;
+  if (a.logo) {
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(M + 30, 72 + 30, 30, 0, Math.PI * 2); c.fill();
+    const k = Math.min(46 / a.logo.width, 46 / a.logo.height), lw = a.logo.width * k, lh = a.logo.height * k;
+    c.drawImage(a.logo, M + 30 - lw / 2, 102 - lh / 2, lw, lh);
+    x = M + 76;
+  }
+  const t = `Médiathèque Municipale ${deCommune(a.nom)}`;
+  c.font = `500 26px Inter, Arial, sans-serif`;
+  const s = c.measureText(t).width > W - x - M ? 21 : 26;
+  texte(c, t, x, 88, { size: s, weight: 500, font: 'Inter', color: couleur, largeur: W - x - M, max: 1 });
+}
+function pied(c, a, couleur, t, sombre = false) {
+  c.fillStyle = sombre ? 'rgba(255,255,255,.18)' : TRAIT; c.fillRect(M, H - 150, W - 2 * M, 2);
+  texte(c, t, M, H - 104, { size: 28, weight: 500, font: 'Inter', color: couleur, largeur: W - 2 * M - 200, max: 1 });
   if (a.bligo) {
-    const k = Math.min(78 / a.bligo.width, 72 / a.bligo.height), lw = a.bligo.width * k, lh = a.bligo.height * k;
-    c.drawImage(a.bligo, W - m - 45 - lw / 2, H - 40 - 42 - lh / 2, lw, lh);
+    const k = Math.min(110 / a.bligo.width, 56 / a.bligo.height), lw = a.bligo.width * k, lh = a.bligo.height * k;
+    if (sombre) { c.fillStyle = '#fff'; arrondi(c, W - M - lw - 24, H - 90 - lh / 2 - 12, lw + 24, lh + 24, 14); c.fill(); }
+    c.drawImage(a.bligo, W - M - lw - (sombre ? 12 : 0), H - 90 - lh / 2, lw, lh);
   }
 }
 
-const M = 40 * 4 / 3;
+const M = 80;
 const DESSIN = {
   coeur(c, a, d) {
-    c.fillStyle = INK; c.fillRect(0, 0, W, H);
-    entete(c, a, '#fff');
-    texte(c, 'Notre coup de cœur', M, 160, { size: 100, color: MANGUE, largeur: 700 });
-    const h = 880, w = h / 1.5;
-    couverture(c, d.livre, (W - w) / 2 + 10, 372, w, h);
-    pied(c, a, '#fff', "");
-    texte(c, 'À réserver', M, H - 136, { size: 34, weight: 600, color: '#fff', largeur: 190 });
-    texte(c, "sur l'appli BliGO", M, H - 92, { size: 26, weight: 500, color: '#fff', font: 'Inter', largeur: 200, max: 2 });
+    c.fillStyle = FOND; c.fillRect(0, 0, W, H);
+    entete(c, a, GRIS);
+    etiquette(c, 'Notre coup de cœur', M, 200, ROSE);
+    // Couverture au centre, titre et auteur dessous.
+    const titreH = hauteur(c, d.livre.title, { size: 46, largeur: W - 2 * M, max: 2 });
+    const bas = H - 190 - titreH - 50;
+    const h = Math.min(760, bas - 270), w = h / 1.5;
+    couverture(c, d.livre, (W - w) / 2, 270, w, h);
+    c.textAlign = 'center';
+    const fin = texte(c, d.livre.title, W / 2, 270 + h + 56, { size: 46, weight: 600, largeur: W - 2 * M, interligne: 1.12, max: 2 });
+    if (d.livre.author) texte(c, d.livre.author, W / 2, fin + 10, { size: 28, weight: 400, font: 'Inter', color: GRIS, largeur: W - 2 * M, max: 1 });
+    c.textAlign = 'left';
+    pied(c, a, GRIS, "À réserver sur l'appli BliGO");
   },
   nouveautes(c, a, d) {
-    c.fillStyle = degrade(c, 0, 0, W, H); c.fillRect(0, 0, W, H);
-    entete(c, a, INK);
-    texte(c, 'Du nouveau en rayon.', M, 160, { size: 100, largeur: 700 });
-    const w = 246, h = w * 1.5, g = 18;
-    d.livres.slice(0, 4).forEach((l, i) => couverture(c, l, (W - 2 * w - g) / 2 + (i % 2) * (w + g), 410 + (i >> 1) * (h + g), w, h, i));
-    pied(c, a, INK, "À réserver sur l'appli");
+    c.fillStyle = INK; c.fillRect(0, 0, W, H);
+    entete(c, a, 'rgba(255,255,255,.8)');
+    etiquette(c, 'Nouveautés', M, 200, MANGUE);
+    texte(c, 'Du nouveau\nen rayon', M, 246, { size: 84, weight: 600, color: '#fff', interligne: 1.08 });
+    const livres = d.livres.slice(0, 4), n = livres.length;
+    // Une rangée, comme sur une étagère, légèrement décalée en hauteur.
+    const g = n === 4 ? 26 : 40;
+    const w = n === 4 ? 212 : n === 3 ? 270 : n === 2 ? 330 : 420, h = w * 1.5;
+    const x0 = (W - n * w - (n - 1) * g) / 2, y0 = Math.round((480 + H - 190 - h) / 2);
+    livres.forEach((l, i) => couverture(c, l, x0 + i * (w + g), y0 + (n > 2 ? (i % 2 ? 36 : -36) : 0), w, h, i));
+    pied(c, a, 'rgba(255,255,255,.85)', "À réserver sur l'appli BliGO", true);
   },
   evenement(c, a, d) {
     const e = new Date(d.ev.event_date);
-    c.fillStyle = CREME; c.fillRect(0, 0, W, H);
-    entete(c, a, INK);
-    c.fillStyle = degrade(c, M, 230, 340, 340); arrondi(c, M, 230, 340, 340, 34); c.fill();
+    c.fillStyle = FOND; c.fillRect(0, 0, W, H);
+    entete(c, a, GRIS);
+    etiquette(c, "À l'agenda", M, 200, ROSE);
+    // Date en grand, sobre
     const jour = JOURS[e.getDay()];
-    texte(c, jour[0].toUpperCase() + jour.slice(1), M + 34, 260, { size: 40, weight: 600, color: '#fff', largeur: 290 });
-    texte(c, String(e.getDate()), M + 34, 316, { size: 130, color: '#fff', largeur: 290 });
-    texte(c, MOIS[e.getMonth()], M + 34, 484, { size: 40, weight: 600, color: '#fff', largeur: 290 });
-    const s = tailleQuiTient(c, d.ev.title, 118, 64, W - 2 * M, 3);
-    const fin = texte(c, d.ev.title, M, 630, { size: s, largeur: W - 2 * M, max: 3 });
-    const places = d.ev.max_seats ? ` ${d.ev.max_seats} places.` : '';
-    texte(c, `${plage(d.ev)[0].toUpperCase()}${plage(d.ev).slice(1)}${d.ev.location ? ', ' + d.ev.location : ''}.${places}`, M, fin + 26, { size: 36, weight: 500, font: 'Inter', color: GRIS, largeur: W - 2 * M, interligne: 1.3, max: 3 });
-    pied(c, a, INK, 'Inscrivez-vous sur BliGO');
+    texte(c, String(e.getDate()), M, 250, { size: 190, weight: 600, color: ROSE, interligne: 1 });
+    texte(c, `${jour[0].toUpperCase() + jour.slice(1)}\n${MOIS[e.getMonth()]} ${e.getFullYear()}`, M + (e.getDate() > 9 ? 250 : 140), 300, { size: 40, weight: 500, font: 'Inter', color: INK, interligne: 1.3, largeur: 600 });
+    c.fillStyle = TRAIT; c.fillRect(M, 500, W - 2 * M, 2);
+    // Titre : taille ajustée pour laisser la place aux infos
+    const infos = [plage(d.ev)[0].toUpperCase() + plage(d.ev).slice(1), d.ev.location, d.ev.max_seats ? `${d.ev.max_seats} places, sur inscription` : 'Entrée libre'].filter(Boolean);
+    const dispo = H - 190 - 560 - infos.length * 62 - 40;
+    let s = 92;
+    while (s > 52 && hauteur(c, d.ev.title, { size: s, largeur: W - 2 * M, interligne: 1.08 }) > dispo) s -= 4;
+    // Bloc titre + infos centré dans l'espace libre, pour ne pas laisser un grand vide en bas.
+    const bloc = hauteur(c, d.ev.title, { size: s, largeur: W - 2 * M, interligne: 1.08, max: 4 }) + 40 + infos.length * 62;
+    const y0 = Math.max(556, Math.round(500 + (H - 190 - 500 - bloc) / 2));
+    const fin = texte(c, d.ev.title, M, y0, { size: s, weight: 600, largeur: W - 2 * M, interligne: 1.08, max: 4 });
+    let y = fin + 40;
+    infos.forEach(t => {
+      c.fillStyle = ROSE; c.beginPath(); c.arc(M + 8, y + 19, 7, 0, Math.PI * 2); c.fill();
+      texte(c, t, M + 36, y, { size: 34, weight: 400, font: 'Inter', color: GRIS, largeur: W - 2 * M - 36, max: 1 });
+      y += 62;
+    });
+    pied(c, a, GRIS, "Inscrivez-vous sur l'appli BliGO");
   },
   mois(c, a, d) {
-    c.fillStyle = CREME; c.fillRect(0, 0, W, H);
-    entete(c, a, INK);
-    texte(c, 'À venir près de chez vous', M, 168, { size: 88, largeur: 800 });
-    d.evs.slice(0, 4).forEach((ev, i) => {
-      const e = new Date(ev.event_date), y = 400 + i * 196;
-      c.fillStyle = '#fff'; arrondi(c, M, y, W - 2 * M, 176, 28); c.fill();
-      c.textAlign = 'center';
-      texte(c, String(e.getDate()), M + 90, y + 28, { size: 66, color: ROSE, largeur: 160 });
-      texte(c, MOIS_COURT[e.getMonth()], M + 90, y + 104, { size: 26, weight: 600, color: ROSE, largeur: 170 });
-      c.textAlign = 'left';
-      const fin = texte(c, ev.title, M + 190, y + 36, { size: 38, largeur: W - 2 * M - 220, interligne: 1.12, max: 2 });
-      texte(c, heure(e), M + 190, fin + 6, { size: 28, weight: 500, font: 'Inter', color: GRIS, largeur: 500, max: 1 });
-    });
-    pied(c, a, INK, 'Inscrivez-vous sur BliGO');
+    c.fillStyle = FOND; c.fillRect(0, 0, W, H);
+    entete(c, a, GRIS);
+    etiquette(c, 'Agenda', M, 200, ROSE);
+    texte(c, 'Prochains\nrendez-vous', M, 246, { size: 84, weight: 600, interligne: 1.08 });
+    let y = 480;
+    const limite = H - 190;
+    for (const ev of d.evs.slice(0, 5)) {
+      const e = new Date(ev.event_date);
+      const tH = hauteur(c, ev.title, { size: 36, largeur: W - 2 * M - 190, interligne: 1.15, max: 2 });
+      const rowH = Math.max(110, tH + 52) + 44;
+      if (y + rowH > limite) break;
+      c.fillStyle = TRAIT; c.fillRect(M, y, W - 2 * M, 2);
+      texte(c, String(e.getDate()), M, y + 26, { size: 64, weight: 600, color: ROSE, interligne: 1 });
+      texte(c, MOIS_COURT[e.getMonth()].toUpperCase(), M + 2, y + 96, { size: 20, weight: 600, font: 'Inter', color: ROSE, espace: 3, largeur: 140 });
+      const fin = texte(c, ev.title, M + 190, y + 30, { size: 36, weight: 600, largeur: W - 2 * M - 190, interligne: 1.15, max: 2 });
+      texte(c, `${JOURS[e.getDay()][0].toUpperCase() + JOURS[e.getDay()].slice(1)}, ${plage(ev)}`, M + 190, fin + 10, { size: 26, weight: 400, font: 'Inter', color: GRIS, largeur: W - 2 * M - 190, max: 1 });
+      y += rowH;
+    }
+    pied(c, a, GRIS, "Inscrivez-vous sur l'appli BliGO");
   },
   vacances(c, a) {
-    c.fillStyle = degrade(c, 0, 0, W, H); c.fillRect(0, 0, W, H);
-    entete(c, a, INK);
-    const fin = texte(c, 'Votre pile\nde lecture\npour les', M, 220, { size: 140, largeur: W - 2 * M });
-    texte(c, 'vacances ?', M, fin, { size: 140, color: '#fff' });
-    texte(c, 'Réservez-la depuis le canapé.', M, fin + 190, { size: 46, weight: 600, largeur: W - 2 * M });
-    pied(c, a, INK, "Sur l'appli BliGO");
+    const g = c.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#FFE9C7'); g.addColorStop(1, '#FFD3DC');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    entete(c, a, GRIS);
+    etiquette(c, 'Bientôt les vacances', M, 200, ROSE);
+    const fin = texte(c, 'Votre pile\nde lecture\nest prête ?', M, 270, { size: 124, weight: 600, interligne: 1.05 });
+    texte(c, 'Réservez vos livres depuis le canapé,\non vous prévient dès qu’ils sont prêts.', M, fin + 60, { size: 36, weight: 400, font: 'Inter', color: GRIS, interligne: 1.4, largeur: W - 2 * M });
+    pied(c, a, GRIS, "Sur l'appli BliGO");
   },
   carte(c, a) {
     c.fillStyle = INK; c.fillRect(0, 0, W, H);
-    entete(c, a, '#fff');
-    texte(c, 'Votre carte, toujours sur vous.', M, 190, { size: 104, color: '#fff', largeur: W - 2 * M });
-    const x = M, y = 590, w = W - 2 * M, h = 540;
-    c.fillStyle = degrade(c, x, y, w, h); arrondi(c, x, y, w, h, 44); c.fill();
-    c.save(); arrondi(c, x, y, w, h, 44); c.clip(); c.fillStyle = 'rgba(255,255,255,.14)'; c.beginPath(); c.arc(x + w - 70, y + 80, 150, 0, Math.PI * 2); c.fill(); c.restore();
-    texte(c, 'Carte de médiathèque', x + 56, y + 56, { size: 34, weight: 600, color: '#fff', largeur: w - 112 });
-    texte(c, 'Dans votre téléphone.', x + 56, y + 108, { size: 62, color: '#fff', largeur: w - 112 });
-    c.fillStyle = '#fff'; arrondi(c, x + 56, y + 240, 240, 240, 26); c.fill();
-    const n = 7, t = 180 / n; c.fillStyle = INK;
-    [1,1,1,0,1,1,1, 1,0,1,0,1,0,1, 1,1,1,0,1,1,1, 0,0,0,1,0,1,0, 1,0,1,0,1,1,0, 0,1,0,1,0,1,1, 1,1,0,1,1,0,1].forEach((v, i) => { if (v) c.fillRect(x + 86 + (i % n) * t, y + 270 + Math.floor(i / n) * t, t - 3, t - 3); });
-    texte(c, 'Présentez-la à la médiathèque pour emprunter vos livres.', x + 340, y + 280, { size: 40, weight: 600, color: '#fff', font: 'Inter', largeur: w - 396, interligne: 1.25 });
-    pied(c, a, '#fff', "Sur l'appli BliGO");
+    entete(c, a, 'rgba(255,255,255,.8)');
+    etiquette(c, 'Votre carte', M, 200, MANGUE);
+    texte(c, 'Toujours\nsur vous.', M, 246, { size: 110, weight: 600, color: '#fff', interligne: 1.05 });
+    const x = M, y = 600, w = W - 2 * M, h = 480;
+    ombre(c, x, y, w, h, 40, 1.4);
+    c.fillStyle = degrade(c, x, y, w, h); arrondi(c, x, y, w, h, 40); c.fill();
+    c.save(); arrondi(c, x, y, w, h, 40); c.clip(); c.fillStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.arc(x + w - 60, y + 60, 170, 0, Math.PI * 2); c.fill(); c.restore();
+    etiquette(c, 'Carte de médiathèque', x + 56, y + 56, 'rgba(255,255,255,.9)');
+    texte(c, 'Dans votre\ntéléphone.', x + 56, y + 100, { size: 56, weight: 600, color: '#fff', interligne: 1.1, largeur: w - 112 });
+    c.fillStyle = '#fff'; arrondi(c, x + w - 56 - 190, y + h - 56 - 190, 190, 190, 22); c.fill();
+    const n = 7, t = 150 / n; c.fillStyle = INK;
+    [1,1,1,0,1,1,1, 1,0,1,0,1,0,1, 1,1,1,0,1,1,1, 0,0,0,1,0,1,0, 1,0,1,0,1,1,0, 0,1,0,1,0,1,1, 1,1,0,1,1,0,1].forEach((v, i) => { if (v) c.fillRect(x + w - 56 - 170 + (i % n) * t, y + h - 56 - 170 + Math.floor(i / n) * t, t - 3, t - 3); });
+    texte(c, 'À présenter au comptoir\npour emprunter vos livres.', x + 56, y + h - 56 - 90, { size: 30, weight: 500, font: 'Inter', color: '#fff', interligne: 1.35, largeur: w - 112 - 220 });
+    pied(c, a, 'rgba(255,255,255,.85)', "Sur l'appli BliGO", true);
   },
 };
 
@@ -251,17 +308,25 @@ export async function ouvrirCommunication({ supabase, communeId, telecharger }) 
     supabase.from('communes').select('name, logo_url').eq('id', communeId).maybeSingle(),
     supabase.from('books').select('title, author, cover_url').eq('commune_id', communeId).eq('is_staff_pick', true).limit(8),
     supabase.from('books').select('title, author, cover_url').eq('commune_id', communeId).eq('is_new_release', true).not('cover_url', 'is', null).order('created_at', { ascending: false }).limit(4),
-    supabase.from('books').select('title, author, cover_url').eq('commune_id', communeId).not('cover_url', 'is', null).order('created_at', { ascending: false }).limit(4),
+    supabase.from('books').select('title, author, cover_url').eq('commune_id', communeId).not('cover_url', 'is', null).order('created_at', { ascending: false }).limit(12),
     supabase.from('events').select('title, event_date, location, max_seats, duration_minutes').eq('commune_id', communeId).gte('event_date', maintenant).order('event_date').limit(8),
   ]);
 
   const [logo, bligo] = await Promise.all([chargerImage(commune?.logo_url), chargerImage('img/bligo-logo.png')]);
   etat = { a: { nom: commune?.name || '', logo, bligo } };
 
-  const livresNouv = (nouv && nouv.length) ? nouv : (recents || []);
+  // Nouveautés : jamais le même livre que le coup de cœur (retour du 18/11),
+  // complétées par les derniers documents ajoutés pour avoir 4 couvertures.
+  const vus = new Set((coeurs || []).slice(0, 1).map(l => l.title));
+  const livresNouv = [];
+  for (const l of [...(nouv || []), ...(recents || [])]) {
+    if (livresNouv.length >= 4) break;
+    if (vus.has(l.title)) continue;
+    vus.add(l.title); livresNouv.push(l);
+  }
   const posts = [];
   if (coeurs?.length) posts.push({ id: 'coeur', type: 'coeur', titre: 'Coup de cœur', quand: `${coeurs.length} coup${coeurs.length > 1 ? 's' : ''} de cœur dans ton catalogue`, livre: coeurs[0], options: coeurs.map(l => ({ label: l.title, val: l })) });
-  if (livresNouv.length) posts.push({ id: 'nouveautes', type: 'nouveautes', titre: 'Nouveautés', quand: (nouv && nouv.length) ? 'Tes dernières nouveautés' : 'Tes derniers documents ajoutés', livres: livresNouv });
+  if (livresNouv.length) posts.push({ id: 'nouveautes', type: 'nouveautes', titre: 'Nouveautés', quand: (nouv && nouv.length) ? 'Tes dernières nouveautés, sans ton coup de cœur' : 'Tes derniers documents ajoutés', livres: livresNouv });
   if (evs?.length) posts.push({ id: 'evenement', type: 'evenement', titre: 'Un événement', quand: `${evs.length} événement${evs.length > 1 ? 's' : ''} à venir dans ton agenda`, ev: evs[0], options: evs.map(e => ({ label: `${new Date(e.event_date).getDate()} ${MOIS[new Date(e.event_date).getMonth()]} : ${e.title}`, val: e })) });
   if (evs?.length > 1) posts.push({ id: 'mois', type: 'mois', titre: 'Les prochains rendez-vous', quand: 'Selon ton agenda', evs });
   posts.push({ id: 'vacances', type: 'vacances', titre: 'Vacances', quand: 'Avant chaque période de vacances' });

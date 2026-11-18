@@ -1,7 +1,7 @@
 // Supports de lancement de l'écran Communication (05/11/2026) : affiche, flyer, post,
 // mail et texte pour le bulletin, au nom et au logo de la médiathèque.
 // Dessinés en canvas (300 dpi pour l'imprimé), PDF écrit sans bibliothèque.
-import { LIEN, deCommune, chargerImage, degrade, arrondi, texte, tailleQuiTient } from './communication.js?v=20261105b';
+import { LIEN, deCommune, chargerImage, degrade, arrondi, texte, tailleQuiTient } from './communication.js?v=20261118';
 
 const INK = '#083133', GRIS = '#2B4B4D', ROSE = '#F0295D';
 const K = 300 / 72;

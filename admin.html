@@ -9502,10 +9502,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!myCommuneId) { document.getElementById('com-' + onglet).innerHTML = '<p class="text-sm text-ink/55">Choisis d\'abord une médiathèque.</p>'; return; }
     try {
       if (onglet === 'posts') {
-        const { ouvrirCommunication } = await import('./js/communication.js?v=20261105b');
+        const { ouvrirCommunication } = await import('./js/communication.js?v=20261118');
         await ouvrirCommunication({ supabase, communeId: myCommuneId, telecharger: comTelecharger });
       } else if (!comOuvert.supports) {
-        const { ouvrirSupports } = await import('./js/communicationSupports.js?v=20261105c');
+        const { ouvrirSupports } = await import('./js/communicationSupports.js?v=20261118');
         await ouvrirSupports({ supabase, communeId: myCommuneId, telecharger: comTelecharger });
         comOuvert.supports = true;
       }
