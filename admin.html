@@ -8725,7 +8725,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const settings = readBarcodeSettings();
     const formatSelect = document.getElementById('barcode-format');
     formatSelect.innerHTML = Object.entries(LABEL_FORMATS).map(([k, f]) => `<option value="${k}">${f.name}</option>`).join('');
-    formatSelect.value = LABEL_FORMATS[settings.format] ? settings.format : 'a4_65';
+    // Planche de 40 par défaut : celle de 65 est trop petite pour un code-barres (Mégane, 18/11/2026).
+    formatSelect.value = LABEL_FORMATS[settings.format] ? settings.format : 'a4_40';
     document.getElementById('barcode-offset-x').value = settings.offsetX || 0;
     document.getElementById('barcode-offset-y').value = settings.offsetY || 0;
     document.getElementById('barcode-show-name').checked = settings.showName !== false;
