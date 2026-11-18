@@ -496,6 +496,7 @@
             <button onclick="openScanView()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M12 5v14M5 12h14"/></svg>Ajouter un document</button>
             <button onclick="openCatalogueView('subs')" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M18 8h2v10a2 2 0 0 1-2 2"/><path d="M8 8h6M8 12h6M8 16h4"/></svg>Abonnements périodiques <span id="subs-late-badge" class="hidden text-[10px] font-bold bg-red-600 text-white rounded-full px-1.5 py-0.5"></span></button>
             <button onclick="printToEquipLabels()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>Étiquettes à imprimer</button>
+            <button onclick="openBarcodeModal()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" class="shrink-0"><path d="M4 6v12M7 6v12M10 6v12M14 6v12M16 6v12M20 6v12"/></svg>Codes-barres</button>
           </div>
         </div>
 
@@ -1215,7 +1216,7 @@
         <p class="text-sm text-ink/55 mb-6">Réservé à la direction. Apparence, tarifs, horaires et règles de ta médiathèque.</p>
 
         <div class="grid lg:grid-cols-[200px_1fr] gap-6 items-start">
-          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('tarifs')" data-settings-tab="tarifs" class="settings-tab-btn">Tarifs et conditions</button><button type="button" onclick="showSettingsTab('horaires')" data-settings-tab="horaires" class="settings-tab-btn">Adresse et horaires</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button><button type="button" onclick="showSettingsTab('donnees')" data-settings-tab="donnees" class="settings-tab-btn">Données et export</button></nav>
+          <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-20"><button type="button" onclick="showSettingsTab('apparence')" data-settings-tab="apparence" class="settings-tab-btn">Apparence</button><button type="button" onclick="showSettingsTab('tarifs')" data-settings-tab="tarifs" class="settings-tab-btn">Tarifs et conditions</button><button type="button" onclick="showSettingsTab('horaires')" data-settings-tab="horaires" class="settings-tab-btn">Adresse et horaires</button><button type="button" onclick="showSettingsTab('ressources')" data-settings-tab="ressources" class="settings-tab-btn">Ressources numériques</button><button type="button" onclick="showSettingsTab('cotes')" data-settings-tab="cotes" class="settings-tab-btn">Règles de cote</button><button type="button" onclick="showSettingsTab('codesbarres')" data-settings-tab="codesbarres" class="settings-tab-btn">Codes-barres</button><button type="button" onclick="showSettingsTab('types')" data-settings-tab="types" class="settings-tab-btn">Types de documents</button><button type="button" onclick="showSettingsTab('donnees')" data-settings-tab="donnees" class="settings-tab-btn">Données et export</button></nav>
           <div class="max-w-3xl min-w-0">
           <div data-settings-pane="apparence" class="bg-white border border-[#E5E7EB] rounded-xl p-6">
         <h3 class="text-base font-bold text-ink mb-2">Logo</h3>
@@ -1440,6 +1441,26 @@
           <button onclick="addDigitalResource()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter la ressource</button>
         </div>
 
+          </div>
+          <!-- Étiquettes code-barres (18/11/2026) : numérotation de la médiathèque. -->
+          <div data-settings-pane="codesbarres" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
+        <h3 class="text-base font-bold text-ink mb-2">Numérotation des codes-barres</h3>
+        <p class="text-xs text-ink/55 mb-4">Les étiquettes code-barres imprimées depuis Catalogage suivent cette numérotation. Chaque numéro n'est imprimé qu'une fois, même si deux agents impriment en même temps. Si ta médiathèque a déjà des codes, reprends le même préfixe et le même nombre de chiffres, puis clique sur « Reprendre après mon dernier code ».</p>
+        <div class="grid sm:grid-cols-3 gap-3 mb-3">
+          <div><label class="text-[11px] font-semibold text-ink/60 block mb-1">Préfixe (facultatif)</label>
+            <input id="cb-prefix" type="text" maxlength="8" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'');previewBarcodeSettings()" placeholder="Ex. ABY" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm"></div>
+          <div><label class="text-[11px] font-semibold text-ink/60 block mb-1">Nombre de chiffres</label>
+            <select id="cb-digits" onchange="previewBarcodeSettings()" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white"><option value="4">4 chiffres</option><option value="5">5 chiffres</option><option value="6">6 chiffres</option><option value="7">7 chiffres</option><option value="8">8 chiffres</option><option value="9">9 chiffres</option><option value="10">10 chiffres</option><option value="11">11 chiffres</option><option value="12">12 chiffres</option><option value="13">13 chiffres</option><option value="14">14 chiffres</option></select></div>
+          <div><label class="text-[11px] font-semibold text-ink/60 block mb-1">Prochain numéro</label>
+            <input id="cb-next" type="number" min="1" oninput="previewBarcodeSettings()" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm"></div>
+        </div>
+        <button type="button" onclick="suggestBarcodeNext()" class="text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg px-3 py-1.5 mb-4">Reprendre après mon dernier code</button>
+        <div class="bg-mango-50/50 border border-mango-100 rounded-xl p-4 mb-4 flex items-center gap-4 flex-wrap">
+          <div id="cb-preview" class="bg-white border border-[#E5E7EB] rounded p-1"></div>
+          <p class="text-xs text-ink/60">Prochaine étiquette : <span id="cb-preview-code" class="font-bold text-ink"></span></p>
+        </div>
+        <p id="cb-settings-status" class="text-xs min-h-[16px] mb-2"></p>
+        <button type="button" onclick="saveBarcodeSettings()" class="bg-brand text-white rounded-lg px-5 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
           </div>
           <div data-settings-pane="cotes" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
         <h3 class="text-base font-bold text-ink mb-2">Règles de cote</h3>
@@ -2341,6 +2362,7 @@
     document.querySelectorAll('[data-settings-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.settingsPane !== tab));
     document.querySelectorAll('[data-settings-tab]').forEach(el => el.classList.toggle('is-active', el.dataset.settingsTab === tab));
     if (tab === 'donnees') { window.loadRetention?.(); window.fillStatsYears?.(); window.etatAdherents?.(); }
+    if (tab === 'codesbarres') window.loadBarcodeSettings?.();
   };
 
   window.switchScreen = function (screen) {
@@ -8417,6 +8439,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       <p class="text-xs text-ink/55 mb-3">${escapeHtml(b.author || '')}${b.shelf_location ? ` · cote <span class="font-bold text-ink">${escapeHtml(b.shelf_location)}</span>` : ''}</p>
       <button type="button" onclick="openLabelsModal([${b.id}], true)" class="w-full mb-3 text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg py-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-[-2px] shrink-0"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg> Imprimer ${copies.length > 1 ? `les ${copies.length} étiquettes` : "l'étiquette"} de cote</button>
       <p class="text-xs text-ink/60 mb-3">Plastifie et étiquette ${copies.length > 1 ? `les ${copies.length} exemplaires` : 'le document'}, puis scanne le code-barres de la médiathèque collé sur ${copies.length > 1 ? 'chacun' : 'lui'}. ${copies.length > 1 ? 'Chaque exemplaire a son propre code.' : ''}</p>
+      <button type="button" onclick="equipCreateBarcodes()" class="w-full mb-3 text-xs font-semibold text-ink/70 border border-[#D1D5DB] hover:border-brand/40 bg-white rounded-lg py-2 inline-flex items-center justify-center gap-1.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" class="shrink-0"><path d="M4 6v12M7 6v12M10 6v12M14 6v12M16 6v12M20 6v12"/></svg> Pas d'étiquette code-barres ? Créer et imprimer ${copies.length > 1 ? 'les codes' : 'le code'}</button>
       ${copies.map((c, i) => `
         <label class="text-xs font-semibold text-ink/60 block mb-1">Exemplaire ${copies.length > 1 ? i + 1 : ''}</label>
         <input id="equip-code-${c.id}" data-copy-id="${c.id}" class="equip-code-input w-full border border-mango-100 rounded-lg px-3 py-2.5 text-sm mb-2 outline-none focus:ring-2 focus:ring-mango-300"
@@ -8620,6 +8643,218 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     };
     window.addEventListener('afterprint', cleanup);
     setTimeout(() => window.print(), 50);
+  };
+
+  // ---------- Étiquettes code-barres (18/11/2026) ----------
+  // Numérotation par médiathèque (Réglages > Codes-barres), numéros réservés
+  // côté base (reserve_library_barcodes) : jamais deux fois le même code.
+  // Dessin Code 128 dans js/codeBarres.js. Même mise en page que les cotes.
+  const codeBarresModule = () => import('./js/codeBarres.js?v=20261118a');
+  const BARCODE_SETTINGS_KEY = 'bligo_barcode_label_settings';
+  let barcodeMode = 'new';
+  let barcodeFixedCodes = null;
+  let barcodeCommune = null;
+
+  async function fetchBarcodeCommune() {
+    const { data } = await supabase.from('communes').select('name, barcode_prefix, barcode_digits, barcode_next').eq('id', myCommuneId).maybeSingle();
+    barcodeCommune = data || { barcode_prefix: null, barcode_digits: 8, barcode_next: 1 };
+    return barcodeCommune;
+  }
+  const formatBarcode = (prefix, digits, n) => (prefix || '') + String(n).padStart(digits, '0');
+
+  window.loadBarcodeSettings = async function () {
+    const c = await fetchBarcodeCommune();
+    document.getElementById('cb-prefix').value = c.barcode_prefix || '';
+    document.getElementById('cb-digits').value = String(c.barcode_digits || 8);
+    document.getElementById('cb-next').value = c.barcode_next || 1;
+    document.getElementById('cb-settings-status').textContent = '';
+    previewBarcodeSettings();
+  };
+
+  window.previewBarcodeSettings = async function () {
+    const prefix = document.getElementById('cb-prefix').value;
+    const digits = Number(document.getElementById('cb-digits').value);
+    const n = Math.max(1, Number(document.getElementById('cb-next').value) || 1);
+    const code = formatBarcode(prefix, digits, n);
+    document.getElementById('cb-preview-code').textContent = code;
+    const { svgCode128 } = await codeBarresModule();
+    document.getElementById('cb-preview').innerHTML = svgCode128(code, 38, 12).replace(/width="[\d.]+mm" height="[\d.]+mm"/, 'width="190" height="60"');
+  };
+
+  window.suggestBarcodeNext = async function () {
+    const prefix = document.getElementById('cb-prefix').value;
+    const digits = Number(document.getElementById('cb-digits').value);
+    const { data, error } = await supabase.rpc('barcode_next_suggestion', { p_prefix: prefix, p_digits: digits });
+    const status = document.getElementById('cb-settings-status');
+    if (error) { status.className = 'text-xs text-red-600 min-h-[16px] mb-2'; status.textContent = frError(error); return; }
+    document.getElementById('cb-next').value = data || 1;
+    status.className = 'text-xs text-ink/60 min-h-[16px] mb-2';
+    status.textContent = data > 1 ? `Dernier code trouvé dans le catalogue : ${formatBarcode(prefix, digits, data - 1)}. Pense à enregistrer.` : 'Aucun code avec ce préfixe dans le catalogue : on commence à 1.';
+    previewBarcodeSettings();
+  };
+
+  window.saveBarcodeSettings = async function () {
+    const status = document.getElementById('cb-settings-status');
+    const { error } = await supabase.rpc('set_barcode_settings', {
+      p_prefix: document.getElementById('cb-prefix').value,
+      p_digits: Number(document.getElementById('cb-digits').value),
+      p_next: Math.max(1, Number(document.getElementById('cb-next').value) || 1),
+    });
+    status.className = `text-xs min-h-[16px] mb-2 ${error ? 'text-red-600' : 'text-mango-700 font-semibold'}`;
+    status.textContent = error ? frError(error) : '✓ Numérotation enregistrée.';
+  };
+
+  function readBarcodeSettings() {
+    try { return JSON.parse(localStorage.getItem(BARCODE_SETTINGS_KEY) || '{}'); } catch { return {}; }
+  }
+
+  window.setBarcodeMode = function (mode) {
+    barcodeMode = mode;
+    ['new', 'reprint'].forEach(m => {
+      const b = document.getElementById('barcode-mode-' + m);
+      b.classList.toggle('bg-white', m === mode); b.classList.toggle('shadow-sm', m === mode); b.classList.toggle('text-ink', m === mode);
+    });
+    document.getElementById('barcode-new-wrap').classList.toggle('hidden', mode !== 'new');
+    document.getElementById('barcode-reprint-wrap').classList.toggle('hidden', mode !== 'reprint');
+    if (mode === 'reprint') document.getElementById('barcode-reprint-list').focus();
+  };
+
+  // fixedCodes : codes déjà attribués (créés à l'équipement), imprimés tels quels.
+  window.openBarcodeModal = async function (fixedCodes = null) {
+    barcodeFixedCodes = fixedCodes;
+    const settings = readBarcodeSettings();
+    const formatSelect = document.getElementById('barcode-format');
+    formatSelect.innerHTML = Object.entries(LABEL_FORMATS).map(([k, f]) => `<option value="${k}">${f.name}</option>`).join('');
+    formatSelect.value = LABEL_FORMATS[settings.format] ? settings.format : 'a4_65';
+    document.getElementById('barcode-offset-x').value = settings.offsetX || 0;
+    document.getElementById('barcode-offset-y').value = settings.offsetY || 0;
+    document.getElementById('barcode-show-name').checked = settings.showName !== false;
+    document.getElementById('barcode-start').value = 1;
+    document.getElementById('barcode-error').textContent = '';
+    document.getElementById('barcode-reprint-list').value = '';
+    document.getElementById('barcode-mode-wrap').classList.toggle('hidden', !!fixedCodes);
+    const fixedInfo = document.getElementById('barcode-fixed-info');
+    fixedInfo.classList.toggle('hidden', !fixedCodes);
+    if (fixedCodes) fixedInfo.innerHTML = `${fixedCodes.length > 1 ? 'Codes créés' : 'Code créé'} pour ce document : <span class="font-bold font-mono">${fixedCodes.map(escapeHtml).join(', ')}</span>. Colle ${fixedCodes.length > 1 ? 'chaque étiquette sur son exemplaire, dans l\'ordre' : 'l\'étiquette sur le document'}, puis valide l'équipement.`;
+    setBarcodeMode('new');
+    refreshBarcodeForm();
+    const backdrop = document.getElementById('barcode-modal-backdrop');
+    backdrop.classList.remove('hidden');
+    backdrop.classList.add('flex');
+    const c = await fetchBarcodeCommune();
+    document.getElementById('barcode-next-info').textContent =
+      `Prochain code : ${formatBarcode(c.barcode_prefix, c.barcode_digits, c.barcode_next)} (numérotation réglable dans Réglages > Codes-barres).`;
+  };
+
+  window.refreshBarcodeForm = function () {
+    const f = LABEL_FORMATS[document.getElementById('barcode-format').value];
+    document.getElementById('barcode-start-wrap').classList.toggle('hidden', !!f.roll);
+    const qty = document.getElementById('barcode-qty');
+    if (!qty.value) qty.value = f.roll ? 50 : f.cols * f.rows;
+  };
+
+  window.fillBarcodeSheet = function () {
+    const f = LABEL_FORMATS[document.getElementById('barcode-format').value];
+    const start = Math.max(1, parseInt(document.getElementById('barcode-start').value, 10) || 1);
+    document.getElementById('barcode-qty').value = f.roll ? 50 : Math.max(1, f.cols * f.rows - (start - 1));
+  };
+
+  window.closeBarcodeModal = function (event) {
+    if (event && event.target !== event.currentTarget) return;
+    const backdrop = document.getElementById('barcode-modal-backdrop');
+    backdrop.classList.add('hidden');
+    backdrop.classList.remove('flex');
+  };
+
+  function barcodeLabelHtml(code, nom, f, svgCode128, x, y) {
+    const padX = 1.5, padY = Math.min(1.2, f.h * 0.05);
+    const nameH = nom ? Math.min(2.6, f.h * 0.12) : 0;
+    const textH = Math.min(3.4, f.h * 0.15);
+    const barH = f.h - 2 * padY - nameH - textH - 0.6;
+    const nameSize = nameH * 0.8, textSize = Math.min(textH * 0.85, (f.w - 2 * padX) / (code.length * 0.62));
+    return `<div class="spine-label" style="left:${x}mm;top:${y}mm;width:${f.w}mm;height:${f.h}mm;padding:${padY}mm ${padX}mm;justify-content:space-between;font-weight:600;">
+      ${nom ? `<div style="font-size:${nameSize.toFixed(2)}mm;line-height:1;white-space:nowrap;overflow:hidden;max-width:100%;">${escapeHtml(nom)}</div>` : ''}
+      ${svgCode128(code, f.w - 2 * padX, barH)}
+      <div style="font-size:${textSize.toFixed(2)}mm;line-height:1;letter-spacing:0.04em;">${escapeHtml(code)}</div>
+    </div>`;
+  }
+
+  window.printBarcodeLabels = async function () {
+    const errorEl = document.getElementById('barcode-error');
+    errorEl.textContent = '';
+    const key = document.getElementById('barcode-format').value;
+    const f = LABEL_FORMATS[key];
+    const offsetX = Number(document.getElementById('barcode-offset-x').value) || 0;
+    const offsetY = Number(document.getElementById('barcode-offset-y').value) || 0;
+    const start = Math.max(1, parseInt(document.getElementById('barcode-start').value, 10) || 1);
+    const showName = document.getElementById('barcode-show-name').checked;
+    try { localStorage.setItem(BARCODE_SETTINGS_KEY, JSON.stringify({ format: key, offsetX, offsetY, showName })); } catch {}
+
+    let codes;
+    if (barcodeFixedCodes) codes = barcodeFixedCodes;
+    else if (barcodeMode === 'reprint') {
+      codes = [...new Set(document.getElementById('barcode-reprint-list').value.split(/[\s,;]+/).map(c => c.trim()).filter(Boolean))];
+      if (!codes.length) { errorEl.textContent = 'Indique au moins un code à réimprimer.'; return; }
+    } else {
+      const qty = parseInt(document.getElementById('barcode-qty').value, 10);
+      if (!(qty >= 1 && qty <= 1000)) { errorEl.textContent = 'Entre 1 et 1 000 étiquettes à la fois.'; return; }
+      const btn = document.getElementById('barcode-print-btn');
+      btn.disabled = true;
+      const { data, error } = await supabase.rpc('reserve_library_barcodes', { p_count: qty });
+      btn.disabled = false;
+      if (error) { errorEl.textContent = frError(error); return; }
+      codes = data;
+    }
+
+    const { svgCode128 } = await codeBarresModule();
+    const nom = showName ? (barcodeCommune?.name || document.getElementById('header-commune-name')?.textContent || '') : '';
+    let html = '', pageCss;
+    try {
+      if (f.roll) {
+        pageCss = `@page { size: ${f.w}mm ${f.h}mm; margin: 0; }`;
+        html = codes.map(c => `<div class="spine-page" style="width:${f.w}mm;height:${f.h}mm;">${barcodeLabelHtml(c, nom, f, svgCode128, offsetX, offsetY)}</div>`).join('');
+      } else {
+        pageCss = '@page { size: 210mm 297mm; margin: 0; }';
+        const perPage = f.cols * f.rows;
+        const slots = [...Array(start - 1).fill(null), ...codes];
+        for (let p = 0; p * perPage < slots.length; p++) {
+          const pageSlots = slots.slice(p * perPage, (p + 1) * perPage);
+          html += `<div class="spine-page" style="width:210mm;height:297mm;">${pageSlots.map((c, i) => {
+            if (!c) return '';
+            const col = i % f.cols, row = Math.floor(i / f.cols);
+            return barcodeLabelHtml(c, nom, f, svgCode128, f.left + offsetX + col * f.colPitch, f.top + offsetY + row * f.rowPitch);
+          }).join('')}</div>`;
+        }
+      }
+    } catch (e) { errorEl.textContent = e.message; return; }
+
+    document.getElementById('print-spine-area').innerHTML = html;
+    let style = document.getElementById('spine-page-style');
+    if (!style) { style = document.createElement('style'); style.id = 'spine-page-style'; document.head.appendChild(style); }
+    style.textContent = pageCss;
+    document.body.classList.add('printing-spine');
+    closeBarcodeModal();
+    const cleanup = () => {
+      document.body.classList.remove('printing-spine');
+      style.textContent = '';
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(() => window.print(), 50);
+  };
+
+  // Équipement : crée les codes manquants, les inscrit dans les champs, puis
+  // ouvre l'impression. L'agent colle les étiquettes et valide comme d'habitude.
+  window.equipCreateBarcodes = async function () {
+    const errorEl = document.getElementById('equip-error');
+    const empty = [...document.querySelectorAll('.equip-code-input')].filter(i => !i.value.trim());
+    if (!empty.length) { errorEl.textContent = 'Tous les exemplaires ont déjà un code.'; return; }
+    const { data, error } = await supabase.rpc('reserve_library_barcodes', { p_count: empty.length });
+    if (error) { errorEl.textContent = frError(error); return; }
+    empty.forEach((input, i) => { input.value = data[i]; });
+    errorEl.textContent = '';
+    await fetchBarcodeCommune();
+    openBarcodeModal(data);
   };
 
   window.printToEquipLabels = function () {
@@ -11061,6 +11296,52 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 <div id="print-bilan-area" class="hidden"></div>
 
 <!-- Impression des étiquettes de cote (09/10/2026) -->
+<!-- Étiquettes code-barres (18/11/2026) : nouveaux codes, réimpression, ou codes créés à l'équipement. -->
+<div id="barcode-modal-backdrop" onclick="closeBarcodeModal(event)" class="hidden fixed inset-0 z-50 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative p-6">
+    <button onclick="closeBarcodeModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
+    <p class="text-base font-bold text-ink mb-1 flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" class="shrink-0"><path d="M4 6v12M7 6v12M10 6v12M14 6v12M18 6v12M20 6v12"/></svg> Étiquettes code-barres</p>
+    <p class="text-xs text-ink/55 mb-4">Des étiquettes à coller sur les documents, lues par la douchette et la caméra.</p>
+    <div id="barcode-mode-wrap">
+      <div class="flex items-center gap-1 bg-mango-50 border border-mango-100 rounded-full p-1 w-fit mb-3">
+        <button id="barcode-mode-new" type="button" onclick="setBarcodeMode('new')" class="text-xs font-semibold px-3 py-1.5 rounded-full">Nouveaux codes</button>
+        <button id="barcode-mode-reprint" type="button" onclick="setBarcodeMode('reprint')" class="text-xs font-semibold px-3 py-1.5 rounded-full">Réimprimer des codes</button>
+      </div>
+      <div id="barcode-new-wrap">
+        <label class="text-[11px] font-semibold text-ink/60 block mb-1">Nombre d'étiquettes</label>
+        <div class="flex items-center gap-2 mb-1">
+          <input id="barcode-qty" type="number" min="1" max="1000" class="w-24 border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+          <button type="button" onclick="fillBarcodeSheet()" class="text-xs font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-lg px-3 py-1.5">Une planche entière</button>
+        </div>
+        <p id="barcode-next-info" class="text-[10.5px] text-ink/45 mb-3"></p>
+      </div>
+      <div id="barcode-reprint-wrap" class="hidden">
+        <label class="text-[11px] font-semibold text-ink/60 block mb-1">Codes à réimprimer (un par ligne, ou scanne-les)</label>
+        <textarea id="barcode-reprint-list" rows="4" placeholder="ABY00001234" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-1 font-mono"></textarea>
+        <p class="text-[10.5px] text-ink/45 mb-3">Pour une étiquette abîmée ou décollée : le document garde le même code.</p>
+      </div>
+    </div>
+    <p id="barcode-fixed-info" class="hidden text-xs text-ink/70 bg-mango-50/60 border border-mango-100 rounded-lg p-2.5 mb-3"></p>
+    <label class="text-[11px] font-semibold text-ink/60 block mb-1">Support</label>
+    <select id="barcode-format" onchange="refreshBarcodeForm()" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3"></select>
+    <div id="barcode-start-wrap">
+      <label class="text-[11px] font-semibold text-ink/60 block mb-1">Commencer à l'étiquette n°</label>
+      <input id="barcode-start" type="number" min="1" value="1" class="w-24 border border-mango-100 rounded-lg px-2 py-1.5 text-sm mb-1">
+      <p class="text-[10.5px] text-ink/45 mb-3">Pour réutiliser une planche déjà entamée (on compte de gauche à droite, ligne par ligne).</p>
+    </div>
+    <label class="flex items-center gap-2 text-xs text-ink/70 mb-3"><input id="barcode-show-name" type="checkbox" checked class="accent-[#F7901E]"> Nom de la médiathèque au-dessus du code</label>
+    <details class="mb-4">
+      <summary class="text-[11px] font-semibold text-ink/50 cursor-pointer select-none">Les étiquettes sont décalées à l'impression ?</summary>
+      <div class="grid grid-cols-2 gap-2 mt-2">
+        <div><label class="text-[11px] text-ink/60 block mb-1">Décalage vers le bas (mm)</label><input id="barcode-offset-y" type="number" step="0.5" value="0" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm"></div>
+        <div><label class="text-[11px] text-ink/60 block mb-1">Décalage vers la droite (mm)</label><input id="barcode-offset-x" type="number" step="0.5" value="0" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm"></div>
+      </div>
+      <p class="text-[10.5px] text-ink/45 mt-1">Valeurs négatives pour remonter ou décaler vers la gauche. Mémorisé sur cet ordinateur. Dans la fenêtre d'impression, choisis l'échelle « 100 % » (pas « Ajuster à la page »).</p>
+    </details>
+    <p id="barcode-error" class="text-xs text-red-600 font-semibold min-h-[16px] mb-1"></p>
+    <button id="barcode-print-btn" onclick="printBarcodeLabels()" class="w-full bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition">Imprimer</button>
+  </div>
+</div>
 <div id="labels-modal-backdrop" onclick="closeLabelsModal(event)" class="hidden fixed inset-0 z-50 bg-brand/40 backdrop-blur-sm items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto relative p-6">
     <button onclick="closeLabelsModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 border border-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
