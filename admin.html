@@ -3543,9 +3543,10 @@
     const files = Array.from(input.files || []);
     if (!files.length) return;
     etat.textContent = 'Lecture des notices…';
-    const { lireFichierNotices, noticeVersFiche } = await import('./js/noticesImport.js?v=20261118a');
+    const { lireFichierNotices, noticeVersFiche } = await import('./js/noticesImport.js?v=20261118b');
     const forcedGenre = document.getElementById('batch-genre')?.value || null;
     let added = 0, skipped = 0;
+    const importedIds = [];
     for (const file of files) {
       let records = [];
       try { records = lireFichierNotices(await file.arrayBuffer()); } catch (e) { console.error(e); }
@@ -3581,6 +3582,7 @@
         const localId = `${Date.now()}-${Math.random()}`;
         draftBooks.push({ localId, isbn: bnf.isbn, status: 'loading' });
         applyFetchedMeta(localId, meta);
+        importedIds.push(localId);
         const draft = draftBooks.find(d => d.localId === localId);
         if (draft && copies.length) {
           draft.copyCount = copies.length;
@@ -3592,10 +3594,28 @@
     }
     renderDraftBooks();
     input.value = '';
+    completerNoticesImportees(importedIds);
     etat.textContent = added
       ? `${added} notice${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''} aux brouillons${skipped ? ` (${skipped} sans titre ignorée${skipped > 1 ? 's' : ''})` : ''}. Vérifie-les puis valide.`
       : "Aucune notice lue dans ce fichier. Vérifie qu'il s'agit bien d'un export UNIMARC ou MARC.";
   };
+
+  // Les notices fournisseurs n'ont presque jamais de couverture : on la
+  // cherche par l'ISBN (et le résumé s'il manque), une notice après l'autre
+  // pour ne pas saturer les API, sans toucher au reste de la notice.
+  async function completerNoticesImportees(ids) {
+    for (const localId of ids) {
+      const draft = draftBooks.find(d => d.localId === localId);
+      const isbn = String(draft?.isbn || '').replace(/[^\dX]/gi, '');
+      if (!draft?.meta || draft.meta.cover_url || !isBookIsbn(isbn)) continue;
+      const found = await fetchBookMetaByIsbn(isbn, null).catch(() => null);
+      const still = draftBooks.find(d => d.localId === localId);
+      if (!found || !still?.meta) continue;
+      if (found.cover_url && !still.meta.cover_url) still.meta.cover_url = found.cover_url;
+      if (found.summary && !still.summary) { still.meta.summary = found.summary; still.summary = stripPressQuotes(found.summary); }
+      renderDraftBooks();
+    }
+  }
 
   async function addDraftFromIsbn(rawCode) {
     const isbn = rawCode.replace(/-/g, '');
