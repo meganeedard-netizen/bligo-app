@@ -570,7 +570,12 @@
               <div class="mt-4 pt-4 border-t border-mango-100">
                 <p class="text-xs font-bold text-ink mb-0.5">Importer des notices</p>
                 <p class="text-[11px] text-ink/55 mb-2">Les notices de tes commandes (Electre, Colaco, RDM Vidéo, ton libraire…) en UNIMARC ou MARC : fichier .mrc, .iso, .uni, .dat ou .xml. Elles arrivent en brouillon pour vérification.</p>
-                <input type="file" id="notices-fichier" multiple accept=".mrc,.iso,.uni,.dat,.marc,.unimarc,.xml,.txt" onchange="importerNotices(this)" class="text-xs w-full">
+                <!-- Bouton en français (18/11/2026) : le bouton natif s'affiche en anglais dans le logiciel Mac. -->
+                <div class="flex items-center gap-2 min-w-0">
+                  <input type="file" id="notices-fichier" multiple accept=".mrc,.iso,.uni,.dat,.marc,.unimarc,.xml,.txt" onchange="document.getElementById('notices-nom').textContent = Array.from(this.files).map(f => f.name).join(', ') || 'Aucun fichier choisi'; importerNotices(this)" class="hidden">
+                  <label for="notices-fichier" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-3 py-2 text-xs font-semibold shrink-0 cursor-pointer">Choisir des fichiers</label>
+                  <span id="notices-nom" class="text-xs text-ink/55 truncate">Aucun fichier choisi</span>
+                </div>
                 <p id="notices-etat" class="text-[11px] text-ink/60 mt-1.5"></p>
               </div>
             </div>
@@ -1486,7 +1491,11 @@
             <div class="border border-[#E5E7EB] rounded-xl p-4 mb-3">
               <p class="text-sm font-bold text-ink">Importer mes adhérents</p>
               <p class="text-xs text-ink/55 mt-0.5 mb-3">Un fichier CSV avec au moins une colonne Nom. Ajoute si possible : numéro de carte, e-mail, date de naissance, catégorie et fin d'adhésion. Tes adhérents n'auront pas à rapporter de justificatif : ils seront reconnus quand ils créeront leur compte.</p>
-              <input type="file" id="adherents-fichier" accept=".csv,.txt,text/csv" onchange="analyserFichierAdherents(this)" class="text-sm w-full mb-2">
+              <div class="flex items-center gap-2 min-w-0 mb-2">
+                <input type="file" id="adherents-fichier" accept=".csv,.txt,text/csv" onchange="document.getElementById('adherents-nom').textContent = Array.from(this.files).map(f => f.name).join(', ') || 'Aucun fichier choisi'; analyserFichierAdherents(this)" class="hidden">
+                <label for="adherents-fichier" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-3 py-2 text-sm font-semibold shrink-0 cursor-pointer">Choisir un fichier</label>
+                <span id="adherents-nom" class="text-xs text-ink/55 truncate">Aucun fichier choisi</span>
+              </div>
               <div id="adherents-apercu" class="text-xs text-ink/70"></div>
               <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
                 <button type="button" id="adherents-importer" onclick="importerFichierAdherents()" class="hidden bg-brand text-white rounded-lg px-3 py-2 text-sm font-semibold">Importer</button>
