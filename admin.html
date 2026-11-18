@@ -8770,9 +8770,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const padX = 1.5, padY = Math.min(1.2, f.h * 0.05);
     const nameH = nom ? Math.min(2.6, f.h * 0.12) : 0;
     const textH = Math.min(3.4, f.h * 0.15);
-    const barH = f.h - 2 * padY - nameH - textH - 0.6;
+    // Hauteur des barres plafonnée à 8 mm, comme les étiquettes de bibliothèque
+    // courantes (Mégane, 18/11/2026 : « c'est des codes-barres moins hauts »).
+    const barH = Math.min(8, f.h - 2 * padY - nameH - textH - 1.2);
     const nameSize = nameH * 0.8, textSize = Math.min(textH * 0.85, (f.w - 2 * padX) / (code.length * 0.62));
-    return `<div class="spine-label" style="left:${x}mm;top:${y}mm;width:${f.w}mm;height:${f.h}mm;padding:${padY}mm ${padX}mm;justify-content:space-between;font-weight:600;">
+    return `<div class="spine-label" style="left:${x}mm;top:${y}mm;width:${f.w}mm;height:${f.h}mm;padding:${padY}mm ${padX}mm;justify-content:center;gap:0.6mm;font-weight:600;">
       ${nom ? `<div style="font-size:${nameSize.toFixed(2)}mm;line-height:1;white-space:nowrap;overflow:hidden;max-width:100%;">${escapeHtml(nom)}</div>` : ''}
       ${svgCode128(code, f.w - 2 * padX, barH)}
       <div style="font-size:${textSize.toFixed(2)}mm;line-height:1;letter-spacing:0.04em;">${escapeHtml(code)}</div>
