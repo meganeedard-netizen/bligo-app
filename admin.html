@@ -6754,17 +6754,24 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   async function loadNeoscribSection(profile) {
     const box = document.getElementById('fiche-neoscrib');
     if (!box) return;
-    const { data, error } = await supabase.from('profiles').select('age_group, resident, is_collectivite').eq('id', profile.id).single();
+    const { data, error } = await supabase.from('profiles').select('age_group, resident, is_collectivite, genre').eq('id', profile.id).single();
     if (error || !data) { box.innerHTML = ''; return; }
     const sel = (id, opts, val) => `<select id="${id}" onchange="saveUsagerNeoscrib('${profile.id}')" class="border ${val == null || val === '' ? 'border-hibiscus-300' : 'border-mango-100'} rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
       ${opts.map(([v, l]) => `<option value="${v}" ${String(val ?? '') === v ? 'selected' : ''} ${v === '' ? 'disabled' : ''}>${l}</option>`).join('')}</select>`;
     box.innerHTML = `
       <div class="px-4 py-2.5 border-b border-mango-50 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        <span class="flex items-center gap-2"><span class="text-ink/50">Genre :</span><select id="fiche-genre" onchange="saveUsagerGenre('${profile.id}', this.value)" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
+          ${[['', 'Non renseigné'], ['femme', 'Femme'], ['homme', 'Homme'], ['transgenre', 'Transgenre'], ['non_precise', 'Ne souhaite pas préciser']].map(([v, l]) => `<option value="${v}" ${(data.genre || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span>
         <span class="flex items-center gap-2"><span class="text-ink/50">Âge :</span>${sel('fiche-age', [['', 'À renseigner'], ['enfant', '0 à 14 ans'], ['adulte', '15 à 64 ans'], ['senior', '65 ans et plus']], data.age_group)}</span>
         <span class="flex items-center gap-2"><span class="text-ink/50">Habite la commune :</span>${sel('fiche-resident', [['', 'À renseigner'], ['true', 'Oui'], ['false', 'Non']], data.resident)}</span>
         <label class="flex items-center gap-1.5 text-ink/60"><input type="checkbox" id="fiche-collectivite" onchange="saveUsagerNeoscrib('${profile.id}')" ${data.is_collectivite ? 'checked' : ''} class="accent-[#F7901E]"> Collectivité (classe, crèche, EHPAD…)</label>
       </div>`;
   }
+
+  window.saveUsagerGenre = async function (userId, genre) {
+    const { error } = await supabase.rpc('set_usager_genre', { p_user_id: userId, p_genre: genre || null });
+    if (error) alert('Erreur : ' + frError(error));
+  };
 
   window.saveUsagerNeoscrib = async function (userId) {
     const age = document.getElementById('fiche-age').value || null;
