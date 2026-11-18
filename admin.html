@@ -566,6 +566,13 @@
                   </label>
                 </div>
               </details>
+              <!-- Import de notices fournisseurs (18/11/2026, demande de Bastia) -->
+              <div class="mt-4 pt-4 border-t border-mango-100">
+                <p class="text-xs font-bold text-ink mb-0.5">Importer des notices</p>
+                <p class="text-[11px] text-ink/55 mb-2">Les notices de tes commandes (Electre, Colaco, RDM Vidéo, ton libraire…) en UNIMARC ou MARC : fichier .mrc, .iso, .uni, .dat ou .xml. Elles arrivent en brouillon pour vérification.</p>
+                <input type="file" id="notices-fichier" multiple accept=".mrc,.iso,.uni,.dat,.marc,.unimarc,.xml,.txt" onchange="importerNotices(this)" class="text-xs w-full">
+                <p id="notices-etat" class="text-[11px] text-ink/60 mt-1.5"></p>
+              </div>
             </div>
 
             <div class="flex-1 min-w-0">
@@ -3526,6 +3533,70 @@
     });
   }
 
+  // ---------- Import de notices fournisseurs (18/11/2026) ----------
+  // Electre, Colaco, RDM Vidéo, libraires : notices UNIMARC ou MARC 21 des
+  // documents achetés. Chaque notice devient un brouillon, comme un scan, avec
+  // la même lecture que la notice BnF (catégorie, type, cote) et les
+  // exemplaires livrés équipés (995 : code-barres $f, cote $k).
+  window.importerNotices = async function (input) {
+    const etat = document.getElementById('notices-etat');
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    etat.textContent = 'Lecture des notices…';
+    const { lireFichierNotices, noticeVersFiche } = await import('./js/noticesImport.js?v=20261118a');
+    const forcedGenre = document.getElementById('batch-genre')?.value || null;
+    let added = 0, skipped = 0;
+    for (const file of files) {
+      let records = [];
+      try { records = lireFichierNotices(await file.arrayBuffer()); } catch (e) { console.error(e); }
+      for (const rec of records) {
+        const bnf = noticeVersFiche(rec);
+        if (!bnf?.title) { skipped++; continue; }
+        const isVideo = /images anim/i.test(bnf.docType || '') || /dvd|bd vid|blu/i.test(bnf.extent || '');
+        const isSound = /enregistrement sonore/i.test(bnf.docType || '') || /\bcd\b|disque compact/i.test(bnf.extent || '');
+        const isScore = /musique imprim/i.test(bnf.docType || '');
+        const format = isVideo ? firstTypeOfKind('dvd')
+          : isSound ? firstTypeOfKind('cd')
+          : isScore ? (FORMAT_OPTIONS.find(f => /partition/i.test(f)) || null)
+          : (formatFromBnF(bnf) || (FORMAT_OPTIONS.includes('Livre broché') ? 'Livre broché' : null));
+        const copies = bnf.copies || [];
+        const meta = {
+          title: bnf.title,
+          author: bnf.author || (isSound ? 'Artiste inconnu' : 'Auteur inconnu'),
+          summary: bnf.summary, cover_url: null,
+          publisher: bnf.publisher, published_date: bnf.published_date,
+          page_count: (isVideo || isSound) ? null : bnf.page_count,
+          language: bnf.language, legal_deposit: bnf.legal_deposit, printer: bnf.printer,
+          dewey: bnf.dewey, collection: bnf.collection, subjects: bnf.subjects,
+          dimensions: (isVideo || isSound) ? (bnf.extent || bnf.dimensions) : bnf.dimensions,
+          illustrations: bnf.illustrations,
+          binding: (isVideo || isSound) ? null : bnf.binding,
+          translator: bnf.translator, illustrator: bnf.illustrator,
+          authorKey: bnf.authorLastName, price_cents: bnf.price_cents, age_range: bnf.age_range,
+          format,
+          category: forcedGenre || ((isVideo || isSound || isScore) ? 'Culture' : categorizeDocument(bnf.rawCategoryText, bnf.title, bnf.dewey)),
+          isbn: bnf.isbn,
+          copyBarcodes: copies.map(c => c.barcode).filter(Boolean),
+        };
+        const localId = `${Date.now()}-${Math.random()}`;
+        draftBooks.push({ localId, isbn: bnf.isbn, status: 'loading' });
+        applyFetchedMeta(localId, meta);
+        const draft = draftBooks.find(d => d.localId === localId);
+        if (draft && copies.length) {
+          draft.copyCount = copies.length;
+          const supplierCote = copies.find(c => c.cote)?.cote;
+          if (supplierCote && draft.status === 'found') { draft.cote = supplierCote; draft.coteEdited = true; }
+        }
+        added++;
+      }
+    }
+    renderDraftBooks();
+    input.value = '';
+    etat.textContent = added
+      ? `${added} notice${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''} aux brouillons${skipped ? ` (${skipped} sans titre ignorée${skipped > 1 ? 's' : ''})` : ''}. Vérifie-les puis valide.`
+      : "Aucune notice lue dans ce fichier. Vérifie qu'il s'agit bien d'un export UNIMARC ou MARC.";
+  };
+
   async function addDraftFromIsbn(rawCode) {
     const isbn = rawCode.replace(/-/g, '');
     if (draftBooks.some(d => d.isbn === isbn)) {
@@ -4903,11 +4974,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // l'agent le remplace par le vrai code dès qu'il le connaît (voir
   // updateCopyBarcode). Achat ou don, un nouvel exemplaire part toujours en
   // 'processing' (à équiper) - voir insertBook (17/09/2026).
-  async function createCopyForBook(book, cote, fromDonation, copyIndex = 1) {
+  async function createCopyForBook(book, cote, fromDonation, copyIndex = 1, supplierBarcode = null) {
     const communeId = myCommuneId || eventCommunes[0]?.id || null;
     if (!communeId) return null;
     const base = `BLIGO-${String(book.id).padStart(6, '0')}`;
-    const barcode = copyIndex > 1 ? `${base}-${copyIndex}` : base;
+    const provisional = copyIndex > 1 ? `${base}-${copyIndex}` : base;
+    // Exemplaire livré équipé (notice fournisseur, zone 995 $f) : son vrai
+    // code-barres, sauf s'il existe déjà (on retombe alors sur le provisoire).
+    const barcode = supplierBarcode && !books.some(b => (b.copies || []).some(c => c.barcode === supplierBarcode)) ? supplierBarcode : provisional;
     const { data, error } = await supabase.from('book_copies').insert({
       book_id: book.id,
       barcode,
@@ -6668,7 +6742,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     return m ? Number(m[1]) * 100 + Number((m[2] || '').padEnd(2, '0') || 0) : null;
   }
 
-  async function insertBook({ players = null, play_duration = null, age_range = null, price_cents = null, title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false }) {
+  async function insertBook({ players = null, play_duration = null, age_range = null, price_cents = null, title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false, copyBarcodes = null }) {
     const fromDonation = !!donorSession;
     const cote = shelfOverride || suggestCote(category, author, dewey, { format, authorKey, title });
     // Champs de fiche ajoutés le 07/10/2026 : envoyés seulement s'ils sont
@@ -6710,9 +6784,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     }
     // Certaines médiathèques ont plusieurs exemplaires du même titre : un
     // code-barres provisoire distinct par exemplaire (BLIGO-000123, -2, -3…).
-    const firstCopy = await createCopyForBook(data, cote, fromDonation, 1);
+    const firstCopy = await createCopyForBook(data, cote, fromDonation, 1, copyBarcodes?.[0]);
     for (let i = 2; i <= Math.max(1, copyCount); i++) {
-      await createCopyForBook(data, cote, fromDonation, i);
+      await createCopyForBook(data, cote, fromDonation, i, copyBarcodes?.[i - 1]);
     }
     data.copy_barcode = firstCopy?.barcode || null;
     await loadBooks();
