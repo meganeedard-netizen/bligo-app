@@ -332,10 +332,11 @@
           <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 relative max-h-[90vh] overflow-y-auto">
             <button type="button" onclick="cancelCounterUser()" aria-label="Fermer" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-mango-50 hover:bg-mango-100 text-ink/50 hover:text-ink flex items-center justify-center text-sm font-bold">✕</button>
             <div id="counter-user-modal-body"></div>
-            <div class="flex flex-col sm:flex-row gap-2 mt-5">
-              <button type="button" onclick="cancelCounterUser()" style="touch-action: manipulation;" class="flex-1 border-2 border-mango-100 text-ink/70 rounded-lg py-3 text-sm font-semibold">Ce n'est pas la bonne personne</button>
-              <button type="button" id="counter-user-confirm-btn" onclick="confirmCounterUser()" style="touch-action: manipulation;" class="flex-1 bg-brand text-white rounded-lg py-3 text-sm font-bold active:scale-[0.98] transition">Continuer · scanner les livres</button>
-            </div>
+            <!-- Accueil de l'usager (18/11/2026, demande de Mégane) : une fois la
+                 carte scannée, l'agent choisit ce que la personne vient faire,
+                 sans passer par Comptoir, Prêts, Agenda ou Catalogage. -->
+            <div id="counter-hub" class="mt-5"></div>
+            <button type="button" onclick="cancelCounterUser()" style="touch-action: manipulation;" class="w-full mt-3 border-2 border-mango-100 text-ink/70 rounded-lg py-2.5 text-sm font-semibold">Ce n'est pas la bonne personne</button>
           </div>
         </div>
 
@@ -520,10 +521,14 @@
           <button onclick="closeScanView()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour au catalogue</button>
           <!-- Dépôt de la bibliothèque départementale (13/11/2026) : ces exemplaires
                sont comptés à part dans le rapport Néoscrib (D142-D144, E241). -->
-          <label class="flex items-center gap-2 mb-3 text-xs font-semibold text-ink/70 bg-white border border-mango-100 rounded-lg px-3 py-2 w-fit">
-            <input type="checkbox" id="depot-bd-toggle" onchange="depotBdSession = this.checked" class="accent-[#F7901E]">
-            Documents prêtés par la bibliothèque départementale (dépôt)
-          </label>
+          <!-- Origine des documents (18/11/2026, demande de Mégane) : achat, don ou
+               dépôt de la BD, enregistrée sur chaque exemplaire (book_copies.source)
+               pour les statistiques et le rapport Néoscrib (D131 dons, D142-D144 dépôt). -->
+          <div class="mb-3 bg-white border border-mango-100 rounded-xl px-4 py-3 w-fit max-w-full">
+            <p class="text-xs font-bold text-ink/60 mb-2">Ces documents viennent :</p>
+            <div id="catalog-origin" class="flex flex-wrap gap-2"></div>
+            <p id="catalog-origin-hint" class="text-[11px] text-ink/50 mt-2"></p>
+          </div>
 
           <div class="flex flex-col lg:flex-row lg:items-start gap-6">
             <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm w-full lg:max-w-sm lg:shrink-0">
@@ -1758,6 +1763,7 @@
   let zxingReaders = {};
   let donorSession = null; // { sessionId, id (donateur ou null), full_name, count, rejected }
   window.depotBdSession = false; // catalogage d'un dépôt de la BD (Néoscrib)
+  window.catalogOrigin = 'purchase'; // origine choisie au catalogage : purchase, donation, depot_bd
   let statsScope = 'commune';
   let myCommuneId = null;
   // Délai de retrait de la médiathèque (03/11/2026, communes.pickup_hours).
@@ -3173,6 +3179,7 @@
   };
 
   function renderDonorSession() {
+    renderCatalogOrigin();
     document.getElementById('donor-session-bar').classList.toggle('hidden', !donorSession);
     document.getElementById('donor-session-start-btn').classList.toggle('hidden', !!donorSession);
     if (donorSession) {
@@ -5103,7 +5110,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       current_commune_id: communeId,
       shelf_location: cote,
       status: 'processing',
-      source: window.depotBdSession ? 'depot_bd' : (fromDonation ? 'donation' : 'purchase'),
+      source: window.depotBdSession ? 'depot_bd' : ((fromDonation || window.catalogOrigin === 'donation') ? 'donation' : 'purchase'),
     }).select().single();
     if (error) { console.error('Erreur création exemplaire :', error); return null; }
     return data;
@@ -5238,13 +5245,164 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error || !profile) { msg.textContent = 'Aucun usager ne porte ce numéro.'; return; }
     stopCamera();
 
-    const [{ data: loans }, { data: debts }] = await Promise.all([
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
+    let todayEventsQuery = supabase.from('events').select('id, title, event_type, event_date, duration_minutes')
+      .gte('event_date', dayStart.toISOString()).lt('event_date', dayEnd.toISOString()).order('event_date');
+    if (myCommuneId) todayEventsQuery = todayEventsQuery.eq('commune_id', myCommuneId);
+    const [{ data: loans }, { data: debts }, { data: ready }, { data: todayEvents }] = await Promise.all([
       supabase.from('loans').select('id, borrowed_at, due_at, returned_at, lost, book_copies ( books ( title, author ) )')
         .eq('user_id', profile.id).order('borrowed_at', { ascending: false }).limit(100),
       supabase.from('document_debts').select('loan_id, kind, amount_cents, status, books ( title )').eq('user_id', profile.id),
+      supabase.from('reservations').select('id, books ( title, author )').eq('user_id', profile.id).eq('status', 'pret').order('ready_at'),
+      todayEventsQuery,
     ]);
-    counterPending = { profile, loans: loans || [], debts: debts || [] };
+    counterPending = { profile, loans: loans || [], debts: debts || [], ready: (ready || []).map(r => ({ ...r, done: false, message: '' })), todayEvents: todayEvents || [], checkedIn: new Set() };
+    counterHubView = 'menu';
     renderCounterUserModal();
+  };
+
+  // ---------- Accueil de l'usager (18/11/2026) ----------
+  // Après la carte : Prêter, Retirer sa commande, Rendre, Présence à un
+  // événement du jour, Don de livres. Réutilise les fonctions existantes
+  // (mark_reservation_picked_up, record_event_checkin, session de don).
+  let counterHubView = 'menu';
+  const HUB_ICONS = {
+    loan: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+    pickup: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/><path d="M9.5 13.5l2 2 3.5-3.5"/>',
+    ret: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+    event: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><path d="M9 14.5l2 2 4-4"/>',
+    don: '<path d="M20 12v9H4v-9"/><path d="M2 7h20v5H2z"/><path d="M12 21V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>',
+  };
+  function hubTile(kind, label, sub, onclick, primary = false, disabled = false) {
+    return `<button type="button" ${disabled ? 'disabled' : `onclick="${onclick}"`} ${kind === 'loan' ? 'id="counter-user-confirm-btn"' : ''} style="touch-action: manipulation;"
+      class="text-left rounded-xl p-3.5 flex items-start gap-3 transition active:scale-[0.98] ${disabled ? 'bg-mango-50/50 text-ink/35 cursor-default' : primary ? 'bg-brand text-white' : 'bg-white border border-mango-100 hover:border-brand/40 text-ink'}">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-0.5">${HUB_ICONS[kind]}</svg>
+      <span class="min-w-0"><span class="block text-sm font-bold">${label}</span>${sub ? `<span class="block text-[11px] ${primary ? 'text-white/75' : 'text-ink/50'} mt-0.5">${sub}</span>` : ''}</span>
+    </button>`;
+  }
+  const hubTime = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+  function renderCounterHub() {
+    const box = document.getElementById('counter-hub');
+    if (!box || !counterPending) return;
+    const { ready, todayEvents } = counterPending;
+    const readyLeft = ready.filter(r => !r.done).length;
+    const back = `<button type="button" onclick="counterHubShow('menu')" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/55 hover:text-ink mb-3">← Autre action</button>`;
+
+    if (counterHubView === 'pickup') {
+      box.innerHTML = `${back}
+        <div class="bg-white border border-mango-100 rounded-xl overflow-hidden">
+          <div class="flex items-center gap-2 px-4 py-2.5 bg-mango-50">
+            <p class="flex-1 text-xs font-bold uppercase tracking-wide text-ink/50">Commande prête · ${readyLeft ? `${readyLeft} à remettre` : 'tout est remis'}</p>
+            ${readyLeft > 1 ? `<button type="button" onclick="counterHubPickupAll()" class="shrink-0 text-xs font-bold bg-brand text-white rounded-full px-3.5 py-1.5">Tout remettre (${readyLeft})</button>` : ''}
+          </div>
+          ${ready.map(r => `
+            <div class="flex items-center gap-3 px-4 py-3 border-t border-mango-50 ${r.done ? 'bg-mango-50/40' : ''}">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold ${r.done ? 'text-ink/50' : 'text-ink'} truncate">${escapeHtml(r.books?.title || '?')}</p>
+                <p class="text-xs text-ink/55 truncate">${r.done ? escapeHtml(r.message || 'Prêt enregistré') : escapeHtml(r.books?.author || '')}</p>
+              </div>
+              ${r.done ? `<span class="shrink-0 text-xs font-bold text-mango-700">✓ Remis</span>`
+                : `<button type="button" onclick="counterHubPickup(${r.id})" class="shrink-0 text-xs font-semibold bg-mango-600 text-white rounded-full px-3.5 py-2">Remettre</button>`}
+            </div>`).join('')}
+        </div>`;
+      return;
+    }
+
+    if (counterHubView === 'event') {
+      box.innerHTML = `${back}
+        <p class="text-xs font-bold text-ink/50 uppercase tracking-wide mb-2">Événements d'aujourd'hui</p>
+        ${todayEvents.length ? `<div class="flex flex-col gap-2">${todayEvents.map(e => {
+          const done = counterPending.checkedIn.has(e.id);
+          return `<div class="flex items-center gap-3 bg-white border border-mango-100 rounded-xl px-4 py-3">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-ink truncate">${escapeHtml(e.title || e.event_type || 'Événement')}</p>
+              <p class="text-xs text-ink/55">${hubTime(e.event_date)}${e.title && e.event_type ? ` · ${escapeHtml(e.event_type)}` : ''}</p>
+            </div>
+            ${done ? `<span class="shrink-0 text-xs font-bold text-mango-700">✓ Présent</span>`
+              : `<button type="button" onclick="counterHubCheckin(${e.id})" class="shrink-0 text-xs font-semibold bg-brand text-white rounded-full px-3.5 py-2">Enregistrer sa présence</button>`}
+          </div>`;
+        }).join('')}</div>`
+        : `<p class="text-sm text-ink/55 bg-mango-50 rounded-xl px-4 py-3">Aucun événement aujourd'hui dans ta médiathèque.</p>`}`;
+      return;
+    }
+
+    const donsOn = window.bligoDonationsEnabled !== false;
+    box.innerHTML = `
+      <p class="text-xs font-bold text-ink/50 uppercase tracking-wide mb-2">Que vient faire ${escapeHtml((counterPending.profile.full_name || 'cette personne').split(' ')[0])} ?</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        ${hubTile('loan', 'Emprunter des livres', 'Scanner les livres à prêter', 'confirmCounterUser()', true)}
+        ${hubTile('pickup', 'Retirer sa commande', readyLeft ? `${readyLeft} document${readyLeft > 1 ? 's' : ''} prêt${readyLeft > 1 ? 's' : ''}` : 'Aucune commande prête', "counterHubShow('pickup')", false, !readyLeft)}
+        ${hubTile('ret', 'Rendre des livres', 'Scanner les livres rendus', 'counterHubReturn()')}
+        ${hubTile('event', 'Participer à un événement', todayEvents.length ? `${todayEvents.length} aujourd'hui` : "Aucun événement aujourd'hui", "counterHubShow('event')", false, !todayEvents.length)}
+        ${donsOn ? hubTile('don', 'Faire un don de livres', 'Cataloguer les livres donnés', 'counterHubDonation()') : ''}
+      </div>`;
+  }
+
+  window.counterHubShow = function (view) {
+    counterHubView = view;
+    renderCounterHub();
+  };
+
+  async function counterHubPickupOne(r) {
+    const { data, error } = await supabase.rpc('mark_reservation_picked_up', { p_reservation_id: r.id });
+    if (error) { alert('Erreur : ' + frError(error)); return false; }
+    if (!data.ok) { alert(data.message); return false; }
+    r.done = true; r.message = data.message;
+    return true;
+  }
+  async function counterHubAfterPickup() {
+    playBeep();
+    renderCounterHub();
+    if (typeof loadReservations === 'function') loadReservations();
+    if (typeof loadActiveLoans === 'function') loadActiveLoans();
+  }
+  window.counterHubPickup = async function (id) {
+    const r = counterPending?.ready.find(x => x.id === id);
+    if (r && !r.done && await counterHubPickupOne(r)) await counterHubAfterPickup();
+  };
+  window.counterHubPickupAll = async function () {
+    let any = false;
+    for (const r of (counterPending?.ready || []).filter(x => !x.done)) {
+      if (await counterHubPickupOne(r)) any = true;
+    }
+    if (any) await counterHubAfterPickup(); else renderCounterHub();
+  };
+
+  window.counterHubCheckin = async function (eventId) {
+    if (!counterPending) return;
+    const { data: isNew, error } = await supabase.rpc('record_event_checkin', { p_user_id: counterPending.profile.id, p_event_id: eventId });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    playBeep();
+    showScanOk(isNew ? 'Présence enregistrée' : 'Présence déjà enregistrée');
+    counterPending.checkedIn.add(eventId);
+    renderCounterHub();
+  };
+
+  function closeCounterUserModalOnly() {
+    const modal = document.getElementById('counter-user-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  window.counterHubReturn = function () {
+    counterPending = null;
+    closeCounterUserModalOnly();
+    window.resetCounterUser();
+    window.switchCounterTab('return');
+  };
+
+  window.counterHubDonation = async function () {
+    if (!counterPending) return;
+    const { profile } = counterPending;
+    counterPending = null;
+    closeCounterUserModalOnly();
+    window.resetCounterUser();
+    await openDonationSession(profile.id, profile.full_name);
+    if (!donorSession) return;
+    switchScreen('catalogue');
+    window.openScanView();
   };
 
   function renderCounterUserModal() {
@@ -5286,12 +5444,15 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           ${alerts.join('')}
           ${active.length ? `<p class="text-xs font-bold text-red-700 ${alerts.length ? 'mt-2' : ''} mb-1">Non rendus (${active.length})</p>${activeHtml}` : ''}
         </div>` : `<p class="text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl px-3.5 py-2.5 mb-4">Aucun livre à rendre, aucun document abîmé ou perdu.</p>`}
-      <p class="text-xs font-bold text-ink/50 uppercase tracking-wide mb-1">Historique (${returned.length})</p>
-      <div class="max-h-56 overflow-y-auto">${historyHtml}</div>`;
+      <details class="group">
+        <summary class="text-xs font-bold text-ink/50 uppercase tracking-wide mb-1 cursor-pointer select-none">Historique (${returned.length})</summary>
+        <div class="max-h-56 overflow-y-auto">${historyHtml}</div>
+      </details>`;
+    renderCounterHub();
     const modal = document.getElementById('counter-user-modal');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    document.getElementById('counter-user-confirm-btn').focus();
+    document.getElementById('counter-user-confirm-btn')?.focus();
   }
 
   window.cancelCounterUser = function () {
@@ -6919,7 +7080,39 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   window.openScanView = function () {
     ['catalogue-list-view', 'catalogue-weed-view', 'catalogue-subs-view', 'catalogue-inv-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
     document.getElementById('catalogue-scan-view').classList.remove('hidden');
+    renderCatalogOrigin();
   };
+
+  // Origine des documents au catalogage (18/11/2026). Pendant une session de
+  // don, tout compte comme don (avec les points du donateur) : le choix est
+  // verrouillé. Hors session, « Don » compte le document comme don dans les
+  // statistiques, sans points.
+  window.setCatalogOrigin = function (value) {
+    if (donorSession) return;
+    window.catalogOrigin = value;
+    window.depotBdSession = value === 'depot_bd';
+    renderCatalogOrigin();
+  };
+  function renderCatalogOrigin() {
+    const box = document.getElementById('catalog-origin');
+    if (!box) return;
+    const CATALOG_ORIGINS = [['purchase', 'D\'un achat'], ['donation', 'D\'un don'], ['depot_bd', 'D\'un dépôt de la bibliothèque départementale']];
+    const current = donorSession ? 'donation' : window.catalogOrigin;
+    if (donorSession) window.depotBdSession = false;
+    box.innerHTML = CATALOG_ORIGINS.map(([v, l]) => {
+      const on = v === current;
+      const locked = donorSession && !on;
+      return `<button type="button" ${locked ? 'disabled' : `onclick="setCatalogOrigin('${v}')"`} style="touch-action: manipulation;"
+        class="rounded-full px-4 py-2 text-xs font-bold transition ${on ? 'bg-brand text-white' : locked ? 'bg-mango-50/60 text-ink/30 cursor-default' : 'bg-white text-ink/65 border border-mango-100 hover:border-brand/40'}">${l}</button>`;
+    }).join('');
+    document.getElementById('catalog-origin-hint').textContent = donorSession
+      ? `Session de don de ${donorSession.full_name} en cours : tout ce que tu catalogues compte comme don.`
+      : current === 'donation'
+        ? 'Compté comme don dans les statistiques. Pour remercier un inscrit avec des points, utilise « Don de livre ».'
+        : current === 'depot_bd'
+          ? 'Documents prêtés par la bibliothèque départementale, comptés à part dans le rapport annuel.'
+          : 'Compté comme achat dans les statistiques et le rapport annuel.';
+  }
 
   window.openCatalogueView = function (which) {
     stopCamera();
@@ -7839,6 +8032,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // Dons de livres en option (05/11/2026, communes.donations_enabled).
   function applyDonationsSetting(enabled) {
+    window.bligoDonationsEnabled = enabled;
     document.getElementById('donation-btn')?.classList.toggle('hidden', !enabled);
     if (!enabled && donorSession) window.endDonorSession();
   }

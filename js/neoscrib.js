@@ -79,9 +79,14 @@ const SECTIONS = [
     ['C301', 'Surface utile nette totale (m²)', N, 'ta'],
     ['C309', 'Bâtiment accessible (loi du 11 février 2005)', ON, 'ta'],
   ] },
-  { titre: 'D1 - Livres imprimés (exemplaires)', note: d => d._dons
-      ? `Dons de l'année : ${d._dons.n} don(s), ${d._dons.recus} document(s) apporté(s), ${d._dons.gardes} gardé(s) au catalogue, ${d._dons.ecartes} non retenu(s). D131 compte les livres gardés.`
-      : '', lignes: [
+  // Part des dons (18/11/2026) : D131 compte chaque exemplaire enregistré
+  // comme don, en session de don ou avec l'origine « Don » au catalogage.
+  { titre: 'D1 - Livres imprimés (exemplaires)', note: d => {
+      const acq = fonds('livre', 't', 1)(d), dons = Number(d.D131) || 0;
+      const part = acq ? `Sur ${acq} livre(s) entré(s) cette année, ${dons} vien${dons > 1 ? 'nent' : 't'} d'un don (${Math.round(dons * 100 / acq)} %). ` : '';
+      const sessions = d._dons ? `Sessions de don : ${d._dons.n} don(s), ${d._dons.recus} document(s) apporté(s), ${d._dons.gardes} gardé(s) au catalogue, ${d._dons.ecartes} non retenu(s). ` : '';
+      return part || sessions ? `${part}${sessions}D131 compte les exemplaires enregistrés comme don (session de don ou origine « Don » au catalogage).` : '';
+    }, lignes: [
     ['D101', 'Fonds adulte', N, 'ta', fonds('livre', 'a', 0)],
     ['D116', 'Fonds jeunesse', N, 'ta', fonds('livre', 'j', 0)],
     ['D128', 'Fonds total', N, 'ta', fonds('livre', 't', 0)],
