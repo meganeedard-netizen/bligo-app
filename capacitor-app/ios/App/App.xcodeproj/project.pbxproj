@@ -17,6 +17,7 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		B1C0CA1E2FEA000100000001 /* CalendarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0CA1E2FEA000100000002 /* CalendarPlugin.swift */; };
+		B1C0CA1E2FEA000100000011 /* HaptiquePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0CA1E2FEA000100000012 /* HaptiquePlugin.swift */; };
 		B1C0CA1E2FEA000100000003 /* ApparencePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0CA1E2FEA000100000004 /* ApparencePlugin.swift */; };
 		B1C0CA1E2FEA000100000005 /* ConnexionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0CA1E2FEA000100000006 /* ConnexionPlugin.swift */; };
 /* End PBXBuildFile section */
@@ -34,6 +35,7 @@
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		B1C0CA1E2FEA000100000002 /* CalendarPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPlugin.swift; sourceTree = "<group>"; };
+		B1C0CA1E2FEA000100000012 /* HaptiquePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HaptiquePlugin.swift; sourceTree = "<group>"; };
 		B1C0CA1E2FEA000100000004 /* ApparencePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApparencePlugin.swift; sourceTree = "<group>"; };
 		B1C0CA1E2FEA000100000006 /* ConnexionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnexionPlugin.swift; sourceTree = "<group>"; };
 		B1C0CA1E2FEA000100000007 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
@@ -75,6 +77,7 @@
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				B1C0CA1E2FEA000100000002 /* CalendarPlugin.swift */,
+				B1C0CA1E2FEA000100000012 /* HaptiquePlugin.swift */,
 				B1C0CA1E2FEA000100000004 /* ApparencePlugin.swift */,
 				B1C0CA1E2FEA000100000006 /* ConnexionPlugin.swift */,
 				B1C0CA1E2FEA000100000007 /* App.entitlements */,
@@ -173,6 +176,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				B1C0CA1E2FEA000100000001 /* CalendarPlugin.swift in Sources */,
+				B1C0CA1E2FEA000100000011 /* HaptiquePlugin.swift in Sources */,
 				B1C0CA1E2FEA000100000003 /* ApparencePlugin.swift in Sources */,
 				B1C0CA1E2FEA000100000005 /* ConnexionPlugin.swift in Sources */,
 			);

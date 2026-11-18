@@ -2520,9 +2520,57 @@
   // depuis un site - aucune limitation qu'on puisse contourner en JS ; le cadre
   // orange à l'écran reste la confirmation garantie dans ce cas.
   let audioCtx = null;
-  function playBeep() {
+  // Bip + vibration au scan (18/11/2026) : sur iPhone, le son doit être
+  // « débloqué » par un appui (bouton de la caméra), sinon le premier bip,
+  // déclenché par le scan et non par un doigt, reste muet. La vibration passe
+  // par le module natif BligoHaptique (l'iPhone n'a pas navigator.vibrate).
+  function unlockAudio() {
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const b = audioCtx.createBuffer(1, 1, 22050), src = audioCtx.createBufferSource();
+      src.buffer = b; src.connect(audioCtx.destination); src.start(0);
+    } catch {}
+  }
+  window.unlockAudio = unlockAudio;
+  function vibrer(type) {
+    try {
+      const h = window.Capacitor?.Plugins?.BligoHaptique;
+      if (h) h.vibrer({ type }); else navigator.vibrate?.(type === 'refus' ? [60, 60, 60] : 80);
+    } catch {}
+  }
+
+  // Grande coche verte au centre de l'écran, pour voir d'un coup d'œil que le
+  // scan est validé (« Présence enregistrée », « Inscription enregistrée »).
+  function showScanOk(message) {
+    let el = document.getElementById('scan-ok-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'scan-ok-toast';
+      el.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .15s';
+      el.innerHTML = `<div style="background:rgba(255,255,255,.97);border-radius:24px;padding:26px 30px;box-shadow:0 12px 40px rgba(8,49,51,.25);display:flex;flex-direction:column;align-items:center;gap:12px;max-width:80vw">
+        <div style="width:76px;height:76px;border-radius:50%;background:#16A34A;display:flex;align-items:center;justify-content:center">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        </div>
+        <p id="scan-ok-text" style="margin:0;font:700 18px Poppins,Inter,sans-serif;color:#083133;text-align:center"></p>
+        <p id="scan-ok-sub" style="margin:0;font:500 14px Inter,sans-serif;color:#2B4B4D;text-align:center"></p>
+      </div>`;
+      document.body.appendChild(el);
+    }
+    const [titre, sous] = Array.isArray(message) ? message : [message, ''];
+    el.querySelector('#scan-ok-text').textContent = titre;
+    el.querySelector('#scan-ok-sub').textContent = sous || '';
+    el.style.opacity = '1';
+    clearTimeout(showScanOk._t);
+    showScanOk._t = setTimeout(() => { el.style.opacity = '0'; }, 1400);
+  }
+  window.showScanOk = showScanOk;
+
+  function playBeep() {
+    vibrer('succes');
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'square';
@@ -2540,6 +2588,7 @@
   // Son de refus (22/10/2026) : deux notes graves descendantes, pour qu'on
   // entende tout de suite au comptoir qu'un livre ne peut pas être prêté.
   function playRefuse() {
+    vibrer('refus');
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       [[330, 0], [220, 0.18]].forEach(([freq, delay]) => {
@@ -2685,6 +2734,7 @@
     // ouverture n'est pas terminée (succès ou échec).
     if (cameraOpening) return;
     cameraOpening = true;
+    unlockAudio();
 
     if (!navigator.mediaDevices?.getUserMedia) {
       alert("La caméra n'est pas accessible sur ce navigateur ou cette connexion (une connexion HTTPS ou « localhost » est nécessaire).");
@@ -10411,6 +10461,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const resultBox = document.getElementById('checkin-result');
     const { error } = await supabase.rpc('agent_add_event_rsvp', { p_event_id: eventId, p_user_id: userId });
     if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(frError(error))}</p>`; return; }
+    playBeep();
+    showScanOk('Inscription enregistrée');
     resultBox.innerHTML = `<p class="text-xs font-semibold text-mango-700">✓ Inscription enregistrée.</p>`;
     clearEventPersonSearch();
     loadEventRsvps(eventId);
@@ -10421,6 +10473,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data: isNew, error } = await supabase.rpc('record_event_checkin', { p_user_id: userId, p_event_id: eventId });
     if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(frError(error))}</p>`; return; }
     playBeep();
+    showScanOk(isNew ? 'Présence enregistrée' : 'Présence déjà enregistrée');
     resultBox.innerHTML = isNew
       ? `<p class="text-xs font-semibold text-mango-700">✓ Présence enregistrée.</p>`
       : `<p class="text-xs text-ink/55">Présence déjà enregistrée.</p>`;
@@ -10440,6 +10493,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!name) { resultBox.innerHTML = `<p class="text-xs text-red-600">Indique le nom de la personne.</p>`; return; }
     const { error } = await supabase.rpc('agent_add_event_rsvp', { p_event_id: eventId, p_guest_name: name, p_guest_phone: phone || null });
     if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(frError(error))}</p>`; return; }
+    playBeep();
+    showScanOk(['Inscription enregistrée', name]);
     resultBox.innerHTML = `<p class="text-xs font-semibold text-mango-700">✓ ${escapeHtml(name)} est inscrit·e.</p>`;
     document.getElementById('guest-rsvp-name').value = '';
     document.getElementById('guest-rsvp-phone').value = '';
@@ -10480,6 +10535,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) { resultBox.innerHTML = `<p class="text-xs text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
 
     playBeep();
+    showScanOk(isNew ? ['Présence enregistrée', profile.full_name] : ['Déjà enregistré·e', profile.full_name]);
     resultBox.innerHTML = isNew
       ? `<p class="text-xs font-semibold text-mango-700">✓ Présence enregistrée pour ${escapeHtml(profile.full_name)}.</p>`
       : `<p class="text-xs text-ink/55">${escapeHtml(profile.full_name)} était déjà enregistré(e) comme présent(e) à cet événement.</p>`;

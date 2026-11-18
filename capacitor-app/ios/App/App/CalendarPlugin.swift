@@ -64,6 +64,8 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(CalendarPlugin())
         bridge?.registerPluginInstance(ApparencePlugin())
         bridge?.registerPluginInstance(ConnexionPlugin())
+        bridge?.registerPluginInstance(HaptiquePlugin())
+        HaptiquePlugin.preparerSon()
         // Appui long sur un bouton ou un lien : pas d'aperçu avec l'adresse
         // « capacitor://localhost/… » comme dans Safari (28/10/2026).
         webView?.allowsLinkPreview = false
