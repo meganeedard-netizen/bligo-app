@@ -1793,6 +1793,7 @@
   window.catalogOrigin = 'purchase'; // origine choisie au catalogage : purchase, donation, depot_bd
   let statsScope = 'commune';
   let myCommuneId = null;
+  const copyCommunes = {}; // id -> { name, is_bdp }, pour « Où est l'exemplaire »
   // Délai de retrait de la médiathèque (03/11/2026, communes.pickup_hours).
   let myPickupHours = 48;
   const pickupDelayLabel = (h = myPickupHours) => (h >= 72 && h % 24 === 0 ? `${h / 24} jours` : `${h} h`);
@@ -7698,8 +7699,22 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const bookIds = data.map(b => b.id);
     let copiesByBook = {};
     if (bookIds.length) {
-      const { data: copies } = await supabase.from('book_copies').select('id, book_id, barcode, status, source').in('book_id', bookIds);
+      const { data: copies } = await supabase.from('book_copies').select('id, book_id, barcode, status, source, current_commune_id, owner_commune_id').in('book_id', bookIds);
       (copies || []).forEach(c => { (copiesByBook[c.book_id] ||= []).push(c); });
+      // Où est chaque exemplaire (19/11/2026, demande BDP) : nom de la
+      // bibliothèque qui l'a en dépôt + date de retour s'il est prêté.
+      try {
+        const communeIds = [...new Set((copies || []).flatMap(c => [c.current_commune_id, c.owner_commune_id]).filter(Boolean))];
+        const borrowedIds = (copies || []).filter(c => c.status === 'borrowed').map(c => c.id);
+        const [{ data: communes }, { data: openLoans }] = await Promise.all([
+          communeIds.length ? supabase.from('communes').select('id, name, is_bdp').in('id', communeIds) : Promise.resolve({ data: [] }),
+          borrowedIds.length ? supabase.from('loans').select('copy_id, due_at').in('copy_id', borrowedIds).is('returned_at', null) : Promise.resolve({ data: [] }),
+        ]);
+        (communes || []).forEach(c => { copyCommunes[c.id] = c; });
+        const dueByCopy = {};
+        (openLoans || []).forEach(l => { dueByCopy[l.copy_id] = l.due_at; });
+        (copies || []).forEach(c => { c.loan_due_at = dueByCopy[c.id] || null; });
+      } catch (e) { /* le lieu reste simplement non affiché */ }
     }
 
     // Les livres pas encore équipés remontent en premier (tri stable : l'ordre
@@ -9313,13 +9328,36 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // en ajouter un nouveau ou retirer un exemplaire du fonds. books.available
   // (lu partout côté appli usager) reste à jour tout seul via le trigger
   // sync_book_availability, pas besoin d'y toucher ici.
+  // Lieu d'un exemplaire, en clair : « À la BDP, en rayon », « En dépôt à
+  // Monte-Alto · prêté à un usager jusqu'au 3 déc. »… (19/11/2026).
+  function copyWhereText(c) {
+    const here = c.current_commune_id || c.owner_commune_id;
+    const owner = c.owner_commune_id;
+    const name = id => copyCommunes[id]?.name || 'une autre bibliothèque';
+    let where;
+    if (!here) return '';
+    if (here === owner) where = copyCommunes[owner]?.is_bdp ? 'À la BDP' : (owner === myCommuneId ? 'Chez nous' : 'À ' + name(owner));
+    else if (owner === myCommuneId) where = 'En dépôt à ' + name(here);
+    else if (here === myCommuneId) where = 'Chez nous, en dépôt de ' + name(owner);
+    else where = 'À ' + name(here);
+    const state = c.status === 'borrowed' ? (c.loan_due_at ? `prêté à un usager jusqu'au ${frDayMonth(c.loan_due_at)}` : 'prêté à un usager')
+      : c.status === 'available' ? 'en rayon'
+      : c.status === 'reserved' ? 'mis de côté pour un usager'
+      : c.status === 'in_transit' ? 'dans la navette'
+      : '';
+    return where + (state ? ' · ' + state : '');
+  }
+
   function copiesManagementHtml(b) {
     const copies = b.copies || [];
     const rows = copies.map(c => {
       const badge = COPY_STATUS_BADGE[c.status] || { label: c.status, classes: 'bg-brand/5 text-ink/50' };
-      const canWithdraw = c.status === 'available' || c.status === 'processing';
+      const canWithdraw = (c.status === 'available' || c.status === 'processing') && (!c.current_commune_id || c.current_commune_id === c.owner_commune_id);
+      const whereText = copyWhereText(c);
       return `
-        <div class="flex items-center justify-between gap-2 border-t border-mango-50 py-2 first:border-t-0 first:pt-0">
+        <div class="border-t border-mango-50 py-2 first:border-t-0 first:pt-0">
+        ${whereText ? `<p class="text-[11px] font-semibold ${c.current_commune_id && c.current_commune_id !== c.owner_commune_id ? 'text-brand' : 'text-ink/55'} mb-1">${escapeHtml(whereText)}</p>` : ''}
+        <div class="flex items-center justify-between gap-2">
           <input type="text" value="${escapeHtml(c.barcode)}" placeholder="Scanne (douchette) ou tape le code"
             onchange="updateCopyBarcode(${c.id}, ${b.id}, this.value)"
             class="flex-1 min-w-0 text-xs text-ink/70 border border-transparent hover:border-mango-100 focus:border-mango-200 rounded px-1.5 py-1 outline-none">
@@ -9328,6 +9366,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           </select>
           <span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full shrink-0 ${badge.classes}">${badge.label}</span>
           ${canWithdraw ? `<button onclick="withdrawCopy(${c.id}, ${b.id})" class="text-[11px] text-red-500/70 hover:text-red-600 font-semibold shrink-0">Retirer</button>` : '<span class="w-12 shrink-0"></span>'}
+        </div>
         </div>`;
     }).join('');
 
