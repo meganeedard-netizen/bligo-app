@@ -108,6 +108,7 @@
     <div id="book-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
   </section>
 
+
 </main>
 <script src="js/snapshot.js?v=20261023"></script>
 
@@ -272,6 +273,7 @@
     }
     myCommuneName = commune?.name || '';
     holdsEnabled = commune?.holds_enabled !== false;
+    reservationScope = commune?.reservation_scope || 'tous';
     myOpeningHours = commune?.opening_hours || null;
     applyCommuneTheme(commune);
     document.getElementById('opening-hours-link').classList.toggle('hidden', !myOpeningHours || !Object.values(myOpeningHours).some(Boolean));
@@ -301,6 +303,25 @@
   let catalogueCommuneId = null;
   let myMemberships = [];
   let isMinorAccount = false;
+  // Âge du lecteur (date de naissance saisie par la médiathèque, 19/11/2026) :
+  // les documents au-dessus de son âge (PEGI, films interdits aux moins de
+  // 12/16/18 ans) ne lui sont pas proposés. Sans date : comme avant, un
+  // compte mineur ne voit pas les documents de 16 ans et plus.
+  let readerAge = null;
+  function ageFromBirthDate(birth) {
+    if (!birth) return null;
+    const b = new Date(birth + 'T12:00:00'), n = new Date();
+    return n.getFullYear() - b.getFullYear() - ((n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) ? 1 : 0);
+  }
+  function tooYoungFor(b) {
+    const min = b.min_age || (b.adult_only ? 18 : 0);
+    if (!min) return false;
+    if (readerAge != null) return readerAge < min;
+    return isMinorAccount && min >= 16;
+  }
+  // « Seulement les documents déjà empruntés » : ce qui est en rayon se prend
+  // sur place (médiathèques équipées d'automates de prêt).
+  let reservationScope = 'tous';
   let hasFullName = true;
 
   // « Oups » (12/10/2026, idée de l'appli Gaspiz) : prénom et nom obligatoires
@@ -747,9 +768,7 @@
     // Un compte mineur ne voit même pas les livres réservés aux adultes (pas
     // seulement bloqué à la réservation, voir aussi enforce_reservation_limits
     // côté base pour le vrai garde-fou).
-    if (isMinorAccount) {
-      filtered = filtered.filter(b => !b.adult_only);
-    }
+    filtered = filtered.filter(b => !tooYoungFor(b));
     if (activeType && !q) {
       filtered = filtered.filter(b => bookKind(b) === activeType);
     }
@@ -764,7 +783,8 @@
         searchNormalize(b.summary).includes(q) ||
         searchNormalize(b.category).includes(q) ||
         searchNormalize(b.subjects).includes(q) ||
-        searchNormalize(b.format).includes(q)
+        searchNormalize(b.format).includes(q) ||
+        searchNormalize(b.platform).includes(q)
       );
     }
     filtered = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -786,6 +806,8 @@
         btnHtml = `<button disabled class="w-full mt-2 text-[11px] font-semibold bg-mango-100 text-mango-700 rounded-lg py-1.5">${activeStatusLabel(b.id)}</button>`;
       } else if (!b.available) {
         btnHtml = holdButtonHtml(b.id, false);
+      } else if (reservationScope === 'empruntes') {
+        btnHtml = `<span class="block w-full mt-2 text-center text-[11px] font-semibold bg-emerald-50 text-emerald-700 rounded-lg py-1.5">📚 En rayon</span>`;
       } else {
         btnHtml = `<button data-book-id="${b.id}" class="reserve-btn w-full mt-2 text-[11px] font-semibold bg-brand text-white rounded-lg py-1.5 active:scale-[0.97] transition">Commander</button>`;
       }
@@ -936,6 +958,8 @@
       btnHtml = `<button disabled class="w-full mt-4 text-sm font-semibold bg-mango-100 text-mango-700 rounded-2xl py-3">${activeStatusLabel(b.id)}</button>` + wishlistButtonHtml(b.id, true);
     } else if (!b.available) {
       btnHtml = holdButtonHtml(b.id, true) + `<div class="${holdsEnabled ? '' : 'mt-4'}">${wishlistButtonHtml(b.id, true)}</div>`;
+    } else if (reservationScope === 'empruntes') {
+      btnHtml = `<p class="w-full mt-4 text-center text-sm font-semibold bg-emerald-50 text-emerald-700 rounded-2xl py-3">📚 Disponible en rayon : viens l'emprunter à la médiathèque${b.shelf_location ? ` (cote ${escapeHtml(b.shelf_location)})` : ''}</p>` + wishlistButtonHtml(b.id, true);
     } else {
       btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-base font-semibold bg-brand text-white rounded-2xl py-3.5 shadow-md active:scale-[0.98] transition">Commander</button>` + wishlistButtonHtml(b.id, true);
     }
@@ -957,6 +981,8 @@
           <div class="flex items-center gap-2 mt-2 flex-wrap">
             <span></span>
             ${b.age_range ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-mango-50 text-mango-700">${b.age_range}</span>` : ''}
+            ${b.age_rating ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-hibiscus-50 text-hibiscus-700">${escapeHtml(b.age_rating)}</span>` : (b.min_age ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-hibiscus-50 text-hibiscus-700">${b.min_age} ans et +</span>` : '')}
+            ${b.platform ? `<span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-brand/5 text-ink/60">🎮 ${escapeHtml(b.platform)}</span>` : ''}
             <button id="modal-wishlist-btn" class="ml-auto w-7 h-7 shrink-0 ${inWishlist ? 'text-hibiscus-600' : 'text-ink/25 hover:text-hibiscus-400'}">${heartIcon(inWishlist)}</button>
           </div>
         </div>
@@ -1316,6 +1342,10 @@
     document.getElementById('opening-hours-backdrop').classList.remove('flex');
   };
 
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   // ==================== RECHERCHE (barre unique, sous le défi de lecture) ====================
 
   document.getElementById('home-search-form').addEventListener('submit', (e) => {
@@ -1399,7 +1429,7 @@
     // tard ; si ça échoue encore, message « Connexion instable » sans fenêtre.
     const loadProfile = () => supabase
       .from('profiles')
-      .select('full_name, role, loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, communes ( name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url )')
+      .select('full_name, role, loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, birth_date, communes ( name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url )')
       .eq('id', currentUser.id).single();
     let { data: profile, error: profileError } = await loadProfile();
     if (profileError) {
@@ -1424,6 +1454,7 @@
     myCommuneName = profile?.communes?.name || '';
     myOpeningHours = profile?.communes?.opening_hours || null;
     isMinorAccount = profile?.tariff_category === 'mineur';
+    readerAge = ageFromBirthDate(profile?.birth_date);
     hasFullName = !!(profile?.full_name && profile.full_name !== 'Nouvel usager' && profile.full_name.trim().includes(' '));
     applyCommuneTheme(profile?.communes);
     communeLocked = !!myCommuneId;

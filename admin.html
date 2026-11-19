@@ -587,12 +587,19 @@
             </div>
 
             <div class="flex-1 min-w-0">
-              <div id="draft-books-empty" class="text-sm text-ink/40 text-center py-8">Les documents scannés apparaîtront ici, en brouillon, pour vérification avant mise en ligne.</div>
-              <div id="draft-books-actions" class="hidden items-center justify-between mb-2">
-                <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">Brouillons (<span id="draft-books-count">0</span>)</p>
-                <button onclick="validateAllDrafts()" class="text-xs font-semibold bg-brand text-white rounded-full px-3.5 py-1.5">✓ Tout valider</button>
+              <div id="draft-books-empty" class="text-sm text-ink/40 text-center py-8">Les documents scannés ou importés apparaîtront ici, dans ton panier, pour vérification avant mise en ligne. Ton panier est gardé : tu le retrouves à ta prochaine connexion.</div>
+              <div id="draft-books-actions" class="hidden items-center justify-between flex-wrap gap-2 mb-2">
+                <div class="flex items-center gap-2 flex-wrap min-w-0">
+                  <p class="text-xs font-bold text-ink/60 uppercase tracking-wide">Mon panier (<span id="draft-books-count">0</span>)</p>
+                  <div id="draft-lot-filter" class="flex items-center gap-2 flex-wrap"></div>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button onclick="validateAllDrafts(true)" class="text-xs font-semibold border border-brand/30 text-ink rounded-full px-3 py-1.5">Mettre en ligne les vérifiées</button>
+                  <button onclick="validateAllDrafts()" class="text-xs font-semibold bg-brand text-white rounded-full px-3.5 py-1.5">✓ Tout valider</button>
+                </div>
               </div>
               <div id="draft-books-list" class="grid grid-cols-1 2xl:grid-cols-2 gap-3 items-start"></div>
+              <div id="team-baskets" class="hidden mt-4 bg-white border border-mango-100 rounded-xl p-3"></div>
             </div>
           </div>
         </div>
@@ -1384,6 +1391,19 @@
           </select>
           <p class="text-[11px] text-ink/45 mb-3">L'appli, les notifications et les e-mails des usagers affichent ce délai. Les commandes déjà prêtes gardent leur délai d'origine.</p>
           <button onclick="savePickupHours()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
+        </div>
+
+        <!-- Réservation des seuls documents empruntés (19/11/2026, Landerneau : prêt aux automates, le reste se prend en rayon). -->
+        <h2 class="text-lg font-bold text-ink mb-1 mt-6 flex items-center gap-3"><span class="w-10 h-10 text-brand flex items-center justify-center shrink-0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M8 19V7"/><path d="M12 19V5"/><path d="M16 19l3-12"/><path d="M3 19h18"/></svg></span>Commandes dans l'appli</h2>
+        <p class="text-sm text-ink/55 mb-4">Quels documents l'usager peut commander depuis l'appli.</p>
+        <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm">
+          <label class="text-[11px] font-semibold text-ink/60 block mb-1.5">Documents commandables</label>
+          <select id="reservation-scope" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm bg-white mb-3">
+            <option value="tous">Tous : l'usager commande aussi les documents en rayon, l'équipe les prépare</option>
+            <option value="empruntes">Seulement les documents déjà empruntés : ce qui est en rayon se prend sur place</option>
+          </select>
+          <p class="text-[11px] text-ink/45 mb-3">Pratique avec des automates de prêt : l'appli affiche « En rayon » sur les documents disponibles, et l'usager ne réserve que ceux qui sont sortis.</p>
+          <button onclick="saveReservationScope()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
         </div>
 
         <!-- File d'attente (16/10/2026) : toutes les médiathèques n'en proposent pas. -->
@@ -2244,6 +2264,7 @@
     await loadDocumentTypes();
     await loadCoteRules();
     await Promise.all([loadBooks(), loadReservations(), loadActiveLoans(), loadReshelveLoans(), loadPreregistrations(), loadStats(), loadTop20Readonly(), loadJeunesseReadonly(), loadEvents(), loadTransfers()]);
+    restoreDraftBasket();
     if (myIsDirection) await loadTeamAndTariffs();
     await loadDashboard();
     setTimeout(() => backfillIncompleteBooks().catch(e => console.error('Rattrapage des fiches :', e)), 8000);
@@ -3648,6 +3669,8 @@
     const forcedGenre = document.getElementById('batch-genre')?.value || null;
     let added = 0, skipped = 0;
     const importedIds = [];
+    // Panier de catalogage (19/11/2026) : un lot par import, au nom du fichier.
+    const lotName = `${files.map(f => f.name).join(', ')} · ${new Date().toLocaleDateString('fr-FR')}`;
     for (const file of files) {
       let records = [];
       try { records = lireFichierNotices(await file.arrayBuffer()); } catch (e) { console.error(e); }
@@ -3681,7 +3704,7 @@
           copyBarcodes: copies.map(c => c.barcode).filter(Boolean),
         };
         const localId = `${Date.now()}-${Math.random()}`;
-        draftBooks.push({ localId, isbn: bnf.isbn, status: 'loading' });
+        draftBooks.push({ localId, isbn: bnf.isbn, status: 'loading', lot: lotName });
         applyFetchedMeta(localId, meta);
         importedIds.push(localId);
         const draft = draftBooks.find(d => d.localId === localId);
@@ -3881,6 +3904,15 @@
     const draft = draftBooks.find(d => d.localId === localId);
     if (!draft) return;
     draft[field] = value;
+    scheduleDraftBasketSync();
+    if (field === 'age_rating') {
+      const min = ratingMinAge(value);
+      if (min != null) {
+        draft.min_age = min || '';
+        const minSel = document.getElementById(`draft-${localId}-min-age`);
+        if (minSel) minSel.value = String(min || '');
+      }
+    }
     // La cote suit la catégorie, l'indice Dewey, le type et l'auteur tant que
     // l'agent ne l'a pas retouchée lui-même.
     if (field === 'format' && /^jeu/i.test(value || '') && draft.category !== 'Jeux') {
@@ -3927,6 +3959,7 @@
 
   window.removeDraft = function (localId) {
     draftBooks = draftBooks.filter(d => d.localId !== localId);
+    deleteDraftFromBasket(localId);
     expandedDraftIds.delete(localId);
     renderDraftBooks();
   };
@@ -3983,6 +4016,7 @@
     draft.meta.translator = (draft.translator || '').trim() || null;
     draft.meta.illustrator = (draft.illustrator || '').trim() || null;
     draft.meta.age_range = (draft.age_range || '').trim() || null;
+    Object.assign(draft.meta, ageFieldsPayload(draft));
     draft.meta.price_cents = parsePriceCents(draft.price);
     draft.meta.category = draft.category;
     draft.meta.copyCount = Math.max(1, parseInt(draft.copyCount, 10) || 1);
@@ -3997,8 +4031,9 @@
     window.removeDraft(localId);
   };
 
-  window.validateAllDrafts = async function () {
-    const ids = draftBooks.filter(d => d.status === 'found' || d.status === 'existing').map(d => d.localId);
+  window.validateAllDrafts = async function (onlyVerified = false) {
+    const ids = draftBooks.filter(d => (d.status === 'found' || d.status === 'existing') && draftInLotFilter(d) && (!onlyVerified || d.verified)).map(d => d.localId);
+    if (onlyVerified && !ids.length) { alert('Aucune fiche cochée « vérifiée » dans ce lot.'); return; }
     for (const id of ids) {
       await window.validateDraft(id);
     }
@@ -4023,7 +4058,7 @@
       publisher: (draft.publisher || '').trim() || null,
       players: (draft.players || '').trim() || null,
       play_duration: (draft.play_duration || '').trim() || null,
-      age_range: (draft.age_range || '').trim() || null });
+      age_range: (draft.age_range || '').trim() || null, ...ageFieldsPayload(draft) });
     if (inserted) await maybeRecordDonation(inserted.id, 1);
     window.removeDraft(localId);
   };
@@ -4048,7 +4083,8 @@
         <input value="${escapeHtml(d.play_duration || '')}" oninput="updateDraftField('${d.localId}', 'play_duration', this.value)" placeholder="Durée (30 min)" class="border border-mango-100 rounded-lg px-2 py-1.5 text-xs">
         <input value="${escapeHtml(d.age_range || '')}" oninput="updateDraftField('${d.localId}', 'age_range', this.value)" placeholder="Âge (dès 8 ans)" class="border border-mango-100 rounded-lg px-2 py-1.5 text-xs">
       </div>
-      <input value="${escapeHtml(d.publisher || '')}" oninput="updateDraftField('${d.localId}', 'publisher', this.value)" placeholder="Éditeur du jeu" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-xs mt-1.5">
+      <input value="${escapeHtml(d.publisher || '')}" oninput="updateDraftField('${d.localId}', 'publisher', this.value)" placeholder="Éditeur du jeu" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-xs mt-1.5 mb-2">
+      ${draftAgeFieldsHtml(d)}
     </div>`;
   }
 
@@ -4132,6 +4168,38 @@
   }
 
   const CAMERA_ICON = '<svg class="inline-block align-[-2px] mr-1 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+
+  // Public, âge minimum et signalétique (retours Landerneau, 19/11/2026).
+  const AUDIENCES = [['moins_12', 'Moins de 12 ans'], ['12_16', '12-16 ans'], ['plus_16', 'Plus de 16 ans']];
+  const AGE_RATINGS = ['PEGI 3', 'PEGI 7', 'PEGI 12', 'PEGI 16', 'PEGI 18', 'Tous publics', 'Déconseillé -10 ans', 'Interdit -12 ans', 'Interdit -16 ans', 'Interdit -18 ans'];
+  const MIN_AGES = [3, 7, 10, 12, 16, 18];
+  function ratingMinAge(rating) {
+    const n = String(rating || '').match(/(\d+)/);
+    return /tous publics/i.test(rating || '') ? 0 : n ? Number(n[1]) : null;
+  }
+  function audienceLabel(v) { return (AUDIENCES.find(a => a[0] === v) || [])[1] || ''; }
+  function ageSelectsHtml(prefix, v, onchange) {
+    const opt = (val, label, cur) => `<option value="${escapeHtml(String(val))}" ${String(cur ?? '') === String(val) ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+    const sel = 'w-full border border-mango-100 rounded-lg px-2.5 py-1.5 text-sm bg-white';
+    return `<div class="grid grid-cols-2 gap-x-3 gap-y-2 mb-3">
+        <div><label class="text-xs font-semibold text-ink/60 block mb-1">Public</label>
+          <select id="${prefix}-audience" ${onchange('audience')} class="${sel}">${opt('', 'Non précisé', v.audience)}${AUDIENCES.map(a => opt(a[0], a[1], v.audience)).join('')}</select></div>
+        <div><label class="text-xs font-semibold text-ink/60 block mb-1">Signalétique</label>
+          <select id="${prefix}-age-rating" ${onchange('age_rating')} class="${sel}">${opt('', 'Aucune', v.age_rating)}${withCurrentValue(AGE_RATINGS, v.age_rating).map(r => opt(r, r, v.age_rating)).join('')}</select></div>
+        <div><label class="text-xs font-semibold text-ink/60 block mb-1">Âge minimum pour emprunter</label>
+          <select id="${prefix}-min-age" ${onchange('min_age')} class="${sel}">${opt('', 'Aucun', v.min_age || '')}${MIN_AGES.map(a => opt(a, a + ' ans', v.min_age)).join('')}</select></div>
+        <div><label class="text-xs font-semibold text-ink/60 block mb-1">Plateforme <span class="font-normal text-ink/40">· jeux vidéo</span></label>
+          <input id="${prefix}-platform" value="${escapeHtml(v.platform || '')}" ${onchange('platform', 'oninput')} placeholder="Switch, PS5…" class="${sel}"></div>
+      </div>`;
+  }
+  function draftAgeFieldsHtml(d) {
+    return ageSelectsHtml(`draft-${d.localId}`, d, (f, ev = 'onchange') => `${ev}="updateDraftField('${d.localId}', '${f}', this.value)"`);
+  }
+  function ageFieldsPayload(src) {
+    const min = src.min_age === '' || src.min_age == null ? null : Number(src.min_age);
+    return { audience: src.audience || null, age_rating: src.age_rating || null, min_age: min || null,
+      platform: (src.platform || '').trim() || null };
+  }
 
   function draftCardHtml(d) {
     if (d.status === 'loading') {
@@ -4337,6 +4405,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         </div>
         <label class="text-xs font-semibold text-ink/60 block mb-1">Âge conseillé <span class="font-normal text-ink/40">· rempli par la BnF quand elle l'indique</span></label>
         <input id="draft-age-range-${d.localId}" value="${escapeHtml(d.age_range || '')}" oninput="updateDraftField('${d.localId}', 'age_range', this.value)" placeholder="Ex. Dès 8 ans" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+        ${draftAgeFieldsHtml(d)}
         <label class="text-xs font-semibold text-ink/60 block mb-1">Prix (€) <span class="font-normal text-ink/40">· sert à facturer un document perdu ou abîmé</span></label>
         <input id="draft-price-${d.localId}" value="${escapeHtml(d.price || '')}" oninput="updateDraftField('${d.localId}', 'price', this.value)" inputmode="decimal" placeholder="Ex. 22,50" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Collection</label>
@@ -4395,7 +4464,130 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     actions.classList.toggle('hidden', draftBooks.length === 0);
     actions.classList.toggle('flex', draftBooks.length > 0);
     document.getElementById('draft-books-count').textContent = draftBooks.length;
-    list.innerHTML = draftBooks.map(draftCardHtml).join('');
+    renderDraftLotFilter();
+    list.innerHTML = draftBooks.filter(draftInLotFilter).map(d => d.status === 'loading' ? draftCardHtml(d) : `
+      <div class="min-w-0">
+        <div class="flex items-center justify-between gap-2 px-1 mb-1 text-[10.5px]">
+          <span class="text-ink/40 truncate">${escapeHtml(d.lot || draftDefaultLot())}</span>
+          ${d.status === 'found' || d.status === 'existing' ? `<label class="flex items-center gap-1 font-semibold ${d.verified ? 'text-emerald-700' : 'text-ink/45'} shrink-0 cursor-pointer"><input type="checkbox" ${d.verified ? 'checked' : ''} onchange="setDraftVerified('${d.localId}', this.checked)" class="accent-[#059669]"> Vérifiée</label>` : ''}
+        </div>
+        ${draftCardHtml(d)}
+      </div>`).join('');
+    scheduleDraftBasketSync();
+  };
+
+  // ==================== PANIERS DE CATALOGAGE (19/11/2026) ====================
+  // Retour Landerneau : 3 agents cataloguent, chacun garde ses brouillons
+  // (imports Electre, scans) d'un jour à l'autre, coche ce qu'il a vérifié et
+  // met en ligne au fur et à mesure. Les brouillons sont gardés en base
+  // (catalog_drafts), un panier par agent, rangés par lot.
+  let draftLotFilter = '';
+  let draftSyncTimer = null;
+  const draftDeletedIds = new Set();
+  function draftDefaultLot() { return `Scans du ${new Date().toLocaleDateString('fr-FR')}`; }
+  function draftInLotFilter(d) { return !draftLotFilter || (d.lot || '') === draftLotFilter; }
+
+  function renderDraftLotFilter() {
+    const box = document.getElementById('draft-lot-filter');
+    if (!box) return;
+    const lots = [...new Set(draftBooks.map(d => d.lot || ''))].filter(Boolean);
+    if (draftLotFilter && !lots.includes(draftLotFilter)) draftLotFilter = '';
+    const verified = draftBooks.filter(d => draftInLotFilter(d) && d.verified).length;
+    const total = draftBooks.filter(draftInLotFilter).length;
+    box.innerHTML = `
+      ${lots.length > 1 ? `<select onchange="setDraftLotFilter(this.value)" class="border border-mango-100 rounded-lg px-2 py-1 text-xs bg-white max-w-[260px]">
+        <option value="">Tous mes lots (${draftBooks.length})</option>
+        ${lots.map(l => `<option value="${escapeHtml(l)}" ${l === draftLotFilter ? 'selected' : ''}>${escapeHtml(l)} (${draftBooks.filter(d => d.lot === l).length})</option>`).join('')}
+      </select>` : ''}
+      <span class="text-[11px] text-ink/50">${verified} / ${total} vérifiée${verified > 1 ? 's' : ''}</span>`;
+  }
+
+  window.setDraftLotFilter = function (v) { draftLotFilter = v; renderDraftBooks(); };
+
+  window.setDraftVerified = function (localId, checked) {
+    const draft = draftBooks.find(d => d.localId === localId);
+    if (!draft) return;
+    draft.verified = checked;
+    renderDraftBooks();
+  };
+
+  function draftForStorage(d) {
+    const copy = {};
+    for (const [k, v] of Object.entries(d)) {
+      if (typeof v === 'function' || v instanceof Blob) continue;
+      copy[k] = v;
+    }
+    return copy;
+  }
+
+  function scheduleDraftBasketSync() {
+    clearTimeout(draftSyncTimer);
+    draftSyncTimer = setTimeout(syncDraftBasket, 1500);
+  }
+
+  async function syncDraftBasket() {
+    if (!currentUser || !myCommuneId) return;
+    if (draftDeletedIds.size) {
+      const ids = [...draftDeletedIds];
+      draftDeletedIds.clear();
+      const { error } = await supabase.from('catalog_drafts').delete().eq('agent_id', currentUser.id).in('local_id', ids);
+      if (error) ids.forEach(id => draftDeletedIds.add(id));
+    }
+    const rows = draftBooks.filter(d => d.status !== 'loading').map(d => {
+      if (!d.lot) d.lot = draftDefaultLot();
+      return { commune_id: myCommuneId, agent_id: currentUser.id, local_id: d.localId, lot: d.lot, verified: !!d.verified,
+        data: draftForStorage(d), updated_at: new Date().toISOString() };
+    });
+    if (rows.length) {
+      const { error } = await supabase.from('catalog_drafts').upsert(rows, { onConflict: 'agent_id,local_id' });
+      if (error) console.warn('Panier de catalogage non enregistré :', error.message);
+    }
+  }
+
+  function deleteDraftFromBasket(localId) {
+    draftDeletedIds.add(localId);
+    scheduleDraftBasketSync();
+  }
+
+  // Au démarrage : on retrouve son panier tel qu'on l'a laissé.
+  async function restoreDraftBasket() {
+    if (!currentUser || !myCommuneId) return;
+    const { data, error } = await supabase.from('catalog_drafts').select('local_id, lot, verified, data')
+      .eq('agent_id', currentUser.id).order('created_at');
+    if (error || !data?.length) { loadTeamBaskets(); return; }
+    for (const row of data) {
+      if (draftBooks.some(d => d.localId === row.local_id)) continue;
+      draftBooks.push({ ...row.data, localId: row.local_id, lot: row.lot, verified: row.verified });
+    }
+    renderDraftBooks();
+    loadTeamBaskets();
+  }
+
+  // Paniers des collègues : on peut reprendre un lot (absence, congé…).
+  async function loadTeamBaskets() {
+    const box = document.getElementById('team-baskets');
+    if (!box) return;
+    const { data, error } = await supabase.rpc('catalog_baskets');
+    const others = (data || []).filter(b => b.agent_id !== currentUser?.id);
+    if (error || !others.length) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    box.innerHTML = `
+      <p class="text-[11px] font-bold text-ink/60 uppercase tracking-wide mb-1.5">Paniers de l'équipe</p>
+      ${others.map(b => `
+        <div class="flex items-center justify-between gap-2 py-1.5 border-t border-mango-50 first:border-t-0">
+          <div class="min-w-0 text-xs">
+            <p class="font-semibold text-ink truncate">${escapeHtml(b.agent_name || 'Agent')} · ${escapeHtml(b.lot || 'Sans lot')}</p>
+            <p class="text-ink/45">${b.verified} / ${b.total} vérifiée${b.verified > 1 ? 's' : ''} · ${new Date(b.updated_at).toLocaleDateString('fr-FR')}</p>
+          </div>
+          <button type="button" data-agent="${b.agent_id}" ${b.lot == null ? '' : `data-lot="${escapeHtml(b.lot)}"`} onclick="takeOverBasket(this.dataset.agent, this.dataset.lot ?? null)" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-lg px-2.5 py-1 shrink-0">Reprendre</button>
+        </div>`).join('')}`;
+  }
+
+  window.takeOverBasket = async function (agentId, lot) {
+    if (!await confirmDialog(`Reprendre ce lot dans ton panier ? Il disparaîtra du panier de ton collègue.`)) return;
+    const { error } = await supabase.rpc('take_over_catalog_lot', { p_agent: agentId, p_lot: lot });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    await restoreDraftBasket();
   };
 
   // ---------- Catalogage ----------
@@ -6947,7 +7139,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   async function loadNeoscribSection(profile) {
     const box = document.getElementById('fiche-neoscrib');
     if (!box) return;
-    const { data, error } = await supabase.from('profiles').select('age_group, resident, is_collectivite, genre').eq('id', profile.id).single();
+    const { data, error } = await supabase.from('profiles').select('age_group, resident, is_collectivite, genre, birth_date').eq('id', profile.id).single();
     if (error || !data) { box.innerHTML = ''; return; }
     const sel = (id, opts, val) => `<select id="${id}" onchange="saveUsagerNeoscrib('${profile.id}')" class="border ${val == null || val === '' ? 'border-hibiscus-300' : 'border-mango-100'} rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
       ${opts.map(([v, l]) => `<option value="${v}" ${String(val ?? '') === v ? 'selected' : ''} ${v === '' ? 'disabled' : ''}>${l}</option>`).join('')}</select>`;
@@ -6955,11 +7147,26 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       <div class="px-4 py-2.5 border-b border-mango-50 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
         <span class="flex items-center gap-2"><span class="text-ink/50">Genre :</span><select id="fiche-genre" onchange="saveUsagerGenre('${profile.id}', this.value)" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
           ${[['', 'Non renseigné'], ['femme', 'Femme'], ['homme', 'Homme'], ['transgenre', 'Transgenre'], ['non_precise', 'Ne souhaite pas préciser']].map(([v, l]) => `<option value="${v}" ${(data.genre || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span>
+        <span class="flex items-center gap-2"><span class="text-ink/50">Naissance :</span><input type="date" id="fiche-birth" value="${data.birth_date || ''}" max="${new Date().toISOString().slice(0, 10)}" onchange="saveUsagerBirthDate('${profile.id}', this.value)" class="border border-mango-100 rounded-full px-2 py-0.5 text-[11px] font-semibold text-ink/70 bg-white">${data.birth_date ? `<span class="text-[11px] text-ink/50">${readerAgeLabel(data.birth_date)}</span>` : ''}</span>
         <span class="flex items-center gap-2"><span class="text-ink/50">Âge :</span>${sel('fiche-age', [['', 'À renseigner'], ['enfant', '0 à 14 ans'], ['adulte', '15 à 64 ans'], ['senior', '65 ans et plus']], data.age_group)}</span>
         <span class="flex items-center gap-2"><span class="text-ink/50">Habite la commune :</span>${sel('fiche-resident', [['', 'À renseigner'], ['true', 'Oui'], ['false', 'Non']], data.resident)}</span>
         <label class="flex items-center gap-1.5 text-ink/60"><input type="checkbox" id="fiche-collectivite" onchange="saveUsagerNeoscrib('${profile.id}')" ${data.is_collectivite ? 'checked' : ''} class="accent-[#F7901E]"> Collectivité (classe, crèche, EHPAD…)</label>
       </div>`;
   }
+
+  // Date de naissance (19/11/2026) : contrôle de l'âge minimum des documents
+  // (PEGI, films interdits aux moins de 12/16/18 ans) et tranche Néoscrib.
+  function readerAgeLabel(birth) {
+    const b = new Date(birth + 'T12:00:00'), n = new Date();
+    const age = n.getFullYear() - b.getFullYear() - ((n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) ? 1 : 0);
+    return `${age} ans · ${age < 12 ? 'moins de 12 ans' : age <= 16 ? '12-16 ans' : 'plus de 16 ans'}`;
+  }
+
+  window.saveUsagerBirthDate = async function (userId, value) {
+    const { error } = await supabase.rpc('set_usager_birth_date', { p_user_id: userId, p_birth: value || null });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    loadNeoscribSection({ id: userId });
+  };
 
   window.saveUsagerGenre = async function (userId, genre) {
     const { error } = await supabase.rpc('set_usager_genre', { p_user_id: userId, p_genre: genre || null });
@@ -7024,13 +7231,13 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     return m ? Number(m[1]) * 100 + Number((m[2] || '').padEnd(2, '0') || 0) : null;
   }
 
-  async function insertBook({ players = null, play_duration = null, age_range = null, price_cents = null, title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false, copyBarcodes = null }) {
+  async function insertBook({ audience = null, age_rating = null, min_age = null, platform = null, players = null, play_duration = null, age_range = null, price_cents = null, title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false, copyBarcodes = null }) {
     const fromDonation = !!donorSession;
     const cote = shelfOverride || suggestCote(category, author, dewey, { format, authorKey, title });
     // Champs de fiche ajoutés le 07/10/2026 : envoyés seulement s'ils sont
     // remplis, pour que le catalogage continue de marcher même si la
     // migration add_document_types_and_dewey.sql n'est pas encore passée.
-    const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects, price_cents, players, play_duration, age_range })
+    const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects, price_cents, players, play_duration, age_range, audience, age_rating, min_age, platform, adult_only: (min_age || 0) >= 18 ? true : null })
       .filter(([, v]) => v != null && v !== ''));
     // Couverture d'un livre scanné : mise en pleine page 2:3 et, si l'API n'a
     // rien de bon, cherchée chez l'éditeur (26/10/2026, voir prepareCover).
@@ -7934,6 +8141,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         document.getElementById('non-resident-fee-wrap').classList.toggle('hidden', commune.non_resident_policy !== 'paid');
       }
       document.getElementById('holds-enabled').value = String(commune.holds_enabled !== false);
+      const scopeSel = document.getElementById('reservation-scope');
+      if (scopeSel) scopeSel.value = commune.reservation_scope || 'tous';
       document.getElementById('donations-enabled').value = String(commune.donations_enabled !== false);
       myPickupHours = commune.pickup_hours || 48;
       document.getElementById('pickup-hours').value = String(myPickupHours);
@@ -8019,6 +8228,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) { alert('Erreur : ' + frError(error)); return; }
     myPickupHours = hours;
     alert('Délai enregistré : ' + pickupDelayLabel() + ' pour les prochaines commandes prêtes.');
+  };
+
+  window.saveReservationScope = async function () {
+    const { error } = await supabase.rpc('set_reservation_scope', { p_scope: document.getElementById('reservation-scope').value });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    alert('Réglage enregistré.');
   };
 
   window.saveHoldsSetting = async function () {
@@ -9262,8 +9477,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       </div>
       <div class="grid grid-cols-2 gap-x-3">
         ${bookFieldRow('Âge conseillé', 'bd-age-range', b.age_range, { type: 'text' })}
-        ${bookFieldRow('Réservé aux adultes', 'bd-adult-only', b.adult_only ? 'Oui' : 'Non', { select: ['Non', 'Oui'] })}
       </div>
+      ${ageSelectsHtml('bd', { ...b, min_age: b.min_age || (b.adult_only ? 18 : '') }, f => f === 'age_rating' ? `onchange="const m = ratingMinAge(this.value); if (m != null) document.getElementById('bd-min-age').value = String(m || '')"` : '')}
       ${bookFieldRow('Sujets (Rameau)', 'bd-subjects', b.subjects, { textarea: true })}
       ${bookFieldRow('Résumé', 'bd-summary', b.summary, { textarea: true })}
 
@@ -9734,7 +9949,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       is_new_release: val('bd-new-release') === 'Oui',
       is_staff_pick: staffPick,
       age_range: val('bd-age-range'),
-      adult_only: val('bd-adult-only') === 'Oui',
+      ...(() => {
+        const a = ageFieldsPayload({ audience: val('bd-audience'), age_rating: val('bd-age-rating'), min_age: val('bd-min-age'), platform: val('bd-platform') });
+        return { ...a, adult_only: (a.min_age || 0) >= 18 };
+      })(),
       summary: val('bd-summary'),
     };
     const { error } = await supabase.from('books').update(payload).eq('id', id);
