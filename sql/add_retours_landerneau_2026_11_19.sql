@@ -327,3 +327,6 @@ begin
   update public.profiles set birth_year = p_year where id = p_user_id;
 end $$;
 grant execute on function public.set_usager_birth_year(uuid, integer) to authenticated;
+
+-- 10. Colonne des tranches supprimée une fois l'année de naissance en ligne (19/11/2026).
+alter table public.profiles drop column if exists age_band;
