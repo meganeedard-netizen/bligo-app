@@ -6348,6 +6348,72 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       : `<div class="w-9 aspect-[2/3] rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-[10px] shrink-0">${escapeHtml(m.cover_initial || (title || '?')[0])}</div>`;
   }
 
+  function loadLeaflet() {
+    if (window.L) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+      document.head.appendChild(css);
+      const js = document.createElement('script');
+      js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+      js.onload = resolve; js.onerror = reject;
+      document.head.appendChild(js);
+    });
+  }
+  async function drawDepotsMap(libraries) {
+    const el = document.getElementById('depots-map');
+    if (!el) return;
+    try {
+      await loadLeaflet();
+      const { data: coords } = await supabase.from('communes').select('id, lat, lng').in('id', libraries.map(l => l.id));
+      const pos = Object.fromEntries((coords || []).filter(c => c.lat != null && c.lng != null).map(c => [c.id, [c.lat, c.lng]]));
+      const pts = libraries.filter(l => pos[l.id]);
+      if (!pts.length) { el.innerHTML = '<p class="text-sm text-ink/45 text-center py-10 px-4">Les médiathèques n\'ont pas encore de position sur la carte.</p>'; return; }
+      const map = L.map(el, { scrollWheelZoom: false, zoomControl: true, attributionControl: true });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
+      pts.forEach(l => {
+        const n = Number(l.in_depot || 0);
+        const html = l.is_bdp
+          ? '<div style="background:#F07F14;color:#fff;border-radius:8px;padding:4px 8px;font:700 12px sans-serif;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">BDP</div>'
+          : `<div style="background:#1B4B43;color:#fff;border-radius:999px;min-width:34px;height:34px;display:flex;align-items:center;justify-content:center;font:700 13px sans-serif;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">${n}</div>`;
+        const m = L.marker(pos[l.id], { icon: L.divIcon({ html, className: '', iconSize: l.is_bdp ? [40, 26] : [34, 34], iconAnchor: l.is_bdp ? [20, 13] : [17, 17] }) }).addTo(map);
+        m.bindTooltip(`${l.name}${l.is_bdp ? '' : ` : ${n} en dépôt, ${Number(l.on_loan || 0)} prêté(s)`}`);
+        if (!l.is_bdp) m.on('click', () => showDepotLibrary(l.id));
+      });
+      map.fitBounds(L.latLngBounds(pts.map(l => pos[l.id])).pad(0.25));
+      setTimeout(() => map.invalidateSize(), 50);
+    } catch (e) {
+      el.innerHTML = '<p class="text-sm text-ink/45 text-center py-10 px-4">Carte indisponible pour le moment.</p>';
+    }
+  }
+  window.showDepotLibrary = function (libId) {
+    const d = depotsData;
+    const box = document.getElementById('depots-lib-detail');
+    if (!d || !box) return;
+    const lib = d.libraries.find(l => l.id === libId);
+    const items = d.depots.filter(x => x.library_id === libId).sort((a, b) => b.days - a.days);
+    const minDays = Number(d.recall_min_days) || 30;
+    box.innerHTML = `<div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
+      <div class="px-4 py-2.5 bg-brand text-white flex items-center justify-between gap-2">
+        <p class="text-sm font-bold">${escapeHtml(lib?.name || '')}</p>
+        <p class="text-xs opacity-80">${items.length} en dépôt · ${Number(lib?.on_loan || 0)} prêté(s)</p>
+      </div>
+      <div style="max-height:330px;overflow-y:auto">
+      ${items.length ? items.map(x => `
+        <div class="px-4 py-2.5 border-t border-mango-50 flex flex-wrap items-center gap-2">
+          ${depotCoverHtml(x.book_id, x.title)}
+          <div class="min-w-0 flex-1">
+            <button onclick="openDepotBook(${Number(x.book_id)})" class="w-full text-sm font-semibold text-ink truncate block text-left hover:underline">${escapeHtml(x.title)}</button>
+            <p class="text-[11px] text-ink/50 truncate">déposé le ${frDayMonth(x.started_at)} (${depotDuration(x.days)})${x.days >= minDays && !x.recall_requested_at ? ' · <span class="text-brand font-bold">retour conseillé</span>' : ''}</p>
+            <div class="mt-1">${depotPill(depotStatus(x))}</div>
+          </div>
+          ${x.recall_requested_at
+            ? (x.transfer_status === 'in_transit' ? '' : `<button onclick="depotRecallCancel(${Number(x.copy_id)})" class="bo-btn-sm">Annuler le rappel</button>`)
+            : `<button onclick="depotRecall(${Number(x.copy_id)}, null)" class="bo-btn-sm">Demander le retour</button>`}
+        </div>`).join('') : '<p class="text-sm text-ink/45 text-center py-8">Aucun document en dépôt.</p>'}
+      </div></div>`;
+  };
+
   async function loadDepots() {
     const body = document.getElementById('depots-body');
     if (!depotsData) body.innerHTML = `<p class="text-sm text-ink/40 text-center py-8">Chargement…</p>`;
@@ -6492,17 +6558,36 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     }
 
     if (depotsTab === 'libraries') {
+      // Carte du réseau (19/11/2026) : chiffres clés, carte des médiathèques,
+      // détail des documents en dépôt d'une médiathèque au clic.
       const libs = d.libraries.filter(l => !l.is_bdp);
-      body.innerHTML = card(`
+      const totDepot = libs.reduce((n, l) => n + Number(l.in_depot || 0), 0);
+      const totLoan = libs.reduce((n, l) => n + Number(l.on_loan || 0), 0);
+      const totYear = libs.reduce((n, l) => n + Number(l.loans_year || 0), 0);
+      const tile = (v, label) => `<div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm"><p class="text-2xl font-bold text-ink">${v}</p><p class="text-xs text-ink/55">${label}</p></div>`;
+      body.innerHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          ${tile(libs.length, 'médiathèques desservies')}
+          ${tile(totDepot, 'documents de la BDP en dépôt')}
+          ${tile(totLoan, 'prêtés à des usagers en ce moment')}
+          ${tile(totYear, 'prêts cette année sur le fonds BDP')}
+        </div>
+        <div class="grid lg:grid-cols-[1.3fr_1fr] gap-4">
+          <div class="rounded-2xl overflow-hidden border border-mango-100 shadow-sm"><div id="depots-map" style="height:400px;z-index:0"></div></div>
+          <div id="depots-lib-detail">${card(`<p class="text-sm text-ink/45 text-center py-10 px-4">Clique sur une médiathèque (carte ou tableau) pour voir ses documents en dépôt.</p>`)}</div>
+        </div>
+        <div class="h-4"></div>
+        ${card(`
         <div class="overflow-x-auto"><table class="w-full text-sm">
           <thead><tr class="text-left text-[11px] uppercase tracking-wide text-ink/45 bg-mango-50">
             <th class="px-4 py-2">Bibliothèque</th><th class="px-3 py-2 text-right">En dépôt</th><th class="px-3 py-2 text-right">Prêtés en ce moment</th><th class="px-4 py-2 text-right">Prêts cette année</th></tr></thead>
-          <tbody>${libs.map(l => `<tr class="border-t border-mango-50">
-            <td class="px-4 py-2 font-semibold text-ink">${escapeHtml(l.name)}</td>
+          <tbody>${libs.map(l => `<tr onclick="showDepotLibrary(${Number(l.id)})" class="border-t border-mango-50 cursor-pointer hover:bg-mango-50/50">
+            <td class="px-4 py-2 font-semibold text-ink underline decoration-ink/20">${escapeHtml(l.name)}</td>
             <td class="px-3 py-2 text-right">${Number(l.in_depot)}</td>
             <td class="px-3 py-2 text-right">${Number(l.on_loan)}</td>
             <td class="px-4 py-2 text-right">${Number(l.loans_year)}</td></tr>`).join('')}</tbody>
-        </table></div>`);
+        </table></div>`)}`;
+      drawDepotsMap(d.libraries);
       return;
     }
 
