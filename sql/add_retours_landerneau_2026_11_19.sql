@@ -225,3 +225,52 @@ begin
   return v_group;
 end $$;
 grant execute on function public.set_usager_birth_date(uuid, date) to authenticated;
+
+-- ============ 8. Tranche d'âge au lieu de la date de naissance (RGPD) ============
+-- Mégane (19/11/2026) : la date de naissance n'est pas nécessaire au contrôle
+-- (minimisation des données). On garde seulement la tranche : moins de 12 ans,
+-- 12-16 ans, plus de 16 ans. Aucune date n'avait été saisie.
+alter table public.profiles add column if not exists age_band text;
+do $$ begin
+  alter table public.profiles add constraint profiles_age_band_check
+    check (age_band is null or age_band in ('moins_12', '12_16', 'plus_16'));
+exception when duplicate_object then null; end $$;
+drop function if exists public.set_usager_birth_date(uuid, date);
+alter table public.profiles drop column if exists birth_date;
+
+-- Moins de 12 ans : bloqué à partir de 10 ans minimum (films -10, PEGI 12…).
+-- 12-16 ans : bloqué à partir de 16 ans. Plus de 16 ans : bloqué à 18 ans
+-- tant que le compte est mineur. Sans tranche : compte mineur bloqué à 16.
+create or replace function public.age_block_message(p_user uuid, p_book bigint)
+returns text language plpgsql stable security definer set search_path = public as $$
+declare
+  v_min integer; v_rating text; v_band text; v_tariff text; v_blocked boolean;
+begin
+  select coalesce(min_age, case when adult_only then 18 end), age_rating into v_min, v_rating from public.books where id = p_book;
+  if coalesce(v_min, 0) = 0 then return null; end if;
+  select age_band, tariff_category into v_band, v_tariff from public.profiles where id = p_user;
+  v_blocked := case v_band
+    when 'moins_12' then v_min >= 10
+    when '12_16' then v_min >= 16
+    when 'plus_16' then v_min >= 18 and v_tariff = 'mineur'
+    else v_tariff = 'mineur' and v_min >= 16
+  end;
+  if v_blocked then
+    return 'Ce document est réservé aux ' || v_min || ' ans et plus' || coalesce(' (' || v_rating || ')', '') || '.';
+  end if;
+  return null;
+end $$;
+
+create or replace function public.set_usager_age_band(p_user_id uuid, p_band text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_super_admin() or (public.is_agent() and exists (
+    select 1 from public.profiles p where p.id = p_user_id and p.commune_id = public.agent_commune_id()))) then
+    raise exception 'Réservé aux agents de la médiathèque de cet usager';
+  end if;
+  if p_band is not null and p_band not in ('moins_12', '12_16', 'plus_16') then
+    raise exception 'Tranche d''âge inconnue';
+  end if;
+  update public.profiles set age_band = p_band where id = p_user_id;
+end $$;
+grant execute on function public.set_usager_age_band(uuid, text) to authenticated;

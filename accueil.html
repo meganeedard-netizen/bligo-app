@@ -303,20 +303,17 @@
   let catalogueCommuneId = null;
   let myMemberships = [];
   let isMinorAccount = false;
-  // Âge du lecteur (date de naissance saisie par la médiathèque, 19/11/2026) :
-  // les documents au-dessus de son âge (PEGI, films interdits aux moins de
-  // 12/16/18 ans) ne lui sont pas proposés. Sans date : comme avant, un
-  // compte mineur ne voit pas les documents de 16 ans et plus.
-  let readerAge = null;
-  function ageFromBirthDate(birth) {
-    if (!birth) return null;
-    const b = new Date(birth + 'T12:00:00'), n = new Date();
-    return n.getFullYear() - b.getFullYear() - ((n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) ? 1 : 0);
-  }
+  // Tranche d'âge du lecteur (saisie par la médiathèque, 19/11/2026 ; pas de
+  // date de naissance, par minimisation RGPD) : les documents au-dessus de sa
+  // tranche (PEGI, films interdits aux moins de 10/12/16/18 ans) ne lui sont
+  // pas proposés. Même règle que age_block_message côté base.
+  let readerAgeBand = null;
   function tooYoungFor(b) {
     const min = b.min_age || (b.adult_only ? 18 : 0);
     if (!min) return false;
-    if (readerAge != null) return readerAge < min;
+    if (readerAgeBand === 'moins_12') return min >= 10;
+    if (readerAgeBand === '12_16') return min >= 16;
+    if (readerAgeBand === 'plus_16') return min >= 18 && isMinorAccount;
     return isMinorAccount && min >= 16;
   }
   // « Seulement les documents déjà empruntés » : ce qui est en rayon se prend
@@ -1429,7 +1426,7 @@
     // tard ; si ça échoue encore, message « Connexion instable » sans fenêtre.
     const loadProfile = () => supabase
       .from('profiles')
-      .select('full_name, role, loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, birth_date, communes ( name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url )')
+      .select('full_name, role, loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, age_band, communes ( name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url )')
       .eq('id', currentUser.id).single();
     let { data: profile, error: profileError } = await loadProfile();
     if (profileError) {
@@ -1454,7 +1451,7 @@
     myCommuneName = profile?.communes?.name || '';
     myOpeningHours = profile?.communes?.opening_hours || null;
     isMinorAccount = profile?.tariff_category === 'mineur';
-    readerAge = ageFromBirthDate(profile?.birth_date);
+    readerAgeBand = profile?.age_band || null;
     hasFullName = !!(profile?.full_name && profile.full_name !== 'Nouvel usager' && profile.full_name.trim().includes(' '));
     applyCommuneTheme(profile?.communes);
     communeLocked = !!myCommuneId;
