@@ -89,23 +89,30 @@
     window.BLIGO_AGENT_APP = (() => { try { return sessionStorage.getItem('bligo_agent_app') === '1'; } catch (e) { return false; } })();
     window.confirmDialog = function (message) { return Promise.resolve(window.confirm(message)); };
     window.promptDialog = function (message, value) { return Promise.resolve(window.prompt(message, value ?? '')); };
+    // Messages d'information (19/11/2026) : boîte BliGO centrée partout,
+    // plus la boîte native du navigateur collée en haut de la page.
+    const bligoDialogBackdrop = function () {
+      const backdrop = document.createElement('div');
+      backdrop.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(27,75,67,.4);display:flex;align-items:center;justify-content:center;padding:16px;';
+      return backdrop;
+    };
+    const bligoEscapeHtml = function (s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    };
+    window.alert = function (message) {
+      const backdrop = bligoDialogBackdrop();
+      backdrop.innerHTML = '<div style="background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.2);max-width:380px;width:100%;padding:20px;">' +
+        '<p style="font-size:14px;color:#1B4B43;white-space:pre-wrap;line-height:1.5;margin:0 0 16px;">' + bligoEscapeHtml(message) + '</p>' +
+        '<button style="width:100%;background:#1B4B43;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">OK</button></div>';
+      const close = () => { backdrop.remove(); document.removeEventListener('keydown', onKey, true); };
+      const onKey = (e) => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); close(); } };
+      backdrop.querySelector('button').onclick = close;
+      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+      document.addEventListener('keydown', onKey, true);
+      (document.body || document.documentElement).appendChild(backdrop);
+      backdrop.querySelector('button').focus();
+    };
     if (window.BLIGO_AGENT_APP) {
-      const bligoDialogBackdrop = function () {
-        const backdrop = document.createElement('div');
-        backdrop.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(27,75,67,.4);display:flex;align-items:center;justify-content:center;padding:16px;';
-        return backdrop;
-      };
-      const bligoEscapeHtml = function (s) {
-        return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      };
-      window.alert = function (message) {
-        const backdrop = bligoDialogBackdrop();
-        backdrop.innerHTML = '<div style="background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.2);max-width:380px;width:100%;padding:20px;">' +
-          '<p style="font-size:14px;color:#1B4B43;white-space:pre-wrap;line-height:1.5;margin:0 0 16px;">' + bligoEscapeHtml(message) + '</p>' +
-          '<button style="width:100%;background:#1B4B43;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">OK</button></div>';
-        backdrop.querySelector('button').onclick = () => backdrop.remove();
-        document.body.appendChild(backdrop);
-      };
       window.confirmDialog = function (message) {
         return new Promise((resolve) => {
           const backdrop = bligoDialogBackdrop();
