@@ -807,7 +807,7 @@
       } else if (reservationScope === 'empruntes') {
         btnHtml = `<span class="block w-full mt-2 text-center text-[11px] font-semibold bg-emerald-50 text-emerald-700 rounded-lg py-1.5">📚 En rayon</span>`;
       } else {
-        btnHtml = `<button data-book-id="${b.id}" class="reserve-btn w-full mt-2 text-[11px] font-semibold bg-brand text-white rounded-lg py-1.5 active:scale-[0.97] transition">Commander</button>`;
+        btnHtml = `<button data-book-id="${b.id}" class="reserve-btn w-full mt-2 text-[11px] font-semibold bg-brand text-white rounded-lg py-1.5 active:scale-[0.97] transition">Réserver</button>`;
       }
       const cov = b.cover_url
         ? `<img id="cover-${b.id}" src="${b.cover_url}" alt="" class="aspect-[2/3] w-full object-cover rounded-lg bg-mango-50 shadow-sm">`
@@ -864,26 +864,26 @@
     });
   }
 
-  // « Commandé » / « Emprunté » selon où en est le livre.
+  // « Réservé » / « Emprunté » selon où en est le livre.
   function activeStatusLabel(bookId) {
     const r = reservations.find(x => x.books?.id === bookId && isActiveReservation(x));
-    return r?.status === 'recupere' ? 'Emprunté' : 'Commandé';
+    return r?.status === 'recupere' ? 'Emprunté' : 'Réservé';
   }
 
-  // « Commander » réserve directement le livre (retour au fonctionnement
-  // d'avant le panier, demandé par Mégane le 16/10/2026).
+  // « Réserver » (« Commander » jusqu'au 19/11/2026, ça perturbait les agents)
+  // réserve directement le livre (sans panier, demandé par Mégane le 16/10/2026).
   async function reserveBook(bookId, btn) {
     if (!requireAccount('reserve')) return;
     if (!hasFullName) { askForName(); return; }
     // Adresse e-mail à vérifier d'abord (01/11/2026).
-    if (!(await ensureEmailVerified(currentUser, 'de commander un document'))) return;
+    if (!(await ensureEmailVerified(currentUser, 'de réserver un document'))) return;
     const alreadyRead = reservations.some(r => r.status === 'recupere' && r.books?.id === bookId);
     if (alreadyRead) {
-      const confirmed = await confirmDialog({ title: 'Déjà lu', message: 'Tu as déjà lu ce livre. Tu veux quand même le commander ?', confirmLabel: 'Commander', cancelLabel: 'Annuler' });
+      const confirmed = await confirmDialog({ title: 'Déjà lu', message: 'Tu as déjà lu ce livre. Tu veux quand même le réserver ?', confirmLabel: 'Réserver', cancelLabel: 'Annuler' });
       if (!confirmed) return;
     }
     btn.disabled = true;
-    btn.textContent = 'Commande…';
+    btn.textContent = 'Réservation…';
     const otherLibrary = catalogueCommuneId && catalogueCommuneId !== myCommuneId;
     const { error } = await supabase.from('reservations').insert({
       user_id: currentUser.id,
@@ -893,7 +893,7 @@
     });
     if (error) {
       btn.disabled = false;
-      btn.textContent = 'Commander';
+      btn.textContent = 'Réserver';
       // Médiathèque indépendante où l'usager n'a pas encore de carte (12/10/2026) :
       // on lui propose d'en ajouter une à son compte.
       if (/pas inscrit dans cette médiathèque/i.test(error.message) && otherLibrary) {
@@ -934,7 +934,7 @@
       return;
     }
     const b = books.find(x => x.id === bookId);
-    showSnackbar(`${b?.title || 'Le livre'}${b?.author ? ' de ' + b.author : ''} est commandé ! Tu as 30 min pour le retirer de tes réservations si tu changes d'avis. Tu recevras une notification et un mail quand il sera prêt.`, { duration: 8000 });
+    showSnackbar(`${b?.title || 'Le livre'}${b?.author ? ' de ' + b.author : ''} est réservé ! Tu as 30 min pour le retirer de tes réservations si tu changes d'avis. Tu recevras une notification et un mail quand il sera prêt.`, { duration: 8000 });
     await loadReservations();
     renderBooks();
     updateReservationBadge(currentUser.id);
@@ -959,7 +959,7 @@
     } else if (reservationScope === 'empruntes') {
       btnHtml = `<p class="w-full mt-4 text-center text-sm font-semibold bg-emerald-50 text-emerald-700 rounded-2xl py-3">📚 Disponible en rayon : viens l'emprunter à la médiathèque${b.shelf_location ? ` (cote ${escapeHtml(b.shelf_location)})` : ''}</p>` + wishlistButtonHtml(b.id, true);
     } else {
-      btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-base font-semibold bg-brand text-white rounded-2xl py-3.5 shadow-md active:scale-[0.98] transition">Commander</button>` + wishlistButtonHtml(b.id, true);
+      btnHtml = `<button data-book-id="${b.id}" class="modal-reserve-btn w-full mt-4 text-base font-semibold bg-brand text-white rounded-2xl py-3.5 shadow-md active:scale-[0.98] transition">Réserver</button>` + wishlistButtonHtml(b.id, true);
     }
 
     const existingCover = document.getElementById('cover-' + b.id);
@@ -988,7 +988,7 @@
       ${b.summary ? `<p class="text-sm text-ink/70 leading-relaxed mt-4">${b.summary}</p>` : `<p class="text-sm text-ink/40 italic mt-4">Résumé non disponible pour ce titre.</p>`}
       ${(b.players || b.play_duration) ? `<p class="text-[12px] text-ink/60 mt-2">🎲 ${[b.players, b.play_duration, b.age_range].filter(Boolean).join(' · ')}</p>` : ''}
       ${(b.page_count || b.legal_deposit) ? `<p class="text-[11px] text-ink/40 mt-2">${[b.page_count ? `${b.page_count} pages` : '', b.legal_deposit ? `Dépôt légal ${String(b.legal_deposit).replace(/^DL\s*/i, '')}` : ''].filter(Boolean).join(' · ')}</p>` : ''}
-      ${isBdpBook(b) ? `<p class="text-[12px] text-ink/65 bg-mango-50 rounded-lg px-3 py-2 mt-3">🚐 Ce document vient de la bibliothèque départementale. Commande-le ici : il arrive dans ta Médiathèque Municipale avec la navette, et tu es prévenu dès qu'il est là.</p>` : ''}
+      ${isBdpBook(b) ? `<p class="text-[12px] text-ink/65 bg-mango-50 rounded-lg px-3 py-2 mt-3">🚐 Ce document vient de la bibliothèque départementale. Réserve-le ici : il arrive dans ta Médiathèque Municipale avec la navette, et tu es prévenu dès qu'il est là.</p>` : ''}
       ${btnHtml}
     `;
 
