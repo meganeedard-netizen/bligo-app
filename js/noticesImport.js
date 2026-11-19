@@ -177,7 +177,10 @@ export function noticeVersFiche(rec) {
   const f214printer = f214s.find(f => f.ind2 === '3') || null;
   const f073 = one('073');
 
-  let title = get(f200, 'a');
+  // Colaco et d'autres fournisseurs rejettent l'article en fin de titre :
+  // « Bataille d'Oslo (La) - Chapitre 3 » devient « La Bataille d'Oslo - Chapitre 3 ».
+  let title = (get(f200, 'a') || '').replace(/^(.+?)\s*\((Le|La|Les|L'|L’|Un|Une|Des|The|A|An)\)(.*)$/,
+    (m, t, art, rest) => (/'|’$/.test(art) ? art + t : art + ' ' + t) + rest) || null;
   if (!title) return null;
   const partNum = get(f200, 'h'), partName = get(f200, 'i');
   if (partNum || partName) title = [title, [partNum, partName].filter(Boolean).join('. ')].join('. ');
@@ -192,19 +195,25 @@ export function noticeVersFiche(rec) {
   const rawDate = get(f210, 'd') || get(f214main, 'd') || '';
   const pagesRaw = get(f215, 'a') || '';
   const bindingRaw = get(f010, 'b') || '';
-  const priceRaw = get(f010, 'd') || '';
+  const f345 = one('345');
+  const priceRaw = get(f010, 'd') || get(f345, 'd') || '';
   const priceMatch = priceRaw.match(/(\d+(?:[.,]\d{1,2})?)\s*(EUR|€)/i);
   const ages = all('333').map(f => (get(f, 'a') || '').match(/(\d{1,2})\s*ans/i)?.[1]).filter(Boolean).map(Number);
-  const genreTerms = [...all('606'), ...all('608'), ...all('610')].map(f => get(f, 'a')).filter(Boolean).join(' ');
+  const genreTerms = [...all('606'), ...all('608'), ...all('610'), ...all('615')].map(f => get(f, 'a')).filter(Boolean).join(' ');
   const subjects = [...all('606'), ...all('607')].map(f => getAll(f, ['a', 'x', 'y', 'z']).join(' -- ')).filter(Boolean).join(' ; ') || null;
 
   // Exemplaires livrés équipés (zone 995) : code-barres $f, cote $k.
   const copies = all('995').map(f => ({ barcode: get(f, 'f'), cote: get(f, 'k') }));
 
-  const isbn = (get(f010, 'a') || '').replace(/[^\dX]/gi, '') || (get(f073, 'a') || '').replace(/\D/g, '') || null;
+  // DVD/CD : pas d'ISBN, l'EAN est en 073 ou, chez Colaco, en 345 $b.
+  const isbn = (get(f010, 'a') || '').replace(/[^\dX]/gi, '') || (get(f073, 'a') || '').replace(/\D/g, '')
+    || ((get(f345, 'b') || '').replace(/\D/g, '').match(/^\d{8,14}$/)?.[0]) || null;
+  // Type de document : 200 $b, sinon la position 6 du label (g = vidéo, i/j = son, c/d = partition).
+  const t6 = (rec.leader || '')[6];
+  const docType = get(f200, 'b') || (t6 === 'g' ? 'Images animées' : (t6 === 'i' || t6 === 'j') ? 'Enregistrement sonore' : (t6 === 'c' || t6 === 'd') ? 'Musique imprimée' : null);
 
   return {
-    docType: get(f200, 'b'),
+    docType,
     extent: pagesRaw || null,
     title,
     author: last ? [first, last].filter(Boolean).join(' ') : responsibility,

@@ -3665,7 +3665,7 @@
     const files = Array.from(input.files || []);
     if (!files.length) return;
     etat.textContent = 'Lecture des notices…';
-    const { lireFichierNotices, noticeVersFiche } = await import('./js/noticesImport.js?v=20261118b');
+    const { lireFichierNotices, noticeVersFiche } = await import('./js/noticesImport.js?v=20261119a');
     const forcedGenre = document.getElementById('batch-genre')?.value || null;
     let added = 0, skipped = 0;
     const importedIds = [];
