@@ -6139,15 +6139,59 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ${statusPill(t)}
       </div>`;
     const cur = current || [];
-    const inTransit = cur.filter(t => t.status === 'in_transit').length;
+    // Tournée de la navette (19/11/2026) : c'est la BDP qui transporte tout.
+    // Par arrêt : ce que le chauffeur récupère, ce qu'il livre.
+    const stops = {};
+    const stop = id => (stops[id] ||= { id, pick: [], drop: [] });
+    cur.forEach(t => {
+      if (t.status === 'requested') stop(t.from_commune_id).pick.push(t);
+      else stop(t.to_commune_id).drop.push(t);
+    });
+    const stopIds = Object.keys(stops).map(Number).sort((x, y) => (x === myCommuneId ? -1 : y === myCommuneId ? 1 : (nameOf[x] || '').localeCompare(nameOf[y] || '')));
+    const line = (t, other, verb) => `
+      <div class="pl-3 py-1.5 flex flex-wrap items-center gap-2">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-ink truncate">${escapeHtml(t.book_copies?.books?.title || '?')}</p>
+          <p class="text-xs text-ink/55">${verb} <strong class="text-ink/80">${escapeHtml(nameOf[other] || '?')}</strong> · ${kindLabel(t.kind)} · ${escapeHtml(t.book_copies?.barcode || '')}</p>
+        </div>
+        ${statusPill(t)}
+      </div>`;
+    const nPick = cur.filter(t => t.status === 'requested').length;
     box.innerHTML = `
       <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
-        <p class="text-xs font-bold uppercase tracking-wide text-ink/50 px-4 py-2.5 bg-mango-50">Tous les transferts du réseau · ${cur.length} en cours (${cur.length - inTransit} à envoyer, ${inTransit} en route)</p>
-        ${cur.length ? cur.map(row).join('') : `<p class="text-sm text-ink/40 text-center py-6 px-4">Aucun transfert en cours dans le réseau.</p>`}
-        ${(recent || []).length ? `<p class="text-[11px] font-bold uppercase tracking-wide text-ink/40 px-4 pt-3 pb-1 border-t border-mango-100">Derniers arrivés</p>${recent.map(row).join('')}` : ''}
+        <div class="px-4 py-3 bg-brand text-white flex flex-wrap items-center justify-between gap-2">
+          <p class="text-sm font-bold">Tournée de la navette${navetteLabel ? ' · ' + escapeHtml(navetteLabel) : ''}</p>
+          <p class="text-xs opacity-80">${nPick} à récupérer · ${cur.length - nPick} à livrer</p>
+        </div>
+        <div class="px-4 py-3 border-b border-mango-100 flex flex-wrap gap-2 items-center">
+          <input id="navette-scan-input" type="text" autocomplete="off" placeholder="Chauffeur : scanner un document récupéré ou livré"
+            onkeydown="if(event.key==='Enter'){event.preventDefault(); navetteScan();}"
+            class="flex-1 min-w-[220px] border border-mango-100 rounded-lg px-3 py-2 text-sm" style="font-size:16px">
+          <button onclick="navetteScan()" class="bo-btn-sm">Valider</button>
+        </div>
+        ${stopIds.length ? stopIds.map(id => `
+          <div class="px-4 py-3 border-t border-mango-50">
+            <p class="text-sm font-bold text-ink mb-1">${id === myCommuneId ? 'Départ : BDP' : 'Arrêt : ' + escapeHtml(nameOf[id] || '?')}</p>
+            ${stops[id].pick.length ? `<p class="text-[11px] font-bold uppercase tracking-wide text-mango-700 mt-1">${id === myCommuneId ? 'À charger' : 'À récupérer'} (${stops[id].pick.length})</p>${stops[id].pick.map(t => line(t, t.to_commune_id, 'pour')).join('')}` : ''}
+            ${stops[id].drop.length ? `<p class="text-[11px] font-bold uppercase tracking-wide text-[#3730A3] mt-1">${id === myCommuneId ? 'À décharger' : 'À livrer'} (${stops[id].drop.length})</p>${stops[id].drop.map(t => line(t, t.from_commune_id, 'vient de')).join('')}` : ''}
+          </div>`).join('') : `<p class="text-sm text-ink/40 text-center py-6 px-4">Rien à transporter pour le moment.</p>`}
+        ${(recent || []).length ? `<p class="text-[11px] font-bold uppercase tracking-wide text-ink/40 px-4 pt-3 pb-1 border-t border-mango-100">Derniers livrés</p>${recent.map(row).join('')}` : ''}
       </div>`;
     box.classList.remove('hidden');
   }
+
+  // Scan du chauffeur : document à récupérer → « en route » ; document en
+  // route → « livré » (arrivée enregistrée à destination).
+  window.navetteScan = async function () {
+    const input = document.getElementById('navette-scan-input');
+    const code = (input?.value || '').trim();
+    if (!code) return;
+    const { data: sent, error: e1 } = await supabase.rpc('transfer_send', { p_barcode: code });
+    if (!e1 && sent?.ok) { alert('Récupéré : ' + sent.message); input.value = ''; loadTransfers(); return; }
+    const { data: got, error: e2 } = await supabase.rpc('transfer_receive', { p_barcode: code });
+    if (!e2 && got?.ok) { alert('Livré : ' + got.message); input.value = ''; loadTransfers(); return; }
+    alert((e1 || e2) ? 'Erreur : ' + frError(e1 || e2) : "Ce document n'est pas dans la tournée.");
+  };
 
   async function loadTransfers() {
     if (!myCommuneId) return;
