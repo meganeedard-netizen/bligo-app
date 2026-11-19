@@ -735,9 +735,13 @@
     const reservedBookIds = new Set(reservations.filter(isActiveReservation).map(r => r.books?.id));
     const q = searchNormalize(searchQuery.trim());
 
-    document.getElementById('staff-pick-caption').classList.toggle('hidden', activeCategory !== STAFF_PICK_FILTER);
+    document.getElementById('staff-pick-caption').classList.toggle('hidden', activeCategory !== STAFF_PICK_FILTER || !!q);
 
-    let filtered = activeCategory === STAFF_PICK_FILTER
+    // Recherche saisie = tout le catalogue, quelle que soit la catégorie ou le
+    // type sélectionné (retour RDV Landerneau 19/11/2026 : en restant sur
+    // « Science-fiction », chercher « Musso » ne trouvait rien).
+    let filtered = q ? books
+      : activeCategory === STAFF_PICK_FILTER
       ? books.filter(b => b.is_staff_pick)
       : activeCategory ? books.filter(b => b.category === activeCategory) : books;
     // Un compte mineur ne voit même pas les livres réservés aux adultes (pas
@@ -746,7 +750,7 @@
     if (isMinorAccount) {
       filtered = filtered.filter(b => !b.adult_only);
     }
-    if (activeType) {
+    if (activeType && !q) {
       filtered = filtered.filter(b => bookKind(b) === activeType);
     }
     if (q) {
