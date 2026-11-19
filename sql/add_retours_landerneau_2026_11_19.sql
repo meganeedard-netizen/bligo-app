@@ -274,3 +274,56 @@ begin
   update public.profiles set age_band = p_band where id = p_user_id;
 end $$;
 grant execute on function public.set_usager_age_band(uuid, text) to authenticated;
+
+-- ============ 9. Année de naissance (choix de Mégane, 19/11/2026) ============
+-- 3 tranches ne suffisaient pas pour PEGI 3/7 et les films -10. L'année seule
+-- (pas la date complète) suffit et l'âge avance tout seul chaque année.
+-- Âge retenu = âge le plus bas possible (année en cours - année - 1) : un
+-- enfant n'emprunte jamais un document avant d'avoir l'âge. Un compte majeur
+-- compte toujours comme 18 ans et plus.
+alter table public.profiles add column if not exists birth_year smallint;
+do $$ begin
+  alter table public.profiles add constraint profiles_birth_year_check
+    check (birth_year is null or birth_year between 1900 and 2100);
+exception when duplicate_object then null; end $$;
+-- Le select de l'appli en ligne lit encore age_band : colonne gardée vide
+-- jusqu'au déploiement, supprimée juste après.
+drop function if exists public.set_usager_age_band(uuid, text);
+
+create or replace function public.reader_min_age(p_birth_year integer, p_tariff text)
+returns integer language sql immutable as $$
+  select case
+    when p_tariff = 'majeur' then greatest(18, coalesce(extract(year from current_date)::int - p_birth_year - 1, 18))
+    when p_birth_year is null then null
+    else extract(year from current_date)::int - p_birth_year - 1
+  end;
+$$;
+
+create or replace function public.age_block_message(p_user uuid, p_book bigint)
+returns text language plpgsql stable security definer set search_path = public as $$
+declare
+  v_min integer; v_rating text; v_year integer; v_tariff text; v_age integer;
+begin
+  select coalesce(min_age, case when adult_only then 18 end), age_rating into v_min, v_rating from public.books where id = p_book;
+  if coalesce(v_min, 0) = 0 then return null; end if;
+  select birth_year, tariff_category into v_year, v_tariff from public.profiles where id = p_user;
+  v_age := public.reader_min_age(v_year, v_tariff);
+  if (v_age is not null and v_age < v_min) or (v_age is null and v_tariff = 'mineur' and v_min >= 16) then
+    return 'Ce document est réservé aux ' || v_min || ' ans et plus' || coalesce(' (' || v_rating || ')', '') || '.';
+  end if;
+  return null;
+end $$;
+
+create or replace function public.set_usager_birth_year(p_user_id uuid, p_year integer)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_super_admin() or (public.is_agent() and exists (
+    select 1 from public.profiles p where p.id = p_user_id and p.commune_id = public.agent_commune_id()))) then
+    raise exception 'Réservé aux agents de la médiathèque de cet usager';
+  end if;
+  if p_year is not null and (p_year < 1900 or p_year > extract(year from current_date)) then
+    raise exception 'Année de naissance invalide';
+  end if;
+  update public.profiles set birth_year = p_year where id = p_user_id;
+end $$;
+grant execute on function public.set_usager_birth_year(uuid, integer) to authenticated;

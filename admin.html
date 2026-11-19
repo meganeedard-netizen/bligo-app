@@ -7139,7 +7139,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   async function loadNeoscribSection(profile) {
     const box = document.getElementById('fiche-neoscrib');
     if (!box) return;
-    const { data, error } = await supabase.from('profiles').select('age_group, resident, is_collectivite, genre, age_band').eq('id', profile.id).single();
+    const { data, error } = await supabase.from('profiles').select('age_group, resident, is_collectivite, genre, birth_year').eq('id', profile.id).single();
     if (error || !data) { box.innerHTML = ''; return; }
     const sel = (id, opts, val) => `<select id="${id}" onchange="saveUsagerNeoscrib('${profile.id}')" class="border ${val == null || val === '' ? 'border-hibiscus-300' : 'border-mango-100'} rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
       ${opts.map(([v, l]) => `<option value="${v}" ${String(val ?? '') === v ? 'selected' : ''} ${v === '' ? 'disabled' : ''}>${l}</option>`).join('')}</select>`;
@@ -7147,19 +7147,24 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       <div class="px-4 py-2.5 border-b border-mango-50 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
         <span class="flex items-center gap-2"><span class="text-ink/50">Genre :</span><select id="fiche-genre" onchange="saveUsagerGenre('${profile.id}', this.value)" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
           ${[['', 'Non renseigné'], ['femme', 'Femme'], ['homme', 'Homme'], ['transgenre', 'Transgenre'], ['non_precise', 'Ne souhaite pas préciser']].map(([v, l]) => `<option value="${v}" ${(data.genre || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span>
-        <span class="flex items-center gap-2"><span class="text-ink/50">Lecteur :</span><select id="fiche-age-band" onchange="saveUsagerAgeBand('${profile.id}', this.value)" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
-          ${[['', 'Tranche non précisée'], ['moins_12', 'Moins de 12 ans'], ['12_16', '12-16 ans'], ['plus_16', 'Plus de 16 ans']].map(([v, l]) => `<option value="${v}" ${(data.age_band || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span>
+        <span class="flex items-center gap-2"><span class="text-ink/50">Né(e) en :</span><input type="number" id="fiche-birth-year" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" placeholder="Année" value="${data.birth_year || ''}" onchange="saveUsagerBirthYear('${profile.id}', this.value)" class="w-[72px] border border-mango-100 rounded-full px-2 py-0.5 text-[11px] font-semibold text-ink/70 bg-white">${data.birth_year ? `<span class="text-[11px] text-ink/50">${readerYearLabel(data.birth_year)}</span>` : ''}</span>
         <span class="flex items-center gap-2"><span class="text-ink/50">Âge :</span>${sel('fiche-age', [['', 'À renseigner'], ['enfant', '0 à 14 ans'], ['adulte', '15 à 64 ans'], ['senior', '65 ans et plus']], data.age_group)}</span>
         <span class="flex items-center gap-2"><span class="text-ink/50">Habite la commune :</span>${sel('fiche-resident', [['', 'À renseigner'], ['true', 'Oui'], ['false', 'Non']], data.resident)}</span>
         <label class="flex items-center gap-1.5 text-ink/60"><input type="checkbox" id="fiche-collectivite" onchange="saveUsagerNeoscrib('${profile.id}')" ${data.is_collectivite ? 'checked' : ''} class="accent-[#F7901E]"> Collectivité (classe, crèche, EHPAD…)</label>
       </div>`;
   }
 
-  // Tranche d'âge du lecteur (19/11/2026) : contrôle de l'âge minimum des
-  // documents (PEGI, films interdits). Pas de date de naissance (RGPD).
-  window.saveUsagerAgeBand = async function (userId, value) {
-    const { error } = await supabase.rpc('set_usager_age_band', { p_user_id: userId, p_band: value || null });
+  // Année de naissance du lecteur (19/11/2026) : contrôle de l'âge minimum
+  // des documents (PEGI, films interdits). L'année seule, pas la date (RGPD).
+  function readerYearLabel(y) {
+    const age = new Date().getFullYear() - Number(y);
+    return `${age - 1}-${age} ans · ${age <= 12 ? 'moins de 12 ans' : age <= 16 ? '12-16 ans' : 'plus de 16 ans'}`;
+  }
+  window.saveUsagerBirthYear = async function (userId, value) {
+    const year = value ? parseInt(value, 10) : null;
+    const { error } = await supabase.rpc('set_usager_birth_year', { p_user_id: userId, p_year: year });
     if (error) { alert('Erreur : ' + frError(error)); return; }
+    loadNeoscribSection({ id: userId });
   };
 
   window.saveUsagerGenre = async function (userId, genre) {
