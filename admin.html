@@ -966,6 +966,8 @@
             </div>
           </div>
 
+          <div id="transfers-network" class="hidden mb-6"></div>
+
           <div class="grid md:grid-cols-2 gap-5">
             <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm">
               <p class="text-sm font-bold text-ink mb-3">Confirmer un envoi</p>
@@ -6101,6 +6103,52 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // « Navette du samedi 28 novembre » si le réseau a une BDP (prêt à deux niveaux).
   let navetteLabel = null;
 
+  // Vue réseau pour la BDP (19/11/2026) : tous les transferts en cours entre
+  // les bibliothèques du réseau (dépôts, retours, réservations), qu'elle soit
+  // concernée ou non, + les dernières arrivées.
+  async function loadNetworkTransfers() {
+    const box = document.getElementById('transfers-network');
+    if (!box || !myCommuneId) return;
+    const { data: me } = await supabase.from('communes').select('id, is_bdp, community_id').eq('id', myCommuneId).maybeSingle();
+    if (!me?.is_bdp || !me.community_id) { box.classList.add('hidden'); return; }
+    const { data: libs } = await supabase.from('communes').select('id, name').eq('community_id', me.community_id);
+    const ids = (libs || []).map(l => l.id);
+    if (!ids.length) { box.classList.add('hidden'); return; }
+    const nameOf = Object.fromEntries((libs || []).map(l => [l.id, l.id === myCommuneId ? 'BDP' : l.name]));
+    const list = `(${ids.join(',')})`;
+    const sel = 'id, kind, status, from_commune_id, to_commune_id, requested_at, sent_at, received_at, book_copies ( barcode, books ( title ) )';
+    const [{ data: current, error }, { data: recent }] = await Promise.all([
+      supabase.from('transfers').select(sel).in('status', ['requested', 'in_transit'])
+        .or(`from_commune_id.in.${list},to_commune_id.in.${list}`).order('requested_at'),
+      supabase.from('transfers').select(sel).eq('status', 'received')
+        .or(`from_commune_id.in.${list},to_commune_id.in.${list}`).order('received_at', { ascending: false, nullsFirst: false }).limit(8),
+    ]);
+    if (error) { console.error(error); box.classList.add('hidden'); return; }
+    const kindLabel = k => k === 'depot' ? 'Dépôt BDP' : k === 'depot_retour' ? 'Retour à la BDP' : 'Réservation';
+    const statusPill = t => t.status === 'in_transit'
+      ? `<span class="text-[11px] font-semibold rounded-full px-2 py-0.5 whitespace-nowrap bg-[#EEF2FF] text-[#3730A3]">En route depuis le ${frDayMonth(t.sent_at)}</span>`
+      : t.status === 'requested'
+        ? `<span class="text-[11px] font-semibold rounded-full px-2 py-0.5 whitespace-nowrap bg-mango-50 text-mango-700">À envoyer · demandé le ${frDayMonth(t.requested_at)}</span>`
+        : `<span class="text-[11px] font-semibold rounded-full px-2 py-0.5 whitespace-nowrap bg-[#ECFDF5] text-[#047857]">Reçu${t.received_at ? ' le ' + frDayMonth(t.received_at) : ''}</span>`;
+    const row = t => `
+      <div class="px-4 py-2.5 border-t border-mango-50 flex flex-wrap items-center gap-2">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-ink truncate">${escapeHtml(t.book_copies?.books?.title || '?')}</p>
+          <p class="text-xs text-ink/55"><strong class="text-ink/80">${escapeHtml(nameOf[t.from_commune_id] || '?')}</strong> → <strong class="text-ink/80">${escapeHtml(nameOf[t.to_commune_id] || '?')}</strong> · ${kindLabel(t.kind)} · ${escapeHtml(t.book_copies?.barcode || '')}</p>
+        </div>
+        ${statusPill(t)}
+      </div>`;
+    const cur = current || [];
+    const inTransit = cur.filter(t => t.status === 'in_transit').length;
+    box.innerHTML = `
+      <div class="bg-white border border-mango-100 rounded-xl shadow-sm overflow-hidden">
+        <p class="text-xs font-bold uppercase tracking-wide text-ink/50 px-4 py-2.5 bg-mango-50">Tous les transferts du réseau · ${cur.length} en cours (${cur.length - inTransit} à envoyer, ${inTransit} en route)</p>
+        ${cur.length ? cur.map(row).join('') : `<p class="text-sm text-ink/40 text-center py-6 px-4">Aucun transfert en cours dans le réseau.</p>`}
+        ${(recent || []).length ? `<p class="text-[11px] font-bold uppercase tracking-wide text-ink/40 px-4 pt-3 pb-1 border-t border-mango-100">Derniers arrivés</p>${recent.map(row).join('')}` : ''}
+      </div>`;
+    box.classList.remove('hidden');
+  }
+
   async function loadTransfers() {
     if (!myCommuneId) return;
 
@@ -6173,6 +6221,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <p class="font-semibold text-ink truncate">${escapeHtml(t.book_copies?.books?.title || '?')}</p>
         <p class="text-xs text-ink/50">${escapeHtml(t.book_copies?.barcode || '')} ← ${escapeHtml(communeById[t.from_commune_id]?.name || '')}</p>
       </div>`).join('') : `<p class="text-sm text-ink/40 text-center py-6 px-4">Rien en route pour le moment.</p>`;
+
+    loadNetworkTransfers();
 
     pendingOutgoingTransfers = (outgoing || []).map(t => ({
       title: t.book_copies?.books?.title || '?',
