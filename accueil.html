@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO · Accueil</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261116b">
+<link rel="stylesheet" href="css/bligo.css?v=20261123a">
 <link rel="stylesheet" href="css/theme-sombre.css?v=20261028">
 <script src="js/apparence.js?v=20261029a"></script>
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
@@ -103,6 +103,11 @@
     <div id="type-filters" class="hidden flex gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-1"></div>
     <div class="relative -mx-5 mb-2">
       <div id="category-filters" class="flex gap-2.5 overflow-x-auto no-scrollbar px-5 pt-1 pb-4 scroll-px-5"></div>
+    </div>
+    <!-- Ressources numériques (23/11/2026) : invisible si la médiathèque n'en a pas. -->
+    <div id="digital-home" class="hidden mb-4">
+      <p class="text-base font-bold text-ink mb-2">En ligne</p>
+      <div class="-mx-5"><div id="digital-home-list" class="flex gap-2.5 overflow-x-auto no-scrollbar px-5 pb-3"></div></div>
     </div>
     <p id="staff-pick-caption" class="hidden text-xs text-stone-400 mb-3">La sélection coup de cœur de ta médiathèque</p>
     <div id="book-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
@@ -236,6 +241,7 @@
   import { updateReservationBadge } from './js/navBadge.js?v=20261116a';
   import { ensureEmailVerified } from './js/verifEmail.js?v=20261103b';
   import { takeNewBadges, openBadgeModal } from './js/badges.js?v=20261113c';
+  import { loadDigital, digitalCards, bindDigital } from './js/ressourcesEnLigne.js?v=20261123a';
   import { showSnackbar, showDialog, confirmDialog, frError } from './js/ui.js?v=20261023';
 
   let currentUser = null;
@@ -253,6 +259,15 @@
   // Plus de choix d'une autre médiathèque sur l'accueil, même sans compte
   // (23/10/2026) : la médiathèque est affichée en simple texte, comme pour un
   // usager connecté. Le choix se fait seulement sur le premier écran.
+  async function setupDigitalHome(communeId, member) {
+    if (!communeId) return;
+    const res = await loadDigital(supabase, communeId);
+    document.getElementById('digital-home').classList.toggle('hidden', !res.length);
+    const el = document.getElementById('digital-home-list');
+    el.innerHTML = digitalCards(res);
+    bindDigital(el, supabase, res, member);
+  }
+
   async function setupCommuneSwitch() {
     const display = document.getElementById('commune-display');
     display.textContent = myCommuneName ? `Médiathèque de ${myCommuneName}` : '';
@@ -1407,7 +1422,7 @@
 
     renderCategoryFilters();
     // Médiathèque et livres chargés en même temps (23/10/2026).
-    await Promise.all([applyBrowsedCommune(myCommuneId), loadBooks()]);
+    await Promise.all([applyBrowsedCommune(myCommuneId), loadBooks(), setupDigitalHome(myCommuneId, null)]);
   }
 
   async function init() {
@@ -1528,6 +1543,8 @@
       browsed ? applyBrowsedCommune(browsed) : null,
       loadReservations(),
       loadBooks(), loadWishlist(), loadHolds(), loadMemberships(),
+      supabase.from('profiles').select('membership_expires_at').eq('id', currentUser.id).single().then(({ data: me }) =>
+        setupDigitalHome(myCommuneId || browsed, profile?.registration_status === 'valide' && (!me?.membership_expires_at || new Date(me.membership_expires_at) > new Date()))),
     ]);
 
     // Défi de lecture déplacé dans le profil (16/10/2026, demande de Mégane).

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Profil</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261116b">
+<link rel="stylesheet" href="css/bligo.css?v=20261123a">
 <link rel="stylesheet" href="css/theme-sombre.css?v=20261028">
 <script src="js/apparence.js?v=20261029a"></script>
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
@@ -317,6 +317,7 @@
   import { updateReservationBadge } from './js/navBadge.js?v=20261116a';
   import { showDialog, showSnackbar, frError } from './js/ui.js?v=20261023';
   import { isEmailVerified, openVerifyModal } from './js/verifEmail.js?v=20261103b';
+  import { loadDigital, digitalRows, bindDigital } from './js/ressourcesEnLigne.js?v=20261123a';
   import { revokeAppleIfNeeded } from './js/connexionSociale.js?v=20261103a';
 
   let currentSubscriberNumber = null;
@@ -359,21 +360,15 @@
     document.getElementById('family-usage').textContent = `${u.used} document${u.used > 1 ? 's' : ''} en cours sur ${u.max_loans} pour toute la famille`;
   }
 
-  const DIGITAL_ICONS = { livres: '📚', presse: '📰', autoformation: '🎓', musique: '🎵', cinema: '🎬', jeunesse: '🧸', autre: '🌐' };
-  async function setupDigitalResources(communeId) {
-    const { data, error } = await supabase.from('digital_resources').select('name, kind, url, description').eq('commune_id', communeId).order('sort_order').order('id');
-    if (error || !data?.length) return;
-    document.getElementById('digital-list').innerHTML = data.map(r => `
-      <a href="${r.url}" target="_blank" rel="noopener" class="profile-row">
-        <span class="min-w-0 flex items-center gap-3">
-          <span class="text-xl shrink-0">${DIGITAL_ICONS[r.kind] || '🌐'}</span>
-          <span class="min-w-0">
-            <span class="block truncate">${r.name}</span>
-            ${r.description ? `<span class="block text-xs text-ink/50 font-normal">${r.description}</span>` : ''}
-          </span>
-        </span>
-        <span class="profile-chevron">›</span>
-      </a>`).join('');
+  async function setupDigitalResources(communeId, member) {
+    if (member) {
+      const { data: me } = await supabase.from('profiles').select('membership_expires_at').eq('id', currentUserId).single();
+      member = !me?.membership_expires_at || new Date(me.membership_expires_at) > new Date();
+    }
+    const res = await loadDigital(supabase, communeId);
+    const el = document.getElementById('digital-list');
+    el.innerHTML = digitalRows(res);
+    bindDigital(el, supabase, res, member);
   }
 
   // Mon adhésion (23/10/2026) : seulement l'état, active ou en attente de
@@ -508,7 +503,7 @@
     if (!isLibre && profile?.commune_id) pending.push(setupMembership(isValidated));
     if (!isLibre && profile?.commune_id) {
       // Catégorie d'abonnement : visible et réglée côté agents uniquement (12/10/2026).
-      pending.push(setupFamily(), setupDigitalResources(profile.commune_id));
+      pending.push(setupFamily(), setupDigitalResources(profile.commune_id, isValidated));
     }
 
     document.getElementById('card-subtitle').textContent = isLibre

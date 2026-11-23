@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex"><meta name="referrer" content="no-referrer"><title>Connexion · BliGO</title>
+<link rel="stylesheet" href="css/bligo.css?v=20261123a"></head>
+<body class="min-h-screen bg-[#F6F5F8] text-ink flex items-center justify-center p-6">
+<main class="bg-white rounded-3xl shadow-sm max-w-sm w-full p-6 text-center">
+  <p id="t" class="text-lg font-bold mb-2">Connexion en cours…</p>
+  <p id="m" class="text-sm text-ink/60 leading-relaxed"></p>
+  <form id="f" class="hidden mt-4 text-left">
+    <input id="e" type="email" autocomplete="username" required placeholder="E-mail" class="w-full border border-mango-100 rounded-lg px-3 py-2.5 mb-2" style="font-size:16px">
+    <input id="p" type="password" autocomplete="current-password" required placeholder="Mot de passe" class="w-full border border-mango-100 rounded-lg px-3 py-2.5 mb-3" style="font-size:16px">
+    <button class="w-full bg-brand text-white rounded-2xl py-3 font-semibold">Me connecter</button>
+  </form>
+</main>
+<script type="module">
+  import { supabase } from './js/supabaseClient.js?v=20261103b';
+  const $ = id => document.getElementById(id);
+  const service = new URLSearchParams(location.search).get('service') || '';
+  const show = (t, m) => { $('t').textContent = t; $('m').textContent = m; };
+  async function go() {
+    const { data, error } = await supabase.rpc('cas_issue_ticket', { p_service: service });
+    if (error || !data) { $('f').classList.add('hidden'); show('Accès impossible', "Cette ressource est réservée aux adhérents à jour des médiathèques qui y sont abonnées. Renseigne-toi à l'accueil de ta médiathèque."); return; }
+    location.replace(data);
+  }
+  if (!/^https:\/\//i.test(service)) show('Lien incomplet', "Repars depuis la ressource que tu voulais ouvrir.");
+  else {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) go();
+    else {
+      show('Connecte-toi', 'Utilise ton compte de médiathèque BliGO pour ouvrir cette ressource.');
+      $('f').classList.remove('hidden');
+      $('f').onsubmit = async ev => {
+        ev.preventDefault();
+        const { error } = await supabase.auth.signInWithPassword({ email: $('e').value.trim(), password: $('p').value });
+        if (error) { $('m').textContent = 'E-mail ou mot de passe incorrect.'; return; }
+        go();
+      };
+    }
+  }
+</script></body></html>

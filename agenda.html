@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO · Agenda culturel</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261116b">
+<link rel="stylesheet" href="css/bligo.css?v=20261123a">
 <link rel="stylesheet" href="css/theme-sombre.css?v=20261028">
 <script src="js/apparence.js?v=20261029a"></script>
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
@@ -117,6 +117,9 @@
   let events = [];
   let myRsvps = new Set();
   let rsvpCounts = {};
+  let myPayments = {};
+  const euros = c => ((c || 0) / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+  const priceLabel = e => e.price_cents > 0 ? euros(e.price_cents) : 'Gratuit';
   // Alerte agenda (16/11/2026) : événements ajoutés depuis la dernière visite = « Nouveau ».
   let agendaSeenAt = null;
   const isNewEvent = e => agendaSeenAt && e.created_at && new Date(e.created_at) > new Date(agendaSeenAt);
@@ -158,6 +161,8 @@
       rsvpCounts[r.event_id] = (rsvpCounts[r.event_id] || 0) + 1;
       if (currentUser && r.user_id === currentUser.id) myRsvps.add(r.event_id);
     });
+    const { data: pays } = currentUser ? await supabase.from('payments').select('event_id, status, amount_cents, due_at').eq('kind', 'evenement').eq('user_id', currentUser.id).in('status', ['a_regler', 'paye']) : { data: [] };
+    myPayments = Object.fromEntries((pays || []).map(p => [p.event_id, p]));
     myCheckins = new Set((checkinsData || []).map(c => c.event_id));
 
     renderEvents();
@@ -208,6 +213,7 @@
       <p class="text-xl font-bold text-ink leading-snug">${e.event_type || 'Événement'}</p>
       ${e.title ? `<p class="text-base text-ink/60 mt-0.5">${e.title}</p>` : ''}
       <p class="text-sm text-hibiscus-700 font-semibold mt-3">${capFirst(formatEventDate(e.event_date, e.duration_minutes))} · ${durationLabel}</p>
+      ${e.price_cents > 0 ? `<p class="text-sm font-semibold text-ink mt-1">Tarif : ${euros(e.price_cents)} par personne</p>` : ''}
       <p class="text-sm text-ink/60 mt-1">📍 ${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
       ${e.description ? `<p class="text-sm text-ink/70 leading-relaxed mt-3">${e.description}</p>` : ''}
     `;
@@ -287,8 +293,9 @@
                 ? `<span class="text-xs font-semibold rounded-lg px-2.5 py-1.5 bg-mango-50 text-mango-700 whitespace-nowrap">Inscrit ✓</span>
                    <button data-event-id="${e.id}" class="ics-btn flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 bg-[#EEEDF2] text-ink/70 whitespace-nowrap">${calIcon}Calendrier</button>`
                 : `<button data-event-id="${e.id}" ${full ? 'disabled' : ''} class="rsvp-btn text-xs font-semibold rounded-lg px-3 py-1.5 whitespace-nowrap ${full ? 'bg-[#EEEDF2] text-ink/35' : 'bg-mango-500 text-white shadow-sm'}">${full ? 'Complet' : "Je m'inscris"}</button>`}
-              <span class="ml-auto text-[10.5px] text-ink/40 whitespace-nowrap">${seatsLabel}</span>
+              <span class="ml-auto text-[10.5px] text-ink/40 whitespace-nowrap">${e.price_cents > 0 ? `<strong class="text-ink/70">${priceLabel(e)}</strong> · ` : ''}${seatsLabel}</span>
             </div>
+            ${attending && myPayments[e.id] ? `<p class="text-[11px] font-semibold mt-1.5 ${myPayments[e.id].status === 'paye' ? 'text-mango-700' : 'text-hibiscus-700'}">${myPayments[e.id].status === 'paye' ? 'Payé ✓' : `À régler à l'accueil : ${euros(myPayments[e.id].amount_cents)}${myPayments[e.id].due_at ? ` avant le ${new Date(myPayments[e.id].due_at).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}`}</p>` : ''}
             ${attending ? `<button data-event-id="${e.id}" class="unrsvp-btn mt-1.5 text-[11px] font-semibold text-ink/45 underline">Me désinscrire</button>` : ''}
           </div>
         </div>`;
@@ -416,6 +423,7 @@
           <p class="text-sm font-semibold text-mango-700 mb-4">Le ${day} à ${hour}</p>
           <p class="text-sm text-ink/70 leading-relaxed">Tu vas t'inscrire à <strong>${esc(ev.title)}</strong> le ${day} à ${hour}.</p>
           <p class="text-sm text-ink/70 leading-relaxed mt-3">Les places sont limitées : en t'inscrivant, tu t'engages à être présent·e. Si tu ne peux plus venir, pense à te désinscrire au moins <strong>${delay}</strong> avant pour libérer ta place.</p>
+          ${ev.price_cents > 0 ? `<p class="text-sm text-ink/70 leading-relaxed mt-3">Tarif : <strong>${euros(ev.price_cents)}</strong>, à régler à l'accueil${ev.payment_hold_hours ? ` sous <strong>${ev.payment_hold_hours} h</strong>. Passé ce délai, ta place est libérée` : ''}.</p>` : ''}
           <button data-a="ok" class="w-full mt-5 bg-brand text-white rounded-2xl py-3 text-base font-semibold active:scale-[0.98] transition">Confirmer mon inscription</button>
           <button data-a="cancel" class="w-full mt-2 text-sm font-semibold text-ink/50 py-2">Annuler</button>
         </div>`;

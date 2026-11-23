@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BliGO - Back-office</title>
-<link rel="stylesheet" href="css/bligo.css?v=20261116b">
+<link rel="stylesheet" href="css/bligo.css?v=20261123a">
 <link rel="preload" href="css/fonts/inter-latin-1ab1ad.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/fonts.css?v=20261023">
 <style>
@@ -234,6 +234,10 @@
       <button onclick="switchScreen('agenda')" style="touch-action: manipulation;" class="agent-nav-btn" data-screen="agenda">
         <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>
         Agenda culturel
+      </button>
+      <button onclick="switchScreen('regie')" style="touch-action: manipulation;" class="agent-nav-btn" data-screen="regie">
+        <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18M7 15h4"/></svg>
+        Encaissements
       </button>
       <p class="bo-nav-group" id="nav-divider-pilotage">Pilotage</p>
 
@@ -594,6 +598,10 @@
             </div>
 
             <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap mb-2 text-xs text-ink/60">
+                <button type="button" onclick="newDraftLot()" class="font-semibold border border-brand/30 text-ink rounded-full px-3 py-1.5 bg-white">+ Nouveau panier</button>
+                <span id="draft-current-lot" class="flex items-center gap-2 flex-wrap"></span>
+              </div>
               <div id="draft-books-empty" class="text-sm text-ink/40 text-center py-8">Les documents scannés ou importés apparaîtront ici, dans ton panier, pour vérification avant mise en ligne. Ton panier est gardé : tu le retrouves à ta prochaine connexion.</div>
               <div id="draft-books-actions" class="hidden items-center justify-between flex-wrap gap-2 mb-2">
                 <div class="flex items-center gap-2 flex-wrap min-w-0">
@@ -1097,6 +1105,12 @@
                 Illimité
               </label>
             </div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Tarif par personne (€, 0 = gratuit)</label>
+            <input id="event-price" type="number" min="0" step="0.5" value="0" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-3">
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Place gardée en attendant le règlement</label>
+            <select id="event-hold-hours" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-3">
+              <option value="">Jusqu'à l'événement</option><option value="24">24 h, puis libérée</option><option value="48">48 h, puis libérée</option><option value="72">72 h, puis libérée</option><option value="168">1 semaine, puis libérée</option>
+            </select>
             <!-- Délai de désinscription (12/10/2026), rappelé à l'usager au moment de s'inscrire. -->
             <label class="text-xs font-semibold text-ink/60 block mb-1">Délai de désinscription</label>
             <select id="event-unsubscribe-hours" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-3">
@@ -1455,7 +1469,7 @@
           </div>
           <div data-settings-pane="ressources" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
         <h3 class="text-base font-bold text-ink mb-2">Ressources numériques</h3>
-        <p class="text-xs text-ink/55 mb-3 ">Les services en ligne auxquels ta médiathèque est abonnée (livres numériques, presse, autoformation…). Ils apparaissent dans le profil des usagers, avec un lien direct.</p>
+        <p class="text-xs text-ink/55 mb-3 ">Les services en ligne auxquels ta médiathèque est abonnée (livres numériques, presse, autoformation…). Ils apparaissent sur l'accueil et dans le profil des usagers, avec un lien direct. Le nombre d'ouvertures est compté sans aucune donnée personnelle.</p>
         <div id="digital-resources-list" class=" flex flex-col gap-1.5 mb-3"></div>
         <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm  mb-2">
           <div class="grid grid-cols-2 gap-2 mb-2">
@@ -1472,6 +1486,12 @@
           </div>
           <input id="digital-url" placeholder="Lien (https://…)" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm mb-2">
           <input id="digital-description" placeholder="Une phrase pour les usagers (optionnel)" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm mb-2">
+          <div class="grid grid-cols-2 gap-2 mb-2 items-center">
+            <label class="text-[11px] text-ink/60">Fin d'abonnement (facultatif)<input id="digital-expires" type="date" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm"></label>
+            <label class="flex items-center gap-1.5 text-sm text-ink"><input id="digital-members" type="checkbox" class="accent-mango-600 w-4 h-4">Réservée aux adhérents à jour</label>
+          </div>
+          <input id="digital-cas" placeholder="Adresse CAS du fournisseur (facultatif, ex. https://www.exemple.fr/cas/)" class="w-full border border-mango-100 rounded-lg px-2.5 py-2 text-sm mb-1">
+          <p class="text-[10.5px] text-ink/45 mb-2">Connexion automatique : à remplir avec l'adresse donnée par le fournisseur. Adresse du serveur CAS BliGO à lui transmettre : https://knlymrujmiapzieavzoe.supabase.co/functions/v1/cas</p>
           <button onclick="addDigitalResource()" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Ajouter la ressource</button>
         </div>
 
@@ -1627,6 +1647,19 @@
                 </div>
           </div>
         </div>
+      </section>
+
+      <!-- ENCAISSEMENTS (23/11/2026) -->
+      <section id="screen-regie" class="agent-screen hidden">
+        <h2 class="text-lg font-bold text-ink mb-1">Encaissements</h2>
+        <p class="text-sm text-ink/55 mb-4">Adhésions et événements payants : ce qui est réglé, ce qui reste à régler, et l'état à remettre à la régie.</p>
+        <div class="flex flex-wrap items-center gap-2 mb-4 text-xs">
+          <label>Du <input id="regie-from" type="date" onchange="loadRegie()" class="border border-mango-100 rounded-lg px-2 py-1.5 bg-white"></label>
+          <label>au <input id="regie-to" type="date" onchange="loadRegie()" class="border border-mango-100 rounded-lg px-2 py-1.5 bg-white"></label>
+          <button onclick="exportRegie()" class="font-semibold border border-brand/30 rounded-full px-3 py-1.5 bg-white">Exporter (tableur)</button>
+        </div>
+        <div id="regie-totals" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+        <div id="regie-list" class="flex flex-col gap-1.5"></div>
       </section>
 
       <!-- STATISTIQUES SIGB (direction uniquement) -->
@@ -2420,6 +2453,7 @@
     if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
     if (screen === 'catalogue') { closeScanView(); }
     if (screen === 'collections') openCollectionsView('inv');
+    if (screen === 'regie') loadRegie();
     if (screen === 'logistics') loadTransfers();
     if (screen === 'depots') loadDepots();
     if (screen === 'home') loadDashboard();
@@ -3680,7 +3714,7 @@
     let added = 0, skipped = 0;
     const importedIds = [];
     // Panier de catalogage (19/11/2026) : un lot par import, au nom du fichier.
-    const lotName = `${files.map(f => f.name).join(', ')} · ${new Date().toLocaleDateString('fr-FR')}`;
+    const lotName = currentLotName || `${files.map(f => f.name).join(', ')} · ${new Date().toLocaleDateString('fr-FR')}`;
     for (const file of files) {
       let records = [];
       try { records = lireFichierNotices(await file.arrayBuffer()); } catch (e) { console.error(e); }
@@ -4034,8 +4068,10 @@
     draft.meta.onSiteOnly = document.getElementById('batch-onsite-only')?.checked || !!draft.onSiteOnly;
 
     const inserted = await insertBook(draft.meta);
-    if (inserted) await maybeRecordDonation(inserted.id, draft.meta.copyCount);
-    if (inserted && draft.issn && documentTypeKind(draft.format) === 'periodique') {
+    if (!inserted) return false; // échec : la fiche reste dans le panier (23/11/2026)
+    await rememberBookLot(inserted.id, draft);
+    await maybeRecordDonation(inserted.id, draft.meta.copyCount);
+    if (draft.issn && documentTypeKind(draft.format) === 'periodique') {
       supabase.rpc('receive_issue_by_issn', { p_issn: draft.issn, p_issue: parseIssueNumber(draft.issue) || null }).then(() => {});
     }
     window.removeDraft(localId);
@@ -4045,7 +4081,8 @@
     const ids = draftBooks.filter(d => (d.status === 'found' || d.status === 'existing') && draftInLotFilter(d) && (!onlyVerified || d.verified)).map(d => d.localId);
     if (onlyVerified && !ids.length) { alert('Aucune fiche cochée « vérifiée » dans ce lot.'); return; }
     for (const id of ids) {
-      await window.validateDraft(id);
+      // Une erreur : on s'arrête là, sinon la même alerte revient à chaque fiche.
+      if (await window.validateDraft(id) === false) break;
     }
   };
 
@@ -4069,7 +4106,9 @@
       players: (draft.players || '').trim() || null,
       play_duration: (draft.play_duration || '').trim() || null,
       age_range: (draft.age_range || '').trim() || null, ...ageFieldsPayload(draft) });
-    if (inserted) await maybeRecordDonation(inserted.id, 1);
+    if (!inserted) return;
+    await rememberBookLot(inserted.id, draft);
+    await maybeRecordDonation(inserted.id, 1);
     window.removeDraft(localId);
   };
 
@@ -4474,6 +4513,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     actions.classList.toggle('hidden', draftBooks.length === 0);
     actions.classList.toggle('flex', draftBooks.length > 0);
     document.getElementById('draft-books-count').textContent = draftBooks.length;
+    // Chaque fiche garde le panier dans lequel elle est entrée.
+    draftBooks.forEach(d => { if (!d.lot) d.lot = draftDefaultLot(); });
+    const lotNow = document.getElementById('draft-current-lot');
+    if (lotNow) lotNow.innerHTML = currentLotName
+      ? `<span>Les prochains documents iront dans <strong>${escapeHtml(currentLotName)}</strong></span> <button type="button" onclick="stopDraftLot()" class="underline">Arrêter</button>`
+      : '';
     renderDraftLotFilter();
     list.innerHTML = draftBooks.filter(draftInLotFilter).map(d => d.status === 'loading' ? draftCardHtml(d) : `
       <div class="min-w-0">
@@ -4494,7 +4539,34 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   let draftLotFilter = '';
   let draftSyncTimer = null;
   const draftDeletedIds = new Set();
-  function draftDefaultLot() { return `Scans du ${new Date().toLocaleDateString('fr-FR')}`; }
+  // Panier choisi par l'agent (« Jeunesse », « Adulte »…) pour les prochains scans.
+  let currentLotName = '';
+  async function rememberBookLot(bookId, draft) {
+    const { error } = await supabase.rpc('set_book_lot', { p_book_id: bookId, p_lot: draft.lot || draftDefaultLot() });
+    if (error) console.warn('Panier non mémorisé :', error.message);
+  }
+  window.newDraftLot = async function () {
+    const name = (await promptDialog('Nom du panier (ex. Jeunesse, Adulte, Commande de novembre) :', '') || '').trim();
+    if (!name) return;
+    currentLotName = name;
+    renderDraftBooks();
+  };
+  window.stopDraftLot = function () { currentLotName = ''; renderDraftBooks(); };
+  window.renameDraftLot = async function () {
+    const lots = [...new Set(draftBooks.map(d => d.lot).filter(Boolean))];
+    const old = draftLotFilter || (lots.length === 1 ? lots[0] : '');
+    if (!old) { alert('Choisis d\'abord le panier à renommer dans la liste.'); return; }
+    const name = (await promptDialog('Nouveau nom du panier :', old) || '').trim();
+    if (!name || name === old) return;
+    const { error } = await supabase.rpc('rename_catalog_lot', { p_old: old, p_new: name });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    draftBooks.forEach(d => { if (d.lot === old) d.lot = name; });
+    if (draftLotFilter) draftLotFilter = name;
+    if (currentLotName === old) currentLotName = name;
+    renderDraftBooks();
+  };
+
+  function draftDefaultLot() { if (currentLotName) return currentLotName; return `Scans du ${new Date().toLocaleDateString('fr-FR')}`; }
   function draftInLotFilter(d) { return !draftLotFilter || (d.lot || '') === draftLotFilter; }
 
   function renderDraftLotFilter() {
@@ -4509,7 +4581,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <option value="">Tous mes lots (${draftBooks.length})</option>
         ${lots.map(l => `<option value="${escapeHtml(l)}" ${l === draftLotFilter ? 'selected' : ''}>${escapeHtml(l)} (${draftBooks.filter(d => d.lot === l).length})</option>`).join('')}
       </select>` : ''}
-      <span class="text-[11px] text-ink/50">${verified} / ${total} vérifiée${verified > 1 ? 's' : ''}</span>`;
+      <span class="text-[11px] text-ink/50">${verified} / ${total} vérifiée${verified > 1 ? 's' : ''}</span>
+      ${lots.length ? '<button type="button" onclick="renameDraftLot()" class="text-[11px] font-semibold text-mango-700 underline">Renommer</button>' : ''}`;
   }
 
   window.setDraftLotFilter = function (v) { draftLotFilter = v; renderDraftBooks(); };
@@ -4589,9 +4662,24 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <p class="font-semibold text-ink truncate">${escapeHtml(b.agent_name || 'Agent')} · ${escapeHtml(b.lot || 'Sans lot')}</p>
             <p class="text-ink/45">${b.verified} / ${b.total} vérifiée${b.verified > 1 ? 's' : ''} · ${new Date(b.updated_at).toLocaleDateString('fr-FR')}</p>
           </div>
+          <button type="button" data-agent="${b.agent_id}" ${b.lot == null ? '' : `data-lot="${escapeHtml(b.lot)}"`} onclick="viewTeamBasket(this)" class="text-[11px] font-semibold text-ink/60 underline shrink-0 ml-auto">Voir</button>
           <button type="button" data-agent="${b.agent_id}" ${b.lot == null ? '' : `data-lot="${escapeHtml(b.lot)}"`} onclick="takeOverBasket(this.dataset.agent, this.dataset.lot ?? null)" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-lg px-2.5 py-1 shrink-0">Reprendre</button>
         </div>`).join('')}`;
   }
+
+  // Consultation seule du panier d'un collègue.
+  window.viewTeamBasket = async function (btn) {
+    const row = btn.parentElement;
+    if (row.nextElementSibling?.classList.contains('team-basket-detail')) { row.nextElementSibling.remove(); return; }
+    let q = supabase.from('catalog_drafts').select('data, verified').eq('agent_id', btn.dataset.agent);
+    q = btn.dataset.lot == null ? q.is('lot', null) : q.eq('lot', btn.dataset.lot);
+    const { data, error } = await q.order('created_at');
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    const box = document.createElement('ul');
+    box.className = 'team-basket-detail text-xs text-ink/65 pb-2 pl-2';
+    box.innerHTML = (data || []).map(r => `<li>${escapeHtml(r.data?.title || r.data?.meta?.title || r.data?.isbn || 'Sans titre')}${r.verified ? ' · vérifiée' : ''}</li>`).join('') || '<li>Panier vide.</li>';
+    row.after(box);
+  };
 
   window.takeOverBasket = async function (agentId, lot) {
     if (!await confirmDialog(`Reprendre ce lot dans ton panier ? Il disparaîtra du panier de ton collègue.`)) return;
@@ -7250,6 +7338,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) { alert('Erreur : ' + frError(error)); return; }
     alert(data.message);
     if (!data.ok) return;
+    await askMembershipPayment(userId);
     if (communeId) { await loadNonResidents(); return; }
     await loadInscritsList();
     const fresh = inscritsList.find(p => p.id === userId);
@@ -8556,6 +8645,104 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     renderThemePalette('settings-accent-palette', selectedAccentHex, 'pickAccentColor');
   };
 
+  // ---------- Encaissements (23/11/2026, demande des Abymes) ----------
+  // Le paiement en ligne PayFiP viendra alimenter la même table (method = payfip).
+  const PAY_METHODS = { especes: 'Espèces', carte: 'Carte bancaire', cheque: 'Chèque', virement: 'Virement', payfip: 'PayFiP', gratuit: 'Offert' };
+  const PAY_STATUS = { a_regler: 'À régler', paye: 'Payé', annule: 'Annulé', a_rembourser: 'À rembourser', rembourse: 'Remboursé' };
+  const euros = c => ((c || 0) / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+  let regieRows = [];
+
+  function choosePayment(title, amountCents, skipLabel) {
+    return new Promise(resolve => {
+      const bd = document.createElement('div');
+      bd.className = 'fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4';
+      bd.innerHTML = `<div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5">
+        <p class="text-base font-bold text-ink mb-3">${escapeHtml(title)}</p>
+        <label class="text-xs text-ink/60 block mb-3">Montant (€)<input data-a="amount" type="number" min="0" step="0.5" value="${(amountCents / 100).toFixed(2)}" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm"></label>
+        <label class="text-xs text-ink/60 block mb-4">Moyen de paiement<select data-a="method" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">${['especes', 'carte', 'cheque', 'virement', 'gratuit'].map(m => `<option value="${m}">${PAY_METHODS[m]}</option>`).join('')}</select></label>
+        <button data-a="ok" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold">Enregistrer le paiement</button>
+        <button data-a="no" class="w-full text-sm text-ink/55 py-2 mt-1">${skipLabel}</button></div>`;
+      const done = v => { bd.remove(); resolve(v); };
+      bd.querySelector('[data-a="no"]').onclick = () => done(null);
+      bd.querySelector('[data-a="ok"]').onclick = () => {
+        const amount = Math.round(Number(bd.querySelector('[data-a="amount"]').value) * 100);
+        if (!(amount >= 0)) { alert('Montant invalide.'); return; }
+        const method = bd.querySelector('[data-a="method"]').value;
+        done({ amount: method === 'gratuit' ? 0 : amount, method });
+      };
+      document.body.appendChild(bd);
+    });
+  }
+
+  window.cashPayment = async function (id, amountCents, after) {
+    const c = await choosePayment('Encaisser', amountCents, 'Annuler');
+    if (!c) return;
+    const { error } = await supabase.rpc('settle_payment', { p_id: id, p_status: 'paye', p_method: c.method, p_amount_cents: c.amount });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    await (after || loadRegie)();
+  };
+
+  // Après une inscription ou un renouvellement : proposé seulement si un tarif existe.
+  async function askMembershipPayment(userId, category) {
+    const [{ data: commune }, { data: prof }] = await Promise.all([
+      supabase.from('communes').select('tariff_mineur_cents, tariff_majeur_cents, tariff_gratuit_cents, tariff_famille_cents').eq('id', myCommuneId).maybeSingle(),
+      category ? Promise.resolve({ data: { tariff_category: category } }) : supabase.from('profiles').select('tariff_category').eq('id', userId).maybeSingle(),
+    ]);
+    const amount = commune?.[`tariff_${prof?.tariff_category}_cents`] || 0;
+    if (!amount) return;
+    const c = await choosePayment('Règlement de l\'adhésion', amount, 'Ne pas enregistrer de paiement');
+    if (!c) return;
+    const { error } = await supabase.rpc('add_membership_payment', { p_user_id: userId, p_amount_cents: c.amount, p_method: c.method });
+    if (error) alert('Erreur : ' + frError(error));
+  }
+
+  window.loadRegie = async function () {
+    const from = document.getElementById('regie-from'), to = document.getElementById('regie-to');
+    const iso = d => d.toLocaleDateString('sv-SE');
+    const now = new Date();
+    if (!from.value) from.value = iso(new Date(now.getFullYear(), now.getMonth(), 1));
+    if (!to.value) to.value = iso(now);
+    const box = document.getElementById('regie-list');
+    const { data, error } = await supabase.rpc('list_payments', { p_from: from.value, p_to: to.value });
+    if (error) { box.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(frError(error))}</p>`; return; }
+    regieRows = data || [];
+    const sum = s => regieRows.filter(r => s.includes(r.status)).reduce((t, r) => t + r.amount_cents, 0);
+    // « À rembourser » : l'argent est encore dans la caisse, il compte dans l'encaissé.
+    document.getElementById('regie-totals').innerHTML = [['Encaissé', sum(['paye', 'a_rembourser', 'rembourse'])], ['À régler', sum(['a_regler'])], ['À rembourser', sum(['a_rembourser'])], ['Remboursé', sum(['rembourse'])]]
+      .map(([l, v]) => `<div class="bg-white border border-[#E5E7EB] rounded-xl p-3"><p class="text-[11px] text-ink/55">${l}</p><p class="text-lg font-bold text-ink">${euros(v)}</p></div>`).join('');
+    box.innerHTML = regieRows.map(r => `
+      <div class="bg-white border border-[#E5E7EB] rounded-lg px-3 py-2 flex items-center gap-3 flex-wrap">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.payer)} · ${escapeHtml(r.label)}</p>
+          <p class="text-[11px] text-ink/50">${formatDateShortAdmin(r.paid_at || r.created_at)}${r.method ? ' · ' + PAY_METHODS[r.method] : ''}${r.agent_name ? ' · par ' + escapeHtml(r.agent_name) : ''}</p>
+        </div>
+        <span class="text-sm font-bold text-ink">${euros(r.amount_cents)}</span>
+        <span class="text-[11px] font-semibold text-ink/60">${PAY_STATUS[r.status]}</span>
+        ${r.status === 'a_regler' ? `<button onclick="cashPayment(${r.id}, ${r.amount_cents})" class="text-[11px] font-semibold text-white bg-brand rounded-full px-3 py-1">Encaisser</button>` : ''}
+        ${r.status === 'paye' && r.amount_cents ? `<button onclick="movePayment(${r.id}, 'a_rembourser', 'Marquer ce paiement à rembourser ?')" class="text-[11px] text-ink/50 underline">Rembourser</button>` : ''}
+        ${r.status === 'a_rembourser' ? `<button onclick="movePayment(${r.id}, 'rembourse', 'Confirmer que ce paiement a été remboursé ?')" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-full px-3 py-1">Remboursé</button>` : ''}
+      </div>`).join('') || '<p class="text-sm text-ink/40 py-6 text-center">Aucun paiement sur cette période.</p>';
+  };
+
+  window.movePayment = async function (id, status, question) {
+    if (!await confirmDialog(question)) return;
+    const { error } = await supabase.rpc('settle_payment', { p_id: id, p_status: status });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    await loadRegie();
+  };
+
+  window.exportRegie = function () {
+    if (!regieRows.length) { alert('Aucun paiement sur cette période.'); return; }
+    // Une cellule qui commence par = + - @ serait lue comme une formule par Excel.
+    const cell = v => { let s = String(v ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+    const lines = [['Date', 'Usager', 'Objet', 'Montant', 'Statut', 'Moyen de paiement', 'Référence', 'Agent'],
+      ...regieRows.map(r => [formatDateShortAdmin(r.paid_at || r.created_at), r.payer, r.label, (r.amount_cents / 100).toFixed(2).replace('.', ','), PAY_STATUS[r.status], PAY_METHODS[r.method] || '', r.reference, r.agent_name])];
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + lines.map(l => l.map(cell).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    a.download = `encaissements_${document.getElementById('regie-from').value}_${document.getElementById('regie-to').value}.csv`;
+    a.click();
+  };
+
   // ---------- Ressources numériques (Réglages, 09/10/2026) ----------
   const DIGITAL_KIND_LABEL = { livres: 'Livres numériques', presse: 'Presse en ligne', autoformation: 'Autoformation', musique: 'Musique', cinema: 'Cinéma', jeunesse: 'Jeunesse', autre: 'Autre' };
 
@@ -8564,12 +8751,21 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!list || !myCommuneId) return;
     const { data, error } = await supabase.from('digital_resources').select('*').eq('commune_id', myCommuneId).order('sort_order').order('id');
     if (error) { list.innerHTML = ''; return; }
+    const year = new Date().getFullYear();
+    const { data: opens } = (data || []).length
+      ? await supabase.from('digital_resource_opens').select('resource_id, opens').in('resource_id', data.map(r => r.id)).gte('day', `${year}-01-01`)
+      : { data: [] };
+    const openCount = {};
+    (opens || []).forEach(o => { openCount[o.resource_id] = (openCount[o.resource_id] || 0) + o.opens; });
+    const today = new Date().toLocaleDateString('sv-SE');
     list.innerHTML = (data || []).length ? data.map(r => `
       <div class="bg-white border border-mango-100 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
         <div class="min-w-0">
           <p class="text-sm text-ink truncate"><span class="font-semibold">${escapeHtml(r.name)}</span> <span class="text-[10.5px] text-ink/45">· ${DIGITAL_KIND_LABEL[r.kind] || ''}</span></p>
           <p class="text-[10.5px] text-ink/45 truncate">${escapeHtml(r.url)}</p>
+          <p class="text-[10.5px] text-ink/55">${openCount[r.id] || 0} ouverture${(openCount[r.id] || 0) > 1 ? 's' : ''} en ${year}${r.members_only ? ' · adhérents' : ''}${r.expires_on ? ` · <span class="${r.expires_on < today ? 'text-red-600 font-semibold' : ''}">${r.expires_on < today ? 'abonnement terminé le' : 'jusqu\'au'} ${r.expires_on.split('-').reverse().join('/')}</span>` : ''}${r.active ? '' : ' · <strong>masquée</strong>'}</p>
         </div>
+        <button onclick="toggleDigitalResource(${r.id}, ${!r.active})" class="text-xs text-mango-700 underline shrink-0">${r.active ? 'Masquer' : 'Afficher'}</button>
         <button onclick="removeDigitalResource(${r.id})" class="text-xs text-ink/40 hover:text-red-600 underline shrink-0">Retirer</button>
       </div>`).join('') : '<p class="text-xs text-ink/40">Aucune ressource numérique pour l\'instant.</p>';
   }
@@ -8583,9 +8779,19 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       commune_id: myCommuneId, name, url,
       kind: document.getElementById('digital-kind').value,
       description: document.getElementById('digital-description').value.trim() || null,
+      expires_on: document.getElementById('digital-expires').value || null,
+      members_only: document.getElementById('digital-members').checked,
+      cas_service_prefix: document.getElementById('digital-cas').value.trim() || null,
     });
     if (error) { alert('Erreur : ' + frError(error)); return; }
-    ['digital-name', 'digital-url', 'digital-description'].forEach(id => { document.getElementById(id).value = ''; });
+    ['digital-name', 'digital-url', 'digital-description', 'digital-expires', 'digital-cas'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('digital-members').checked = false;
+    await loadDigitalResources();
+  };
+
+  window.toggleDigitalResource = async function (id, active) {
+    const { error } = await supabase.from('digital_resources').update({ active }).eq('id', id);
+    if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadDigitalResources();
   };
 
@@ -9692,6 +9898,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
       ${copiesManagementHtml(b)}
       <div id="bd-availability"></div>
+      <p id="bd-cataloger" class="text-[11px] text-ink/50 mb-3"></p>
 
       <div class="grid grid-cols-2 gap-x-3">
         ${bookFieldRow('ISBN', 'bd-isbn', b.isbn)}
@@ -9740,6 +9947,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       <button onclick="saveBookDetail(${b.id})" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
     `;
     loadBookAvailability(b);
+    supabase.rpc('book_cataloger', { p_book_id: b.id }).then(({ data }) => {
+      const el = document.getElementById('bd-cataloger'), c = data?.[0];
+      if (el && c && Number(document.getElementById('book-modal-content').dataset.bookId) === b.id)
+        el.textContent = `Catalogué par ${c.agent_name} le ${formatDateShortAdmin(c.created_at)}${c.lot ? ` · panier « ${c.lot} »` : ''}`;
+    });
     document.getElementById('book-modal-backdrop').classList.remove('hidden');
     document.getElementById('book-modal-backdrop').classList.add('flex');
     document.getElementById('bd-dewey').addEventListener('input', e => {
@@ -10450,6 +10662,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     const { error } = await supabase.rpc('validate_registration', { p_user_id: id });
     if (error) { alert('Erreur : ' + frError(error)); return; }
+    await askMembershipPayment(id, tariff_category);
     await loadPreregistrations();
   };
 
@@ -11318,6 +11531,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data, error } = await supabase.rpc('agent_event_rsvps', { p_event_id: eventId });
     if (error) { listBox.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(frError(error))}</p>`; return; }
     eventRsvpsCache = data || [];
+    const { data: evPay } = await supabase.from('payments').select('id, rsvp_id, amount_cents, status').eq('event_id', eventId);
+    const payByRsvp = Object.fromEntries((evPay || []).map(p => [p.rsvp_id, p]));
     const e = events.find(x => x.id === eventId);
     if (e) e.rsvpCount = eventRsvpsCache.length;
     const gauge = document.getElementById('event-rsvp-gauge');
@@ -11337,6 +11552,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.full_name)}</p>
             <p class="text-[11px] text-ink/50 truncate">${r.has_account ? escapeHtml(r.subscriber_number || '') : 'Sans compte' + (r.phone ? ' · ' + escapeHtml(r.phone) : '')}</p>
           </div>
+          ${payByRsvp[r.rsvp_id]?.status === 'a_regler' ? `<button type="button" onclick="cashPayment(${payByRsvp[r.rsvp_id].id}, ${payByRsvp[r.rsvp_id].amount_cents}, () => loadEventRsvps(${eventId}))" class="text-[11px] font-semibold text-white bg-brand rounded-full px-2.5 py-1 shrink-0">Encaisser ${euros(payByRsvp[r.rsvp_id].amount_cents)}</button>`
+            : payByRsvp[r.rsvp_id]?.status === 'paye' ? '<span class="text-[11px] font-semibold text-emerald-700 shrink-0">Payé</span>' : ''}
           ${r.checked_in ? '<span class="text-[11px] font-semibold text-mango-700 shrink-0">Présent·e</span>'
             : r.has_account ? `<button type="button" onclick="eventCheckinUser('${r.user_id}', ${eventId})" class="text-[11px] font-semibold text-mango-700 border border-mango-200 bg-white rounded-full px-2.5 py-1 shrink-0">Présent·e</button>` : ''}
           <button type="button" onclick="removeEventRsvp(${r.rsvp_id}, ${eventId})" class="text-[11px] font-semibold text-red-500/70 hover:text-red-600 shrink-0">Retirer</button>
@@ -11552,6 +11769,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('event-max-seats').disabled = e.max_seats == null;
     document.getElementById('event-max-seats').value = e.max_seats == null ? '' : e.max_seats;
     document.getElementById('event-unsubscribe-hours').value = String(e.unsubscribe_hours || 48);
+    document.getElementById('event-price').value = (e.price_cents || 0) / 100;
+    document.getElementById('event-hold-hours').value = String(e.payment_hold_hours || '');
     document.getElementById('event-audience').value = e.audience || 'tous';
     document.getElementById('event-participants').value = e.participants ?? '';
     setEventImagePreview(e.image_url);
@@ -11578,6 +11797,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('event-max-seats').disabled = e.max_seats == null;
     document.getElementById('event-max-seats').value = e.max_seats == null ? '' : e.max_seats;
     document.getElementById('event-unsubscribe-hours').value = String(e.unsubscribe_hours || 48);
+    document.getElementById('event-price').value = (e.price_cents || 0) / 100;
+    document.getElementById('event-hold-hours').value = String(e.payment_hold_hours || '');
     document.getElementById('event-audience').value = e.audience || 'tous';
     document.getElementById('event-participants').value = '';
     setEventImagePreview(e.image_url);
@@ -11602,6 +11823,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('event-max-seats').disabled = false;
     document.getElementById('event-max-seats').value = '';
     document.getElementById('event-unsubscribe-hours').value = '48';
+    document.getElementById('event-price').value = '0';
+    document.getElementById('event-hold-hours').value = '';
     setEventImagePreview(null);
     document.getElementById('event-image-file').value = '';
     document.getElementById('event-confirmation').classList.add('hidden');
@@ -11669,6 +11892,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       commune_id,
       location: location || null,
       max_seats,
+      price_cents: Math.max(0, Math.round(Number(document.getElementById('event-price').value || 0) * 100)),
+      payment_hold_hours: Number(document.getElementById('event-hold-hours').value) || null,
       unsubscribe_hours: Number(document.getElementById('event-unsubscribe-hours').value) || 48,
       image_url,
       audience: document.getElementById('event-audience').value || 'tous',
