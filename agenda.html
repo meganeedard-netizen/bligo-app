@@ -444,9 +444,9 @@
       if (!(await ensureEmailVerified(currentUser, "de t'inscrire à un événement"))) return;
       const ev = events.find(e => e.id === eventId);
       // Payant : la place est prise au moment du paiement. Le paiement en ligne
-      // (PayFiP) se branchera ici ; en attendant, à l'accueil.
+      // (PayFiP) se branchera ici ; en attendant, à la régie.
       if (ev?.price_cents > 0) {
-        await showDialog({ title: 'Événement payant', message: `Le tarif est de ${euros(ev.price_cents)} par personne. Passe à l'accueil de ta médiathèque pour payer : ta place est confirmée tout de suite.` });
+        await showDialog({ title: 'Événement payant', message: `Le tarif est de ${euros(ev.price_cents)} par personne. Il se règle auprès de la régie. Ta place est confirmée dès que ton paiement est enregistré.` });
         return;
       }
       if (ev && !(await confirmRsvp(ev))) return;

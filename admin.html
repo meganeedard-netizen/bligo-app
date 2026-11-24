@@ -238,7 +238,7 @@
       </button>
       <button onclick="switchScreen('regie')" style="touch-action: manipulation;" class="agent-nav-btn" data-screen="regie">
         <svg class="nav-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18M7 15h4"/></svg>
-        Encaissements
+        Paiements
       </button>
       <p class="bo-nav-group" id="nav-divider-pilotage">Pilotage</p>
 
@@ -803,7 +803,7 @@
           </div>
 
           <h3 class="text-base font-bold text-ink mt-8 mb-1">Non-résidents</h3>
-          <p class="text-sm text-ink/55 mb-3">Usagers d'une autre commune qui demandent à emprunter ici. Encaisse le tarif non-résident s'il y en a un, puis valide.</p>
+          <p class="text-sm text-ink/55 mb-3">Usagers d'une autre commune qui demandent à emprunter ici. Vérifie que le tarif non-résident est réglé s'il y en a un, puis valide.</p>
           <div id="nonresidents-list" class="flex flex-col gap-2 max-w-2xl"></div>
         </div>
 
@@ -1494,6 +1494,10 @@
           </div>
           <!-- Étiquettes code-barres (18/11/2026) : numérotation de la médiathèque. -->
           <div data-settings-pane="codesbarres" class="hidden bg-white border border-[#E5E7EB] rounded-xl p-6">
+        <h3 class="text-base font-bold text-ink mb-2">Qui peut modifier une notice en ligne ?</h3>
+        <select id="catalog-rights" onchange="saveCatalogRights(this.value)" class="border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-6 max-w-full">
+          <option value="ouvert">Tous les agents</option><option value="auteur">L'agent qui l'a ajoutée et la direction</option>
+        </select>
         <h3 class="text-base font-bold text-ink mb-2">Numérotation des codes-barres</h3>
         <p class="text-xs text-ink/55 mb-4">Les étiquettes code-barres imprimées depuis Catalogage suivent cette numérotation. Chaque numéro n'est imprimé qu'une fois, même si deux agents impriment en même temps. Si ta médiathèque a déjà des codes, reprends le même préfixe et le même nombre de chiffres, puis clique sur « Reprendre après mon dernier code ».</p>
         <div class="grid sm:grid-cols-3 gap-3 mb-3">
@@ -1647,7 +1651,7 @@
 
       <!-- ENCAISSEMENTS (23/11/2026) -->
       <section id="screen-regie" class="agent-screen hidden">
-        <h2 class="text-lg font-bold text-ink mb-1">Encaissements</h2>
+        <h2 class="text-lg font-bold text-ink mb-1">Paiements</h2>
         <p class="text-sm text-ink/55 mb-4">Adhésions et événements payants : ce qui est réglé, ce qui reste à régler, et l'état à remettre à la régie.</p>
         <div class="flex flex-wrap items-center gap-2 mb-4 text-xs">
           <label>Du <input id="regie-from" type="date" onchange="loadRegie()" class="border border-mango-100 rounded-lg px-2 py-1.5 bg-white"></label>
@@ -2429,7 +2433,7 @@
     document.querySelectorAll('[data-settings-pane]').forEach(el => el.classList.toggle('hidden', el.dataset.settingsPane !== tab));
     document.querySelectorAll('[data-settings-tab]').forEach(el => el.classList.toggle('is-active', el.dataset.settingsTab === tab));
     if (tab === 'donnees') { window.loadRetention?.(); window.fillStatsYears?.(); window.etatAdherents?.(); }
-    if (tab === 'codesbarres') window.loadBarcodeSettings?.();
+    if (tab === 'codesbarres') { window.loadBarcodeSettings?.(); supabase.from('communes').select('catalog_rights').eq('id', myCommuneId).maybeSingle().then(({ data }) => { if (data?.catalog_rights) document.getElementById('catalog-rights').value = data.catalog_rights; }); }
   };
 
   window.switchScreen = function (screen) {
@@ -4645,6 +4649,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const box = document.getElementById('team-baskets');
     if (!box) return;
     const { data, error } = await supabase.rpc('catalog_baskets');
+    const { data: cr } = await supabase.from('communes').select('catalog_rights').eq('id', myCommuneId).maybeSingle();
+    const canTake = myIsDirection || cr?.catalog_rights !== 'auteur';
     const others = (data || []).filter(b => b.agent_id !== currentUser?.id);
     if (error || !others.length) { box.innerHTML = ''; box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
@@ -4657,11 +4663,62 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <p class="text-ink/45">${b.verified} / ${b.total} vérifiée${b.verified > 1 ? 's' : ''} · ${new Date(b.updated_at).toLocaleDateString('fr-FR')}</p>
           </div>
           <button type="button" data-agent="${b.agent_id}" ${b.lot == null ? '' : `data-lot="${escapeHtml(b.lot)}"`} onclick="viewTeamBasket(this)" class="text-[11px] font-semibold text-ink/60 underline shrink-0 ml-auto">Voir</button>
-          <button type="button" data-agent="${b.agent_id}" ${b.lot == null ? '' : `data-lot="${escapeHtml(b.lot)}"`} onclick="takeOverBasket(this.dataset.agent, this.dataset.lot ?? null)" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-lg px-2.5 py-1 shrink-0">Reprendre</button>
+          ${myIsDirection ? `<button type="button" data-agent="${b.agent_id}" ${b.lot == null ? '' : `data-lot="${escapeHtml(b.lot)}"`} onclick="reassignBasket(this)" class="text-[11px] font-semibold text-mango-700 underline shrink-0">Attribuer</button>` : ''}
+          ${canTake ? `<button type="button" data-agent="${b.agent_id}" ${b.lot == null ? '' : `data-lot="${escapeHtml(b.lot)}"`} onclick="takeOverBasket(this.dataset.agent, this.dataset.lot ?? null)" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-lg px-2.5 py-1 shrink-0">Reprendre</button>` : ''}
         </div>`).join('')}`;
   }
 
   // Consultation seule du panier d'un collègue.
+  // Droits sur les notices (23/11/2026) : auteur + direction, les autres lisent.
+  let teamAgents = null;
+  async function loadTeamAgents() {
+    if (!teamAgents) teamAgents = (await supabase.rpc('commune_agents')).data || [];
+    return teamAgents;
+  }
+  // Renvoie l'identifiant de l'agent choisi, ou null.
+  async function chooseAgent(title) {
+    const agents = await loadTeamAgents();
+    return new Promise(resolve => {
+      const bd = document.createElement('div');
+      bd.className = 'fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4';
+      bd.innerHTML = `<div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5"><p class="text-base font-bold text-ink mb-3">${escapeHtml(title)}</p>
+        <select class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white mb-4">${agents.map(a => `<option value="${a.id}">${escapeHtml(a.full_name || 'Agent')}</option>`).join('')}</select>
+        <button data-a="ok" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold">Attribuer</button><button data-a="no" class="w-full text-sm text-ink/55 py-2 mt-1">Annuler</button></div>`;
+      const done = v => { bd.remove(); resolve(v); };
+      bd.querySelector('[data-a="no"]').onclick = () => done(null);
+      bd.querySelector('[data-a="ok"]').onclick = () => done(bd.querySelector('select').value || null);
+      document.body.appendChild(bd);
+    });
+  }
+  async function applyNoticeRights(bookId) {
+    const box = document.getElementById('book-modal-content');
+    const info = document.getElementById('bd-cataloger');
+    if (myIsDirection && info) info.insertAdjacentHTML('afterend', `<button type="button" onclick="reassignBook(${bookId})" class="block text-[11px] font-semibold text-mango-700 underline -mt-2 mb-3">Réattribuer cette notice</button>`);
+    const { data, error } = await supabase.rpc('can_edit_book', { p_book_id: bookId });
+    if (error || data !== false || Number(box.dataset.bookId) !== bookId) return;
+    box.querySelectorAll('[id^="bd-"]').forEach(el => { if (/INPUT|SELECT|TEXTAREA/.test(el.tagName)) el.disabled = true; });
+    box.querySelectorAll('button[onclick^="saveBookDetail"], button[onclick^="openCoverPhoto"], button[onclick^="detectCoverColor"]').forEach(el => el.remove());
+    (info || box).insertAdjacentHTML(info ? 'afterend' : 'beforeend', '<p id="bd-readonly" class="text-xs text-ink/60 bg-mango-50 rounded-lg p-3 mb-3">Notice en lecture seule : seuls l\'agent qui l\'a ajoutée et la direction peuvent la modifier.</p>');
+  }
+  window.reassignBook = async function (id) {
+    const to = await chooseAgent('À qui attribuer cette notice ?');
+    if (!to) return;
+    const { error } = await supabase.rpc('reassign_book', { p_book_id: id, p_to: to });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    openBookDetail(id);
+  };
+  window.reassignBasket = async function (btn) {
+    const to = await chooseAgent('À qui attribuer ce panier ?');
+    if (!to) return;
+    const { error } = await supabase.rpc('reassign_catalog_lot', { p_from: btn.dataset.agent, p_lot: btn.dataset.lot ?? null, p_to: to });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    if (to === currentUser.id) await restoreDraftBasket(); else await loadTeamBaskets();
+  };
+  window.saveCatalogRights = async function (v) {
+    const { error } = await supabase.rpc('set_catalog_rights', { p_value: v });
+    alert(error ? 'Erreur : ' + frError(error) : 'Réglage enregistré.');
+  };
+
   window.viewTeamBasket = async function (btn) {
     const row = btn.parentElement;
     if (row.nextElementSibling?.classList.contains('team-basket-detail')) { row.nextElementSibling.remove(); return; }
@@ -7327,7 +7384,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.renewMembership = async function (userId, communeId = null) {
-    if (!await confirmDialog('Renouveler l\'adhésion de cet usager ? Encaisse d\'abord le tarif correspondant s\'il y en a un.')) return;
+    if (!await confirmDialog('Renouveler l\'adhésion de cet usager ? Vérifie d\'abord que le tarif est réglé s\'il y en a un.')) return;
     const { data, error } = await supabase.rpc('renew_membership', { p_user_id: userId, p_commune_id: communeId });
     if (error) { alert('Erreur : ' + frError(error)); return; }
     alert(data.message);
@@ -8641,7 +8698,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // ---------- Encaissements (23/11/2026, demande des Abymes) ----------
   // Le paiement en ligne PayFiP viendra alimenter la même table (method = payfip).
-  const PAY_METHODS = { especes: 'Espèces', carte: 'Carte bancaire', cheque: 'Chèque', virement: 'Virement', payfip: 'PayFiP', gratuit: 'Offert' };
+  const PAY_METHODS = { regie: 'Payé à la régie', especes: 'Espèces', carte: 'Carte bancaire', cheque: 'Chèque', virement: 'Virement', payfip: 'PayFiP', gratuit: 'Offert' };
   const PAY_STATUS = { a_regler: 'À régler', paye: 'Payé', annule: 'Annulé', a_rembourser: 'À rembourser', rembourse: 'Remboursé' };
   const euros = c => ((c || 0) / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
   let regieRows = [];
@@ -8653,7 +8710,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       bd.innerHTML = `<div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5">
         <p class="text-base font-bold text-ink mb-3">${escapeHtml(title)}</p>
         <label class="text-xs text-ink/60 block mb-3">Montant (€)<input data-a="amount" type="number" min="0" step="0.5" value="${(amountCents / 100).toFixed(2)}" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm"></label>
-        <label class="text-xs text-ink/60 block mb-4">Moyen de paiement<select data-a="method" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">${['especes', 'carte', 'cheque', 'virement', 'gratuit'].map(m => `<option value="${m}">${PAY_METHODS[m]}</option>`).join('')}</select></label>
+        <label class="text-xs text-ink/60 block mb-3">Numéro de reçu (facultatif)<input data-a="ref" type="text" maxlength="60" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm"></label>
+        <label class="text-xs text-ink/60 block mb-4">Moyen de paiement<select data-a="method" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm bg-white">${['regie', 'especes', 'carte', 'cheque', 'virement', 'gratuit'].map(m => `<option value="${m}">${PAY_METHODS[m]}</option>`).join('')}</select></label>
         <button data-a="ok" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold">Enregistrer le paiement</button>
         <button data-a="no" class="w-full text-sm text-ink/55 py-2 mt-1">${skipLabel}</button></div>`;
       const done = v => { bd.remove(); resolve(v); };
@@ -8662,16 +8720,16 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         const amount = Math.round(Number(bd.querySelector('[data-a="amount"]').value) * 100);
         if (!(amount >= 0)) { alert('Montant invalide.'); return; }
         const method = bd.querySelector('[data-a="method"]').value;
-        done({ amount: method === 'gratuit' ? 0 : amount, method });
+        done({ amount: method === 'gratuit' ? 0 : amount, method, reference: bd.querySelector('[data-a="ref"]').value.trim() || null });
       };
       document.body.appendChild(bd);
     });
   }
 
   window.cashPayment = async function (id, amountCents, after) {
-    const c = await choosePayment('Encaisser', amountCents, 'Annuler');
+    const c = await choosePayment('Noter le paiement reçu', amountCents, 'Annuler');
     if (!c) return;
-    const { error } = await supabase.rpc('settle_payment', { p_id: id, p_status: 'paye', p_method: c.method, p_amount_cents: c.amount });
+    const { error } = await supabase.rpc('settle_payment', { p_id: id, p_status: 'paye', p_method: c.method, p_amount_cents: c.amount, p_reference: c.reference });
     if (error) { alert('Erreur : ' + frError(error)); return; }
     await (after || loadRegie)();
   };
@@ -8686,7 +8744,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (!amount) return;
     const c = await choosePayment('Règlement de l\'adhésion', amount, 'Ne pas enregistrer de paiement');
     if (!c) return;
-    const { error } = await supabase.rpc('add_membership_payment', { p_user_id: userId, p_amount_cents: c.amount, p_method: c.method });
+    const { error } = await supabase.rpc('add_membership_payment', { p_user_id: userId, p_amount_cents: c.amount, p_method: c.method, p_reference: c.reference });
     if (error) alert('Erreur : ' + frError(error));
   }
 
@@ -8701,8 +8759,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (error) { box.innerHTML = `<p class="text-sm text-red-600">${escapeHtml(frError(error))}</p>`; return; }
     regieRows = data || [];
     const sum = s => regieRows.filter(r => s.includes(r.status)).reduce((t, r) => t + r.amount_cents, 0);
-    // « À rembourser » : l'argent est encore dans la caisse, il compte dans l'encaissé.
-    document.getElementById('regie-totals').innerHTML = [['Encaissé', sum(['paye', 'a_rembourser', 'rembourse'])], ['À régler', sum(['a_regler'])], ['À rembourser', sum(['a_rembourser'])], ['Remboursé', sum(['rembourse'])]]
+    // « À rembourser » : l'argent n'est pas encore rendu, il compte dans le payé.
+    document.getElementById('regie-totals').innerHTML = [['Payé', sum(['paye', 'a_rembourser', 'rembourse'])], ['À régler', sum(['a_regler'])], ['À rembourser', sum(['a_rembourser'])], ['Remboursé', sum(['rembourse'])]]
       .map(([l, v]) => `<div class="bg-white border border-[#E5E7EB] rounded-xl p-3"><p class="text-[11px] text-ink/55">${l}</p><p class="text-lg font-bold text-ink">${euros(v)}</p></div>`).join('');
     box.innerHTML = regieRows.map(r => `
       <div class="bg-white border border-[#E5E7EB] rounded-lg px-3 py-2 flex items-center gap-3 flex-wrap">
@@ -8712,7 +8770,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         </div>
         <span class="text-sm font-bold text-ink">${euros(r.amount_cents)}</span>
         <span class="text-[11px] font-semibold text-ink/60">${PAY_STATUS[r.status]}</span>
-        ${r.status === 'a_regler' ? `<button onclick="cashPayment(${r.id}, ${r.amount_cents})" class="text-[11px] font-semibold text-white bg-brand rounded-full px-3 py-1">Encaisser</button>` : ''}
+        ${r.status === 'a_regler' ? `<button onclick="cashPayment(${r.id}, ${r.amount_cents})" class="text-[11px] font-semibold text-white bg-brand rounded-full px-3 py-1">Paiement reçu</button>` : ''}
         ${r.status === 'paye' && r.amount_cents ? `<button onclick="movePayment(${r.id}, 'a_rembourser', 'Marquer ce paiement à rembourser ?')" class="text-[11px] text-ink/50 underline">Rembourser</button>` : ''}
         ${r.status === 'a_rembourser' ? `<button onclick="movePayment(${r.id}, 'rembourse', 'Confirmer que ce paiement a été remboursé ?')" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-full px-3 py-1">Remboursé</button>` : ''}
       </div>`).join('') || '<p class="text-sm text-ink/40 py-6 text-center">Aucun paiement sur cette période.</p>';
@@ -8733,7 +8791,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       ...regieRows.map(r => [formatDateShortAdmin(r.paid_at || r.created_at), r.payer, r.label, (r.amount_cents / 100).toFixed(2).replace('.', ','), PAY_STATUS[r.status], PAY_METHODS[r.method] || '', r.reference, r.agent_name])];
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['\ufeff' + lines.map(l => l.map(cell).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
-    a.download = `encaissements_${document.getElementById('regie-from').value}_${document.getElementById('regie-to').value}.csv`;
+    a.download = `paiements_${document.getElementById('regie-from').value}_${document.getElementById('regie-to').value}.csv`;
     a.click();
   };
 
@@ -9946,6 +10004,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       if (el && c && Number(document.getElementById('book-modal-content').dataset.bookId) === b.id)
         el.textContent = `Catalogué par ${c.agent_name} le ${formatDateShortAdmin(c.created_at)}${c.lot ? ` · panier « ${c.lot} »` : ''}`;
     });
+    applyNoticeRights(b.id);
     document.getElementById('book-modal-backdrop').classList.remove('hidden');
     document.getElementById('book-modal-backdrop').classList.add('flex');
     document.getElementById('bd-dewey').addEventListener('input', e => {
@@ -10450,7 +10509,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     }
     list.innerHTML = data.map(m => {
       const p = byId[m.user_id] || {};
-      const fee = m.fee_cents > 0 ? `${(m.fee_cents / 100).toFixed(2).replace('.', ',')} € à encaisser` : 'Gratuit';
+      const fee = m.fee_cents > 0 ? `${(m.fee_cents / 100).toFixed(2).replace('.', ',')} € à régler` : 'Gratuit';
       const right = m.status === 'pending'
         ? `<button onclick="decideMembership(${m.id}, true)" class="text-[12px] font-semibold bg-brand text-white rounded-full px-3 py-1.5">Valider</button>
            <button onclick="decideMembership(${m.id}, false)" class="text-[12px] font-semibold text-ink/50 underline">Refuser</button>`
@@ -10467,7 +10526,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.decideMembership = async function (id, accept) {
-    if (accept && !await confirmDialog('Valider cette inscription ? Encaisse d\'abord le tarif non-résident s\'il y en a un.')) return;
+    if (accept && !await confirmDialog('Valider cette inscription ? Vérifie d\'abord que le tarif non-résident est réglé s\'il y en a un.')) return;
     const { error } = await supabase.rpc('decide_membership', { p_membership_id: id, p_accept: accept });
     if (error) { alert('Erreur : ' + frError(error)); return; }
     await loadNonResidents();
@@ -11546,7 +11605,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <p class="text-sm font-semibold text-ink truncate">${escapeHtml(r.full_name)}</p>
             <p class="text-[11px] text-ink/50 truncate">${r.has_account ? escapeHtml(r.subscriber_number || '') : 'Sans compte' + (r.phone ? ' · ' + escapeHtml(r.phone) : '')}</p>
           </div>
-          ${payByRsvp[r.rsvp_id]?.status === 'a_regler' ? `<button type="button" onclick="cashPayment(${payByRsvp[r.rsvp_id].id}, ${payByRsvp[r.rsvp_id].amount_cents}, () => loadEventRsvps(${eventId}))" class="text-[11px] font-semibold text-white bg-brand rounded-full px-2.5 py-1 shrink-0">Encaisser ${euros(payByRsvp[r.rsvp_id].amount_cents)}</button>`
+          ${payByRsvp[r.rsvp_id]?.status === 'a_regler' ? `<button type="button" onclick="cashPayment(${payByRsvp[r.rsvp_id].id}, ${payByRsvp[r.rsvp_id].amount_cents}, () => loadEventRsvps(${eventId}))" class="text-[11px] font-semibold text-white bg-brand rounded-full px-2.5 py-1 shrink-0">Paiement reçu ${euros(payByRsvp[r.rsvp_id].amount_cents)}</button>`
             : payByRsvp[r.rsvp_id]?.status === 'paye' ? '<span class="text-[11px] font-semibold text-emerald-700 shrink-0">Payé</span>' : ''}
           ${r.checked_in ? '<span class="text-[11px] font-semibold text-mango-700 shrink-0">Présent·e</span>'
             : r.has_account ? `<button type="button" onclick="eventCheckinUser('${r.user_id}', ${eventId})" class="text-[11px] font-semibold text-mango-700 border border-mango-200 bg-white rounded-full px-2.5 py-1 shrink-0">Présent·e</button>` : ''}
@@ -11603,9 +11662,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   async function registerForEvent(eventId, who) {
     const price = events.find(x => x.id === eventId)?.price_cents || 0;
     if (!price) return supabase.rpc('agent_add_event_rsvp', { p_event_id: eventId, ...who });
-    const c = await choosePayment('Encaisser la place', price, 'Annuler l\'inscription');
+    const c = await choosePayment('Noter le paiement reçu', price, 'Annuler l\'inscription');
     if (!c) return null;
-    return supabase.rpc('agent_paid_event_rsvp', { p_event_id: eventId, p_amount_cents: c.amount, p_method: c.method, ...who });
+    return supabase.rpc('agent_paid_event_rsvp', { p_event_id: eventId, p_amount_cents: c.amount, p_method: c.method, p_reference: c.reference, ...who });
   }
 
   window.addEventRsvpUser = async function (userId, eventId) {
