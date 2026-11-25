@@ -371,7 +371,7 @@
   const CATEGORIES = [
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
-    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Autres'
+    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Instruments', 'Autres'
   ];
 
   // Sentinelle distincte des vraies catégories : sélection faite par la
@@ -394,6 +394,7 @@
     'Culture': 'img/categories/v2/culture.png',
     'Autres': 'img/categories/v2/autres.png',
     'Jeux': 'img/categories/v2/jeux.png',
+    'Instruments': 'img/categories/v2/instruments.png',
     'Documentaire': 'img/categories/v2/documents.png',
     'Sciences & nature': 'img/categories/v2/sciences.png',
     'Voyages': 'img/categories/v2/voyages.png',
@@ -492,7 +493,8 @@
     const chips = [
       { label: 'Tous', value: null },
       { label: 'Coups de cœur', value: STAFF_PICK_FILTER },
-      ...CATEGORIES.map(c => ({ label: c, value: c })),
+      // Instruments : tuile visible seulement si la médiathèque en prête.
+      ...CATEGORIES.filter(c => c !== 'Instruments' || books.some(b => b.category === c)).map(c => ({ label: c, value: c })),
     ];
     el.innerHTML = chips.map(c => {
       const icon = CATEGORY_ICONS[c.label]
@@ -589,6 +591,7 @@
     books = (data || []).filter(b => !(bdp?.id && b.commune_id === bdp.id && b.isbn && localIsbns.has(b.isbn)));
     documentTypeKinds = Object.fromEntries((types || []).map(t => [t.label, t.kind]));
     statusEl.textContent = '';
+    renderCategoryFilters();
     renderTypeFilters();
     renderBooks();
   }
@@ -824,7 +827,7 @@
     }
 
     if (filtered.length === 0) {
-      const emptyText = q ? 'Aucun livre ne correspond à ta recherche.' : activeCategory === 'Jeux' ? 'Aucun jeu pour le moment.' : 'Aucun livre dans cette catégorie.';
+      const emptyText = q ? 'Aucun livre ne correspond à ta recherche.' : activeCategory === 'Jeux' ? 'Aucun jeu pour le moment.' : activeCategory === 'Instruments' ? 'Aucun instrument pour le moment.' : 'Aucun livre dans cette catégorie.';
       list.innerHTML = `<p class="col-span-full text-sm text-ink/40 text-center py-10">${emptyText}</p>`;
       return;
     }
@@ -1023,6 +1026,7 @@
       </div>
       ${b.summary ? `<p class="text-sm text-ink/70 leading-relaxed mt-4">${b.summary}</p>` : `<p class="text-sm text-ink/40 italic mt-4">Résumé non disponible pour ce titre.</p>`}
       ${(b.players || b.play_duration) ? `<p class="text-[12px] text-ink/60 mt-2">🎲 ${[b.players, b.play_duration, b.age_range].filter(Boolean).join(' · ')}</p>` : ''}
+      ${(b.category === 'Instruments' && b.accessories) ? `<p class="text-[12px] text-ink/60 mt-2">🎒 Prêté avec : ${escapeHtml(b.accessories.split('\n').join(', '))}</p>` : ''}
       ${(b.page_count || b.legal_deposit) ? `<p class="text-[11px] text-ink/40 mt-2">${[b.page_count ? `${b.page_count} pages` : '', b.legal_deposit ? `Dépôt légal ${String(b.legal_deposit).replace(/^DL\s*/i, '')}` : ''].filter(Boolean).join(' · ')}</p>` : ''}
       ${isBdpBook(b) ? `<p class="text-[12px] text-ink/65 bg-mango-50 rounded-lg px-3 py-2 mt-3">🚐 Ce document vient de la bibliothèque départementale. Réserve-le ici : il arrive dans ta Médiathèque Municipale avec la navette, et tu es prévenu dès qu'il est là.</p>` : ''}
       ${btnHtml}
