@@ -198,6 +198,8 @@
           <input required type="text" id="signup-first-name" autocomplete="given-name" placeholder="Prénom" class="auth-input">
           <input required type="text" id="signup-last-name" autocomplete="family-name" placeholder="Nom" class="auth-input">
         </div>
+        <!-- Majeur / mineur, âge, carte famille (25/11/2026), voir js/declaration.js -->
+        <div id="signup-declaration"></div>
         <input required type="email" id="signup-email" autocomplete="email" placeholder="E-mail" class="auth-input">
         <!-- Repli seulement : normalement la médiathèque est déjà connue
              (choisie en invité) et ce champ reste caché, voir applyCommuneHeader. -->
@@ -349,6 +351,8 @@
   import { frError } from './js/ui.js?v=20261023';
   import { sendVerifyCode, checkVerifyCode, startCooldown, codeWaitSeconds } from './js/verifEmail.js?v=20261103b';
   import { applyCachedTheme } from './js/theme.js?v=20261016d';
+  import { monter as monterDeclaration, envoyer as envoyerDeclaration, garder as garderDeclaration } from './js/declaration.js?v=20261125a';
+  const declaration = monterDeclaration(document.getElementById('signup-declaration'));
   import { socialProviders, signInWith, finishWebSocialSignIn } from './js/connexionSociale.js?v=20261103a';
   applyCachedTheme();
 
@@ -508,6 +512,12 @@
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
       return;
     }
+    const declare = declaration.lire();
+    if (declare.erreur) {
+      messageEl.textContent = declare.erreur;
+      messageEl.className = 'text-xs text-center mt-3 text-red-600';
+      return;
+    }
     if (!commune_id) {
       messageEl.textContent = 'Choisis ta médiathèque.';
       messageEl.className = 'text-xs text-center mt-3 text-red-600';
@@ -544,6 +554,11 @@
       return;
     }
     lastSignup = { email, commune_id };
+    garderDeclaration(email, declare.valeur);
+    if (signup?.session) {
+      const { error: declError } = await envoyerDeclaration(supabase, declare.valeur);
+      if (!declError) { try { localStorage.removeItem('bligo_declaration'); } catch {} }
+    }
     // Compte ouvert tout de suite : le code part par e-mail, l'usager peut le
     // saisir maintenant ou plus tard depuis son profil.
     const sendError = await sendVerifyCode(email);

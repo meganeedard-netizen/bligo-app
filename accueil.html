@@ -242,6 +242,7 @@
   applyCachedTheme();
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
   import { updateReservationBadge } from './js/navBadge.js?v=20261116a';
+  import { ageActuel, envoyerEnAttente } from './js/declaration.js?v=20261125a';
   import { ensureEmailVerified } from './js/verifEmail.js?v=20261103b';
   import { takeNewBadges, openBadgeModal } from './js/badges.js?v=20261113c';
   import { loadDigital, digitalCards, bindDigital } from './js/ressourcesEnLigne.js?v=20261123a';
@@ -327,11 +328,13 @@
   // ne lui sont pas proposés. Âge le plus bas possible (année - naissance - 1),
   // compte majeur = 18 ans et plus. Même règle que age_block_message en base.
   let readerBirthYear = null;
+  let readerDeclaredAge = null;
   let readerTariff = null;
   function tooYoungFor(b) {
     const min = b.min_age || (b.adult_only ? 18 : 0);
     if (!min) return false;
     if (readerTariff === 'majeur') return false;
+    if (!readerBirthYear && isMinorAccount && readerDeclaredAge != null) return readerDeclaredAge < min;
     if (!readerBirthYear) return isMinorAccount && min >= 16;
     return new Date().getFullYear() - readerBirthYear - 1 < min;
   }
@@ -1551,7 +1554,7 @@
     // tard ; si ça échoue encore, message « Connexion instable » sans fenêtre.
     const loadProfile = () => supabase
       .from('profiles')
-      .select('full_name, role, loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, birth_year, communes ( name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url )')
+      .select('full_name, role, loyalty_points, badge_tier, plume_locale_unlocked, coeur_genereux_unlocked, reading_goal, preferred_categories, reading_pace, onboarding_completed, account_type, registration_status, commune_id, tariff_category, birth_year, declared_age, declared_on, communes ( name, opening_hours, theme_ink_hex, theme_accent_hex, logo_url )')
       .eq('id', currentUser.id).single();
     let { data: profile, error: profileError } = await loadProfile();
     if (profileError) {
@@ -1577,6 +1580,8 @@
     myOpeningHours = profile?.communes?.opening_hours || null;
     isMinorAccount = profile?.tariff_category === 'mineur';
     readerBirthYear = profile?.birth_year || null;
+    readerDeclaredAge = ageActuel(profile?.declared_age, profile?.declared_on);
+    envoyerEnAttente(supabase, currentUser);
     readerTariff = profile?.tariff_category || null;
     hasFullName = !!(profile?.full_name && profile.full_name !== 'Nouvel usager' && profile.full_name.trim().includes(' '));
     applyCommuneTheme(profile?.communes);

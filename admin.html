@@ -1836,6 +1836,7 @@
 <script type="module">
   import { supabase } from './js/supabaseClient.js?v=20261023';
   import { frError } from './js/ui.js?v=20261023';
+  import { ageActuel, resume as resumeDeclaration } from './js/declaration.js?v=20261125a';
   import { applyCachedTheme, applyCommuneTheme } from './js/theme.js?v=20261016d';
   applyCachedTheme();
   import { GOOGLE_BOOKS_API_KEY } from './js/config.js?v=20261016d';
@@ -7620,7 +7621,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   async function loadNeoscribSection(profile) {
     const box = document.getElementById('fiche-neoscrib');
     if (!box) return;
-    const { data, error } = await supabase.from('profiles').select('age_group, resident, is_collectivite, genre, birth_year').eq('id', profile.id).single();
+    const { data, error } = await supabase.from('profiles').select('age_group, resident, is_collectivite, genre, birth_year, tariff_category, declared_age, declared_on, family_adults, family_children').eq('id', profile.id).single();
     if (error || !data) { box.innerHTML = ''; return; }
     const sel = (id, opts, val) => `<select id="${id}" onchange="saveUsagerNeoscrib('${profile.id}')" class="border ${val == null || val === '' ? 'border-hibiscus-300' : 'border-mango-100'} rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
       ${opts.map(([v, l]) => `<option value="${v}" ${String(val ?? '') === v ? 'selected' : ''} ${v === '' ? 'disabled' : ''}>${l}</option>`).join('')}</select>`;
@@ -7629,6 +7630,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <span class="flex items-center gap-2"><span class="text-ink/50">Genre :</span><select id="fiche-genre" onchange="saveUsagerGenre('${profile.id}', this.value)" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
           ${[['', 'Non renseigné'], ['femme', 'Femme'], ['homme', 'Homme'], ['transgenre', 'Transgenre'], ['non_precise', 'Ne souhaite pas préciser']].map(([v, l]) => `<option value="${v}" ${(data.genre || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span>
         <span class="flex items-center gap-2"><span class="text-ink/50">Né(e) en :</span><input type="number" id="fiche-birth-year" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" placeholder="Année" value="${data.birth_year || ''}" onchange="saveUsagerBirthYear('${profile.id}', this.value)" class="w-[72px] border border-mango-100 rounded-full px-2 py-0.5 text-[11px] font-semibold text-ink/70 bg-white">${data.birth_year ? `<span class="text-[11px] text-ink/50">${readerYearLabel(data.birth_year)}</span>` : ''}</span>
+        ${resumeDeclaration(data) ? `<span class="text-ink/60"><span class="text-ink/50">Déclaré :</span> ${escapeHtml(resumeDeclaration(data))}</span>` : ''}
         <span class="flex items-center gap-2"><span class="text-ink/50">Âge :</span>${sel('fiche-age', [['', 'À renseigner'], ['enfant', '0 à 14 ans'], ['adulte', '15 à 64 ans'], ['senior', '65 ans et plus']], data.age_group)}</span>
         <span class="flex items-center gap-2"><span class="text-ink/50">Habite la commune :</span>${sel('fiche-resident', [['', 'À renseigner'], ['true', 'Oui'], ['false', 'Non']], data.resident)}</span>
         <label class="flex items-center gap-1.5 text-ink/60"><input type="checkbox" id="fiche-collectivite" onchange="saveUsagerNeoscrib('${profile.id}')" ${data.is_collectivite ? 'checked' : ''} class="accent-[#F7901E]"> Collectivité (classe, crèche, EHPAD…)</label>
@@ -10680,6 +10682,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     await loadNonResidents();
   }
 
+  // Âge déclaré par un mineur à l'inscription (25/11/2026), null sinon.
+  const minorAge = p => p.tariff_category === 'mineur' ? ageActuel(p.declared_age, p.declared_on) : null;
+
   window.renderPreregistrations = function () {
     document.getElementById('preregistrations-count').textContent = preregistrations.length;
     const query = searchNormalize(document.getElementById('preregistrations-search')?.value || '');
@@ -10698,6 +10703,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <span class="font-semibold text-ink block">${escapeHtml(p.full_name)}</span>
           <span class="text-[10.5px] text-mango-700 font-semibold">${escapeHtml(p.communes?.name || '')}</span>
           ${p.tariff_category === 'famille' ? '<span class="block text-[10.5px] font-bold text-hibiscus-700">Demande une carte famille</span>' : ''}
+          ${resumeDeclaration(p) ? `<span class="block text-[10.5px] text-ink/60">${escapeHtml(resumeDeclaration(p))}</span>` : ''}
         </span>
         <span class="text-ink/60 text-xs">${escapeHtml(p.subscriber_number)}</span>
         <span class="text-ink/60 text-xs">${formatEventDateShort(p.created_at)}</span>
@@ -10710,9 +10716,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         </select>
         <span class="flex flex-col gap-1">
           <select id="prereg-age-${p.id}" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
-            <option value="" selected disabled>Âge…</option>
-            <option value="enfant">0 à 14 ans</option>
-            <option value="adulte">15 à 64 ans</option>
+            <option value="" ${minorAge(p) == null ? 'selected' : ''} disabled>Âge…</option>
+            <option value="enfant" ${minorAge(p) != null && minorAge(p) <= 14 ? 'selected' : ''}>0 à 14 ans</option>
+            <option value="adulte" ${minorAge(p) != null && minorAge(p) > 14 ? 'selected' : ''}>15 à 64 ans</option>
             <option value="senior">65 ans et plus</option>
           </select>
           <select id="prereg-resident-${p.id}" class="border border-mango-100 rounded-full pl-2 pr-6 py-1 text-[11px] font-semibold text-ink/70 bg-white">
