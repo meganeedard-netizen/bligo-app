@@ -20,10 +20,10 @@
 
   // Clé phonétique simplifiée pour le français : deux mots qui se prononcent
   // à peu près pareil donnent la même clé (ou l'une commence par l'autre).
-  function phonetique(m) {
+  function phonetique(m, finale = true) {
     let s = m;
     if (/^\d+$/.test(s)) return s;
-    s = s.replace(/y/g, 'i').replace(/ph/g, 'f').replace(/th/g, 't').replace(/w/g, 'v')
+    s = s.replace(/^mac(?=[^aeiou]|$)/, 'mc').replace(/y/g, 'i').replace(/ph/g, 'f').replace(/th/g, 't').replace(/w/g, 'v')
       .replace(/qu/g, 'k').replace(/q/g, 'k').replace(/ck/g, 'k')
       .replace(/gu(?=[ei])/g, 'g').replace(/c(?=[ei])/g, 's').replace(/c/g, 'k')
       .replace(/ge(?=[aou])/g, 'j').replace(/g(?=[ei])/g, 'j')
@@ -31,6 +31,7 @@
       .replace(/[ae]n(?=[^aeiou]|$)/g, 'an').replace(/[ae]m(?=[bp])/g, 'an')
       .replace(/z/g, 's').replace(/x/g, 's').replace(/h/g, '')
       .replace(/(.)\1+/g, '$1');
+    if (!finale) return s;
     if (s.length > 3) s = s.replace(/e$/, '');
     if (s.length > 3) s = s.replace(/[stdp]$/, '');
     return s;
@@ -51,17 +52,36 @@
 
   const erreursPermises = n => (n <= 3 ? 0 : n <= 5 ? 1 : 2);
 
+  // Squelette de consonnes (première lettre gardée) : les voyelles sont là où
+  // l'on se trompe le plus (« fridda » pour « Freida », « mcfaden »).
+  function squelette(m) {
+    const p = phonetique(m, false);
+    return p[0] + p.slice(1).replace(/[aeiou]/g, '');
+  }
+
   // Proximité entre un mot tapé et un mot du catalogue, de 0 (rien à voir) à 1.
+  // Le mot peut être en cours de frappe : on compare aussi au début du mot.
   function proximite(tape, mot) {
     if (!tape || !mot) return 0;
     if (mot === tape) return 1;
     if (mot.startsWith(tape)) return tape.length >= 2 ? 0.95 : 0.5;
     const pt = phonetique(tape), pm = phonetique(mot);
     if (pt.length >= 2 && pm.startsWith(pt)) return 0.85;
+    let best = 0;
     const max = erreursPermises(tape.length);
-    if (!max) return 0;
-    const d = Math.min(levenshtein(tape, mot), levenshtein(tape, mot.slice(0, tape.length)));
-    return d <= max ? 0.8 - 0.1 * d : 0;
+    if (max) {
+      const n = tape.length;
+      const d = Math.min(levenshtein(tape, mot), levenshtein(tape, mot.slice(0, n)),
+        levenshtein(tape, mot.slice(0, n + 1)), levenshtein(tape, mot.slice(0, Math.max(1, n - 1))));
+      if (d <= max) best = 0.8 - 0.05 * d;
+    }
+    // Seulement si la première lettre est la bonne et qu'il y a au moins une
+    // voyelle tapée : sinon « zzqx » finissait par ressembler à Shakespeare.
+    if (tape.length >= 4 && /[aeiouy]/.test(tape) && tape[0] === mot[0]) {
+      const st = squelette(tape), sm = squelette(mot);
+      if (st.length >= 3 && sm.startsWith(st)) best = Math.max(best, 0.7);
+    }
+    return best;
   }
 
   // Index par document, recalculé seulement si le document change.
