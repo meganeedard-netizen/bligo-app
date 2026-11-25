@@ -94,7 +94,7 @@
       <input id="search-input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Rechercher un livre, un auteur, un jeu…"
         class="w-full border border-mango-100 rounded-full pl-10 pr-9 py-3 text-sm outline-none focus:ring-2 focus:ring-mango-300 shadow-sm bg-white">
       <button type="button" onclick="clearSearchInput()" aria-label="Effacer" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink/30 hover:text-ink/60 text-sm">✕</button>
-      <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-2 z-30 bg-white rounded-2xl shadow-xl border border-mango-100 overflow-hidden"></div>
+      <div id="search-suggestions" style="left:0;right:0" class="hidden absolute top-full mt-2 z-30 bg-white rounded-2xl shadow-xl border border-mango-100 overflow-hidden"></div>
     </div>
   </form>
 
@@ -1432,7 +1432,7 @@
           <span class="block text-[11px] text-ink/45 truncate">${KIND_EMOJI[bookKind(b)] || '📖'} ${escSuggest(b.author || b.format || '')}</span></span>
         </button>`),
     ];
-    suggestBox.innerHTML = items.join('<div class="h-px bg-mango-50 mx-4"></div>');
+    suggestBox.innerHTML = items.join('<div class="h-px bg-mango-50" style="margin:0 16px"></div>');
     suggestBox.classList.remove('hidden');
     suggestIndex = -1;
   }
