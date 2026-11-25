@@ -91,9 +91,10 @@
   <form id="home-search-form" class="mb-6">
     <div class="relative">
       <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/35 pointer-events-none" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.3" cy="10.3" r="6"/><path d="M20 20l-4.8-4.8"/></svg>
-      <input id="search-input" type="text" placeholder="Rechercher un livre, un auteur…"
+      <input id="search-input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Rechercher un livre, un auteur, un jeu…"
         class="w-full border border-mango-100 rounded-full pl-10 pr-9 py-3 text-sm outline-none focus:ring-2 focus:ring-mango-300 shadow-sm bg-white">
       <button type="button" onclick="clearSearchInput()" aria-label="Effacer" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink/30 hover:text-ink/60 text-sm">✕</button>
+      <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-2 z-30 bg-white rounded-2xl shadow-xl border border-mango-100 overflow-hidden"></div>
     </div>
   </form>
 
@@ -110,12 +111,14 @@
       <div class="-mx-5"><div id="digital-home-list" class="flex gap-2.5 overflow-x-auto no-scrollbar px-5 pb-3"></div></div>
     </div>
     <p id="staff-pick-caption" class="hidden text-xs text-stone-400 mb-3">La sélection coup de cœur de ta médiathèque</p>
+    <p id="search-approx-caption" class="hidden text-xs text-stone-500 mb-3"></p>
     <div id="book-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
   </section>
 
 
 </main>
 <script src="js/snapshot.js?v=20261023"></script>
+<script src="js/rechercheFloue.js?v=20261125"></script>
 
 <!-- Overlay détail livre -->
 <div id="book-modal-backdrop" onclick="closeBookModal(event)" class="hidden fixed inset-0 z-40 bg-brand/40 backdrop-blur-sm flex items-center justify-center p-4">
@@ -785,12 +788,15 @@
     if (activeType && !q) {
       filtered = filtered.filter(b => bookKind(b) === activeType);
     }
+    const approxCaption = document.getElementById('search-approx-caption');
+    approxCaption.classList.add('hidden');
     if (q) {
       // Le résumé et la catégorie sont aussi regardés : sans ça, chercher
       // "développement personnel" ne trouvait rien tant que ces mots
       // n'étaient pas littéralement dans le titre, même pour un livre
       // catégorisé "Bien-être" et dont le résumé en parle explicitement.
-      filtered = filtered.filter(b =>
+      const base = filtered;
+      const exacts = base.filter(b =>
         searchNormalize(b.title).includes(q) ||
         searchNormalize(b.author).includes(q) ||
         searchNormalize(b.summary).includes(q) ||
@@ -798,9 +804,24 @@
         searchNormalize(b.subjects).includes(q) ||
         searchNormalize(b.format).includes(q) ||
         searchNormalize(b.platform).includes(q)
-      );
+      ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      // Recherche tolérante aux fautes (25/11/2026, RDV Le Tampon) : « guy
+      // muse » retrouve Guillaume Musso. Les résultats exacts restent en
+      // premier, les approchants suivent ; s'il n'y a aucun résultat exact, on
+      // le dit pour que l'usager comprenne pourquoi ces documents s'affichent.
+      const dejaLa = new Set(exacts.map(b => b.id));
+      const seuil = exacts.length ? 0.85 : 0.6;
+      const approchants = window.BligoRecherche
+        ? BligoRecherche.chercher(base.filter(b => !dejaLa.has(b.id)), searchQuery.trim(), seuil).map(r => r.book)
+        : [];
+      if (!exacts.length && approchants.length) {
+        approxCaption.textContent = `Pas de résultat exact pour « ${searchQuery.trim()} ». Tu cherchais peut-être :`;
+        approxCaption.classList.remove('hidden');
+      }
+      filtered = [...exacts, ...approchants];
+    } else {
+      filtered = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
-    filtered = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     if (filtered.length === 0) {
       const emptyText = q ? 'Aucun livre ne correspond à ta recherche.' : activeCategory === 'Jeux' ? 'Aucun jeu pour le moment.' : 'Aucun livre dans cette catégorie.';
@@ -1364,13 +1385,97 @@
   document.getElementById('home-search-form').addEventListener('submit', (e) => {
     e.preventDefault();
     searchQuery = document.getElementById('search-input').value.trim();
+    hideSearchSuggestions();
     renderBooks();
     document.getElementById('book-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   document.getElementById('search-input').addEventListener('input', (e) => {
     searchQuery = e.target.value;
     renderBooks();
+    renderSearchSuggestions();
   });
+
+  // Propositions sous la barre de recherche (25/11/2026, RDV Le Tampon) :
+  // auteurs et documents qui ressemblent à ce qui est tapé, même mal
+  // orthographié. Un auteur lance la recherche sur son nom, un document
+  // ouvre directement sa fiche.
+  const suggestBox = document.getElementById('search-suggestions');
+  let suggestIndex = -1;
+  const escSuggest = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const KIND_EMOJI = { livre: '📖', livre_audio: '🎧', cd: '💿', dvd: '📀', periodique: '📰', autre: '🎲' };
+
+  function hideSearchSuggestions() {
+    suggestBox.classList.add('hidden');
+    suggestBox.innerHTML = '';
+    suggestIndex = -1;
+  }
+
+  function renderSearchSuggestions() {
+    const query = document.getElementById('search-input').value.trim();
+    if (!window.BligoRecherche || query.length < 2) return hideSearchSuggestions();
+    const visibles = books.filter(b => !tooYoungFor(b));
+    const { auteurs, documents } = BligoRecherche.suggestions(visibles, query);
+    if (!auteurs.length && !documents.length) return hideSearchSuggestions();
+    const items = [
+      ...auteurs.map(a => `
+        <button type="button" data-suggest-author="${escSuggest(a.nom)}" class="suggest-item w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-mango-50">
+          <span class="w-8 h-8 rounded-full bg-mango-100 flex items-center justify-center text-sm shrink-0">👤</span>
+          <span class="min-w-0"><span class="block text-sm font-semibold text-ink truncate">${escSuggest(a.nom)}</span>
+          <span class="block text-[11px] text-ink/45">${a.n} document${a.n > 1 ? 's' : ''}</span></span>
+        </button>`),
+      ...documents.map(({ book: b }) => `
+        <button type="button" data-suggest-book="${b.id}" class="suggest-item w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-mango-50">
+          ${b.cover_url
+            ? `<img src="${escSuggest(b.cover_url)}" alt="" class="w-8 h-12 object-cover rounded shrink-0 bg-mango-50">`
+            : `<span class="w-8 h-12 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white text-xs font-bold shrink-0">${escSuggest(b.cover_initial || (b.title || '?')[0])}</span>`}
+          <span class="min-w-0"><span class="block text-sm font-semibold text-ink truncate">${escSuggest(b.title)}</span>
+          <span class="block text-[11px] text-ink/45 truncate">${KIND_EMOJI[bookKind(b)] || '📖'} ${escSuggest(b.author || b.format || '')}</span></span>
+        </button>`),
+    ];
+    suggestBox.innerHTML = items.join('<div class="h-px bg-mango-50 mx-4"></div>');
+    suggestBox.classList.remove('hidden');
+    suggestIndex = -1;
+  }
+
+  function chooseSuggestion(el) {
+    const input = document.getElementById('search-input');
+    if (el.dataset.suggestAuthor) {
+      input.value = el.dataset.suggestAuthor;
+      searchQuery = input.value;
+      hideSearchSuggestions();
+      input.blur();
+      renderBooks();
+      document.getElementById('book-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (el.dataset.suggestBook) {
+      hideSearchSuggestions();
+      input.blur();
+      openBookModal(Number(el.dataset.suggestBook));
+    }
+  }
+
+  // mousedown plutôt que click : le clic doit passer avant que le champ perde
+  // le focus et referme la liste.
+  suggestBox.addEventListener('mousedown', (e) => {
+    const el = e.target.closest('.suggest-item');
+    if (!el) return;
+    e.preventDefault();
+    chooseSuggestion(el);
+  });
+  document.getElementById('search-input').addEventListener('keydown', (e) => {
+    const els = [...suggestBox.querySelectorAll('.suggest-item')];
+    if (e.key === 'Escape') return hideSearchSuggestions();
+    if (!els.length || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter')) return;
+    if (e.key === 'Enter') {
+      if (suggestIndex >= 0) { e.preventDefault(); chooseSuggestion(els[suggestIndex]); }
+      else hideSearchSuggestions();
+      return;
+    }
+    e.preventDefault();
+    suggestIndex = (suggestIndex + (e.key === 'ArrowDown' ? 1 : -1) + els.length) % els.length;
+    els.forEach((el, i) => el.classList.toggle('bg-mango-50', i === suggestIndex));
+  });
+  document.getElementById('search-input').addEventListener('focus', renderSearchSuggestions);
+  document.getElementById('search-input').addEventListener('blur', () => setTimeout(hideSearchSuggestions, 150));
 
   window.clearSearchInput = function () {
     const el = document.getElementById('search-input');
