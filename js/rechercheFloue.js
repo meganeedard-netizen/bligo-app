@@ -131,7 +131,16 @@
       if (ok) auteurs.push({ nom: a.nom, n: a.n, score: total / tapes.length });
     }
     auteurs.sort((x, y) => y.score - x.score || y.n - x.n);
-    return { auteurs: auteurs.slice(0, maxA), documents: chercher(books, query).slice(0, maxD) };
+    const gardes = auteurs.slice(0, maxA);
+    // Pas deux fois la même info (retour de Mégane, 25/11/2026) : si l'auteur
+    // est proposé, ses livres ne sont pas répétés en dessous, sauf ceux dont
+    // le titre correspond aussi à la recherche. Toucher l'auteur les affiche.
+    const deCesAuteurs = new Set(gardes.map(a => normaliser(a.nom)));
+    const titreCorrespond = b => { const t = indexDe(b).titre; return tapes.every(m => meilleur(m, t) >= 0.6); };
+    const documents = chercher(books, query)
+      .filter(r => !deCesAuteurs.has(normaliser(r.book.author)) || titreCorrespond(r.book))
+      .slice(0, maxD);
+    return { auteurs: gardes, documents };
   }
 
   const api = { normaliser, phonetique, proximite, score, chercher, suggestions };
