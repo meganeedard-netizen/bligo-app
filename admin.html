@@ -1023,7 +1023,8 @@
             <h2 class="text-lg font-bold text-ink mb-1">Agenda culturel</h2>
             <p class="text-sm text-ink/55">Ajoute un événement pour qu'il apparaisse dans l'agenda de l'appli usagers.</p>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="openAgendaBilan()" style="touch-action: manipulation;" class="bg-[#F3F4F6] text-ink/70 border border-[#E5E7EB] hover:bg-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Bilan annuel</button>
             <button onclick="openPastEventsView()" style="touch-action: manipulation;" class="bg-[#F3F4F6] text-ink/70 border border-[#E5E7EB] hover:bg-[#E5E7EB] rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">Événements passés</button>
             <button onclick="openEventForm()" style="touch-action: manipulation;" class="bg-brand text-white rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition">+ Ajouter un événement</button>
           </div>
@@ -1159,6 +1160,20 @@
             </div>
             <div id="agenda-past-list" class="min-w-[560px]"></div>
           </div>
+        </div>
+
+        <div id="agenda-bilan-view" class="hidden mt-4">
+          <button onclick="closeAgendaBilan()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/50 hover:text-ink mb-3">← Retour à l'agenda</button>
+        <!-- Bilan de l'agenda culturel (18/11/2026, demande des Abymes) : public, remplissage, diversité.
+             Déplacé des Statistiques vers l'Agenda le 25/11/2026 (demande de Mégane). -->
+        <p class="text-sm font-bold text-ink mb-1">Bilan de l'agenda culturel</p>
+        <p class="text-xs text-ink/55 mb-3 max-w-3xl">Qui vient à tes événements, ce qui se remplit, ce qui se répète : de quoi préparer la prochaine programmation. Totaux uniquement, aucun nom.</p>
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <label class="text-xs font-semibold text-ink/60">Année</label>
+          <select id="bilan-agenda-year" onchange="loadBilanAgenda()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white"></select>
+          <button onclick="printBilanAgenda()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-full px-3 py-1.5 text-xs font-semibold active:scale-[0.98] transition">Imprimer ou enregistrer en PDF</button>
+        </div>
+        <div id="bilan-agenda-content" class="mb-10 max-w-5xl"></div>
         </div>
 
         <!-- Liste des événements à venir -->
@@ -1690,16 +1705,6 @@
           </div>
           <button onclick="exportUnpaidDebts()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-lg px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition shrink-0">Télécharger la liste (Excel)</button>
         </div>
-        <!-- Bilan de l'agenda culturel (18/11/2026, demande des Abymes) : public, remplissage, diversité. -->
-        <p class="text-sm font-bold text-ink mb-1">Bilan de l'agenda culturel</p>
-        <p class="text-xs text-ink/55 mb-3 max-w-3xl">Qui vient à tes événements, ce qui se remplit, ce qui se répète : de quoi préparer la prochaine programmation. Totaux uniquement, aucun nom.</p>
-        <div class="flex flex-wrap items-center gap-2 mb-4">
-          <label class="text-xs font-semibold text-ink/60">Année</label>
-          <select id="bilan-agenda-year" onchange="loadBilanAgenda()" class="border border-mango-100 rounded-full px-3 py-1.5 text-xs font-semibold text-ink/70 bg-white"></select>
-          <button onclick="printBilanAgenda()" style="touch-action: manipulation;" class="border border-brand/20 text-ink bg-white hover:border-brand/40 rounded-full px-3 py-1.5 text-xs font-semibold active:scale-[0.98] transition">Imprimer ou enregistrer en PDF</button>
-        </div>
-        <div id="bilan-agenda-content" class="mb-10 max-w-5xl"></div>
-
         <!-- Rapport annuel Néoscrib (13/11/2026) : codes officiels 2026, calcul auto + saisie du reste. -->
         <p class="text-sm font-bold text-ink mb-1">Rapport annuel Néoscrib</p>
         <p class="text-xs text-ink/55 mb-3 max-w-3xl">L'enquête annuelle du ministère de la Culture, relayée par ta bibliothèque départementale. Demande-lui quel rapport ta médiathèque doit remplir.</p>
@@ -2470,7 +2475,7 @@
     if (screen === 'communication') window.ongletCommunication('posts');
     if (screen === 'sigb-stats') { initSigbStatsYearSelect(); loadUnpaidSummary(); }
     if (screen === 'users') { closeFicheView(); loadInscritsList(); }
-    if (screen === 'agenda') { closePastEventsView(); closeEventForm(); }
+    if (screen === 'agenda') { closeAgendaBilan(); closePastEventsView(); closeEventForm(); }
     if (screen === 'catalogue') { closeScanView(); }
     if (screen === 'collections') openCollectionsView('inv');
     if (screen === 'regie') loadRegie();
@@ -11590,6 +11595,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
 
   window.openPastEventsView = function () {
+    document.getElementById('agenda-bilan-view').classList.add('hidden');
     currentAgendaView = 'past';
     document.getElementById('agenda-list-view').classList.add('hidden');
     document.getElementById('agenda-form-view').classList.add('hidden');
@@ -11610,6 +11616,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.openEventForm = function () {
+    document.getElementById('agenda-bilan-view').classList.add('hidden');
     resetEventForm();
     showAgendaFormView();
   };
@@ -12157,8 +12164,18 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     imprimerBilanAgenda();
   };
 
-  function initSigbStatsYearSelect() {
+  window.openAgendaBilan = function () {
+    currentAgendaView = 'list';
+    ['agenda-list-view', 'agenda-form-view', 'agenda-past-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    document.getElementById('agenda-bilan-view').classList.remove('hidden');
     loadBilanAgenda();
+  };
+  window.closeAgendaBilan = function () {
+    document.getElementById('agenda-bilan-view').classList.add('hidden');
+    document.getElementById('agenda-list-view').classList.remove('hidden');
+  };
+
+  function initSigbStatsYearSelect() {
     const select = document.getElementById('sigb-stats-year');
     if (select.options.length) { loadSigbStats(); return; }
     const currentYear = new Date().getFullYear();
