@@ -371,13 +371,16 @@
   let activeCategory = null;
   let searchQuery = '';
 
+  // Films et jeux en tête de rangée (26/11/2026) : visibles sans faire
+  // défiler. Ils remplacent la barre de types (Livres, Films…), retirée.
   const CATEGORIES = [
+    'Films', 'Jeux vidéo', 'Jeux', 'Instruments',
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
-    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Jeux vidéo', 'Films', 'Instruments', 'Autres'
+    'Bien-être', 'Maison', 'Documentaire', 'Autres'
   ];
   // Tuiles affichées seulement si la médiathèque prête ce type de document.
-  const CATEGORIES_SI_PRESENTES = new Set(['Jeux vidéo', 'Films', 'Instruments']);
+  const CATEGORIES_SI_PRESENTES = new Set(['Jeux vidéo', 'Films', 'Jeux', 'Instruments']);
 
   // Sentinelle distincte des vraies catégories : sélection faite par la
   // médiathèque (books.is_staff_pick), pas un genre du livre.
@@ -440,7 +443,10 @@
     const el = document.getElementById('type-filters');
     const present = new Set(books.map(docType));
     const groups = TYPE_GROUPS.filter(([kind]) => present.has(kind));
-    if (groups.length < 2) {
+    // Barre retirée le 26/11/2026 (doublon avec les tuiles, Films et Jeux
+    // sont maintenant en tête de rangée) : gardée cachée, prête à revenir.
+    const BARRE_TYPES = false;
+    if (!BARRE_TYPES || groups.length < 2) {
       el.classList.add('hidden');
       activeType = null;
       return;
