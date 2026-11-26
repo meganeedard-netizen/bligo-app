@@ -791,7 +791,31 @@
   const refCode = urlParams.get('ref');
   const gateReason = urlParams.get('gate');
   const wantSignup = urlParams.has('signup');
-  await loadCommuneOptions();
+  // Définies AVANT toute attente (26/11/2026) : si un autre onglet BliGO
+  // bloquait la session, la page restait en attente ici et « Se connecter »
+  // échouait (goAfterLogin introuvable).
+  window.goAfterLogin = function () {
+    if (window.BLIGO_AGENT_APP) { redirectAfterLogin(); return; }
+    window.location.href = 'accueil.html';
+  };
+  window.redirectAfterLogin = async function () {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data: profile } = await supabase.from('profiles').select('role, commune_id').eq('id', session.user.id).single();
+    // Logiciel : le compte doit appartenir à la médiathèque choisie (16/10/2026).
+    let chosen = null;
+    try { chosen = sessionStorage.getItem('bligo_agent_commune'); } catch (e) {}
+    if (chosen && profile?.commune_id && String(profile.commune_id) !== chosen && ['agent', 'super_admin'].includes(profile.role)) {
+      const { data: home } = await supabase.from('communes').select('name').eq('id', profile.commune_id).single();
+      await supabase.auth.signOut();
+      window.location.href = 'index.html?wrong_commune=' + encodeURIComponent(home?.name || 'une autre commune') + '&t=' + Date.now();
+      return;
+    }
+    // ?t= : toujours la dernière version mise en ligne, jamais une copie en cache.
+    window.location.href = (profile?.role === 'super_admin' && (session.user.email || '').toLowerCase() === 'megane@bligo.fr' ? 'superadmin.html' : 'admin.html') + '?t=' + Date.now();
+  };
+  // Liste des médiathèques : on n'attend pas plus de 5 s.
+  await Promise.race([loadCommuneOptions(), new Promise(ok => setTimeout(ok, 5000))]);
 
   // Médiathèque mémorisée qui n'existe plus (Sainte-Anne, retirée le
   // 21/10/2026) : on l'oublie, sinon catalogue vide et inscription refusée.
@@ -940,26 +964,6 @@
 
   // Après connexion : appli usagers sur le site, back-office dans le logiciel
   // agent (16/10/2026, ancien remplacement fait par tauri-app/sync-web.mjs).
-  window.goAfterLogin = function () {
-    if (window.BLIGO_AGENT_APP) { redirectAfterLogin(); return; }
-    window.location.href = 'accueil.html';
-  };
-  window.redirectAfterLogin = async function () {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    const { data: profile } = await supabase.from('profiles').select('role, commune_id').eq('id', session.user.id).single();
-    // Logiciel : le compte doit appartenir à la médiathèque choisie (16/10/2026).
-    let chosen = null;
-    try { chosen = sessionStorage.getItem('bligo_agent_commune'); } catch (e) {}
-    if (chosen && profile?.commune_id && String(profile.commune_id) !== chosen && ['agent', 'super_admin'].includes(profile.role)) {
-      const { data: home } = await supabase.from('communes').select('name').eq('id', profile.commune_id).single();
-      await supabase.auth.signOut();
-      window.location.href = 'index.html?wrong_commune=' + encodeURIComponent(home?.name || 'une autre commune') + '&t=' + Date.now();
-      return;
-    }
-    // ?t= : toujours la dernière version mise en ligne, jamais une copie en cache.
-    window.location.href = (profile?.role === 'super_admin' && (session.user.email || '').toLowerCase() === 'megane@bligo.fr' ? 'superadmin.html' : 'admin.html') + '?t=' + Date.now();
-  };
   // Logiciel réservé aux agents (12/10/2026, choix de médiathèque le
   // 16/10/2026) : l'agent choisit d'abord sa médiathèque, puis se connecte.
   // Pas de visite sans compte ni de création de compte (c'est Mégane qui crée
