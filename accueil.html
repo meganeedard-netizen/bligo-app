@@ -374,13 +374,13 @@
   // Films et jeux en tête de rangée (26/11/2026) : visibles sans faire
   // défiler. Ils remplacent la barre de types (Livres, Films…), retirée.
   const CATEGORIES = [
-    'Films', 'Jeux vidéo', 'Jeux', 'Instruments',
+    'Films', 'Jeux vidéo', 'Jeux', 'Livres audio', 'Musique', 'Revues', 'Instruments', 'Matériel',
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
     'Bien-être', 'Maison', 'Documentaire', 'Autres'
   ];
   // Tuiles affichées seulement si la médiathèque prête ce type de document.
-  const CATEGORIES_SI_PRESENTES = new Set(['Jeux vidéo', 'Films', 'Jeux', 'Instruments']);
+  const CATEGORIES_SI_PRESENTES = new Set(['Jeux vidéo', 'Films', 'Jeux', 'Livres audio', 'Musique', 'Revues', 'Instruments', 'Matériel']);
 
   // Sentinelle distincte des vraies catégories : sélection faite par la
   // médiathèque (books.is_staff_pick), pas un genre du livre.
@@ -405,6 +405,8 @@
     // Icônes provisoires (26/11/2026) en attendant celles de Mégane.
     'Jeux vidéo': 'img/categories/v2/jeux.png',
     'Films': 'img/categories/v2/films.png',
+    'Livres audio': 'img/categories/v2/livres-audio.png',
+    'Matériel': 'img/categories/v2/materiel.png',
     'Instruments': 'img/categories/v2/instruments.png',
     'Documentaire': 'img/categories/v2/documents.png',
     'Sciences & nature': 'img/categories/v2/sciences.png',
@@ -527,6 +529,7 @@
     'Maison': 'Maison & Jardin',
     'Jeux': 'Jeux de société',
     'Films': 'Films & Séries',
+    'Revues': 'Revues & Magazines',
   };
 
   // Catégorie du livre en petit texte orange au-dessus du titre (16/10/2026,
@@ -546,7 +549,8 @@
       { label: 'Tous', value: null },
       { label: 'Coups de cœur', value: STAFF_PICK_FILTER },
       // Jeux vidéo, Films, Instruments : tuile visible seulement si la médiathèque en prête.
-      ...CATEGORIES.filter(c => !CATEGORIES_SI_PRESENTES.has(c) || books.some(b => b.category === c)).map(c => ({ label: c, value: c })),
+      // Sans icône, la tuile attend (Musique, Revues : icônes de Mégane à venir).
+      ...CATEGORIES.filter(c => !CATEGORIES_SI_PRESENTES.has(c) || (CATEGORY_ICONS[c] && books.some(b => b.category === c))).map(c => ({ label: c, value: c })),
     ];
     el.innerHTML = chips.map(c => {
       const icon = CATEGORY_ICONS[c.label]

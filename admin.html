@@ -1869,12 +1869,12 @@
   const CATEGORIES = [
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
-    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Jeux vidéo', 'Films', 'Instruments', 'Autres',
+    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Jeux vidéo', 'Films', 'Livres audio', 'Musique', 'Revues', 'Instruments', 'Matériel', 'Autres',
   ];
   // Nom affiché d'une catégorie (16/10/2026) : « BD » s'affiche « BD & Mangas »
   // et « Thriller » « Policier & Thriller » ; la valeur enregistrée ne change
   // pas (contrainte en base, règles de cote).
-  const CATEGORY_DISPLAY = { 'BD': 'BD & Mangas', 'Thriller': 'Policier & Thriller', 'Fantasy': 'Science-Fiction & Fantasy', 'Poésie & théâtre': 'Poésie & Théâtre', 'Sciences & nature': 'Sciences & Nature', 'Histoire': 'Histoire & Patrimoine', 'Culture': 'Arts & Culture', 'Sports & loisirs': 'Sports & Loisirs', 'Bien-être': 'Santé & Bien-être', 'Maison': 'Maison & Jardin', 'Jeux': 'Jeux de société', 'Films': 'Films & Séries' };
+  const CATEGORY_DISPLAY = { 'BD': 'BD & Mangas', 'Thriller': 'Policier & Thriller', 'Fantasy': 'Science-Fiction & Fantasy', 'Poésie & théâtre': 'Poésie & Théâtre', 'Sciences & nature': 'Sciences & Nature', 'Histoire': 'Histoire & Patrimoine', 'Culture': 'Arts & Culture', 'Sports & loisirs': 'Sports & Loisirs', 'Bien-être': 'Santé & Bien-être', 'Maison': 'Maison & Jardin', 'Jeux': 'Jeux de société', 'Films': 'Films & Séries', 'Revues': 'Revues & Magazines' };
   const categoryLabel = c => CATEGORY_DISPLAY[c] || c;
 
   const CATEGORY_KEYWORDS = [
@@ -4163,6 +4163,10 @@
     if (/^jeu.*vid[eé]o/.test(f)) return 'Jeux vidéo';
     if (/^jeu/.test(f)) return 'Jeux';
     if (/^(dvd|blu)/.test(f)) return 'Films';
+    if (/^livre audio/.test(f)) return 'Livres audio';
+    if (/^cd/.test(f)) return 'Musique';
+    if (/^p[ée]riodique/.test(f)) return 'Revues';
+    if (/^mat[ée]riel/.test(f)) return 'Matériel';
     return null;
   }
 
