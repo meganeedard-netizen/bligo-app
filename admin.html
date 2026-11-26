@@ -654,11 +654,15 @@
 
         <!-- Liste du catalogue -->
         <div id="catalogue-list-view" class="mt-4">
-        <div class="relative mb-4">
+        <div class="flex gap-2 mb-4">
+        <div class="relative flex-1 min-w-0">
           <input id="catalogue-search" type="text" oninput="renderCatalogue()" placeholder="Chercher par titre, auteur, ISBN ou code-barres de la médiathèque"
             style="font-size: 16px;"
             class="w-full border border-mango-100 rounded-lg pl-3 pr-9 py-2.5 text-sm outline-none focus:ring-2 focus:ring-mango-300">
           <button type="button" onclick="clearSearchInput('catalogue-search')" aria-label="Effacer" class="absolute right-3 top-1/2 -translate-y-1/2 text-ink/30 hover:text-ink/60 text-sm">✕</button>
+        </div>
+        <select id="catalogue-type-filter" onchange="renderCatalogue()" aria-label="Type de document"
+          class="shrink-0 border border-mango-100 rounded-lg px-2.5 py-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-mango-300"></select>
         </div>
 
         <h3 class="text-base font-bold text-ink mb-3"><button type="button" onclick="resetCatalogueFilters()" class="hover:underline">Tous les livres</button> (<span id="catalogue-count">0</span>)<button id="to-equip-badge" onclick="toggleToEquipFilter()" class="hidden ml-2 align-middle text-[11px] font-bold text-hibiscus-700 bg-hibiscus-50 px-2 py-0.5 rounded-full"></button>
@@ -9280,6 +9284,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // plus intuitif que de devoir recliquer sur le badge du filtre actif
   // (demandé par Mégane le 21/09/2026).
   window.resetCatalogueFilters = function () {
+    const typeSel = document.getElementById('catalogue-type-filter');
+    if (typeSel) typeSel.value = '';
     toEquipFilterActive = false;
     duplicatesFilterActive = false;
     document.getElementById('to-equip-badge').classList.remove('bg-hibiscus-600', 'text-white');
@@ -9295,6 +9301,22 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     document.getElementById('catalogue-list-view').scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const CATALOGUE_DOC_TYPES = [
+    ['livre', 'Livres'], ['livre_audio', 'Livres audio'], ['cd', 'Musique (CD)'], ['film', 'Films (DVD)'],
+    ['jeu_video', 'Jeux vidéo'], ['jeu', 'Jeux de société'], ['revue', 'Revues & magazines'],
+    ['instrument', 'Instruments'], ['materiel', 'Matériel'], ['autre', 'Autres supports'],
+  ];
+  function catalogueDocType(b) {
+    const cat = formatCategory(b.format) || b.category;
+    const parCategorie = { 'Jeux vidéo': 'jeu_video', 'Jeux': 'jeu', 'Films': 'film', 'Livres audio': 'livre_audio',
+      'Musique': 'cd', 'Revues': 'revue', 'Instruments': 'instrument', 'Matériel': 'materiel' };
+    if (parCategorie[cat]) return parCategorie[cat];
+    const f = (b.format || '').toLowerCase();
+    if (/^instrument/.test(f)) return 'instrument';
+    if (!f || /livre|poche|broch|reli|caract|dys|falc|beaux livres/.test(f)) return 'livre';
+    return 'autre';
+  }
+
   window.renderCatalogue = function renderCatalogue() {
     // Recherche par titre, auteur, ISBN ou code-barres de la médiathèque -
     // toujours sur l'ensemble du catalogue, pas seulement la page affichée.
@@ -9302,6 +9324,18 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     let filtered = query
       ? books.filter(b => bookSearchText(b).includes(query))
       : books;
+
+    // Filtre par type de document (26/11/2026) : seuls les types présents
+    // au catalogue sont proposés.
+    const typeSel = document.getElementById('catalogue-type-filter');
+    if (typeSel) {
+      const choisi = typeSel.value;
+      const presents = new Set(books.map(catalogueDocType));
+      typeSel.innerHTML = '<option value="">Tous les types</option>' + CATALOGUE_DOC_TYPES
+        .filter(([k]) => presents.has(k)).map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
+      typeSel.value = presents.has(choisi) ? choisi : '';
+      if (typeSel.value) filtered = filtered.filter(b => catalogueDocType(b) === typeSel.value);
+    }
 
     // Doublons et cotes à corriger : détectés automatiquement à chaque
     // affichage, affichés en badge dans l'en-tête (masqué si tout est en
