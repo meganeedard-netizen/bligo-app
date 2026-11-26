@@ -2,13 +2,13 @@
 
 Prépare la couverture d'un livre scanné, selon la règle de Mégane (26/10/2026) :
 pleine page au format 2:3 (pour les coins arrondis de l'appli), vraie face
-avant, jamais une image vide ou une fausse image, et recherche chez l'éditeur
-quand l'API ne donne rien de bon.
+avant, jamais une image vide ou une fausse image ; sinon, photo prise par
+l'agent.
 
-Ordre des sources : sites éditeurs (Hachette : Livre de poche, Fayard,
-Grasset… ; Interforum : Pocket, Plon, Tana, La Découverte…), puis l'image
-proposée par l'API, puis Open Library et Google Books. L'image retenue est
-débarrassée de ses bandes unies, mise en 600x900 et rangée dans le bucket
+Ordre des sources : l'image proposée par l'API, puis Open Library et Google
+Books (sites des éditeurs retirés le 26/11/2026). L'image retenue est
+débarrassée de ses bandes unies, mise en 600x900 sans déformation (fond flou
+si son format n'est pas celui d'un roman) et rangée dans le bucket
 `book-covers` (dossier `covers/`).
 
 ## Mise en place (une seule fois)
@@ -38,6 +38,5 @@ const { data } = await supabase.functions.invoke('prepare-cover', {
 ## Limites connues
 
 - Une photo du livre en 3D (tranche visible) n'est pas détectée : elle est
-  seulement recadrée. Préférer l'éditeur, qui passe en premier.
-- Gallimard, Actes Sud et lisez.com (Editis) refusent les requêtes serveur :
-  pour ces éditeurs, la couverture se cherche encore à la main (Chrome).
+  seulement recadrée. 
+- Sans couverture trouvée, l'agent photographie le document dans le logiciel.

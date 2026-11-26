@@ -3,12 +3,12 @@
 // Règle de Mégane : une couverture dans l'appli est toujours en pleine page,
 // au format 2:3 (pour que les coins arrondis s'appliquent), la vraie face
 // avant, jamais une image vide ou une fausse image. Si l'API ne donne rien de
-// bon, aller la chercher chez l'éditeur.
+// bon, l'agent photographie le document (plus de copie sur les sites des
+// éditeurs depuis le 26/11/2026).
 //
 // Ce que fait la fonction, pour un livre scanné :
 // 1. essaie la couverture proposée par l'API (Google Books / Open Library),
-//    puis les sites éditeurs (adresses construites avec l'ISBN), puis Open
-//    Library et Google Books en lecture directe ;
+//    puis Open Library et Google Books en lecture directe ;
 // 2. écarte l'image « non disponible » de Google et les images trop petites ;
 // 3. retire les bandes de couleur unie autour (image carrée avec bandes
 //    blanches, cadre) et met l'image en 600x900 : pleine si son format est
@@ -19,7 +19,7 @@
 // Appelée depuis admin.html (insertBook et rattrapage en arrière-plan) via
 // supabase.functions.invoke('prepare-cover', { body: { cover_url, isbn, title } }).
 //
-// Les adresses récupérées sont soit construites ici (éditeurs, Open Library,
+// Les adresses récupérées sont soit construites ici (Open Library,
 // Google), soit fournies par le client mais limitées à la liste blanche
 // ci-dessous, pour ne pas ouvrir de porte SSRF (voir detect-cover-color).
 
@@ -37,11 +37,6 @@ const OUT_W = 600, OUT_H = 900;
 // Image « image not available » de Google Books (vérifié le 26/10/2026 : même
 // fichier renvoyé pour tous les livres sans vraie couverture, en zoom 0 et 1).
 const GOOGLE_PLACEHOLDER_SIZES = new Set(['575x750', '128x170']);
-
-// Codes Interforum (diffuseur Editis) vérifiés le 26/10/2026 sur de vrais
-// livres : Pocket, La Découverte/Zones, Plon, Tana. Les autres sont des essais
-// peu coûteux (une requête en 404 si le code n'existe pas).
-const INTERFORUM_CODES = ['POC', 'DEC', 'PLO', 'TAN', 'FIR', 'LAF', 'NIL', 'JUL', 'SEG', 'ROB', 'PRE', 'BEL', '1018', 'PKT'];
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,29 +75,6 @@ async function fetchText(url: string): Promise<string | null> {
   } catch {
     return null;
   }
-}
-
-// Sites Hachette (Livre de poche, Fayard…) : la page du livre se trouve avec
-// le titre et l'ISBN, et sa balise og:image pointe vers media.hachette.fr.
-// On n'accepte l'image que si son adresse contient bien l'ISBN.
-async function hachetteCandidates(isbn: string, title: string): Promise<string[]> {
-  const slug = slugify(title);
-  if (!slug) return [];
-  const pages = [
-    `https://www.livredepoche.com/livre/${slug}-${isbn}`,
-    `https://www.fayard.fr/livre/${slug}-${isbn}/`,
-    `https://www.grasset.fr/livre/${slug}-${isbn}/`,
-    `https://www.calmann-levy.fr/livre/${slug}-${isbn}/`,
-    `https://www.editions-jclattes.fr/livre/${slug}-${isbn}/`,
-    `https://www.editions-stock.fr/livre/${slug}-${isbn}/`,
-  ];
-  const found = await Promise.all(pages.map(async (p) => {
-    const html = await fetchText(p);
-    const m = html?.match(/og:image"[^>]*content="([^"]+)"/);
-    const img = m?.[1]?.replace(/&amp;/g, '&');
-    return img && img.includes(isbn) ? img.replace('fit-in/500x500', 'fit-in/800x800') : null;
-  }));
-  return found.filter((x): x is string => !!x);
 }
 
 async function googleCandidates(isbn: string): Promise<string[]> {
@@ -297,13 +269,11 @@ Deno.serve(async (req) => {
     return json({ ok: true, cover_url: pub.publicUrl, color: coverColor(final), source: 'photo' });
   }
 
-  // Ordre : éditeur d'abord (meilleure image, vraie face avant), puis l'image
-  // proposée par l'API, puis Open Library et Google en lecture directe.
+  // Ordre : l'image proposée par l'API, puis Open Library et Google en lecture directe.
   const candidates: string[] = [];
-  if (isbn.length === 13) {
-    candidates.push(...await hachetteCandidates(isbn, title));
-    candidates.push(...INTERFORUM_CODES.map((c) => `https://www.interforum.fr/images/${c}/P3/${isbn}.jpg`));
-  }
+  // Plus de copie depuis les sites des éditeurs (Hachette, Interforum) depuis
+  // le 26/11/2026 : décision de Mégane, c'était la source la plus fragile
+  // juridiquement (images et conditions d'utilisation de ces sites).
   // input_checked : l'image proposée a bien été examinée (source autorisée).
   // Si elle est écartée et que rien d'autre n'est trouvé, le logiciel la
   // retire ; sinon il la garde telle quelle.
@@ -319,7 +289,7 @@ Deno.serve(async (req) => {
     candidates.push(...await googleCandidates(isbn));
   }
 
-  // Téléchargées en parallèle (la plupart des adresses éditeurs répondent 404
+  // Téléchargées en parallèle (les adresses absentes répondent 404
   // vite), puis examinées dans l'ordre de préférence.
   const urls = [...new Set(candidates)];
   const downloads = await Promise.all(urls.map((u) => fetchBytes(u)));
