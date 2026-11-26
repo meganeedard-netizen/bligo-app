@@ -61,6 +61,8 @@
     <button id="tab-history" onclick="switchAgendaTab('history')" class="flex-1 text-sm font-semibold rounded-lg py-2 text-ink/55">Historique</button>
   </div>
 
+  <!-- Filtres (26/11/2026, RDV Brest) : public, type, médiathèque du réseau. Affichés seulement s'il y a un choix à faire. -->
+  <div id="agenda-filters" class="hidden flex gap-2 overflow-x-auto mb-4 -mx-5 px-5 pb-0.5" style="scrollbar-width: none;"></div>
   <!-- Ordinateur (22/10/2026) : une carte par ligne, en pleine largeur comme Mes réservations. -->
   <div id="events-list" class="flex flex-col gap-4"></div>
 
@@ -141,9 +143,26 @@
 
   // Chargement accéléré (23/10/2026) : les demandes partent en même temps,
   // et seules les inscriptions des événements affichés sont récupérées.
+  // Réseau (26/11/2026) : les médiathèques qui partagent la même communauté
+  // (réseau d'agglomération, BDP) ; leurs événements sont chargés pour le
+  // filtre « Médiathèque », la médiathèque de l'usager restant le choix par défaut.
+  let networkFor = null, networkCommunes = [];
+  async function loadNetwork() {
+    if (networkFor === browseCommuneId) return;
+    networkFor = browseCommuneId;
+    networkCommunes = [];
+    filterCommune = String(browseCommuneId);
+    const { data: me } = await supabase.from('communes').select('community_id').eq('id', browseCommuneId).maybeSingle();
+    if (!me?.community_id) return;
+    const { data: libs } = await supabase.from('communes').select('id, name').eq('community_id', me.community_id).order('name');
+    if ((libs || []).length > 1) networkCommunes = libs;
+  }
+
   async function loadEvents() {
+    await loadNetwork();
+    const communeIds = networkCommunes.length ? networkCommunes.map(c => c.id) : [browseCommuneId];
     const [{ data: eventsData, error }, { data: checkinsData }] = await Promise.all([
-      supabase.from('events').select('*, communes ( name )').eq('commune_id', browseCommuneId).order('event_date', { ascending: true }),
+      supabase.from('events').select('*, communes ( name )').in('commune_id', communeIds).order('event_date', { ascending: true }),
       currentUser ? supabase.from('event_checkins').select('event_id').eq('user_id', currentUser.id) : Promise.resolve({ data: [] }),
     ]);
     if (error) {
@@ -204,6 +223,57 @@
     return EVENT_ICONS.calendar;
   }
 
+  // ---------- Âges et filtres (26/11/2026) ----------
+  const AGE_GROUPS = [['tout_petits', 'Tout-petits'], ['enfants', 'Enfants'], ['ados', 'Ados'], ['adultes', 'Adultes'], ['familles', 'Familles']];
+  const ageGroupOf = e => e.age_group || e.audience || 'tous';
+  function ageLabel(e) {
+    if (e.min_age != null && e.max_age != null) return e.min_age === e.max_age ? `${e.min_age} ans` : `De ${e.min_age} à ${e.max_age} ans`;
+    if (e.min_age != null) return `Dès ${e.min_age} an${e.min_age > 1 ? 's' : ''}`;
+    if (e.max_age != null) return `Jusqu'à ${e.max_age} ans`;
+    return '';
+  }
+  // « Enfants · Dès 8 ans » ; rien pour un événement tous publics sans âge.
+  function publicLabel(e) {
+    const g = (AGE_GROUPS.find(a => a[0] === ageGroupOf(e)) || [])[1] || '';
+    return [g, ageLabel(e)].filter(Boolean).join(' · ');
+  }
+  let filterAge = '', filterType = '', filterCommune = '';
+  function passesFilters(e) {
+    if (filterType && (e.event_type || 'Autre') !== filterType) return false;
+    if (filterAge && ageGroupOf(e) !== filterAge && !(ageGroupOf(e) === 'familles' && ['tout_petits', 'enfants'].includes(filterAge))) return false;
+    if (networkCommunes.length && filterCommune && String(e.commune_id) !== filterCommune) return false;
+    return true;
+  }
+  function pillSelect(id, value, options) {
+    const active = value !== options[0][0];
+    return `<label class="relative shrink-0">
+      <select id="${id}" style="-webkit-appearance: none; appearance: none;" class="text-xs font-semibold rounded-full pl-3 pr-7 py-2 outline-none ${active ? 'bg-mango-50 text-mango-700' : 'bg-[#EEEDF2] text-ink/65'}">
+        ${options.map(([v, l]) => `<option value="${escapeAttr(v)}" ${v === value ? 'selected' : ''}>${l}</option>`).join('')}
+      </select>
+      <svg class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </label>`;
+  }
+  const escapeAttr = t => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  function renderFilters(upcoming) {
+    const box = document.getElementById('agenda-filters');
+    const types = [...new Set(upcoming.map(e => e.event_type || 'Autre'))].sort((a, b) => a.localeCompare(b));
+    const ages = AGE_GROUPS.filter(([v]) => upcoming.some(e => ageGroupOf(e) === v));
+    const show = agendaTab === 'upcoming' && (networkCommunes.length > 1 || types.length > 1 || ages.length > 1 || filterType || filterAge);
+    box.classList.toggle('hidden', !show);
+    if (!show) { box.innerHTML = ''; return; }
+    box.innerHTML = [
+      networkCommunes.length > 1 ? pillSelect('flt-commune', filterCommune, [['', 'Tout le réseau'], ...networkCommunes.map(c => [String(c.id), c.name])]) : '',
+      (ages.length > 1 || filterAge) ? pillSelect('flt-age', filterAge, [['', 'Tous les publics'], ...ages]) : '',
+      (types.length > 1 || filterType) ? pillSelect('flt-type', filterType, [['', 'Tous les types'], ...types.map(t => [t, t])]) : '',
+      (filterAge || filterType || (networkCommunes.length > 1 && filterCommune !== String(browseCommuneId)))
+        ? `<button id="flt-reset" class="shrink-0 text-xs font-semibold text-ink/45 underline px-1">Effacer</button>` : '',
+    ].join('');
+    box.querySelector('#flt-commune')?.addEventListener('change', ev => { filterCommune = ev.target.value; renderEvents(); });
+    box.querySelector('#flt-age')?.addEventListener('change', ev => { filterAge = ev.target.value; renderEvents(); });
+    box.querySelector('#flt-type')?.addEventListener('change', ev => { filterType = ev.target.value; renderEvents(); });
+    box.querySelector('#flt-reset')?.addEventListener('click', () => { filterAge = ''; filterType = ''; filterCommune = String(browseCommuneId); renderEvents(); });
+  }
+
   function eventDetailHtml(e) {
     const hours = Math.floor((e.duration_minutes || 90) / 60);
     const mins = (e.duration_minutes || 90) % 60;
@@ -214,6 +284,7 @@
       ${e.title ? `<p class="text-base text-ink/60 mt-0.5">${e.title}</p>` : ''}
       <p class="text-sm text-hibiscus-700 font-semibold mt-3">${capFirst(formatEventDate(e.event_date, e.duration_minutes))} · ${durationLabel}</p>
       ${e.price_cents > 0 ? `<p class="text-sm font-semibold text-ink mt-1">Tarif : ${euros(e.price_cents)} par personne</p>` : ''}
+      ${publicLabel(e) ? `<p class="text-sm text-ink/70 mt-1">👤 ${publicLabel(e)}</p>` : ''}
       <p class="text-sm text-ink/60 mt-1">📍 ${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
       ${e.description ? `<p class="text-sm text-ink/70 leading-relaxed mt-3">${e.description}</p>` : ''}
     `;
@@ -238,6 +309,7 @@
     const now = new Date();
 
     if (agendaTab === 'history') {
+      document.getElementById('agenda-filters').classList.add('hidden');
       const past = events
         .filter(e => new Date(e.event_date) < now && myRsvps.has(e.id))
         .sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
@@ -265,9 +337,13 @@
       return;
     }
 
-    const upcoming = events.filter(e => new Date(e.event_date) >= now);
+    const allUpcoming = events.filter(e => new Date(e.event_date) >= now);
+    renderFilters(networkCommunes.length && filterCommune ? allUpcoming.filter(e => String(e.commune_id) === filterCommune) : allUpcoming);
+    const upcoming = allUpcoming.filter(passesFilters);
     if (upcoming.length === 0) {
-      list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">Aucun événement à venir pour le moment.</p>`;
+      list.innerHTML = allUpcoming.length && (filterAge || filterType || filterCommune)
+        ? `<p class="text-sm text-ink/40 text-center py-10">Aucun événement à venir avec ces filtres.</p>`
+        : `<p class="text-sm text-ink/40 text-center py-10">Aucun événement à venir pour le moment.</p>`;
       return;
     }
     list.innerHTML = upcoming.map(e => {
@@ -287,6 +363,7 @@
             <p class="text-sm font-bold text-ink leading-snug">${isNewEvent(e) ? '<span class="inline-block align-middle mr-1.5 -mt-0.5 text-[10px] font-bold uppercase tracking-wide rounded-md px-1.5 py-0.5 bg-hibiscus-600 text-white">Nouveau</span>' : ''}${e.event_type || 'Événement'}${e.title ? `<span class="font-medium text-ink/55"> · ${e.title}</span>` : ''}</p>
             <p class="text-[11px] text-hibiscus-700 font-semibold mt-0.5">${capFirst(formatEventDate(e.event_date, e.duration_minutes))}</p>
             <p class="text-[11px] text-ink/45 truncate">${e.location || ''}${e.communes?.name ? ' · ' + e.communes.name : ''}</p>
+            ${publicLabel(e) ? `<span class="inline-block text-[10.5px] font-semibold rounded px-1.5 py-0.5 mt-1 bg-mango-50 text-mango-700">${publicLabel(e)}</span>` : ''}
             ${e.description ? `<p class="text-xs text-ink/60 leading-relaxed mt-1.5 line-clamp-2">${e.description}</p>` : ''}
             <div class="flex items-center gap-2 mt-2.5">
               ${attending
