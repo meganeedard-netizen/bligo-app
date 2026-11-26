@@ -575,6 +575,10 @@
                 class="w-full border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold active:scale-[0.98] transition">
                 Cataloguer un instrument de musique
               </button>
+              <button type="button" onclick="addMaterielDraft()" style="touch-action: manipulation;"
+                class="w-full mt-1.5 border border-mango-200 text-mango-700 bg-mango-50 rounded-lg py-2 text-xs font-semibold active:scale-[0.98] transition">
+                Cataloguer du matériel (liseuse, tablette…)
+              </button>
               <details class="mt-3">
                 <summary class="text-[11px] font-semibold text-ink/45 cursor-pointer select-none">Ce lot est déjà d'un genre ou d'un rayon connu ?</summary>
                 <div class="mt-2">
@@ -1398,6 +1402,35 @@
           </div>
           <label class="text-[11px] text-ink/55 block mb-1">Conditions de prêt imprimées sur la fiche à signer</label>
           <textarea id="instrument-charter" rows="3" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm"></textarea>
+          <label class="text-[11px] font-semibold text-ink/60 block mb-1.5 mt-4">Matériel : liseuses, tablettes, casques… (compté à part)</label>
+          <div class="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <label class="text-[11px] text-ink/55 block mb-1">Appareils par usager</label>
+              <input id="limit-materiel" type="number" min="0" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="text-[11px] text-ink/55 block mb-1">Durée du prêt (jours)</label>
+              <input id="materiel-days" type="number" min="1" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="text-[11px] text-ink/55 block mb-1">Caution (€, 0 = aucune)</label>
+              <input id="materiel-deposit" type="number" min="0" step="1" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm">
+            </div>
+            <div>
+              <label class="text-[11px] text-ink/55 block mb-1">Qui peut emprunter</label>
+              <select id="materiel-min-age" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm bg-white">
+                <option value="0">Tout le monde</option>
+                <option value="12">À partir de 12 ans</option>
+                <option value="14">À partir de 14 ans</option>
+                <option value="16">À partir de 16 ans</option>
+                <option value="18">Adultes seulement</option>
+              </select>
+            </div>
+          </div>
+          <label class="text-[11px] text-ink/55 block mb-1">À vérifier au retour (un point par ligne)</label>
+          <textarea id="materiel-checklist" rows="4" class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm mb-2"></textarea>
+          <label class="text-[11px] text-ink/55 block mb-1">Conditions de prêt imprimées sur la fiche à signer</label>
+          <textarea id="materiel-charter" rows="3" placeholder="Ex. : l'appareil est rendu chargé, sans compte personnel. En cas de perte ou de casse, la valeur de remplacement est due." class="w-full border border-mango-100 rounded-lg px-2 py-1.5 text-sm"></textarea>
           <button onclick="saveLoanLimits()" class="w-full mt-3 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer les quantités</button>
         </div>
         </div>
@@ -4222,8 +4255,31 @@
 
   // ---------- Instruments de musique (25/11/2026, demande du Tampon) ----------
   function isInstrumentDraft(d) {
-    return /^instrument/i.test(d.format || '') || d.category === 'Instruments';
+    return /^instrument/i.test(d.format || '') || d.category === 'Instruments' || isMaterielDraft(d);
   }
+  // Matériel (liseuses, tablettes…, 26/11/2026) : même fiche qu'un instrument.
+  function isMaterielDraft(d) {
+    return /^mat[ée]riel/i.test(d.format || '') || d.category === 'Matériel';
+  }
+  const isLoanKitCategory = c => c === 'Instruments' || c === 'Matériel';
+  // Réglages Matériel de ma médiathèque (caution, âge, liste au retour), chargés une fois.
+  let materielSettings = null;
+  async function loadMaterielSettings(force) {
+    if (materielSettings && !force) return materielSettings;
+    const { data } = await supabase.from('communes')
+      .select('name, max_loans_materiel, materiel_loan_duration_days, materiel_deposit_cents, materiel_min_age, materiel_return_checklist, materiel_charter, instrument_charter')
+      .eq('id', myCommuneId).maybeSingle();
+    materielSettings = data || {};
+    return materielSettings;
+  }
+  const eurosCourt = cents => (cents / 100).toFixed(2).replace('.', ',').replace(',00', '') + ' €';
+  window.addMaterielDraft = function () {
+    const draft = { localId: `${Date.now()}-${Math.random()}`, isbn: null, status: 'not_found', title: '', author: '', category: 'Matériel', summary: '',
+      format: documentTypes.find(t => /^mat[ée]riel/i.test(t.label))?.label || 'Matériel (liseuse, tablette…)' };
+    draftBooks.push(draft);
+    renderDraftBooks();
+    document.getElementById(`draft-title-${draft.localId}`)?.focus();
+  };
   // Un accessoire par ligne ; virgules et points-virgules acceptés.
   function accessoryList(text) {
     return String(text || '').split(/[\n,;]+/).map(x => x.trim()).filter(Boolean);
@@ -4244,7 +4300,7 @@
     const input = 'w-full border border-mango-100 rounded-lg px-2 py-1.5 text-xs mb-2';
     return `<div class="bg-mango-50/60 border border-mango-100 rounded-lg p-2.5 mb-2">
       <label class="text-[11px] font-semibold text-ink/60 block mb-1">Accessoires prêtés avec (un par ligne)</label>
-      <textarea oninput="updateDraftField('${d.localId}', 'accessories', this.value)" rows="3" placeholder="Housse&#10;Accordeur&#10;Câble" class="${input}">${escapeHtml(d.accessories || '')}</textarea>
+      <textarea oninput="updateDraftField('${d.localId}', 'accessories', this.value)" rows="3" placeholder="${isMaterielDraft(d) ? 'Chargeur&#10;Câble USB&#10;Housse' : 'Housse&#10;Accordeur&#10;Câble'}" class="${input}">${escapeHtml(d.accessories || '')}</textarea>
       <label class="text-[11px] font-semibold text-ink/60 block mb-1">Valeur de remplacement (€)</label>
       <input value="${escapeHtml(d.price || '')}" oninput="updateDraftField('${d.localId}', 'price', this.value)" placeholder="120" class="${input}">
       ${draftAgeFieldsHtml(d)}
@@ -4377,7 +4433,7 @@
       return `
         <div class="bg-white border border-mango-100 rounded-xl p-4 shadow-sm">
           <div class="flex items-center justify-between mb-2">
-            <p class="text-[11px] font-bold text-ink/40 uppercase tracking-wide">${isInstrumentDraft(d) ? 'Instrument de musique' : 'Aucune fiche trouvée'}${d.isbn ? ` - ${escapeHtml(d.isbn)}` : ''}</p>
+            <p class="text-[11px] font-bold text-ink/40 uppercase tracking-wide">${isMaterielDraft(d) ? 'Matériel prêté' : isInstrumentDraft(d) ? 'Instrument de musique' : 'Aucune fiche trouvée'}${d.isbn ? ` - ${escapeHtml(d.isbn)}` : ''}</p>
             <button onclick="removeDraft('${d.localId}')" class="text-xs text-ink/40 hover:text-ink/60 underline shrink-0">Supprimer</button>
           </div>
 
@@ -6195,7 +6251,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   function instrumentCounterHtml(r, i) {
     const missing = new Set(accessoryList(r.book.missing));
     const list = accessoryList(r.book.accessories).filter(a => !missing.has(a));
+    const isMat = r.book.category === 'Matériel';
+    if (isMat && !materielSettings) loadMaterielSettings().then(() => renderCounterCart());
+    const deposit = isMat && materielSettings?.materiel_deposit_cents;
     return `<div class="mt-2 text-xs text-ink/70">
+      ${deposit ? `<p class="font-semibold text-hibiscus-700 mb-0.5">Caution à demander : ${eurosCourt(deposit)}</p>` : ''}
       <p>${list.length ? `À remettre avec : <span class="font-semibold text-ink">${escapeHtml(list.join(', '))}</span>` : 'Aucun accessoire sur la fiche.'}</p>
       ${missing.size ? `<p class="text-orange-700 font-semibold mt-0.5">Déjà manquant : ${escapeHtml([...missing].join(', '))}</p>` : ''}
       ${r.state === 'done' ? `<button onclick="printInstrumentSheet(${i})" style="touch-action: manipulation;" class="mt-2 bg-brand text-white rounded-full px-4 py-2 text-xs font-bold active:scale-[0.98] transition">Imprimer la fiche de prêt</button>` : ''}
@@ -6206,7 +6266,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const r = counterCart[index];
     if (!r || !counterUser) return;
     if (window.Capacitor?.isNativePlatform?.()) { alert("L'impression se fait depuis le logiciel sur ordinateur."); return; }
-    const { data: c } = await supabase.from('communes').select('name, instrument_charter').eq('id', myCommuneId).maybeSingle();
+    const c = await loadMaterielSettings(true);
+    const isMat = r.book.category === 'Matériel';
+    const charter = isMat ? c?.materiel_charter : c?.instrument_charter;
+    const checks = isMat ? accessoryList(c?.materiel_return_checklist) : [];
     const missing = new Set(accessoryList(r.book.missing));
     const list = accessoryList(r.book.accessories).filter(a => !missing.has(a));
     const e = escapeHtml;
@@ -6215,13 +6278,14 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       @page{size:A4;margin:18mm}body{font:13px/1.5 Arial,sans-serif;color:#222}h1{font-size:20px;margin:0 0 4px}h2{font-size:14px;margin:18px 0 6px}
       table{border-collapse:collapse;width:100%}th{text-align:left;width:38%;font-weight:600}th,td{padding:4px 6px;border-bottom:1px solid #ddd}
       .a td:not(:first-child),.a th:not(:first-child){width:80px;text-align:center}.s{display:flex;gap:24px;margin-top:28px}.s div{flex:1;border:1px solid #999;height:90px;padding:6px}</style></head><body>
-      <h1>Fiche de prêt d'instrument</h1><p>${e(c?.name || '')}</p>
-      <table>${row('Usager', counterUser.full_name)}${row('Numéro de carte', counterUser.subscriber_number)}${row('Instrument', r.book.title)}${row('Marque', r.book.author)}${row('Code', r.barcode)}
-      ${row('Prêté le', new Date().toLocaleDateString('fr-FR'))}${row('À rendre avant le', r.due_at ? new Date(r.due_at).toLocaleDateString('fr-FR') : '')}${row('Valeur de remplacement', r.book.price_cents ? (r.book.price_cents / 100).toFixed(2).replace('.', ',') + ' €' : '')}</table>
+      <h1>Fiche de prêt ${isMat ? 'de matériel' : "d'instrument"}</h1><p>${e(c?.name || '')}</p>
+      <table>${row('Usager', counterUser.full_name)}${row('Numéro de carte', counterUser.subscriber_number)}${row(isMat ? 'Appareil' : 'Instrument', r.book.title)}${row('Marque', r.book.author)}${row('Code', r.barcode)}
+      ${row('Prêté le', new Date().toLocaleDateString('fr-FR'))}${row('À rendre avant le', r.due_at ? new Date(r.due_at).toLocaleDateString('fr-FR') : '')}${row('Valeur de remplacement', r.book.price_cents ? (r.book.price_cents / 100).toFixed(2).replace('.', ',') + ' €' : '')}${isMat && c?.materiel_deposit_cents ? row('Caution versée', eurosCourt(c.materiel_deposit_cents)) : ''}</table>
       ${list.length ? `<h2>Accessoires</h2><table class="a"><tr><th>Accessoire</th><th>Remis</th><th>Rendu</th></tr>${list.map(a => `<tr><td>${e(a)}</td><td>☐</td><td>☐</td></tr>`).join('')}</table>` : ''}
       ${missing.size ? `<p>Déjà manquant avant ce prêt : ${e([...missing].join(', '))}</p>` : ''}
       <h2>État au départ</h2><div style="border:1px solid #999;height:60px"></div>
-      ${c?.instrument_charter ? `<h2>Conditions de prêt</h2><p>${e(c.instrument_charter).replace(/\n/g, '<br>')}</p>` : ''}
+      ${checks.length ? `<h2>À vérifier au retour</h2><table class="a"><tr><th>Point</th><th>Fait</th></tr>${checks.map(a => `<tr><td>${e(a)}</td><td>☐</td></tr>`).join('')}</table>` : ''}
+      ${charter ? `<h2>Conditions de prêt</h2><p>${e(charter).replace(/\n/g, '<br>')}</p>` : ''}
       <div class="s"><div>Signature de l'usager<br><small>(ou du responsable légal pour un mineur)</small></div><div>Signature de l'agent</div></div></body></html>`;
     const fr = document.createElement('iframe');
     fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
@@ -6258,7 +6322,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
             <span class="text-[11px] font-bold rounded-full px-2.5 py-1 ${pill}">${label}</span>
             ${r.message && r.message !== label ? `<span class="text-xs text-ink/70">${escapeHtml(r.message)}</span>` : ''}
           </div>
-          ${r.book?.category === 'Instruments' && ['ready', 'mine', 'done'].includes(r.state) ? instrumentCounterHtml(r, i) : ''}
+          ${isLoanKitCategory(r.book?.category) && ['ready', 'mine', 'done'].includes(r.state) ? instrumentCounterHtml(r, i) : ''}
           ${r.holdBookId ? `<button onclick="counterJoinHold(${i})" style="touch-action: manipulation;" class="mt-2 bg-[#F28C28] text-white rounded-full px-4 py-2 text-xs font-bold active:scale-[0.98] transition">Mettre ${escapeHtml(name)} en file d'attente</button>` : ''}
         </div>
         ${removable ? `<button onclick="removeCounterItem(${i})" aria-label="Retirer de la liste" title="Retirer de la liste" class="shrink-0 w-7 h-7 rounded-full text-ink/35 hover:text-ink hover:bg-mango-50 text-sm">✕</button>` : ''}
@@ -6279,6 +6343,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     const { data, error } = await supabase.rpc('scan_lookup', { p_barcode: barcode });
     if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
+    if (data?.category === 'Matériel') await loadMaterielSettings(true);
     renderLoanResult(barcode, data);
   };
 
@@ -6304,8 +6369,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (info.status === 'borrowed') {
       actionHtml = `
         <p class="text-xs text-ink/55 mt-3">Emprunté par <span class="font-semibold text-ink">${escapeHtml(info.borrower_name || '')}</span>${info.due_at ? ` · à rendre avant le ${formatDateShortAdmin(info.due_at)}` : ''}</p>
-        ${info.category === 'Instruments' ? returnAccessoriesHtml(info) : ''}
-        <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">État ${info.category === 'Instruments' ? "de l'instrument" : 'du livre'} au retour</label>
+        ${isLoanKitCategory(info.category) ? returnAccessoriesHtml(info) : ''}
+        ${info.category === 'Matériel' ? returnChecklistHtml() : ''}
+        <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">État ${info.category === 'Instruments' ? "de l'instrument" : info.category === 'Matériel' ? "de l'appareil" : 'du livre'} au retour</label>
         <select id="return-condition-input" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
           <option value="bon" selected>Bon état</option>
           <option value="mauvais">Mauvais état</option>
@@ -6345,11 +6411,22 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       <div class="flex flex-col gap-1.5">${list.map(a => `<label class="flex items-center gap-2 text-sm text-ink"><input type="checkbox" class="return-accessory accent-mango-600 w-4 h-4" value="${escapeHtml(a)}" ${missing.has(a) ? '' : 'checked'}>${escapeHtml(a)}${missing.has(a) ? ' <span class="text-[11px] text-orange-700">déjà manquant avant ce prêt</span>' : ''}</label>`).join('')}</div>`;
   }
 
+  // Matériel : liste à vérifier au retour (Réglages), tout est décoché au départ.
+  function returnChecklistHtml() {
+    const list = accessoryList(materielSettings?.materiel_return_checklist);
+    const deposit = materielSettings?.materiel_deposit_cents;
+    if (!list.length && !deposit) return '';
+    return `${list.length ? `<p class="text-xs font-semibold text-ink/60 mt-3 mb-1">À vérifier avant de le ranger</p>
+      <div class="flex flex-col gap-1.5">${list.map(a => `<label class="flex items-center gap-2 text-sm text-ink"><input type="checkbox" class="return-check accent-mango-600 w-4 h-4" value="${escapeHtml(a)}">${escapeHtml(a)}</label>`).join('')}</div>` : ''}
+      ${deposit ? `<p class="text-xs font-semibold text-hibiscus-700 mt-2">Pense à rendre la caution (${eurosCourt(deposit)}) si tout est en ordre.</p>` : ''}`;
+  }
+
   window.doLoanReturn = async function (barcode) {
     const conditionInput = document.getElementById('return-condition-input');
     const condition = conditionInput ? conditionInput.value : null;
     const accessoryBoxes = [...document.querySelectorAll('#loan-result .return-accessory')];
     const missingNow = accessoryBoxes.filter(c => !c.checked).map(c => c.value);
+    const todoNow = [...document.querySelectorAll('#loan-result .return-check')].filter(c => !c.checked).map(c => c.value);
 
     const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode, p_condition: condition });
     if (error) { alert('Erreur : ' + frError(error)); return; }
@@ -6366,6 +6443,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ${data.shelf_location ? `<p class="text-xs text-ink/60 mt-1">À ranger en ${escapeHtml(data.shelf_location)}.</p>` : ''}
         ${data.user_flagged ? `<p class="text-xs text-red-600 font-semibold mt-1">Usager passé « fiché » suite à ce retour.</p>` : ''}
         ${missingNow.length ? `<p class="text-xs text-orange-700 font-semibold mt-1">Manquant : ${escapeHtml(missingNow.join(', '))}</p>` : ''}
+        ${todoNow.length ? `<p class="text-xs text-orange-700 font-semibold mt-1">À faire avant de le reprêter : ${escapeHtml(todoNow.join(', '))}</p>` : ''}
         ${condition === 'mauvais' || missingNow.length ? `<button onclick="declareDamaged('${escapeJsAttr(barcode)}')" class="mt-2 text-xs font-semibold bg-white border border-red-200 text-red-700 rounded-full px-3 py-1.5">Facturer le document abîmé</button>` : ''}
         <p id="loan-hold-alert" class="hidden text-xs font-bold text-hibiscus-700 mt-2"></p>
       </div>`;
@@ -7296,6 +7374,11 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const { data: copy } = await supabase.from('book_copies').select('books ( category, accessories )').eq('barcode', barcode).maybeSingle();
     if (copy?.books?.category === 'Instruments'
       && !await confirmDialog(`Instrument : as-tu vérifié son état et ses accessoires ?\n\n${accessoryList(copy.books.accessories).join(', ') || 'Aucun accessoire sur la fiche.'}\n\nS'il manque quelque chose, passe par Comptoir › Retour pour le noter.`)) return;
+    if (copy?.books?.category === 'Matériel') {
+      const m = await loadMaterielSettings(true);
+      const points = [...accessoryList(copy.books.accessories), ...accessoryList(m?.materiel_return_checklist)];
+      if (!await confirmDialog(`Matériel : as-tu tout vérifié ?\n\n${points.join(', ') || 'Rien à vérifier sur la fiche.'}\n\nS'il manque quelque chose, passe par Comptoir › Retour pour le noter.`)) return;
+    }
     const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode, p_condition: null });
     if (error) { alert('Erreur : ' + frError(error)); return; }
     if (!data.ok) { alert(data.message); return; }
@@ -8712,6 +8795,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       document.getElementById('limit-instruments').value = commune.max_loans_instruments ?? 1;
       document.getElementById('instrument-days').value = commune.instrument_loan_duration_days ?? 28;
       document.getElementById('instrument-charter').value = commune.instrument_charter || '';
+      document.getElementById('limit-materiel').value = commune.max_loans_materiel ?? 1;
+      document.getElementById('materiel-days').value = commune.materiel_loan_duration_days ?? 21;
+      document.getElementById('materiel-deposit').value = commune.materiel_deposit_cents ? Math.round(commune.materiel_deposit_cents / 100) : 0;
+      document.getElementById('materiel-min-age').value = String(commune.materiel_min_age ?? 0);
+      document.getElementById('materiel-checklist').value = commune.materiel_return_checklist ?? '';
+      document.getElementById('materiel-charter').value = commune.materiel_charter || '';
       document.getElementById('family-limit-general').value = commune.family_max_general ?? 10;
       document.getElementById('family-limit-jeunesse').value = commune.family_max_jeunesse ?? 10;
       if (commune.lost_default_fee_cents != null) {
@@ -8761,6 +8850,18 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       p_charter: document.getElementById('instrument-charter').value,
     });
     if (instrumentsError) { alert('Erreur : ' + frError(instrumentsError)); return; }
+    const materielMax = document.getElementById('limit-materiel').value;
+    const { error: materielError } = await supabase.rpc('update_commune_materiel', {
+      p_commune_id: myCommuneId,
+      p_max: materielMax === '' ? 1 : Number(materielMax),
+      p_days: Number(document.getElementById('materiel-days').value || 21),
+      p_deposit_cents: Math.round(Number(document.getElementById('materiel-deposit').value || 0) * 100),
+      p_min_age: Number(document.getElementById('materiel-min-age').value || 0),
+      p_checklist: cleanAccessories(document.getElementById('materiel-checklist').value) || '',
+      p_charter: document.getElementById('materiel-charter').value,
+    });
+    if (materielError) { alert('Erreur : ' + frError(materielError)); return; }
+    materielSettings = null;
     // Plafond global de la carte famille (encore utilisé par l'affichage du profil).
     await supabase.rpc('update_commune_family_settings', {
       p_commune_id: myCommuneId,
@@ -10252,8 +10353,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ${bookFieldRow('Tome n°', 'bd-series-number', b.series_number != null ? String(b.series_number).replace('.', ',') : '')}
         ${bookFieldRow('Joueurs (jeux)', 'bd-players', b.players)}
         ${bookFieldRow('Durée de partie (jeux)', 'bd-play-duration', b.play_duration)}
-        ${b.category === 'Instruments' ? `<div class="col-span-2">${bookFieldRow('Accessoires (un par ligne)', 'bd-accessories', b.accessories, { textarea: true })}</div>` : ''}
-        ${bookFieldRow(b.category === 'Instruments' ? 'Valeur de remplacement (€)' : 'Prix (€)', 'bd-price', b.price_cents != null ? (b.price_cents / 100).toFixed(2).replace('.', ',') : '')}
+        ${isLoanKitCategory(b.category) ? `<div class="col-span-2">${bookFieldRow('Accessoires (un par ligne)', 'bd-accessories', b.accessories, { textarea: true })}</div>` : ''}
+        ${bookFieldRow(isLoanKitCategory(b.category) ? 'Valeur de remplacement (€)' : 'Prix (€)', 'bd-price', b.price_cents != null ? (b.price_cents / 100).toFixed(2).replace('.', ',') : '')}
         <div>
           ${bookFieldRow('Indice Dewey', 'bd-dewey', b.dewey)}
           ${deweyHintHtml(b.dewey, 'bd-dewey-label')}

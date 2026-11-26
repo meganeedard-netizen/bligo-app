@@ -436,6 +436,21 @@
     return documentTypeKinds[b.format] || 'livre';
   }
 
+  // Matériel (liseuses, tablettes…) : conditions choisies par la médiathèque.
+  async function afficherConditionsMateriel(b) {
+    const { data: c } = await supabase.from('communes')
+      .select('materiel_loan_duration_days, materiel_deposit_cents, materiel_min_age').eq('id', b.commune_id).maybeSingle();
+    const el = document.getElementById('modal-materiel-info');
+    if (!el || !c) return;
+    const parts = ['📋 À retirer à l\'accueil, avec une fiche de prêt à signer'];
+    if (c.materiel_loan_duration_days) parts.push(`prêté ${c.materiel_loan_duration_days} jours`);
+    if (c.materiel_deposit_cents) parts.push(`caution de ${(c.materiel_deposit_cents / 100).toFixed(2).replace('.', ',').replace(',00', '')} €, rendue au retour`);
+    if (c.materiel_min_age >= 18) parts.push('réservé aux adultes');
+    else if (c.materiel_min_age > 0) parts.push(`à partir de ${c.materiel_min_age} ans`);
+    el.textContent = parts.join(' · ') + '.';
+    el.classList.remove('hidden');
+  }
+
   function docType(b) {
     if (b.category === 'Jeux vidéo') return 'jeu_video';
     if (b.category === 'Jeux') return 'jeu';
@@ -1128,7 +1143,8 @@
       ${b.summary ? `<p class="text-sm text-ink/70 leading-relaxed mt-4">${b.summary}</p>` : `<p class="text-sm text-ink/40 italic mt-4">Résumé non disponible pour ce titre.</p>`}
       ${contentsBlockHtml(b)}
       ${(b.players || b.play_duration) ? `<p class="text-[12px] text-ink/60 mt-2">🎲 ${[b.players, b.play_duration, b.age_range].filter(Boolean).join(' · ')}</p>` : ''}
-      ${(b.category === 'Instruments' && b.accessories) ? `<p class="text-[12px] text-ink/60 mt-2">🎒 Prêté avec : ${escapeHtml(b.accessories.split('\n').join(', '))}</p>` : ''}
+      ${((b.category === 'Instruments' || b.category === 'Matériel') && b.accessories) ? `<p class="text-[12px] text-ink/60 mt-2">${b.category === 'Matériel' ? '🔌' : '🎒'} Prêté avec : ${escapeHtml(b.accessories.split('\n').join(', '))}</p>` : ''}
+      ${b.category === 'Matériel' ? (afficherConditionsMateriel(b), '<p id="modal-materiel-info" class="text-[12px] text-ink/65 bg-mango-50 rounded-lg px-3 py-2 mt-3 hidden"></p>') : ''}
       ${(b.page_count || b.legal_deposit) ? `<p class="text-[11px] text-ink/40 mt-2">${[b.page_count ? `${b.page_count} pages` : '', b.legal_deposit ? `Dépôt légal ${String(b.legal_deposit).replace(/^DL\s*/i, '')}` : ''].filter(Boolean).join(' · ')}</p>` : ''}
       ${isBdpBook(b) ? `<p class="text-[12px] text-ink/65 bg-mango-50 rounded-lg px-3 py-2 mt-3">🚐 Ce document vient de la bibliothèque départementale. Réserve-le ici : il arrive dans ta Médiathèque Municipale avec la navette, et tu es prévenu dès qu'il est là.</p>` : ''}
       ${btnHtml}
