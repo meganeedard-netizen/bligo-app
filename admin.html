@@ -10380,13 +10380,45 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     return M.map((row, i) => row[8] / row[i]);
   }
 
+  // Proportions réelles du document d'après les 4 coins (moyenne des côtés
+  // opposés). Un album carré, une BD ou une boîte de jeu ne sont plus étirés
+  // au format d'un roman (26/11/2026 : déformer la couverture, c'est modifier
+  // l'œuvre). Proche du 2:3 (±0,04), on garde le plein cadre.
+  function coverPhotoSize(corners) {
+    const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+    const [tl, tr, br, bl] = corners;
+    const r = (dist(tl, tr) + dist(bl, br)) / Math.max(1, dist(tl, bl) + dist(tr, br));
+    if (!isFinite(r) || Math.abs(r - 2 / 3) <= 0.04) return [600, 900];
+    return r > 2 / 3 ? [600, Math.round(600 / r)] : [Math.round(900 * r), 900];
+  }
+
+  // Cadre 600x900 : la couverture entière au centre, sur une version très
+  // floue et un peu assombrie d'elle-même (même rendu que prepare-cover).
+  function drawCoverOnBlur(ctx, inner) {
+    const W = 600, H = 900, w = inner.width, h = inner.height;
+    if (w === W && h === H) { ctx.drawImage(inner, 0, 0); return; }
+    const s = Math.max(W / w, H / h);
+    const tiny = document.createElement('canvas');
+    tiny.width = 20; tiny.height = 30;
+    const t = tiny.getContext('2d');
+    t.imageSmoothingQuality = 'high';
+    t.drawImage(inner, (W - w * s) / 2 / W * 20, (H - h * s) / 2 / H * 30, w * s / W * 20, h * s / H * 30);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(tiny, 0, 0, W, H);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(inner, Math.round((W - w) / 2), Math.round((H - h) / 2));
+  }
+
   window.coverPhotoApplyCrop = function () {
     const src = coverPhoto.src;
-    const W = 600, H = 900;
+    const [W, H] = coverPhotoSize(coverPhoto.corners);
     const sd = src.getContext('2d').getImageData(0, 0, src.width, src.height).data;
     const out = document.getElementById('cp-result-canvas');
     const ctx = out.getContext('2d');
-    const img = ctx.createImageData(W, H);
+    const inner = document.createElement('canvas');
+    inner.width = W; inner.height = H;
+    const img = inner.getContext('2d').createImageData(W, H);
     const [a, b, c, d, e, f, g, h] = homography(coverPhoto.corners, [[0, 0], [W, 0], [W, H], [0, H]]);
     const sw = src.width, sh = src.height;
     for (let v = 0; v < H; v++) for (let u = 0; u < W; u++) {
@@ -10406,7 +10438,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     box.innerHTML = warnings.length ? warnings.join('<br>') + '<br><b>Tu peux reprendre la photo, ou enregistrer quand même.</b>' : '';
     box.classList.toggle('hidden', !warnings.length);
     enhanceCoverPhoto(img);
-    ctx.putImageData(img, 0, 0);
+    inner.getContext('2d').putImageData(img, 0, 0);
+    coverPhoto.inner = inner;
+    ctx.clearRect(0, 0, out.width, out.height);
+    drawCoverOnBlur(ctx, inner);
     coverPhotoShowStep('preview');
     checkCoverPhotoWithAI(warnings);
   };
@@ -10425,7 +10460,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   };
   async function checkCoverPhotoWithAI(localWarnings) {
     const box = document.getElementById('cp-warnings');
-    const canvas = document.getElementById('cp-result-canvas');
+    // La couverture seule, sans le fond flou (sinon l'IA dirait « le fond se voit »).
+    const canvas = coverPhoto.inner || document.getElementById('cp-result-canvas');
     const token = (coverPhoto.aiCheck = Symbol());
     const ai = await readBookPhotoWithAI('couverture', canvas.toDataURL('image/jpeg', 0.85).split(',')[1], coverPhotoTitle());
     if (coverPhoto.aiCheck !== token || !ai || ai.acceptable) return;

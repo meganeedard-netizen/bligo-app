@@ -11,7 +11,8 @@
 //    Library et Google Books en lecture directe ;
 // 2. écarte l'image « non disponible » de Google et les images trop petites ;
 // 3. retire les bandes de couleur unie autour (image carrée avec bandes
-//    blanches, cadre) et met l'image en 600x900 plein cadre ;
+//    blanches, cadre) et met l'image en 600x900 : pleine si son format est
+//    celui d'un roman, sinon entière au centre sur un fond flou d'elle-même ;
 // 4. l'enregistre dans le bucket book-covers et renvoie son adresse publique,
 //    avec la couleur / noir et blanc (même règle que detect-cover-color).
 //
@@ -178,18 +179,50 @@ function trimBands(img: Image): Image {
   return img.clone().crop(left, top, w - left - right, h - top - bottom);
 }
 
-// Format 2:3 plein cadre : légère mise à l'échelle si le rapport est proche
-// (invisible), sinon recadrage centré.
+// Fond flou : la couverture agrandie pour remplir le cadre, réduite à une
+// grille 20x30 (moyenne des pixels), puis réagrandie en bilinéaire et un peu
+// assombrie. ImageScript n'a ni flou ni redimensionnement lissé.
+function blurredBackground(img: Image): Image {
+  const GW = 20, GH = 30, s = Math.max(OUT_W / img.width, OUT_H / img.height);
+  const ox = (img.width * s - OUT_W) / 2, oy = (img.height * s - OUT_H) / 2;
+  const grid = new Float32Array(GW * GH * 3), cnt = new Float32Array(GW * GH);
+  const step = Math.max(1, Math.floor(Math.min(img.width, img.height) / 120));
+  for (let y = 0; y < img.height; y += step) for (let x = 0; x < img.width; x += step) {
+    const gx = Math.floor((x * s - ox) / OUT_W * GW), gy = Math.floor((y * s - oy) / OUT_H * GH);
+    if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) continue;
+    const i = (y * img.width + x) * 4, g = gy * GW + gx;
+    grid[g * 3] += img.bitmap[i]; grid[g * 3 + 1] += img.bitmap[i + 1]; grid[g * 3 + 2] += img.bitmap[i + 2]; cnt[g]++;
+  }
+  for (let g = 0; g < GW * GH; g++) for (let k = 0; k < 3; k++) grid[g * 3 + k] /= Math.max(1, cnt[g]);
+  const bg = new Image(OUT_W, OUT_H);
+  for (let y = 0; y < OUT_H; y++) {
+    const fy = Math.min(GH - 1, Math.max(0, (y + 0.5) / OUT_H * GH - 0.5)), y0 = Math.floor(fy), y1 = Math.min(GH - 1, y0 + 1), ty = fy - y0;
+    for (let x = 0; x < OUT_W; x++) {
+      const fx = Math.min(GW - 1, Math.max(0, (x + 0.5) / OUT_W * GW - 0.5)), x0 = Math.floor(fx), x1 = Math.min(GW - 1, x0 + 1), tx = fx - x0;
+      const o = (y * OUT_W + x) * 4;
+      for (let k = 0; k < 3; k++) {
+        const v = (grid[(y0 * GW + x0) * 3 + k] * (1 - tx) + grid[(y0 * GW + x1) * 3 + k] * tx) * (1 - ty)
+          + (grid[(y1 * GW + x0) * 3 + k] * (1 - tx) + grid[(y1 * GW + x1) * 3 + k] * tx) * ty;
+        bg.bitmap[o + k] = Math.round(v * 0.82);
+      }
+      bg.bitmap[o + 3] = 255;
+    }
+  }
+  return bg;
+}
+
+// Format 2:3 sans déformer ni couper la couverture (26/11/2026) : si son
+// rapport est très proche (±0,03, invisible), elle remplit le cadre ; sinon
+// elle est posée entière au centre, sur une version floue d'elle-même.
+// Avant : étirée jusqu'à 12 %, ou rognée sur les côtés (albums carrés, BD).
 function toBookFormat(img: Image): Image {
   const target = OUT_W / OUT_H;
   const ratio = img.width / img.height;
-  if (Math.abs(ratio - target) <= 0.08) return img.clone().resize(OUT_W, OUT_H);
-  if (ratio > target) {
-    const cw = Math.round(img.height * target);
-    return img.clone().crop(Math.round((img.width - cw) / 2), 0, cw, img.height).resize(OUT_W, OUT_H);
-  }
-  const ch = Math.round(img.width / target);
-  return img.clone().crop(0, Math.round((img.height - ch) / 2), img.width, ch).resize(OUT_W, OUT_H);
+  if (Math.abs(ratio - target) <= 0.03) return img.clone().resize(OUT_W, OUT_H);
+  const s = Math.min(OUT_W / img.width, OUT_H / img.height);
+  const w = Math.max(1, Math.round(img.width * s)), h = Math.max(1, Math.round(img.height * s));
+  const inner = img.clone().resize(w, h);
+  return blurredBackground(img).composite(inner, Math.round((OUT_W - w) / 2), Math.round((OUT_H - h) / 2));
 }
 
 function coverColor(img: Image): string {
