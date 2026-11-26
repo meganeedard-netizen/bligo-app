@@ -881,7 +881,14 @@
       }
       filtered = [...exacts, ...approchants];
     } else {
-      filtered = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      // « Tous » : documents mélangés (26/11/2026), sinon les derniers ajoutés
+      // (films, jeux…) occupaient tout le haut. Ordre fixe d'une visite à
+      // l'autre (mélange par numéro), pour ne pas déstabiliser l'usager.
+      // Dans une catégorie, les plus récents restent en premier.
+      const melange = id => (Math.imul(id, 2654435761) >>> 0) % 100003;
+      filtered = activeCategory
+        ? [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        : [...filtered].sort((a, b) => melange(a.id) - melange(b.id));
     }
 
     if (filtered.length === 0) {
