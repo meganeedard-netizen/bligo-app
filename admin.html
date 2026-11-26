@@ -1869,12 +1869,12 @@
   const CATEGORIES = [
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
-    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Instruments', 'Autres',
+    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Jeux vidéo', 'Films', 'Instruments', 'Autres',
   ];
   // Nom affiché d'une catégorie (16/10/2026) : « BD » s'affiche « BD & Mangas »
   // et « Thriller » « Policier & Thriller » ; la valeur enregistrée ne change
   // pas (contrainte en base, règles de cote).
-  const CATEGORY_DISPLAY = { 'BD': 'BD & Mangas', 'Thriller': 'Policier & Thriller', 'Fantasy': 'Science-Fiction & Fantasy', 'Poésie & théâtre': 'Poésie & Théâtre', 'Sciences & nature': 'Sciences & Nature', 'Histoire': 'Histoire & Patrimoine', 'Culture': 'Arts & Culture', 'Sports & loisirs': 'Sports & Loisirs', 'Bien-être': 'Santé & Bien-être', 'Maison': 'Maison & Jardin' };
+  const CATEGORY_DISPLAY = { 'BD': 'BD & Mangas', 'Thriller': 'Policier & Thriller', 'Fantasy': 'Science-Fiction & Fantasy', 'Poésie & théâtre': 'Poésie & Théâtre', 'Sciences & nature': 'Sciences & Nature', 'Histoire': 'Histoire & Patrimoine', 'Culture': 'Arts & Culture', 'Sports & loisirs': 'Sports & Loisirs', 'Bien-être': 'Santé & Bien-être', 'Maison': 'Maison & Jardin', 'Jeux': 'Jeux de société', 'Films': 'Films & Séries' };
   const categoryLabel = c => CATEGORY_DISPLAY[c] || c;
 
   const CATEGORY_KEYWORDS = [
@@ -1885,6 +1885,8 @@
     // Auteurs et documents antillais/caribéens : vérifié avant "Roman" pour
     // qu'un roman antillais parte bien en Fonds local, pas en Roman générique.
     ['Fonds local', ['antill', 'caribb', 'creole', 'créole', 'martinique', 'guadeloupe', 'haïti', 'haiti', 'guyane']],
+    ['Jeux vidéo', ['jeu vidéo', 'jeux vidéo', 'video game', 'nintendo switch', 'playstation', 'xbox']],
+    ['Films', ['film', 'dvd', 'blu-ray', 'motion picture', 'série télévisée']],
     ['Jeux', ['jeu de société', 'jeux de société', 'board game', 'jeu de cartes', 'jeu de plateau', 'jeu coopératif']],
     ['Poésie & théâtre', ['poésie', 'poesie', 'poetry', 'poèmes', 'poemes', 'théâtre', 'theatre', 'drama']],
     ['Sports & loisirs', ['sport', 'football', 'voile', 'course de bateaux', 'randonnée', 'recreation', 'loisirs']],
@@ -1941,6 +1943,8 @@
       'Jeunesse': { prefix: 'J', mode: 'auto' },
       'BD': { prefix: 'BD', mode: 'lettres' },
       'Jeux': { prefix: 'JEU', mode: 'lettres' },
+      'Jeux vidéo': { prefix: 'JV', mode: 'lettres' },
+      'Films': { prefix: 'DVD', mode: 'lettres' },
       'Instruments': { prefix: 'INS', mode: 'lettres' },
     },
   };
@@ -3639,7 +3643,7 @@
         illustrator: bnf.illustrator,
         authorKey: bnf.authorLastName,
         format,
-        category: forcedGenre || ((isVideo || isSound || isScore) ? 'Culture' : categorizeDocument(bnf.rawCategoryText, bnf.title, bnf.dewey)),
+        category: forcedGenre || (isVideo ? 'Films' : (isSound || isScore) ? 'Culture' : categorizeDocument(bnf.rawCategoryText, bnf.title, bnf.dewey)),
         isbn: barcode,
       };
     }
@@ -3769,7 +3773,7 @@
           translator: bnf.translator, illustrator: bnf.illustrator,
           authorKey: bnf.authorLastName, price_cents: bnf.price_cents, age_range: bnf.age_range,
           format,
-          category: forcedGenre || ((isVideo || isSound || isScore) ? 'Culture' : categorizeDocument(bnf.rawCategoryText, bnf.title, bnf.dewey)),
+          category: forcedGenre || (isVideo ? 'Films' : (isSound || isScore) ? 'Culture' : categorizeDocument(bnf.rawCategoryText, bnf.title, bnf.dewey)),
           isbn: bnf.isbn,
           copyBarcodes: copies.map(c => c.barcode).filter(Boolean),
         };
@@ -3985,10 +3989,12 @@
     }
     // La cote suit la catégorie, l'indice Dewey, le type et l'auteur tant que
     // l'agent ne l'a pas retouchée lui-même.
-    if (field === 'format' && /^jeu/i.test(value || '') && draft.category !== 'Jeux') {
-      draft.category = 'Jeux';
+    // Le type choisit la catégorie : jeu vidéo, DVD, jeu de société (26/11/2026).
+    const catFromFormat = field === 'format' ? formatCategory(value) : null;
+    if (catFromFormat && draft.category !== catFromFormat) {
+      draft.category = catFromFormat;
       const catSelect = document.getElementById(`draft-category-${localId}`);
-      if (catSelect) catSelect.value = 'Jeux';
+      if (catSelect) catSelect.value = catFromFormat;
     }
     if (field === 'format' && /^instrument/i.test(value || '') && draft.category !== 'Instruments') {
       draft.category = 'Instruments';
@@ -4148,7 +4154,16 @@
   // (recherche approchée : « dixit » trouve Dixit) : joueurs, durée, âge,
   // éditeur, auteur, image. Ce qu'elle ne connaît pas se saisit à la main.
   function isGameDraft(d) {
-    return /^jeu/i.test(d.format || '') || d.category === 'Jeux';
+    return formatCategory(d.format) === 'Jeux' || d.category === 'Jeux';
+  }
+
+  // Catégorie imposée par le type de document (26/11/2026).
+  function formatCategory(format) {
+    const f = (format || '').toLowerCase();
+    if (/^jeu.*vid[eé]o/.test(f)) return 'Jeux vidéo';
+    if (/^jeu/.test(f)) return 'Jeux';
+    if (/^(dvd|blu)/.test(f)) return 'Films';
+    return null;
   }
 
   function GAME_FIELDS_MANUAL(d) {
@@ -4256,7 +4271,7 @@
       if (game[f] && !(draft[f] || '').trim()) { draft[f] = game[f]; filled.push(f); }
     }
     if (game.title && game.title.toLowerCase() !== name.toLowerCase()) draft.title = game.title;
-    draft.format = FORMAT_OPTIONS.find(f => /^jeu/i.test(f)) || draft.format;
+    draft.format = FORMAT_OPTIONS.find(f => formatCategory(f) === 'Jeux') || draft.format;
     draft.category = 'Jeux';
     renderDraftBooks();
     const after = document.getElementById(`game-wikidata-status-${localId}`);

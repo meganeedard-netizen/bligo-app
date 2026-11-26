@@ -134,7 +134,7 @@
   const CATEGORIES = [
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
-    'Bien-être', 'Maison', 'Documentaire', 'Jeux',
+    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Jeux vidéo', 'Films',
   ];
   const PACES = [{ value: 1, label: '1' }, { value: 2, label: '2' }, { value: 3, label: '3' }, { value: 4, label: '4 et +' }];
 
@@ -148,7 +148,7 @@
 
   function renderChoices() {
     document.getElementById('categories').innerHTML = CATEGORIES.map(c =>
-      `<button type="button" data-cat="${c}" class="${chip(selectedCategories.has(c))}">${({ BD: 'BD & Mangas', Thriller: 'Policier & Thriller', 'Fantasy': 'Science-Fiction & Fantasy', 'Poésie & théâtre': 'Poésie & Théâtre', 'Sciences & nature': 'Sciences & Nature', 'Histoire': 'Histoire & Patrimoine', 'Culture': 'Arts & Culture', 'Sports & loisirs': 'Sports & Loisirs', 'Bien-être': 'Santé & Bien-être', 'Maison': 'Maison & Jardin' })[c] || c}</button>`).join('');
+      `<button type="button" data-cat="${c}" class="${chip(selectedCategories.has(c))}">${({ BD: 'BD & Mangas', Thriller: 'Policier & Thriller', 'Fantasy': 'Science-Fiction & Fantasy', 'Poésie & théâtre': 'Poésie & Théâtre', 'Sciences & nature': 'Sciences & Nature', 'Histoire': 'Histoire & Patrimoine', 'Culture': 'Arts & Culture', 'Sports & loisirs': 'Sports & Loisirs', 'Bien-être': 'Santé & Bien-être', 'Maison': 'Maison & Jardin', 'Jeux': 'Jeux de société', 'Films': 'Films & Séries' })[c] || c}</button>`).join('');
     document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => {
       const c = b.dataset.cat;
       selectedCategories.has(c) ? selectedCategories.delete(c) : selectedCategories.add(c);

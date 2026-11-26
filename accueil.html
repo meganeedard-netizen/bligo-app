@@ -101,7 +101,7 @@
   <section class="mb-10">
     <span id="catalogue-status" class="text-xs text-ink/40"></span>
     <div id="catalogue-switch" class="hidden flex items-center mb-2"></div>
-    <div id="type-filters" class="hidden flex gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-1"></div>
+    <div id="type-filters" class="hidden flex gap-5 overflow-x-auto no-scrollbar border-b border-ink/5 mb-3 px-0.5"></div>
     <div class="relative -mx-5 mb-2">
       <div id="category-filters" class="flex gap-2.5 overflow-x-auto no-scrollbar px-5 pt-1 pb-4 scroll-px-5"></div>
     </div>
@@ -374,8 +374,10 @@
   const CATEGORIES = [
     'Fonds local', 'Roman', 'Thriller', 'Fantasy', 'Poésie & théâtre', 'Jeunesse', 'BD',
     'Sciences & nature', 'Histoire', 'Voyages', 'Culture', 'Sports & loisirs',
-    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Instruments', 'Autres'
+    'Bien-être', 'Maison', 'Documentaire', 'Jeux', 'Jeux vidéo', 'Films', 'Instruments', 'Autres'
   ];
+  // Tuiles affichées seulement si la médiathèque prête ce type de document.
+  const CATEGORIES_SI_PRESENTES = new Set(['Jeux vidéo', 'Films', 'Instruments']);
 
   // Sentinelle distincte des vraies catégories : sélection faite par la
   // médiathèque (books.is_staff_pick), pas un genre du livre.
@@ -397,6 +399,9 @@
     'Culture': 'img/categories/v2/culture.png',
     'Autres': 'img/categories/v2/autres.png',
     'Jeux': 'img/categories/v2/jeux.png',
+    // Icônes provisoires (26/11/2026) en attendant celles de Mégane.
+    'Jeux vidéo': 'img/categories/v2/jeux.png',
+    'Films': 'img/categories/v2/culture.png',
     'Instruments': 'img/categories/v2/instruments.png',
     'Documentaire': 'img/categories/v2/documents.png',
     'Sciences & nature': 'img/categories/v2/sciences.png',
@@ -409,9 +414,12 @@
   // Filtre par type de document (07/10/2026) : regroupe books.format selon
   // le « kind » de la table document_types. Affiché seulement si la
   // médiathèque a au moins deux types différents au catalogue.
+  // 26/11/2026 : les jeux de société, jeux vidéo et instruments ne sont plus
+  // noyés dans « Autres supports » ; les DVD s'appellent « Films ».
   const TYPE_GROUPS = [
-    ['livre', 'Livres'], ['livre_audio', 'Livres audio'], ['cd', 'CD'],
-    ['dvd', 'DVD'], ['periodique', 'Revues'], ['autre', 'Autres supports'],
+    ['livre', 'Livres'], ['livre_audio', 'Livres audio'], ['cd', 'Musique'],
+    ['dvd', 'Films'], ['jeu_video', 'Jeux vidéo'], ['jeu', 'Jeux de société'],
+    ['periodique', 'Revues'], ['instrument', 'Instruments'], ['autre', 'Autres'],
   ];
   let activeType = null;
   let documentTypeKinds = {};
@@ -420,9 +428,17 @@
     return documentTypeKinds[b.format] || 'livre';
   }
 
+  function docType(b) {
+    if (b.category === 'Jeux vidéo') return 'jeu_video';
+    if (b.category === 'Jeux') return 'jeu';
+    if (b.category === 'Instruments') return 'instrument';
+    if (b.category === 'Films') return 'dvd';
+    return bookKind(b);
+  }
+
   function renderTypeFilters() {
     const el = document.getElementById('type-filters');
-    const present = new Set(books.map(bookKind));
+    const present = new Set(books.map(docType));
     const groups = TYPE_GROUPS.filter(([kind]) => present.has(kind));
     if (groups.length < 2) {
       el.classList.add('hidden');
@@ -430,13 +446,17 @@
       return;
     }
     el.classList.remove('hidden');
-    el.innerHTML = [[null, 'Tout'], ...groups].map(([kind, label]) => `
-      <button data-kind="${kind ?? ''}" class="type-chip shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition ${
-        activeType === kind ? 'bg-brand text-white border-brand' : 'bg-white text-ink/60 border-mango-100'
+    // Onglets texte soulignés (26/11/2026, Mégane trouvait les pastilles
+    // orange trop lourdes) : discret au repos, trait fin sous le type choisi.
+    // Pas d'onglet « Tout » : la tuile « Tous » existe déjà. Toucher l'onglet
+    // choisi le désélectionne.
+    el.innerHTML = groups.map(([kind, label]) => `
+      <button data-kind="${kind ?? ''}" class="type-chip shrink-0 text-[13px] pb-1.5 border-b-2 transition ${
+        activeType === kind ? 'text-ink font-bold border-brand' : 'text-ink/45 font-medium border-transparent'
       }">${label}</button>`).join('');
     el.querySelectorAll('.type-chip').forEach(btn => {
       btn.addEventListener('click', () => {
-        activeType = btn.dataset.kind || null;
+        activeType = activeType === btn.dataset.kind ? null : (btn.dataset.kind || null);
         renderTypeFilters();
         renderBooks();
       });
@@ -454,10 +474,31 @@
     return `<svg viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>`;
   }
 
+  // Forme réelle du document quand il n'a pas d'image (26/11/2026) : boîte de
+  // jeu et CD carrés, boîtier DVD, boîtier de jeu vidéo. Un livre ou un jeu
+  // Switch (proche du format d'un livre) garde le cadre plein.
+  function docRatio(b) {
+    const f = (b.format || '').toLowerCase();
+    if (b.category === 'Jeux vidéo' || /vid[eé]o/.test(f) && /^jeu/.test(f)) return /switch/i.test(b.platform || '') ? null : 0.79;
+    if (b.category === 'Jeux' || /^jeu/.test(f)) return 1;
+    if (b.category === 'Films' || /^(dvd|blu)/.test(f)) return 0.71;
+    if (bookKind(b) === 'cd') return 1;
+    return null;
+  }
+
+  // Initiale sur dégradé, à la forme du document (cls donne la taille du cadre 2:3).
+  function placeholderHtml(b, cls, texte = 'text-xl', id = '') {
+    const initiale = escapeHtml(b.cover_initial || b.title[0]);
+    const idAttr = id ? ` id="${id}"` : '';
+    const r = docRatio(b);
+    if (!r) return `<div${idAttr} class="${cls} bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold ${texte} shadow-sm">${initiale}</div>`;
+    const taille = r > 2 / 3 ? 'width:100%' : 'height:100%';
+    return `<div${idAttr} class="${cls} flex items-center justify-center"><div style="aspect-ratio:${r};${taille}" class="rounded-[inherit] bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold ${texte} shadow-sm">${initiale}</div></div>`;
+  }
+
   function coverHtml(b, cls) {
-    return b.cover_url
-      ? `<img src="${b.cover_url}" alt="" class="${cls} object-cover bg-mango-50 shadow-sm">`
-      : `<div class="${cls} bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-xl shadow-sm">${b.cover_initial || b.title[0]}</div>`;
+    if (b.cover_url) return `<img src="${b.cover_url}" alt="" class="${cls} object-cover bg-mango-50 shadow-sm">`;
+    return placeholderHtml(b, cls);
   }
 
   // ==================== CATALOGUE (fonds officiel + hors condition) ====================
@@ -478,6 +519,8 @@
     'Sports & loisirs': 'Sports & Loisirs',
     'Bien-être': 'Santé & Bien-être',
     'Maison': 'Maison & Jardin',
+    'Jeux': 'Jeux de société',
+    'Films': 'Films & Séries',
   };
 
   // Catégorie du livre en petit texte orange au-dessus du titre (16/10/2026,
@@ -496,8 +539,8 @@
     const chips = [
       { label: 'Tous', value: null },
       { label: 'Coups de cœur', value: STAFF_PICK_FILTER },
-      // Instruments : tuile visible seulement si la médiathèque en prête.
-      ...CATEGORIES.filter(c => c !== 'Instruments' || books.some(b => b.category === c)).map(c => ({ label: c, value: c })),
+      // Jeux vidéo, Films, Instruments : tuile visible seulement si la médiathèque en prête.
+      ...CATEGORIES.filter(c => !CATEGORIES_SI_PRESENTES.has(c) || books.some(b => b.category === c)).map(c => ({ label: c, value: c })),
     ];
     el.innerHTML = chips.map(c => {
       const icon = CATEGORY_ICONS[c.label]
@@ -792,7 +835,7 @@
     // côté base pour le vrai garde-fou).
     filtered = filtered.filter(b => !tooYoungFor(b));
     if (activeType && !q) {
-      filtered = filtered.filter(b => bookKind(b) === activeType);
+      filtered = filtered.filter(b => docType(b) === activeType);
     }
     const approxCaption = document.getElementById('search-approx-caption');
     approxCaption.classList.add('hidden');
@@ -830,7 +873,7 @@
     }
 
     if (filtered.length === 0) {
-      const emptyText = q ? 'Aucun livre ne correspond à ta recherche.' : activeCategory === 'Jeux' ? 'Aucun jeu pour le moment.' : activeCategory === 'Instruments' ? 'Aucun instrument pour le moment.' : 'Aucun livre dans cette catégorie.';
+      const emptyText = q ? 'Aucun livre ne correspond à ta recherche.' : ['Jeux', 'Jeux vidéo'].includes(activeCategory) ? 'Aucun jeu pour le moment.' : activeCategory === 'Films' ? 'Aucun film pour le moment.' : activeCategory === 'Instruments' ? 'Aucun instrument pour le moment.' : 'Aucun livre dans cette catégorie.';
       list.innerHTML = `<p class="col-span-full text-sm text-ink/40 text-center py-10">${emptyText}</p>`;
       return;
     }
@@ -853,7 +896,7 @@
       }
       const cov = b.cover_url
         ? `<img id="cover-${b.id}" src="${b.cover_url}" alt="" class="aspect-[2/3] w-full object-cover rounded-lg bg-mango-50 shadow-sm">`
-        : `<div id="cover-${b.id}" class="aspect-[2/3] w-full rounded-lg bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-2xl">${b.cover_initial || b.title[0]}</div>`;
+        : placeholderHtml(b, 'aspect-[2/3] w-full rounded-lg', 'text-2xl', `cover-${b.id}`);
       return `
         <div data-book-id="${b.id}" class="book-card relative bg-white rounded-xl p-2.5 shadow-sm flex flex-col min-w-0 cursor-pointer hover:shadow-md transition">
           <div class="mb-2">
@@ -896,7 +939,9 @@
       card.addEventListener('click', () => openBookModal(Number(card.dataset.bookId)));
     });
 
-    filtered.filter(b => !b.cover_url).forEach(async (b) => {
+    // Recherche Google par titre : seulement pour les livres. Pour un jeu ou un
+    // film, elle trouvait un autre document (un manga pour Animal Crossing).
+    filtered.filter(b => !b.cover_url && docType(b) === 'livre').forEach(async (b) => {
       const url = await fetchCoverUrl(b.title, b.author);
       const el = document.getElementById('cover-' + b.id);
       if (url && el) {
@@ -1009,7 +1054,7 @@
       ? `<img src="${b.cover_url}" alt="" class="w-28 aspect-[2/3] object-cover rounded-lg shadow-sm shrink-0">`
       : existingCover && existingCover.tagName === 'IMG'
         ? `<img src="${existingCover.src}" alt="" class="w-28 aspect-[2/3] object-cover rounded-lg shadow-sm shrink-0">`
-        : `<div class="w-28 aspect-[2/3] rounded-lg bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white font-logo font-bold text-3xl shrink-0">${b.cover_initial || b.title[0]}</div>`;
+        : placeholderHtml(b, 'w-28 aspect-[2/3] rounded-lg shrink-0', 'text-3xl');
 
     document.getElementById('book-modal-content').innerHTML = `
       <div class="flex gap-4">
@@ -1409,7 +1454,7 @@
   const suggestBox = document.getElementById('search-suggestions');
   let suggestIndex = -1;
   const escSuggest = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const KIND_EMOJI = { livre: '📖', livre_audio: '🎧', cd: '💿', dvd: '📀', periodique: '📰', autre: '🎲' };
+  const KIND_EMOJI = { livre: '📖', livre_audio: '🎧', cd: '💿', dvd: '🎬', periodique: '📰', jeu: '🎲', jeu_video: '🎮', instrument: '🎸', autre: '📦' };
 
   function hideSearchSuggestions() {
     suggestBox.classList.add('hidden');
@@ -1436,7 +1481,7 @@
             ? `<img src="${escSuggest(b.cover_url)}" alt="" class="w-8 h-12 object-cover rounded shrink-0 bg-mango-50">`
             : `<span class="w-8 h-12 rounded bg-gradient-to-br from-mango-500 to-hibiscus-600 flex items-center justify-center text-white text-xs font-bold shrink-0">${escSuggest(b.cover_initial || (b.title || '?')[0])}</span>`}
           <span class="min-w-0"><span class="block text-sm font-semibold text-ink truncate">${escSuggest(b.title)}</span>
-          <span class="block text-[11px] text-ink/45 truncate">${KIND_EMOJI[bookKind(b)] || '📖'} ${escSuggest(b.author || b.format || '')}</span></span>
+          <span class="block text-[11px] text-ink/45 truncate">${KIND_EMOJI[docType(b)] || '📖'} ${escSuggest(b.author || b.format || '')}</span></span>
         </button>`),
     ];
     suggestBox.innerHTML = items.join('<div class="h-px bg-mango-50" style="margin:0 16px"></div>');
