@@ -152,15 +152,15 @@
     }
     events = eventsData || [];
 
-    const { data: rsvpsData } = events.length
-      ? await supabase.from('event_rsvps').select('event_id, user_id').in('event_id', events.map(e => e.id))
-      : { data: [] };
-    rsvpCounts = {};
-    myRsvps = new Set();
-    (rsvpsData || []).forEach(r => {
-      rsvpCounts[r.event_id] = (rsvpCounts[r.event_id] || 0) + 1;
-      if (currentUser && r.user_id === currentUser.id) myRsvps.add(r.event_id);
-    });
+    // Nombre d'inscrits par une fonction (26/11/2026) : la liste des inscrits
+    // n'est plus lisible par tout le monde, seulement ses propres inscriptions.
+    const ids = events.map(e => e.id);
+    const [{ data: countsData }, { data: mineData }] = await Promise.all([
+      ids.length ? supabase.rpc('event_rsvp_counts', { p_event_ids: ids }) : { data: [] },
+      ids.length && currentUser ? supabase.from('event_rsvps').select('event_id').eq('user_id', currentUser.id).in('event_id', ids) : { data: [] },
+    ]);
+    rsvpCounts = Object.fromEntries((countsData || []).map(r => [r.event_id, Number(r.n)]));
+    myRsvps = new Set((mineData || []).map(r => r.event_id));
     const { data: pays } = currentUser ? await supabase.from('payments').select('event_id, status, amount_cents').eq('kind', 'evenement').eq('user_id', currentUser.id).in('status', ['a_regler', 'paye']) : { data: [] };
     myPayments = Object.fromEntries((pays || []).map(p => [p.event_id, p]));
     myCheckins = new Set((checkinsData || []).map(c => c.event_id));
