@@ -381,6 +381,7 @@
   ];
   // Tuiles affichées seulement si la médiathèque prête ce type de document.
   const CATEGORIES_SI_PRESENTES = new Set(['Jeux vidéo', 'Films', 'Jeux', 'Livres audio', 'Musique', 'Revues', 'Instruments', 'Matériel']);
+  let categoriesOffertes = new Set();
 
   // Sentinelle distincte des vraies catégories : sélection faite par la
   // médiathèque (books.is_staff_pick), pas un genre du livre.
@@ -552,7 +553,7 @@
       { label: 'Coups de cœur', value: STAFF_PICK_FILTER },
       // Jeux vidéo, Films, Instruments : tuile visible seulement si la médiathèque en prête.
       // Sans icône, la tuile attend (Musique, Revues : icônes de Mégane à venir).
-      ...CATEGORIES.filter(c => !CATEGORIES_SI_PRESENTES.has(c) || (CATEGORY_ICONS[c] && books.some(b => b.category === c))).map(c => ({ label: c, value: c })),
+      ...CATEGORIES.filter(c => !CATEGORIES_SI_PRESENTES.has(c) || (CATEGORY_ICONS[c] && (books.some(b => b.category === c) || categoriesOffertes.has(c)))).map(c => ({ label: c, value: c })),
     ];
     el.innerHTML = chips.map(c => {
       const icon = CATEGORY_ICONS[c.label]
@@ -635,10 +636,14 @@
     if (!bdp) bdp = await bdpPromise;
     const communeIds = bdp?.id ? [cid, bdp.id] : [cid];
 
-    const [{ data, error }, { data: types }] = await Promise.all([
+    const [{ data, error }, { data: types }, { data: offertes }] = await Promise.all([
       supabase.from('books').select('*').in('commune_id', communeIds).eq('equipped', true).order('id'),
       supabase.from('document_types').select('label, kind'),
+      // Catégories que la médiathèque propose même sans document encore visible
+      // (en cours d'équipement, ou masqué faute de visuel) : la tuile reste (26/11/2026).
+      supabase.from('books').select('category').in('commune_id', communeIds).in('category', [...CATEGORIES_SI_PRESENTES]),
     ]);
+    categoriesOffertes = new Set((offertes || []).map(b => b.category));
     if (error) {
       statusEl.textContent = 'Erreur de chargement : ' + frError(error);
       return;
@@ -894,7 +899,7 @@
     }
 
     if (filtered.length === 0) {
-      const emptyText = q ? 'Aucun livre ne correspond à ta recherche.' : ['Jeux', 'Jeux vidéo'].includes(activeCategory) ? 'Aucun jeu pour le moment.' : activeCategory === 'Films' ? 'Aucun film pour le moment.' : activeCategory === 'Instruments' ? 'Aucun instrument pour le moment.' : 'Aucun livre dans cette catégorie.';
+      const emptyText = q ? 'Aucun livre ne correspond à ta recherche.' : ['Jeux', 'Jeux vidéo'].includes(activeCategory) ? 'Aucun jeu pour le moment.' : activeCategory === 'Films' ? 'Aucun film pour le moment.' : activeCategory === 'Instruments' ? 'Aucun instrument pour le moment.' : CATEGORIES_SI_PRESENTES.has(activeCategory) ? 'Aucun document dans cette catégorie pour le moment.' : 'Aucun livre dans cette catégorie.';
       list.innerHTML = `<p class="col-span-full text-sm text-ink/40 text-center py-10">${emptyText}</p>`;
       return;
     }
