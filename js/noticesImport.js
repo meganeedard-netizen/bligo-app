@@ -140,6 +140,7 @@ function marc21ToUnimarc(rec) {
       case '260': case '264': if (f.tag === '260' || f.ind2 === '1') push('210', [['a', a('a')], ['c', (a('b') || '').replace(/[,:;]$/, '')], ['d', (a('c') || '').replace(/\.$/, '')]]); break;
       case '300': push('215', [['a', (a('a') || '').replace(/\s*[:;]$/, '')], ['c', (a('b') || '').replace(/\s*;$/, '')], ['d', a('c')]]); break;
       case '490': case '830': push('225', [['a', (a('a') || '').replace(/\s*;$/, '')], ['v', a('v')]], '2'); break;
+      case '505': (a('a') || '').split(/\s*--\s*/).forEach(t => push('327', [['a', t.replace(/[.\s]+$/, '')]], '1')); break;
       case '520': push('330', [['a', a('a')]]); break;
       case '521': push('333', [['a', a('a')]]); break;
       case '650': case '651': push(f.tag === '651' ? '607' : '606', [['a', a('a')], ['x', a('x')], ['y', a('z')], ['z', a('y')]]); break;
@@ -183,6 +184,13 @@ export function noticeVersFiche(rec) {
     (m, t, art, rest) => (/'|’$/.test(art) ? art + t : art + ' ' + t) + rest) || null;
   if (!title) return null;
   const partNum = get(f200, 'h'), partName = get(f200, 'i');
+  // Séries (26/11/2026) : 461 $t/$v, sinon 200 $a + numéro de tome en 200 $h.
+  const f461 = one('461');
+  const series_name = (get(f461, 't') || (partNum && /\d/.test(partNum) ? title : null) || '').trim() || null;
+  const seriesNumRaw = String(get(f461, 'v') || partNum || '').match(/(\d+(?:[.,]\d+)?)/);
+  const series_number = series_name && seriesNumRaw ? Number(seriesNumRaw[1].replace(',', '.')) : null;
+  const contents = [...all('327').flatMap(f => getAll(f, ['a'])), ...all('464').map(f => get(f, 't'))]
+    .map(t => (t || '').replace(/\s*[;.]\s*$/, '').trim()).filter(Boolean).join('\n') || null;
   if (partNum || partName) title = [title, [partNum, partName].filter(Boolean).join('. ')].join('. ');
 
   const author700 = one('700') || one('710') || one('701');
@@ -229,6 +237,9 @@ export function noticeVersFiche(rec) {
     dewey: get(one('676'), 'a'),
     binding: /rel/i.test(bindingRaw) ? 'Relié' : /cart/i.test(bindingRaw) ? 'Cartonné' : /br/i.test(bindingRaw) ? 'Broché' : (bindingRaw || null),
     collection: f225 ? [get(f225, 'a'), get(f225, 'v')].filter(Boolean).join(', ') || null : null,
+    series_name,
+    series_number,
+    contents,
     dimensions: get(f215, 'd'),
     illustrations: get(f215, 'c'),
     subjects,

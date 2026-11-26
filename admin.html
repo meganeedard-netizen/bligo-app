@@ -3406,6 +3406,8 @@
       // Indice BnF prioritaire : c'est celui qu'utilisent les bibliothèques françaises.
       meta.dewey = bnf.dewey || meta.dewey;
       meta.subjects = bnf.subjects;
+      if (!meta.series_name && bnf.series_name) { meta.series_name = bnf.series_name; meta.series_number = bnf.series_number; }
+      if (!meta.contents && bnf.contents) meta.contents = bnf.contents;
       meta.authorKey = bnf.authorLastName;
       if (!meta.translator) meta.translator = bnf.translator;
       if (!meta.illustrator) meta.illustrator = bnf.illustrator;
@@ -3638,6 +3640,7 @@
         printer: bnf.printer,
         dewey: bnf.dewey,
         collection: bnf.collection,
+        series_name: bnf.series_name, series_number: bnf.series_number, contents: bnf.contents,
         subjects: bnf.subjects,
         // Pour un CD ou un DVD : support et durée (« 1 DVD vidéo monoface zone 2 (1 h 52 min) »).
         dimensions: (isVideo || isSound) ? (bnf.extent || bnf.dimensions) : bnf.dimensions,
@@ -3743,7 +3746,7 @@
     const files = Array.from(input.files || []);
     if (!files.length) return;
     etat.textContent = 'Lecture des notices…';
-    const { lireFichierNotices, noticeVersFiche } = await import('./js/noticesImport.js?v=20261119a');
+    const { lireFichierNotices, noticeVersFiche } = await import('./js/noticesImport.js?v=20261126s');
     const forcedGenre = document.getElementById('batch-genre')?.value || null;
     let added = 0, skipped = 0;
     const importedIds = [];
@@ -3771,6 +3774,7 @@
           page_count: (isVideo || isSound) ? null : bnf.page_count,
           language: bnf.language, legal_deposit: bnf.legal_deposit, printer: bnf.printer,
           dewey: bnf.dewey, collection: bnf.collection, subjects: bnf.subjects,
+          series_name: bnf.series_name, series_number: bnf.series_number, contents: bnf.contents,
           dimensions: (isVideo || isSound) ? (bnf.extent || bnf.dimensions) : bnf.dimensions,
           illustrations: bnf.illustrations,
           binding: (isVideo || isSound) ? null : bnf.binding,
@@ -3911,6 +3915,12 @@
     draft.dimensions = meta.dimensions || '';
     draft.illustrations = meta.illustrations || '';
     draft.collection = meta.collection || '';
+    {
+      const guess = meta.series_name ? null : guessSeriesFromTitle(meta.title);
+      draft.series_name = meta.series_name || guess?.name || '';
+      draft.series_number = meta.series_number ?? guess?.number ?? '';
+    }
+    draft.contents = meta.contents || '';
     draft.subjects = meta.subjects || '';
     draft.translator = meta.translator || '';
     draft.illustrator = meta.illustrator || '';
@@ -3944,6 +3954,7 @@
   const ENRICH_FIELD_LABELS = {
     author: 'auteur', category: 'catégorie', format: 'type de document', dewey: 'indice Dewey', shelf_location: 'cote',
     price_cents: 'prix', binding: 'reliure', dimensions: 'dimensions', illustrations: 'illustrations', collection: 'collection',
+    series_name: 'série', series_number: 'tome', contents: 'sommaire',
     subjects: 'sujets', publisher: 'éditeur', published_date: 'date', page_count: 'pages', language: 'langue',
     legal_deposit: 'dépôt légal', printer: 'imprimeur', translator: 'traducteur', illustrator: 'illustrateur',
     summary: 'résumé', isbn: 'ISBN', cover_url: 'couverture', age_range: 'âge conseillé',
@@ -3952,7 +3963,8 @@
   async function enrichExistingBook(book, meta) {
     const patch = {};
     ['dewey', 'price_cents', 'binding', 'dimensions', 'illustrations', 'collection', 'subjects', 'format', 'publisher', 'published_date',
-      'page_count', 'language', 'legal_deposit', 'printer', 'translator', 'illustrator', 'summary', 'isbn', 'cover_url', 'age_range']
+      'page_count', 'language', 'legal_deposit', 'printer', 'translator', 'illustrator', 'summary', 'isbn', 'cover_url', 'age_range',
+      'series_name', 'series_number', 'contents']
       .forEach(f => { if ((book[f] == null || book[f] === '') && meta[f]) patch[f] = meta[f]; });
     if (/^auteur inconnu$/i.test((book.author || '').trim()) && meta.author && !/inconnu/i.test(meta.author)) patch.author = meta.author;
     if ((!book.category || book.category === 'Autres') && meta.category && meta.category !== 'Autres') patch.category = meta.category;
@@ -4095,6 +4107,9 @@
     draft.meta.dimensions = (draft.dimensions || '').trim() || null;
     draft.meta.illustrations = (draft.illustrations || '').trim() || null;
     draft.meta.collection = (draft.collection || '').trim() || null;
+    draft.meta.series_name = (draft.series_name || '').trim() || null;
+    draft.meta.series_number = draft.meta.series_name ? parseSeriesNumber(String(draft.series_number ?? '')) : null;
+    draft.meta.contents = (draft.contents || '').trim() || null;
     draft.meta.subjects = (draft.subjects || '').trim() || null;
     draft.meta.translator = (draft.translator || '').trim() || null;
     draft.meta.illustrator = (draft.illustrator || '').trim() || null;
@@ -4544,6 +4559,18 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         <input id="draft-price-${d.localId}" value="${escapeHtml(d.price || '')}" oninput="updateDraftField('${d.localId}', 'price', this.value)" inputmode="decimal" placeholder="Ex. 22,50" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Collection</label>
         <input id="draft-collection-${d.localId}" value="${escapeHtml(d.collection || '')}" oninput="updateDraftField('${d.localId}', 'collection', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+        <div class="grid grid-cols-[1fr_6rem] gap-2">
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Série <span class="font-normal text-ink/40">· BD, manga, saga</span></label>
+            <input id="draft-series-name-${d.localId}" value="${escapeHtml(d.series_name || '')}" oninput="updateDraftField('${d.localId}', 'series_name', this.value)" list="series-names-list" placeholder="Ex. One Piece" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-ink/60 block mb-1">Tome n°</label>
+            <input id="draft-series-number-${d.localId}" value="${escapeHtml(String(d.series_number ?? ''))}" oninput="updateDraftField('${d.localId}', 'series_number', this.value)" inputmode="decimal" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
+          </div>
+        </div>
+        <label class="text-xs font-semibold text-ink/60 block mb-1">Sommaire <span class="font-normal text-ink/40">· un article ou un chapitre par ligne, retrouvé par la recherche</span></label>
+        <textarea id="draft-contents-${d.localId}" oninput="updateDraftField('${d.localId}', 'contents', this.value)" rows="2" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">${escapeHtml(d.contents || '')}</textarea>
         <label class="text-xs font-semibold text-ink/60 block mb-1">Dépôt légal</label>
         <input id="draft-legal-deposit-${d.localId}" value="${escapeHtml(d.legal_deposit || '')}" oninput="updateDraftField('${d.localId}', 'legal_deposit', this.value)" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2">
         <label class="text-xs font-semibold text-ink/60 block mb-1">Sujets (Rameau)</label>
@@ -4591,6 +4618,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.renderDraftBooks = function () {
+    // Séries déjà au catalogue, proposées en saisie (évite « One piece » / « One Piece »).
+    let dl = document.getElementById('series-names-list');
+    if (!dl) { dl = document.createElement('datalist'); dl.id = 'series-names-list'; document.body.appendChild(dl); }
+    dl.innerHTML = [...new Set(books.filter(b => b.commune_id === myCommuneId && b.series_name).map(b => b.series_name.trim()))].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${escapeHtml(n)}">`).join('');
     const empty = document.getElementById('draft-books-empty');
     const actions = document.getElementById('draft-books-actions');
     const list = document.getElementById('draft-books-list');
@@ -5167,6 +5198,17 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       const collection = f225 ? [getSub(f225, 'a'), getSub(f225, 'v')].filter(Boolean).join(', ') || null : null;
       const dimensions = getSub(f215, 'd');
       const illustrations = getSub(f215, 'c');
+      // Séries et sommaires (26/11/2026, RDV Brest) : la série est en 461 $t
+      // (tome en $v) ou, pour les mangas et BD, en 200 $a avec le numéro de
+      // tome en 200 $h. Le sommaire est en 327 $a (un $a par partie) et les
+      // parties d'un ouvrage collectif en 464 $t.
+      const f461 = getField('461');
+      const h200 = getSub(f200, 'h');
+      const sortMarks = t => String(t || '').replace(/[\u0088\u0089\u0098\u009C]/g, '').replace(/\s+/g, ' ').trim();
+      const series_name = sortMarks(getSub(f461, 't') || (h200 && /\d/.test(h200) ? getSub(f200, 'a') : null)) || null;
+      const series_number = series_name ? parseSeriesNumber(getSub(f461, 'v') || h200) : null;
+      const contents = [...getFields('327').flatMap(f => getSubs(f, ['a'])), ...getFields('464').map(f => getSub(f, 't'))]
+        .map(t => sortMarks(t).replace(/\s*[;.]\s*$/, '')).filter(Boolean).join('\n') || null;
       const subjects = [...getFields('606'), ...getFields('607')]
         .map(f => getSubs(f, ['a', 'x', 'y', 'z']).join(' -- ')).filter(Boolean).join(' ; ') || null;
       // Prix éditeur (010 $d) : « 30 EUR », « 15.00 EUR », « 18 € » (09/10/2026).
@@ -5216,6 +5258,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         price_cents,
         binding,
         collection,
+        series_name,
+        series_number,
+        contents,
         dimensions,
         illustrations,
         subjects,
@@ -7736,13 +7781,13 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     return m ? Number(m[1]) * 100 + Number((m[2] || '').padEnd(2, '0') || 0) : null;
   }
 
-  async function insertBook({ accessories = null, audience = null, age_rating = null, min_age = null, platform = null, players = null, play_duration = null, age_range = null, price_cents = null, title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false, copyBarcodes = null }) {
+  async function insertBook({ accessories = null, audience = null, age_rating = null, min_age = null, platform = null, players = null, play_duration = null, age_range = null, price_cents = null, title, author, category = null, summary = null, cover_url = null, isbn = null, dewey = null, publisher = null, published_date = null, page_count = null, language = null, format = null, legal_deposit = null, printer = null, binding = null, dimensions = null, illustrations = null, collection = null, series_name = null, series_number = null, contents = null, subjects = null, translator = null, illustrator = null, authorKey = null, copyCount = 1, shelfOverride = null, onSiteOnly = false, copyBarcodes = null }) {
     const fromDonation = !!donorSession;
     const cote = shelfOverride || suggestCote(category, author, dewey, { format, authorKey, title });
     // Champs de fiche ajoutés le 07/10/2026 : envoyés seulement s'ils sont
     // remplis, pour que le catalogage continue de marcher même si la
     // migration add_document_types_and_dewey.sql n'est pas encore passée.
-    const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, subjects, price_cents, accessories, players, play_duration, age_range, audience, age_rating, min_age, platform, adult_only: (min_age || 0) >= 18 ? true : null })
+    const extraFields = Object.fromEntries(Object.entries({ dewey, binding, dimensions, illustrations, collection, series_name, series_number, contents, subjects, price_cents, accessories, players, play_duration, age_range, audience, age_rating, min_age, platform, adult_only: (min_age || 0) >= 18 ? true : null })
       .filter(([, v]) => v != null && v !== ''));
     // Couverture d'un livre scanné : mise en pleine page 2:3 et, si l'API n'a
     // rien de bon, cherchée chez l'éditeur (26/10/2026, voir prepareCover).
@@ -8362,6 +8407,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     add('210', marcField('  ', [['c', b.publisher], ['d', b.published_date], ['g', b.printer]]));
     add('215', marcField('  ', [['a', b.page_count ? `${b.page_count} p.` : null], ['c', b.illustrations], ['d', b.dimensions || b.format]]));
     add('225', marcField('2 ', [['a', b.collection]]));
+    (b.contents || '').split('\n').map(t => t.trim()).filter(Boolean).forEach(t => add('327', marcField('1 ', [['a', t]])));
+    add('461', b.series_name ? marcField(' 0', [['t', b.series_name], ['v', b.series_number != null ? String(b.series_number) : null]]) : null);
     add('330', marcField('  ', [['a', b.summary]]));
     (b.subjects || '').split(';').map(t => t.trim()).filter(Boolean)
       .forEach(t => add('606', marcField('  ', [['a', t], ['2', 'rameau']])));
@@ -8525,7 +8572,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   // exemplaires du même titre.
   function bookSearchText(b) {
     const barcodes = (b.copies || []).map(c => c.barcode).join(' ');
-    return searchNormalize([b.title, b.author, b.isbn, barcodes].filter(Boolean).join(' '));
+    return searchNormalize([b.title, b.author, b.isbn, barcodes, b.series_name, b.contents].filter(Boolean).join(' '));
   }
 
   window.toggleSelectAllBooks = function (checked) {
@@ -9955,6 +10002,40 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   // ---------- Fiche livre complète ----------
 
+  // ---------- Séries (26/11/2026, RDV Brest) ----------
+  // « T. 3 », « tome 3 », « vol. 3 », « 3 » → 3 ; « 2,5 » → 2.5.
+  function parseSeriesNumber(raw) {
+    const m = String(raw ?? '').match(/(\d+(?:[.,]\d+)?)/);
+    return m ? Number(m[1].replace(',', '.')) : null;
+  }
+  window.parseSeriesNumber = parseSeriesNumber;
+  // Sans notice qui la donne, la série se lit souvent dans le titre :
+  // « Astérix T.3 », « Les Légendaires - Tome 12 », « One Piece vol. 3 ».
+  // Volontairement prudent : un nombre seul (« 1984 ») ne suffit pas.
+  function guessSeriesFromTitle(title) {
+    const m = String(title || '').match(/^(.{2,80}?)[\s.,:;–-]+(?:t(?:ome)?|vol(?:ume)?|n°|no)\.?\s*(\d{1,4}(?:[.,]\d)?)\b/i);
+    return m ? { name: m[1].replace(/[\s.,:;–-]+$/, '').trim(), number: parseSeriesNumber(m[2]) } : null;
+  }
+  const seriesKey = s => searchNormalize(String(s || '').trim());
+  // Fiche d'un document en série : les tomes de la médiathèque, dans l'ordre,
+  // et les numéros manquants (pour savoir quoi racheter).
+  function seriesPanelHtml(b) {
+    if (!b.series_name) return '';
+    const key = seriesKey(b.series_name);
+    const tomes = books.filter(x => x.commune_id === b.commune_id && !x.archived && x.series_name && seriesKey(x.series_name) === key)
+      .sort((x, y) => (x.series_number ?? 1e9) - (y.series_number ?? 1e9) || x.title.localeCompare(y.title));
+    const nums = new Set(tomes.map(x => x.series_number).filter(n => Number.isInteger(n)));
+    const max = Math.max(0, ...nums);
+    const missing = [];
+    for (let n = 1; n <= max && missing.length < 40; n++) if (!nums.has(n)) missing.push(n);
+    const chips = tomes.map(x => `<button type="button" onclick="openBookDetail(${x.id})" title="${escapeHtml(x.title)}" class="text-[11px] font-semibold rounded px-2 py-0.5 ${x.id === b.id ? 'bg-brand text-white' : 'bg-white border border-mango-200 text-ink/70 hover:bg-mango-50'}">${x.series_number != null ? 'T. ' + String(x.series_number).replace('.', ',') : escapeHtml(x.title.slice(0, 18))}</button>`).join('');
+    return `<div class="bg-mango-50 rounded-lg px-3 py-2.5 mb-3">
+      <p class="text-xs font-semibold text-ink/70 mb-1.5">Série « ${escapeHtml(b.series_name)} » : ${tomes.length} document${tomes.length > 1 ? 's' : ''} dans ta médiathèque</p>
+      <div class="flex flex-wrap gap-1">${chips}</div>
+      ${missing.length ? `<p class="text-[11px] text-hibiscus-700 mt-1.5">Tome${missing.length > 1 ? 's' : ''} manquant${missing.length > 1 ? 's' : ''} : ${missing.join(', ')}${missing.length >= 40 ? '…' : ''}</p>` : ''}
+    </div>`;
+  }
+
   function bookFieldRow(label, id, value, opts = {}) {
     if (opts.textarea) {
       return `<label class="text-xs font-semibold text-ink/60 block mb-1">${label}</label>
@@ -10152,6 +10233,8 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ${bookFieldRow('Format (dimensions)', 'bd-dimensions', b.dimensions)}
         ${bookFieldRow('Illustrations', 'bd-illustrations', b.illustrations)}
         ${bookFieldRow('Collection', 'bd-collection', b.collection)}
+        ${bookFieldRow('Série (BD, manga, saga)', 'bd-series-name', b.series_name)}
+        ${bookFieldRow('Tome n°', 'bd-series-number', b.series_number != null ? String(b.series_number).replace('.', ',') : '')}
         ${bookFieldRow('Joueurs (jeux)', 'bd-players', b.players)}
         ${bookFieldRow('Durée de partie (jeux)', 'bd-play-duration', b.play_duration)}
         ${b.category === 'Instruments' ? `<div class="col-span-2">${bookFieldRow('Accessoires (un par ligne)', 'bd-accessories', b.accessories, { textarea: true })}</div>` : ''}
@@ -10183,7 +10266,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ${bookFieldRow('Âge conseillé', 'bd-age-range', b.age_range, { type: 'text' })}
       </div>
       ${ageSelectsHtml('bd', { ...b, min_age: b.min_age || (b.adult_only ? 18 : '') }, f => f === 'age_rating' ? `onchange="const m = ratingMinAge(this.value); if (m != null) document.getElementById('bd-min-age').value = String(m || '')"` : '')}
+      ${seriesPanelHtml(b)}
       ${bookFieldRow('Sujets (Rameau)', 'bd-subjects', b.subjects, { textarea: true })}
+      ${bookFieldRow('Sommaire (un article ou un chapitre par ligne)', 'bd-contents', b.contents, { textarea: true })}
       ${bookFieldRow('Résumé', 'bd-summary', b.summary, { textarea: true })}
 
       <button onclick="saveBookDetail(${b.id})" class="w-full bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer</button>
@@ -10681,6 +10766,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       dimensions: val('bd-dimensions'),
       illustrations: val('bd-illustrations'),
       collection: val('bd-collection'),
+      series_name: val('bd-series-name'),
+      series_number: val('bd-series-name') ? parseSeriesNumber(val('bd-series-number')) : null,
+      contents: val('bd-contents'),
       dewey: val('bd-dewey'),
       subjects: val('bd-subjects'),
       price_cents: parsePriceCents(val('bd-price')),

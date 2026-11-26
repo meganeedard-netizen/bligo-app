@@ -863,6 +863,8 @@
         searchNormalize(b.summary).includes(q) ||
         searchNormalize(b.category).includes(q) ||
         searchNormalize(b.subjects).includes(q) ||
+        searchNormalize(b.series_name).includes(q) ||
+        searchNormalize(b.contents).includes(q) ||
         searchNormalize(b.format).includes(q) ||
         searchNormalize(b.platform).includes(q)
       ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -1046,6 +1048,32 @@
     updateReservationBadge(currentUser.id);
   }
 
+  // Séries et sommaires (26/11/2026) : les autres tomes de la série, dans
+  // l'ordre, avec leur disponibilité, et le sommaire dépliable.
+  function seriesBlockHtml(b) {
+    if (!b.series_name) return '';
+    const key = searchNormalize(b.series_name.trim());
+    const tomes = books.filter(x => x.series_name && searchNormalize(x.series_name.trim()) === key && !tooYoungFor(x))
+      .sort((x, y) => (x.series_number ?? 1e9) - (y.series_number ?? 1e9) || x.title.localeCompare(y.title));
+    const seen = new Set();
+    const uniques = tomes.filter(x => { const k = x.series_number ?? x.title; if (seen.has(k) && x.id !== b.id) return false; seen.add(k); return true; });
+    const num = n => String(n).replace('.', ',');
+    return `<div class="mt-4">
+      <p class="text-[12px] font-semibold text-ink/70">📚 Série « ${escapeHtml(b.series_name)} »${b.series_number != null ? ` · tome ${num(b.series_number)}` : ''}</p>
+      ${uniques.length > 1 ? `<div class="flex gap-1.5 flex-wrap mt-2">${uniques.map(x => `<button type="button" onclick="openBookModal(${x.id})" title="${escapeHtml(x.title)}"
+        class="text-[11px] font-semibold rounded-full px-2.5 py-1 ${x.id === b.id ? 'bg-brand text-white' : x.available ? 'bg-emerald-50 text-emerald-700' : 'bg-brand/5 text-ink/45'}">${x.series_number != null ? 'T. ' + num(x.series_number) : escapeHtml(x.title.slice(0, 16))}</button>`).join('')}</div>
+      <p class="text-[10.5px] text-ink/40 mt-1">En vert : disponible en rayon</p>` : ''}
+    </div>`;
+  }
+  function contentsBlockHtml(b) {
+    const parts = String(b.contents || '').split('\n').map(t => t.trim()).filter(Boolean);
+    if (!parts.length) return '';
+    return `<details class="mt-3 bg-brand/5 rounded-lg px-3 py-2">
+      <summary class="text-[12px] font-semibold text-ink/70 cursor-pointer">Sommaire (${parts.length})</summary>
+      <ul class="mt-1.5 space-y-0.5">${parts.map(t => `<li class="text-[12px] text-ink/65">• ${escapeHtml(t)}</li>`).join('')}</ul>
+    </details>`;
+  }
+
   window.openBookModal = async function (bookId) {
     const b = books.find(x => x.id === bookId);
     if (!b) return;
@@ -1091,7 +1119,9 @@
           </div>
         </div>
       </div>
+      ${seriesBlockHtml(b)}
       ${b.summary ? `<p class="text-sm text-ink/70 leading-relaxed mt-4">${b.summary}</p>` : `<p class="text-sm text-ink/40 italic mt-4">Résumé non disponible pour ce titre.</p>`}
+      ${contentsBlockHtml(b)}
       ${(b.players || b.play_duration) ? `<p class="text-[12px] text-ink/60 mt-2">🎲 ${[b.players, b.play_duration, b.age_range].filter(Boolean).join(' · ')}</p>` : ''}
       ${(b.category === 'Instruments' && b.accessories) ? `<p class="text-[12px] text-ink/60 mt-2">🎒 Prêté avec : ${escapeHtml(b.accessories.split('\n').join(', '))}</p>` : ''}
       ${(b.page_count || b.legal_deposit) ? `<p class="text-[11px] text-ink/40 mt-2">${[b.page_count ? `${b.page_count} pages` : '', b.legal_deposit ? `Dépôt légal ${String(b.legal_deposit).replace(/^DL\s*/i, '')}` : ''].filter(Boolean).join(' · ')}</p>` : ''}
