@@ -146,13 +146,14 @@
   // Réseau (26/11/2026) : les médiathèques qui partagent la même communauté
   // (réseau d'agglomération, BDP) ; leurs événements sont chargés pour le
   // filtre « Médiathèque », la médiathèque de l'usager restant le choix par défaut.
-  let networkFor = null, networkCommunes = [];
+  let networkFor = null, networkCommunes = [], ownCommune = null;
   async function loadNetwork() {
     if (networkFor === browseCommuneId) return;
     networkFor = browseCommuneId;
     networkCommunes = [];
     filterCommune = String(browseCommuneId);
-    const { data: me } = await supabase.from('communes').select('community_id').eq('id', browseCommuneId).maybeSingle();
+    const { data: me } = await supabase.from('communes').select('id, name, community_id').eq('id', browseCommuneId).maybeSingle();
+    ownCommune = me ? { id: me.id, name: me.name } : null;
     if (!me?.community_id) return;
     const { data: libs } = await supabase.from('communes').select('id, name').eq('community_id', me.community_id).order('name');
     if ((libs || []).length > 1) networkCommunes = libs;
@@ -259,13 +260,19 @@
     const box = document.getElementById('agenda-filters');
     const types = [...new Set(upcoming.map(e => e.event_type || 'Autre'))].sort((a, b) => a.localeCompare(b));
     const ages = AGE_GROUPS.filter(([v]) => upcoming.some(e => ageGroupOf(e) === v));
-    const show = agendaTab === 'upcoming' && (networkCommunes.length > 1 || types.length > 1 || ages.length > 1 || filterType || filterAge);
+    // Commune, Public et Type toujours affichés (27/11/2026, demande de
+    // Mégane), même s'il n'y a qu'un choix : la ligne de filtres reste la même
+    // partout. Hors réseau, la commune ne propose que celle de l'usager.
+    const show = agendaTab === 'upcoming';
     box.classList.toggle('hidden', !show);
     if (!show) { box.innerHTML = ''; return; }
+    const communeOptions = networkCommunes.length > 1
+      ? [['', 'Toutes les communes'], ...networkCommunes.map(c => [String(c.id), c.name])]
+      : [[String(browseCommuneId), ownCommune?.name || 'Commune']];
     box.innerHTML = [
-      networkCommunes.length > 1 ? pillSelect('flt-commune', filterCommune, [['', 'Toutes les communes'], ...networkCommunes.map(c => [String(c.id), c.name])]) : '',
-      (ages.length > 1 || filterAge) ? pillSelect('flt-age', filterAge, [['', 'Public'], ...ages]) : '',
-      (types.length > 1 || filterType) ? pillSelect('flt-type', filterType, [['', 'Type'], ...types.map(t => [t, t])]) : '',
+      pillSelect('flt-commune', networkCommunes.length > 1 ? filterCommune : String(browseCommuneId), communeOptions),
+      pillSelect('flt-age', filterAge, [['', 'Public'], ...ages]),
+      pillSelect('flt-type', filterType, [['', 'Type'], ...types.map(t => [t, t])]),
       (filterAge || filterType || (networkCommunes.length > 1 && filterCommune !== String(browseCommuneId)))
         ? `<button id="flt-reset" aria-label="Effacer les filtres" class="shrink-0 w-8 h-8 rounded-full bg-[#EEEDF2] text-ink/50 text-xs font-bold">✕</button>` : '',
     ].join('');
