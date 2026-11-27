@@ -166,7 +166,7 @@
     <p id="bo-today" class="hidden lg:block text-sm text-ink/55 first-letter:uppercase"></p>
     <div class="flex items-center gap-2">
       <div id="header-visitor-widget" class="hidden items-center gap-1 border border-[#E5E7EB] rounded-lg pl-3 pr-1 py-1 bg-white">
-        <span class="text-xs text-ink/55 whitespace-nowrap mr-1">Visiteurs aujourd'hui : <strong id="visitor-today-count" class="text-ink">0</strong></span>
+        <span class="text-xs text-ink/55 whitespace-nowrap mr-1">Visiteurs aujourd'hui : <strong id="visitor-today-count" class="text-ink">…</strong></span>
         <button onclick="removeVisitorEntry()" style="touch-action: manipulation;" class="bo-btn-sm" title="Retirer un visiteur compté par erreur">−1</button>
         <button onclick="addVisitorEntry(1)" style="touch-action: manipulation;" class="bo-btn-sm">+1</button>
         <button onclick="addVisitorGroup()" style="touch-action: manipulation;" class="bo-btn-sm whitespace-nowrap">+ Groupe</button>
@@ -271,12 +271,11 @@
       <!-- AUJOURD'HUI : tableau de bord (12/10/2026) -->
       <section id="screen-counter" class="agent-screen hidden">
         <h2 class="text-lg font-bold text-ink mb-1">Comptoir</h2>
-        <p class="text-sm text-ink/55 mb-5">Prêter ou rendre des livres, avec la douchette, la caméra ou au clavier.</p>
-
-        <div class="flex gap-2 mb-5">
-          <button type="button" id="counter-tab-loan-btn" onclick="switchCounterTab('loan')" style="touch-action: manipulation;" class="rounded-full px-6 py-2.5 text-sm font-bold transition">Prêter</button>
-          <button type="button" id="counter-tab-return-btn" onclick="switchCounterTab('return')" style="touch-action: manipulation;" class="rounded-full px-6 py-2.5 text-sm font-bold transition">Retour</button>
-        </div>
+        <!-- Comptoir à point d'entrée unique (27/11/2026, demande de Mégane) :
+             plus d'onglets Prêter / Retour. On scanne la carte (ou on cherche
+             le nom), puis on choisit l'action dans « Que vient faire X ? ».
+             Seul raccourci gardé : les livres déposés sans l'usager. -->
+        <p class="text-sm text-ink/55 mb-5">Scanne la carte de l'usager ou cherche son nom, puis choisis ce qu'il vient faire : emprunter, retirer sa commande, rendre, participer à un événement, faire un don.</p>
 
         <!-- Prêter (21/10/2026) : à gauche l'usager et le scan, à droite les livres
              scannés, puis un seul bouton « Valider le prêt ». -->
@@ -296,6 +295,9 @@
               class="w-full border border-mango-100 rounded-lg px-3 py-3 text-base outline-none focus:ring-2 focus:ring-mango-300">
             <div id="counter-card-suggestions" class="flex flex-col mt-2 divide-y divide-mango-50 border border-mango-100 rounded-lg overflow-hidden empty:hidden"></div>
             <p id="counter-card-message" class="text-xs text-red-600 mt-2 min-h-[16px]"></p>
+            <div class="border-t border-mango-50 mt-3 pt-3 text-center">
+              <button type="button" onclick="openReturnScan()" style="touch-action: manipulation;" class="text-xs font-semibold text-ink/55 hover:text-ink underline underline-offset-2">Livres rendus sans l'usager (boîte de retour) : faire un retour</button>
+            </div>
           </div>
 
           <!-- 2. Usager trouvé, puis les livres -->
@@ -353,12 +355,16 @@
         </div>
 
         <div id="counter-panel-return" class="hidden">
+          <div class="flex items-center justify-between gap-3 mb-3 max-w-xl">
+            <p id="counter-return-title" class="text-sm font-bold text-ink">Retour de livres</p>
+            <button type="button" onclick="counterReturnDone()" style="touch-action: manipulation;" class="shrink-0 text-xs font-semibold bg-white border border-mango-100 hover:border-brand/40 text-ink/70 rounded-full px-3.5 py-1.5">Usager suivant</button>
+          </div>
           <div class="bg-white border border-mango-100 rounded-xl p-4 sm:p-5 shadow-sm max-w-xl">
-            <button type="button" id="loan-camera-btn" onclick="toggleCamera('loan'); document.getElementById('loan-barcode-input')?.focus();" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">Faire un retour</button>
+            <button type="button" id="loan-camera-btn" onclick="counterReturnCameraBtn()" style="touch-action: manipulation;" class="w-full bg-brand text-white rounded-lg py-3.5 text-base font-bold active:scale-[0.98] transition mb-2">Scanner avec la caméra</button>
             <p id="loan-camera-hint" class="text-[11px] text-ink/45 text-center mb-2 h-4"></p>
             <div id="loan-camera-slot" class="mb-2"></div>
-            <label for="loan-barcode-input" class="text-xs font-semibold text-ink/60 block mb-1">Ou taper le code-barres de la bibliothèque</label>
-            <p class="text-[11px] text-ink/40 mb-1.5">Tape le code puis appuie sur Entrée, ou clique sur Rechercher. La douchette le fait toute seule.</p>
+            <label for="loan-barcode-input" class="text-xs font-semibold text-ink/60 block mb-1">Ou à la douchette, ou en tapant le code-barres de la bibliothèque</label>
+            <p class="text-[11px] text-ink/40 mb-1.5">Le champ est prêt : scanne les documents l'un après l'autre. Au clavier, tape le code puis Entrée.</p>
             <div class="flex gap-2">
               <input id="loan-barcode-input" type="text" autocomplete="off" placeholder="Ex. BLIGO-000023"
                 onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupLoanBarcode();}"
@@ -409,7 +415,7 @@
         </div>
         <p class="text-sm font-bold text-ink mb-3">Actions rapides</p>
         <div class="flex flex-wrap gap-2">
-          <button type="button" onclick="switchScreen('counter'); switchCounterTab('loan')" class="bo-quick">Comptoir : prêter / rendre</button>
+          <button type="button" onclick="switchScreen('counter'); switchCounterTab('loan')" class="bo-quick">Comptoir : scanner une carte</button>
           <button type="button" onclick="switchScreen('users'); openAddInscritForm()" class="bo-quick">+ Ajouter un inscrit</button>
           <button type="button" data-direction-only onclick="switchScreen('catalogue'); openScanView()" class="bo-quick">+ Ajouter un document</button>
           <button type="button" data-direction-only onclick="switchScreen('agenda'); openEventForm()" class="bo-quick">+ Ajouter un événement</button>
@@ -2372,7 +2378,8 @@
     setTimeout(hideEmptyGroups, 0);
     document.getElementById('header-visitor-widget').classList.remove('hidden');
     document.getElementById('header-visitor-widget').classList.add('flex');
-    await refreshVisitorCount();
+    // Sans await (27/11/2026) : le logiciel s'affiche sans attendre le compteur.
+    refreshVisitorCount();
     // Un compte agent restreint garde prêts & réservations et inscrits, mais
     // pas le catalogue ni l'agenda culturel (RLS déjà bloquée côté base pour
     // ces écrans, ce masquage évite juste de montrer un écran inutilisable).
@@ -2544,7 +2551,7 @@
     if (screen === 'logistics') loadTransfers();
     if (screen === 'depots') loadDepots();
     if (screen === 'home') loadDashboard();
-    if (screen === 'counter') switchCounterTab(counterTab);
+    if (screen === 'counter') switchCounterTab('loan');
     if (screen === 'settings') { showSettingsTab('apparence'); loadCommuneSettings(); loadDocumentTypes().then(renderDocumentTypesSettings); loadCoteRules().then(renderCoteRulesSettings); loadDigitalResources(); loadOpeningHours(); }
   };
 
@@ -2556,16 +2563,34 @@
   // Volontairement anonyme : aucun nom ni numéro de carte, juste date/heure/
   // site/nombre - voir sql/add_activity_log_and_visitor_counter.sql.
 
-  async function refreshVisitorCount() {
+  // Affichage (27/11/2026, retour de Mégane) : le « 0 » écrit en dur
+  // s'affichait le temps que la base réponde, comme si personne n'était venu.
+  // Désormais « … » pendant le chargement, ou le dernier chiffre connu du jour
+  // (mémorisé sur ce poste), puis le vrai chiffre de la base. Le comptage
+  // lui-même se fait toujours côté base : un +1 pendant le chargement compte.
+  function visitorCacheKey() { return 'bligo_visitors_' + new Date().toLocaleDateString('fr-CA'); }
+  try {
+    const cached = localStorage.getItem(visitorCacheKey());
+    if (cached !== null) document.getElementById('visitor-today-count').textContent = cached;
+  } catch (_) {}
+
+  async function refreshVisitorCount(attempt = 1) {
     const { data, error } = await supabase.rpc('visitor_count_today');
-    if (error) { console.error(error); return; }
+    if (error) {
+      console.error(error);
+      if (attempt < 3) setTimeout(() => refreshVisitorCount(attempt + 1), 2000 * attempt);
+      else if (document.getElementById('visitor-today-count').textContent === '…') document.getElementById('visitor-today-count').textContent = '?';
+      return;
+    }
     setVisitorCount(data);
   }
 
   // Compteur de visiteurs de l'en-tête (la case de l'écran Aujourd'hui, en
   // double, a été retirée le 21/10/2026).
   function setVisitorCount(n) {
-    document.getElementById('visitor-today-count').textContent = n ?? 0;
+    const v = n ?? 0;
+    document.getElementById('visitor-today-count').textContent = v;
+    try { localStorage.setItem(visitorCacheKey(), String(v)); } catch (_) {}
   }
 
   window.removeVisitorEntry = async function () {
@@ -2882,7 +2907,7 @@
       slotId: 'loan-camera-slot',
       toggleBtnId: 'loan-camera-btn',
       hintId: 'loan-camera-hint',
-      defaultLabel: 'Faire un retour',
+      defaultLabel: 'Scanner avec la caméra',
       hint: 'Scanner le code-barres de la bibliothèque',
       onResult: (code) => {
         document.getElementById('loan-barcode-input').value = code;
@@ -5698,6 +5723,31 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   let counterTab = 'loan';
   let counterUser = null;
+  // Nom de l'usager dont on scanne les retours (venu du menu de sa carte), ou null.
+  let counterReturnFor = null;
+  // Retours à la caméra (27/11/2026) : la caméra se rouvre après chaque
+  // retour enregistré, pour enchaîner les documents sans recliquer.
+  let returnCameraWanted = false;
+
+  // Ouvre directement le scan des retours : champ prêt pour la douchette et,
+  // si l'appareil a une caméra (téléphone, tablette, webcam), caméra allumée.
+  window.openReturnScan = async function () {
+    window.switchCounterTab('return');
+    document.getElementById('loan-barcode-input')?.focus();
+    let hasCamera = false;
+    try { hasCamera = (await navigator.mediaDevices.enumerateDevices()).some(d => d.kind === 'videoinput'); } catch (_) {}
+    if (hasCamera && counterTab === 'return' && !scanStream) {
+      returnCameraWanted = true;
+      await window.toggleCamera('loan');
+      document.getElementById('loan-barcode-input')?.focus();
+    }
+  };
+
+  window.counterReturnCameraBtn = function () {
+    returnCameraWanted = !scanStream;
+    window.toggleCamera('loan');
+    document.getElementById('loan-barcode-input')?.focus();
+  };
   // Livres scannés pour l'usager en cours : { barcode, title, state, message, holdBookId, held }
   // state : ready (prêtable), mine (sa commande), blocked (indisponible), done, error.
   let counterCart = [];
@@ -5709,15 +5759,9 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     counterTab = tab;
     document.getElementById('counter-panel-loan').classList.toggle('hidden', tab !== 'loan');
     document.getElementById('counter-panel-return').classList.toggle('hidden', tab !== 'return');
-    ['loan', 'return'].forEach(t => {
-      const btn = document.getElementById(`counter-tab-${t}-btn`);
-      btn.classList.toggle('bg-brand', t === tab);
-      btn.classList.toggle('text-white', t === tab);
-      btn.classList.toggle('bg-white', t !== tab);
-      btn.classList.toggle('text-ink/60', t !== tab);
-      btn.classList.toggle('border', t !== tab);
-      btn.classList.toggle('border-mango-100', t !== tab);
-    });
+    if (tab !== 'return') { counterReturnFor = null; returnCameraWanted = false; }
+    const title = document.getElementById('counter-return-title');
+    if (title) title.textContent = counterReturnFor ? `Livres rendus par ${counterReturnFor}` : 'Retour de livres';
     if (tab === 'return') document.getElementById('loan-barcode-input')?.focus();
     else document.getElementById(counterUser ? 'counter-book-input' : 'counter-card-input')?.focus();
   };
@@ -5933,10 +5977,21 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.counterHubReturn = function () {
+    const name = counterPending?.profile?.full_name || 'cet usager';
     counterPending = null;
     closeCounterUserModalOnly();
     window.resetCounterUser();
-    window.switchCounterTab('return');
+    counterReturnFor = name;
+    window.openReturnScan();
+  };
+
+  // Fin des retours : on revient à la carte pour l'usager suivant.
+  window.counterReturnDone = function () {
+    counterReturnFor = null;
+    document.getElementById('loan-result').innerHTML = '';
+    document.getElementById('loan-barcode-input').value = '';
+    window.switchCounterTab('loan');
+    window.resetCounterUser();
   };
 
   window.counterHubDonation = async function () {
@@ -6407,7 +6462,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         </select>
         <button onclick="doLoanReturn('${escapeJsAttr(barcode)}')" style="touch-action: manipulation;" class="w-full mt-1 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Enregistrer le retour</button>`;
     } else if (info.status === 'available' || info.status === 'reserved') {
-      // Le prêt se fait désormais dans l'onglet Prêter du Comptoir (21/10/2026).
+      // Le prêt se fait en scannant la carte de l'usager (27/11/2026).
       actionHtml = `
         <p class="text-xs text-ink/55 mt-3">Ce livre n'est pas emprunté : rien à rendre.</p>
         <button onclick="switchCounterTab('loan')" style="touch-action: manipulation;" class="w-full mt-2 bg-brand text-white rounded-lg py-2.5 text-sm font-semibold active:scale-[0.98] transition">Le prêter à un usager</button>`;
@@ -6501,6 +6556,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const input = document.getElementById('loan-barcode-input');
     input.value = '';
     input.focus();
+    if (returnCameraWanted && counterTab === 'return' && !scanStream) window.toggleCamera('loan');
     await Promise.all([loadActiveLoans(), loadReservations(), loadReshelveLoans()]);
   };
 
