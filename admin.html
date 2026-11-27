@@ -79,6 +79,17 @@
     #screen-agenda > div:first-child > div:last-child { flex-shrink: 1; flex-wrap: wrap; width: 100%; }
     #screen-agenda > div:first-child > div:last-child > button { flex: 1 1 auto; }
   }
+  /* Scan de la carte usager en plein écran sur mobile (27/11/2026, demande de
+     Mégane) : juste la caméra, un cadre, et la confirmation bien visible. */
+  #camera-fs-bar, #camera-fs-frame { display: none; }
+  #camera-view.scan-fs { position: fixed; inset: 0; z-index: 9000; margin: 0; background: #000; display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  #camera-view.scan-fs #camera-fs-bar { display: flex; }
+  #camera-view.scan-fs > .scan-video-box { flex: 1; aspect-ratio: auto; border-radius: 0; }
+  #camera-view.scan-fs #camera-fs-frame { display: block; }
+  #camera-view.scan-fs > .scan-torch-row { justify-content: center; padding: 14px 0 18px; margin: 0; }
+  #camera-view.scan-fs #torch-btn { font-size: 15px; padding: 10px 22px; }
+  body.scan-fs-open { overflow: hidden; }
 </style>
 <script>
     // Logiciel agent (16/10/2026) : window.alert() et window.confirm() ne
@@ -552,11 +563,19 @@
             <div class="bg-white border border-mango-100 rounded-xl p-5 shadow-sm w-full lg:max-w-sm lg:shrink-0">
               <div id="book-camera-slot">
                 <div id="camera-view" class="hidden mb-3">
-                  <div class="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
+                  <div id="camera-fs-bar" class="items-center justify-between gap-3 px-4 py-3 text-white">
+                    <p id="camera-fs-title" class="text-base font-bold">Scanner la carte de l'usager</p>
+                    <button type="button" onclick="closeScanFullscreen()" style="touch-action: manipulation;" class="shrink-0 text-sm font-bold bg-white/15 rounded-full px-4 py-2">Fermer</button>
+                  </div>
+                  <div class="scan-video-box relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
                     <video id="scan-video" class="absolute inset-0 w-full h-full object-cover" playsinline muted autoplay></video>
                     <canvas id="scan-overlay" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                    <div id="camera-fs-frame" class="absolute inset-0 pointer-events-none">
+                      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(64vw,300px);aspect-ratio:1;border-radius:24px;border:4px solid rgba(255,255,255,.9);box-shadow:0 0 0 9999px rgba(0,0,0,.35)"></div>
+                      <p style="position:absolute;left:0;right:0;bottom:24px;text-align:center"><span style="display:inline-block;background:rgba(0,0,0,.6);color:#fff;font:600 14px Inter,sans-serif;border-radius:999px;padding:8px 16px">Place le QR code de la carte dans le cadre</span></p>
+                    </div>
                   </div>
-                  <div class="flex justify-end mt-1.5">
+                  <div class="scan-torch-row flex justify-end mt-1.5">
                     <button id="torch-btn" type="button" onclick="toggleTorch()" class="hidden shrink-0 text-[11px] font-semibold text-mango-700 border border-mango-200 bg-mango-50 rounded-full px-2.5 py-1">Flash</button>
                   </div>
                 </div>
@@ -2716,6 +2735,19 @@
   // rouvrir (22/09/2026) : catalogage en rafale, check-in à l'entrée d'un
   // événement. Les autres modes se ferment après un seul scan.
   const BURST_SCAN_MODES = ['book', 'checkin', 'equip', 'weed', 'inventory', 'counterBook'];
+  // Scans de carte usager : plein écran sur mobile et confirmation visible
+  // (coche verte + nom) avant de passer à la suite (27/11/2026).
+  const CARD_SCAN_MODES = ['counterCard', 'checkin', 'pickup', 'donor'];
+  const CARD_CONFIRM_MS = 1300;
+  window.closeScanFullscreen = () => stopCamera();
+  async function cardHolderName(code) {
+    try {
+      const known = (counterPeople || []).find(p => p.subscriber_number === code);
+      if (known) return known.full_name;
+      const { data } = await supabase.from('profiles').select('full_name').eq('subscriber_number', code).maybeSingle();
+      return data?.full_name || null;
+    } catch (_) { return null; }
+  }
 
   // Brouillons de catalogage (17/09/2026) : chaque ISBN scanné ou tapé part en
   // recherche multi-API en arrière-plan et atterrit ici, en liste, pour
@@ -2757,7 +2789,7 @@
 
   // Grande coche verte au centre de l'écran, pour voir d'un coup d'œil que le
   // scan est validé (« Présence enregistrée », « Inscription enregistrée »).
-  function showScanOk(message) {
+  function showScanOk(message, opts = {}) {
     let el = document.getElementById('scan-ok-toast');
     if (!el) {
       el = document.createElement('div');
@@ -2775,9 +2807,15 @@
     const [titre, sous] = Array.isArray(message) ? message : [message, ''];
     el.querySelector('#scan-ok-text').textContent = titre;
     el.querySelector('#scan-ok-sub').textContent = sous || '';
+    // Erreur (carte inconnue) : rond rouge et croix au lieu de la coche verte.
+    const rond = el.querySelector('#scan-ok-text').previousElementSibling;
+    rond.style.background = opts.error ? '#DC2626' : '#16A34A';
+    rond.innerHTML = opts.error
+      ? '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg>'
+      : '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
     el.style.opacity = '1';
     clearTimeout(showScanOk._t);
-    showScanOk._t = setTimeout(() => { el.style.opacity = '0'; }, 1400);
+    showScanOk._t = setTimeout(() => { el.style.opacity = '0'; }, opts.ms || 1400);
   }
   window.showScanOk = showScanOk;
 
@@ -2971,6 +3009,11 @@
     view.classList.remove('hidden');
     hint.textContent = 'Ouverture de la caméra…';
     toggleBtn.textContent = 'Fermer la caméra';
+    if (CARD_SCAN_MODES.includes(mode) && (window.matchMedia('(max-width: 1023px)').matches || document.documentElement.classList.contains('native-app'))) {
+      document.getElementById('camera-fs-title').textContent = mode === 'checkin' ? 'Présence : scanner les cartes' : "Scanner la carte de l'usager";
+      view.classList.add('scan-fs');
+      document.body.classList.add('scan-fs-open');
+    }
 
     try {
       scanStream = await navigator.mediaDevices.getUserMedia({
@@ -3121,13 +3164,24 @@
           const input = document.getElementById('checkin-subscriber-input');
           input.value = code;
           confirmEventCheckin(code, Number(input.dataset.eventId));
-          scanTimeoutId = setTimeout(scanLoop, 700);
+          // Pause plus longue : le temps de voir la coche et le nom.
+          scanTimeoutId = setTimeout(scanLoop, 1800);
           return;
         }
 
         playBeep();
         const onResult = scanState.onResult;
         scanning = false;
+        // Carte usager : on montre « Carte lue » + le nom, et on laisse le
+        // temps de le voir avant d'ouvrir la suite (27/11/2026).
+        if (CARD_SCAN_MODES.includes(scanState.mode)) {
+          const [name] = await Promise.all([cardHolderName(code), new Promise(r => setTimeout(r, 450))]);
+          if (name) showScanOk(['Carte lue', name], { ms: CARD_CONFIRM_MS + 300 });
+          else showScanOk(['Carte inconnue', code], { error: true, ms: CARD_CONFIRM_MS + 300 });
+          // Caméra fermée entre-temps par l'agent : on ne poursuit pas.
+          setTimeout(() => { if (!scanStream) return; stopCamera(); onResult(code); }, CARD_CONFIRM_MS);
+          return;
+        }
         // Petit temps d'affichage du cadre orange pour que l'agent voie que
         // le bon code a bien été repéré, avant d'enchaîner automatiquement.
         setTimeout(() => {
@@ -3184,7 +3238,8 @@
     const toggleBtn = scanState && document.getElementById(scanState.toggleBtnId);
     const torchBtn = document.getElementById('torch-btn');
     const overlay = document.getElementById('scan-overlay');
-    if (view) view.classList.add('hidden');
+    if (view) { view.classList.add('hidden'); view.classList.remove('scan-fs'); }
+    document.body.classList.remove('scan-fs-open');
     if (toggleBtn) toggleBtn.textContent = scanState.defaultLabel;
     if (torchBtn) { torchBtn.classList.add('hidden'); torchBtn.textContent = 'Flash'; }
     const ctx = overlay?.getContext('2d');
@@ -12315,6 +12370,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     if (profileError || !profile) {
       resultBox.innerHTML = `<p class="text-xs text-red-600">Aucun usager trouvé pour « ${escapeHtml(subscriber)} ».</p>`;
+      showScanOk(['Carte inconnue', subscriber], { error: true, ms: 1600 });
       return;
     }
 
