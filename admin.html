@@ -1301,7 +1301,7 @@
         </div>
 
         <div id="stats-panel-top20" class="stats-panel hidden">
-          <p class="text-sm text-ink/55 mb-4">Les 20 livres les plus vendus en librairie ce mois-ci, choisis par l'administratrice BliGO. Un repère pour les achats, pas un livre du catalogue.</p>
+          <p id="top20-intro" class="text-sm text-ink/55 mb-4">Le top des librairies, choisi par l'administratrice BliGO : un repère pour les achats, rangé par rayon, avec des conseils. Ce ne sont pas des livres du catalogue.</p>
           <div id="top20-readonly-list" class="flex flex-col gap-2"></div>
         </div>
 
@@ -12783,6 +12783,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
   let jeunesseRows = [];
   let top20Rows = [];
+  let top20Month = null;
 
   window.loadJeunesseReadonly = async function () {
     const { data, error } = await supabase
@@ -12818,15 +12819,18 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   window.loadTop20Readonly = async function () {
+    // Dernière sélection saisie (27/11/2026) : elle reste affichée tant que
+    // la suivante n'est pas prête, au lieu d'un écran vide le 1er du mois.
     const now = new Date();
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    const { data, error } = await supabase
-      .from('monthly_top_books')
-      .select('*')
-      .eq('month', monthStart)
-      .order('rank');
+    const { data: last } = await supabase.from('monthly_top_books').select('month')
+      .lte('month', monthStart).order('month', { ascending: false }).limit(1).maybeSingle();
+    const { data, error } = last
+      ? await supabase.from('monthly_top_books').select('*').eq('month', last.month).order('rank')
+      : { data: [], error: null };
     if (error) { console.error(error); return; }
     top20Rows = data || [];
+    top20Month = last?.month || null;
     renderTop20Readonly(top20Rows);
   };
 
@@ -12836,17 +12840,28 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       list.innerHTML = `<p class="text-sm text-ink/40 text-center py-10">La sélection de ce mois n'a pas encore été saisie.</p>`;
       return;
     }
-    list.innerHTML = rows.map(r => `
+    // Rayons et conseils d'achat (27/11/2026) : un titre par rayon, le
+    // conseil sous l'auteur. Numérotation recommencée dans chaque rayon.
+    const monthLabel = top20Month ? new Date(top20Month + 'T12:00:00').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '';
+    let lastSection = null, n = 0;
+    list.innerHTML = (monthLabel ? `<p class="text-xs font-bold text-mango-700 mb-1">Top des librairies · ${escapeHtml(monthLabel)}</p>` : '') + rows.map(r => {
+      const head = r.section && r.section !== lastSection
+        ? `<p class="text-[11px] font-bold uppercase tracking-wide text-ink/50 ${lastSection === null ? 'mt-1' : 'mt-4'} mb-0.5">${escapeHtml(r.section)}</p>` : '';
+      if (r.section !== lastSection) n = 0;
+      lastSection = r.section; n++;
+      return `${head}
       <div class="flex items-center gap-3 bg-white border border-mango-100 rounded-xl px-4 py-2.5">
-        <span class="text-mango-600 font-bold text-sm w-6 shrink-0">${r.rank}</span>
+        <span class="text-mango-600 font-bold text-sm w-6 shrink-0">${r.section ? n : r.rank}</span>
         ${r.cover_url
           ? `<img src="${escapeHtml(r.cover_url)}" alt="" class="w-8 h-11 object-cover rounded shrink-0 bg-mango-50">`
           : `<span class="w-8 h-11 rounded bg-mango-50 shrink-0"></span>`}
-        <span class="min-w-0">
+        <span class="min-w-0 flex-1">
           <button onclick="openCuratedDetail('top20', ${r.id})" class="w-full block font-semibold text-ink truncate text-left hover:underline">${escapeHtml(r.title)}</button>
-          <span class="block text-ink/50 text-xs truncate">${escapeHtml(r.author)}</span>
+          <span class="block text-ink/50 text-xs truncate">${escapeHtml(r.author)}${r.publisher ? ` · ${escapeHtml(r.publisher)}` : ''}</span>
+          ${r.note ? `<span class="block text-[11px] text-hibiscus-700 mt-0.5">${escapeHtml(r.note)}</span>` : ''}
         </span>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   // Fiche complète en lecture seule, pour Top Jeunesse et Sélection BliGO -
@@ -12874,8 +12889,10 @@ ${documentTypeKind(d.format) === 'periodique' ? `
           <p class="text-base font-bold text-ink leading-snug">${escapeHtml(b.title)}</p>
           <p class="text-sm text-ink/55">${escapeHtml(b.author)}</p>
           ${b.age_range || b.genre ? `<p class="text-[11px] text-hibiscus-700 font-semibold mt-1">${escapeHtml([b.age_range, b.genre].filter(Boolean).join(' · '))}</p>` : ''}
+          ${b.section ? `<p class="text-[11px] text-ink/50 font-semibold mt-1">${escapeHtml(b.section)}</p>` : ''}
         </div>
       </div>
+      ${b.note ? `<p class="text-sm text-hibiscus-700 bg-hibiscus-50 rounded-lg px-3 py-2 mb-3">${escapeHtml(b.note)}</p>` : ''}
       <div class="grid grid-cols-2 gap-x-3">
         ${infoRow('ISBN', b.isbn)}
         ${infoRow('Éditeur', b.publisher)}
