@@ -62,7 +62,7 @@
   </div>
 
   <!-- Filtres (26/11/2026, RDV Brest) : public, type, médiathèque du réseau. Affichés seulement s'il y a un choix à faire. -->
-  <div id="agenda-filters" class="hidden flex flex-wrap justify-center gap-2 mb-4"></div>
+  <div id="agenda-filters" class="hidden flex justify-center gap-1.5 mb-4"></div>
   <!-- Ordinateur (22/10/2026) : une carte par ligne, en pleine largeur comme Mes réservations. -->
   <div id="events-list" class="flex flex-col gap-4"></div>
 
@@ -246,8 +246,9 @@
   }
   function pillSelect(id, value, options) {
     const active = value !== options[0][0];
-    return `<label class="relative shrink-0">
-      <select id="${id}" style="-webkit-appearance: none; appearance: none;" class="text-xs font-semibold rounded-full pl-3 pr-7 py-2 outline-none ${active ? 'bg-mango-50 text-mango-700' : 'bg-[#EEEDF2] text-ink/65'}">
+    // Une seule ligne (27/11/2026, demande de Mégane) : trois pastilles de même largeur au plus.
+    return `<label class="relative min-w-0 flex-1" style="max-width: 9.5rem;">
+      <select id="${id}" style="-webkit-appearance: none; appearance: none; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="text-xs font-semibold rounded-full pl-3 pr-6 py-2 outline-none ${active ? 'bg-mango-50 text-mango-700' : 'bg-[#EEEDF2] text-ink/65'}">
         ${options.map(([v, l]) => `<option value="${escapeAttr(v)}" ${v === value ? 'selected' : ''}>${l}</option>`).join('')}
       </select>
       <svg class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
@@ -262,11 +263,11 @@
     box.classList.toggle('hidden', !show);
     if (!show) { box.innerHTML = ''; return; }
     box.innerHTML = [
-      networkCommunes.length > 1 ? pillSelect('flt-commune', filterCommune, [['', 'Tout le réseau'], ...networkCommunes.map(c => [String(c.id), c.name])]) : '',
-      (ages.length > 1 || filterAge) ? pillSelect('flt-age', filterAge, [['', 'Tous les publics'], ...ages]) : '',
-      (types.length > 1 || filterType) ? pillSelect('flt-type', filterType, [['', 'Tous les types'], ...types.map(t => [t, t])]) : '',
+      networkCommunes.length > 1 ? pillSelect('flt-commune', filterCommune, [['', 'Toutes les communes'], ...networkCommunes.map(c => [String(c.id), c.name])]) : '',
+      (ages.length > 1 || filterAge) ? pillSelect('flt-age', filterAge, [['', 'Public'], ...ages]) : '',
+      (types.length > 1 || filterType) ? pillSelect('flt-type', filterType, [['', 'Type'], ...types.map(t => [t, t])]) : '',
       (filterAge || filterType || (networkCommunes.length > 1 && filterCommune !== String(browseCommuneId)))
-        ? `<button id="flt-reset" class="shrink-0 text-xs font-semibold text-ink/45 underline px-1">Effacer</button>` : '',
+        ? `<button id="flt-reset" aria-label="Effacer les filtres" class="shrink-0 w-8 h-8 rounded-full bg-[#EEEDF2] text-ink/50 text-xs font-bold">✕</button>` : '',
     ].join('');
     box.querySelector('#flt-commune')?.addEventListener('change', ev => { filterCommune = ev.target.value; renderEvents(); });
     box.querySelector('#flt-age')?.addEventListener('change', ev => { filterAge = ev.target.value; renderEvents(); });
