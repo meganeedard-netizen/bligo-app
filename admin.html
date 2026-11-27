@@ -1744,6 +1744,11 @@
         </div>
         <div id="regie-totals" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
         <div id="regie-list" class="flex flex-col gap-1.5"></div>
+        <div id="deposits-wrap" class="hidden mt-6">
+          <h3 class="text-sm font-bold text-ink mb-1">Cautions en cours (matériel prêté)</h3>
+          <p class="text-xs text-ink/55 mb-2">Cautions reçues et pas encore rendues : <span id="deposits-total" class="font-semibold text-ink"></span></p>
+          <div id="deposits-list" class="flex flex-col gap-1.5"></div>
+        </div>
       </section>
 
       <!-- STATISTIQUES SIGB (direction uniquement) -->
@@ -6255,12 +6260,31 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     if (isMat && !materielSettings) loadMaterielSettings().then(() => renderCounterCart());
     const deposit = isMat && materielSettings?.materiel_deposit_cents;
     return `<div class="mt-2 text-xs text-ink/70">
-      ${deposit ? `<p class="font-semibold text-hibiscus-700 mb-0.5">Caution à demander : ${eurosCourt(deposit)}</p>` : ''}
+      ${deposit && r.state !== 'done' ? `<p class="font-semibold text-hibiscus-700 mb-0.5">Caution à demander : ${eurosCourt(deposit)}</p>` : ''}
+      ${deposit && r.state === 'done' ? (r.deposit
+        ? `<p class="font-semibold text-mango-700 mb-1">Caution reçue : ${eurosCourt(r.deposit.cents)} (${DEPOSIT_METHODS[r.deposit.method]})</p>`
+        : `<div class="flex flex-wrap items-center gap-2 mb-2 bg-hibiscus-50 rounded-lg px-2.5 py-2">
+            <span class="font-semibold text-hibiscus-700">Caution : ${eurosCourt(deposit)}</span>
+            <select id="deposit-method-${i}" class="border border-mango-100 rounded-lg px-2 py-1 text-xs bg-white">${Object.entries(DEPOSIT_METHODS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+            <button onclick="recordDeposit(${i})" style="touch-action: manipulation;" class="bg-brand text-white rounded-full px-3 py-1.5 text-xs font-bold">Caution reçue</button>
+          </div>`) : ''}
       <p>${list.length ? `À remettre avec : <span class="font-semibold text-ink">${escapeHtml(list.join(', '))}</span>` : 'Aucun accessoire sur la fiche.'}</p>
       ${missing.size ? `<p class="text-orange-700 font-semibold mt-0.5">Déjà manquant : ${escapeHtml([...missing].join(', '))}</p>` : ''}
       ${r.state === 'done' ? `<button onclick="printInstrumentSheet(${i})" style="touch-action: manipulation;" class="mt-2 bg-brand text-white rounded-full px-4 py-2 text-xs font-bold active:scale-[0.98] transition">Imprimer la fiche de prêt</button>` : ''}
     </div>`;
   }
+
+  const DEPOSIT_METHODS = { cheque: 'Chèque', especes: 'Espèces', carte: 'Carte bancaire', virement: 'Virement' };
+  window.recordDeposit = async function (index) {
+    const r = counterCart[index];
+    const cents = materielSettings?.materiel_deposit_cents;
+    if (!r || !cents) return;
+    const method = document.getElementById(`deposit-method-${index}`)?.value || 'cheque';
+    const { error } = await supabase.rpc('record_loan_deposit', { p_barcode: r.barcode, p_cents: cents, p_method: method });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    r.deposit = { cents, method };
+    renderCounterCart();
+  };
 
   window.printInstrumentSheet = async function (index) {
     const r = counterCart[index];
@@ -6280,7 +6304,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       .a td:not(:first-child),.a th:not(:first-child){width:80px;text-align:center}.s{display:flex;gap:24px;margin-top:28px}.s div{flex:1;border:1px solid #999;height:90px;padding:6px}</style></head><body>
       <h1>Fiche de prêt ${isMat ? 'de matériel' : "d'instrument"}</h1><p>${e(c?.name || '')}</p>
       <table>${row('Usager', counterUser.full_name)}${row('Numéro de carte', counterUser.subscriber_number)}${row(isMat ? 'Appareil' : 'Instrument', r.book.title)}${row('Marque', r.book.author)}${row('Code', r.barcode)}
-      ${row('Prêté le', new Date().toLocaleDateString('fr-FR'))}${row('À rendre avant le', r.due_at ? new Date(r.due_at).toLocaleDateString('fr-FR') : '')}${row('Valeur de remplacement', r.book.price_cents ? (r.book.price_cents / 100).toFixed(2).replace('.', ',') + ' €' : '')}${isMat && c?.materiel_deposit_cents ? row('Caution versée', eurosCourt(c.materiel_deposit_cents)) : ''}</table>
+      ${row('Prêté le', new Date().toLocaleDateString('fr-FR'))}${row('À rendre avant le', r.due_at ? new Date(r.due_at).toLocaleDateString('fr-FR') : '')}${row('Valeur de remplacement', r.book.price_cents ? (r.book.price_cents / 100).toFixed(2).replace('.', ',') + ' €' : '')}${isMat && r.deposit ? row('Caution versée', `${eurosCourt(r.deposit.cents)} (${DEPOSIT_METHODS[r.deposit.method]})`) : isMat && c?.materiel_deposit_cents ? row('Caution', eurosCourt(c.materiel_deposit_cents) + ', rendue au retour si tout est en ordre') : ''}</table>
       ${list.length ? `<h2>Accessoires</h2><table class="a"><tr><th>Accessoire</th><th>Remis</th><th>Rendu</th></tr>${list.map(a => `<tr><td>${e(a)}</td><td>☐</td><td>☐</td></tr>`).join('')}</table>` : ''}
       ${missing.size ? `<p>Déjà manquant avant ce prêt : ${e([...missing].join(', '))}</p>` : ''}
       <h2>État au départ</h2><div style="border:1px solid #999;height:60px"></div>
@@ -6343,7 +6367,12 @@ ${documentTypeKind(d.format) === 'periodique' ? `
 
     const { data, error } = await supabase.rpc('scan_lookup', { p_barcode: barcode });
     if (error) { resultBox.innerHTML = `<p class="text-sm text-red-600">Erreur : ${escapeHtml(frError(error))}</p>`; return; }
-    if (data?.category === 'Matériel') await loadMaterielSettings(true);
+    if (data?.category === 'Matériel') {
+      await loadMaterielSettings(true);
+      const { data: loan } = await supabase.from('loans').select('id, deposit_cents, deposit_method, deposit_status')
+        .eq('copy_id', data.copy_id).is('returned_at', null).order('id', { ascending: false }).limit(1).maybeSingle();
+      data.loan = loan;
+    }
     renderLoanResult(barcode, data);
   };
 
@@ -6370,7 +6399,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
       actionHtml = `
         <p class="text-xs text-ink/55 mt-3">Emprunté par <span class="font-semibold text-ink">${escapeHtml(info.borrower_name || '')}</span>${info.due_at ? ` · à rendre avant le ${formatDateShortAdmin(info.due_at)}` : ''}</p>
         ${isLoanKitCategory(info.category) ? returnAccessoriesHtml(info) : ''}
-        ${info.category === 'Matériel' ? returnChecklistHtml() : ''}
+        ${info.category === 'Matériel' ? returnChecklistHtml(info) : ''}
         <label class="text-xs font-semibold text-ink/60 block mt-3 mb-1">État ${info.category === 'Instruments' ? "de l'instrument" : info.category === 'Matériel' ? "de l'appareil" : 'du livre'} au retour</label>
         <select id="return-condition-input" class="w-full border border-mango-100 rounded-lg px-3 py-2 text-sm mb-2 bg-white">
           <option value="bon" selected>Bon état</option>
@@ -6412,13 +6441,21 @@ ${documentTypeKind(d.format) === 'periodique' ? `
   }
 
   // Matériel : liste à vérifier au retour (Réglages), tout est décoché au départ.
-  function returnChecklistHtml() {
+  function returnChecklistHtml(info) {
     const list = accessoryList(materielSettings?.materiel_return_checklist);
-    const deposit = materielSettings?.materiel_deposit_cents;
-    if (!list.length && !deposit) return '';
+    const loan = info?.loan;
+    const held = loan?.deposit_status === 'versee';
+    const deposit = !held && !loan?.deposit_status && materielSettings?.materiel_deposit_cents;
     return `${list.length ? `<p class="text-xs font-semibold text-ink/60 mt-3 mb-1">À vérifier avant de le ranger</p>
       <div class="flex flex-col gap-1.5">${list.map(a => `<label class="flex items-center gap-2 text-sm text-ink"><input type="checkbox" class="return-check accent-mango-600 w-4 h-4" value="${escapeHtml(a)}">${escapeHtml(a)}</label>`).join('')}</div>` : ''}
-      ${deposit ? `<p class="text-xs font-semibold text-hibiscus-700 mt-2">Pense à rendre la caution (${eurosCourt(deposit)}) si tout est en ordre.</p>` : ''}`;
+      ${held ? `<div class="mt-3 bg-hibiscus-50 rounded-lg px-3 py-2">
+        <p class="text-xs font-semibold text-hibiscus-700 mb-1.5">Caution versée : ${eurosCourt(loan.deposit_cents)} (${DEPOSIT_METHODS[loan.deposit_method] || ''})</p>
+        <input type="hidden" id="return-deposit-loan" value="${loan.id}">
+        <label class="flex items-center gap-2 text-sm text-ink"><input type="radio" name="return-deposit" value="rendue" checked class="accent-mango-600">Je rends la caution</label>
+        <label class="flex items-center gap-2 text-sm text-ink mt-1"><input type="radio" name="return-deposit" value="gardee" class="accent-mango-600">Je garde la caution (casse, manque…)</label>
+        <p class="text-[11px] text-ink/50 mt-1">Pas sûr ? Choisis « Je garde » : tu pourras la rendre plus tard depuis Paiements.</p>
+      </div>` : ''}
+      ${deposit ? `<p class="text-xs text-ink/55 mt-2">Aucune caution notée pour ce prêt.</p>` : ''}`;
   }
 
   window.doLoanReturn = async function (barcode) {
@@ -6427,10 +6464,19 @@ ${documentTypeKind(d.format) === 'periodique' ? `
     const accessoryBoxes = [...document.querySelectorAll('#loan-result .return-accessory')];
     const missingNow = accessoryBoxes.filter(c => !c.checked).map(c => c.value);
     const todoNow = [...document.querySelectorAll('#loan-result .return-check')].filter(c => !c.checked).map(c => c.value);
+    const depositLoan = document.getElementById('return-deposit-loan')?.value;
+    const depositChoice = document.querySelector('#loan-result input[name="return-deposit"]:checked')?.value;
 
     const { data, error } = await supabase.rpc('scan_return', { p_barcode: barcode, p_condition: condition });
     if (error) { alert('Erreur : ' + frError(error)); return; }
     if (!data.ok) { alert(data.message); return; }
+    let depositMsg = '';
+    if (depositLoan && depositChoice === 'rendue') {
+      const { error: depError } = await supabase.rpc('settle_loan_deposit', { p_loan_id: Number(depositLoan), p_status: 'rendue', p_note: null });
+      depositMsg = depError ? 'Caution non notée comme rendue : ' + frError(depError) : 'Caution rendue à l\'usager.';
+    } else if (depositLoan) {
+      depositMsg = 'Caution gardée pour l\'instant : elle reste dans Paiements › Cautions en cours.';
+    }
     if (accessoryBoxes.length) {
       const { error: accError } = await supabase.rpc('set_missing_accessories', { p_barcode: barcode, p_missing: missingNow.join('\n') });
       if (accError) alert('Retour enregistré, mais les accessoires manquants n\'ont pas été notés : ' + frError(accError));
@@ -6444,6 +6490,7 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ${data.user_flagged ? `<p class="text-xs text-red-600 font-semibold mt-1">Usager passé « fiché » suite à ce retour.</p>` : ''}
         ${missingNow.length ? `<p class="text-xs text-orange-700 font-semibold mt-1">Manquant : ${escapeHtml(missingNow.join(', '))}</p>` : ''}
         ${todoNow.length ? `<p class="text-xs text-orange-700 font-semibold mt-1">À faire avant de le reprêter : ${escapeHtml(todoNow.join(', '))}</p>` : ''}
+        ${depositMsg ? `<p class="text-xs text-hibiscus-700 font-semibold mt-1">${escapeHtml(depositMsg)}</p>` : ''}
         ${condition === 'mauvais' || missingNow.length ? `<button onclick="declareDamaged('${escapeJsAttr(barcode)}')" class="mt-2 text-xs font-semibold bg-white border border-red-200 text-red-700 rounded-full px-3 py-1.5">Facturer le document abîmé</button>` : ''}
         <p id="loan-hold-alert" class="hidden text-xs font-bold text-hibiscus-700 mt-2"></p>
       </div>`;
@@ -9096,6 +9143,35 @@ ${documentTypeKind(d.format) === 'periodique' ? `
         ${r.status === 'paye' && r.amount_cents ? `<button onclick="movePayment(${r.id}, 'a_rembourser', 'Marquer ce paiement à rembourser ?')" class="text-[11px] text-ink/50 underline">Rembourser</button>` : ''}
         ${r.status === 'a_rembourser' ? `<button onclick="movePayment(${r.id}, 'rembourse', 'Confirmer que ce paiement a été remboursé ?')" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-full px-3 py-1">Remboursé</button>` : ''}
       </div>`).join('') || '<p class="text-sm text-ink/40 py-6 text-center">Aucun paiement sur cette période.</p>';
+    await loadDeposits();
+  };
+
+  async function loadDeposits() {
+    const wrap = document.getElementById('deposits-wrap');
+    const { data, error } = await supabase.rpc('list_open_deposits');
+    if (error || !data?.length) { wrap.classList.add('hidden'); return; }
+    wrap.classList.remove('hidden');
+    document.getElementById('deposits-total').textContent = euros(data.reduce((t, d) => t + (d.amount_cents || 0), 0));
+    document.getElementById('deposits-list').innerHTML = data.map(d => `
+      <div class="bg-white border border-[#E5E7EB] rounded-lg px-3 py-2 flex items-center gap-3 flex-wrap">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-ink truncate">${escapeHtml(d.payer || '')}${d.card ? ` (${escapeHtml(d.card)})` : ''} · ${escapeHtml(d.title || '')}</p>
+          <p class="text-[11px] text-ink/50">Reçue le ${formatDateShortAdmin(d.deposit_at)} · ${DEPOSIT_METHODS[d.method] || ''} · ${d.returned_at ? `<span class="text-orange-700 font-semibold">appareil rendu le ${formatDateShortAdmin(d.returned_at)}, caution gardée</span>` : `à rendre avant le ${formatDateShortAdmin(d.due_at)}`}</p>
+        </div>
+        <span class="text-sm font-bold text-ink">${euros(d.amount_cents)}</span>
+        <button onclick="settleDeposit(${d.loan_id}, 'rendue')" class="text-[11px] font-semibold text-mango-700 border border-mango-200 rounded-full px-3 py-1">Rendue</button>
+        ${d.returned_at ? `<button onclick="settleDeposit(${d.loan_id}, 'gardee')" class="text-[11px] text-ink/50 underline">Encaissée (gardée)</button>` : ''}
+      </div>`).join('');
+  }
+  window.settleDeposit = async function (loanId, status) {
+    let note = null;
+    if (status === 'gardee') {
+      note = prompt('Pourquoi la caution est-elle gardée ? (casse, manque…)');
+      if (note === null) return;
+    } else if (!await confirmDialog('Confirmer que la caution a été rendue à l\'usager ?')) return;
+    const { error } = await supabase.rpc('settle_loan_deposit', { p_loan_id: loanId, p_status: status, p_note: note });
+    if (error) { alert('Erreur : ' + frError(error)); return; }
+    await loadDeposits();
   };
 
   window.movePayment = async function (id, status, question) {
